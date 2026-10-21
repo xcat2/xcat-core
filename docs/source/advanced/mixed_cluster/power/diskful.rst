@@ -4,12 +4,13 @@ Provision x86 Diskful
 In order to provision x86_64 ipmi-based machines from Power-based xCAT management node, there are a few required xCAT dependency RPMs that must be installed:
 
 * ``elilo-xcat``
+* ``ipxe-xcat``
 * ``xnba-undi``
 * ``syslinux-xcat``
 
 Install these RPMs using the following command: ::
 
-    yum install elilo-xcat xnba-undi syslinux-xcat
+    yum install elilo-xcat ipxe-xcat xnba-undi syslinux-xcat
 
 On the Power-based management node, obtain an x86_64 operating system ISO and add it into the xCAT osimage table by using the ``copycds`` command: ::
 
@@ -34,7 +35,7 @@ Create a node definition for the x86_64 compute node, here is a sample: ::
         kernel=xcat/osimage/rhels6.6-x86_64-install-compute/vmlinuz
         mac=34:40:b5:b9:c0:18
         mgt=ipmi
-        netboot=xnba
+        netboot=ipxe
         nodetype=osi
         os=rhels6.6
         profile=compute

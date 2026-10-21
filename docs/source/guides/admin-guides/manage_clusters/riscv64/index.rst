@@ -1,9 +1,10 @@
 RISC-V 64-bit (riscv64)
 =======================
 
-xCAT manages RISC-V 64-bit (``riscv64``) compute nodes running EL10. Rocky
-Linux 10 is the reference distribution; the RHEL 10 RISC-V developer preview
-uses the same media layout. The general cluster management documentation under
+xCAT manages RISC-V 64-bit (``riscv64``) compute nodes running EL10 or Ubuntu.
+Rocky Linux 10 is the reference EL distribution and the RHEL 10 RISC-V developer
+preview uses the same media layout; on the Ubuntu side, 24.04 and 26.04 are
+supported from the live-server media. The general cluster management documentation under
 :doc:`/guides/admin-guides/manage_clusters/index` applies; this page
 only covers what is specific to the architecture.
 
@@ -21,16 +22,31 @@ What riscv64 nodes need
   ``grub2-http`` is recommended for installers, whose initrd is large.
 * ``nodetype.arch`` and ``osimage.osarch`` are ``riscv64``. No alias is
   needed: ``uname -m``, rpm and dpkg all use the same token.
-* ``/tftpboot/boot/grub2/grub2.riscv64``: the EL grub2 UEFI image for riscv64
-  (the ``EFI/BOOT/grubriscv64.efi`` of the EL10 riscv64 BaseOS tree).
-  ``copycds`` publishes it from the installation media when the management node
-  does not have it yet, the ``grub2-xcat`` package installs the same image, and
-  :doc:`/guides/install-guides/yum/grub2` describes copying it by hand. An image
-  that is already there is never replaced.
+* ``/tftpboot/boot/grub2/grub2.riscv64``: the grub2 UEFI image the firmware
+  loads. On EL media it is the ``EFI/BOOT/grubriscv64.efi`` of the riscv64
+  BaseOS tree, which the ``grub2-xcat`` package also installs and
+  :doc:`/guides/install-guides/yum/grub2` describes copying by hand; ``copycds``
+  publishes it when the management node does not have it yet and keeps an image
+  that is already there.
+
+  Ubuntu media are different: the loader they carry boots only from the media,
+  because it holds a built-in configuration that searches for the live
+  filesystem and never reads the configuration ``nodeset`` writes. ``copycds``
+  therefore builds a netboot image from the ``grub-efi-riscv64-bin`` package on
+  the media, with the network modules and the ``/boot/grub2`` prefix compiled
+  in, and installs it under that name. An image already there is kept when it
+  carries that prefix and those modules, which is what the loader this path
+  builds looks like; anything else is replaced, because the image the media
+  carry cannot reach the configuration. When the media cannot produce a
+  replacement, whatever is there is left untouched and ``copycds`` says so:
+  check that the nodes still boot, since the file was not built for this path.
+  Building the loader needs ``grub-mkimage``, which ``grub-common`` provides and
+  ``xcat-server`` requires.
 * The riscv64 Genesis image (``xCAT-genesis-openembedded-riscv64``) for
   discovery, BMC setup and flashing. Its kernel is loaded by grub2 through the
   EFI stub. ``go-xcat`` installs the package; on a management node built another
-  way, install it explicitly (``dnf install xCAT-genesis-openembedded-riscv64``),
+  way, install it explicitly (``dnf install xCAT-genesis-openembedded-riscv64``,
+  or ``apt install xcat-genesis-openembedded-riscv64`` on Ubuntu),
   the same way the images of other architectures are installed for a mixed
   cluster. ``xcatconfig`` runs ``mknb riscv64`` for every installed image.
 The management node itself is x86_64 (the validated combination, see
@@ -65,6 +81,9 @@ for the other architectures.
 Stateful (diskful) installation
 --------------------------------
 
+EL10
+~~~~
+
 Import the Rocky Linux 10 riscv64 DVD with ``copycds``; it creates the
 ``rocky10.x-riscv64-install-compute`` osimage. The installer kernel and initrd
 come from ``images/pxeboot`` on the media, like x86_64 and aarch64.
@@ -83,6 +102,28 @@ package lists add ``grub2-efi-riscv64`` and ``efibootmgr``, and the
 ``\EFI\BOOT\BOOTRISCV64.EFI``. Custom templates for riscv64 should start from
 these files. After ``nodeset <node> boot`` the firmware boots the installed
 system because the per-node ``grub2-<node>`` loader link is removed.
+
+Ubuntu
+~~~~~~
+
+Import the Ubuntu 24.04 or 26.04 riscv64 live-server ISO with ``copycds``; it
+creates the ``ubuntu<version>-riscv64-install-compute`` osimage. The installer
+kernel and initrd come from ``casper/vmlinux`` and ``casper/initrd``, where the
+riscv64 media keep them.
+
+The installer needs no riscv64 accommodation of the kind EL10 requires: Subiquity
+installs ``grub-efi-riscv64`` itself, writes both ``\EFI\ubuntu\grubriscv64.efi``
+and the removable-media fallback ``\EFI\BOOT\BOOTRISCV64.EFI``, and registers the
+UEFI boot entry. The shared ``compute.subiquity.tmpl`` is used unchanged.
+
+The autoinstall configuration is fetched from the management node over HTTP with
+``ds=nocloud-net``. That argument holds a semicolon, which grub2 reads as a
+command separator, so the boot loader configuration quotes it; a node whose
+kernel command line ends before the seed URL is a sign of an unquoted separator.
+
+Packages the media do not carry are taken from ``ports.ubuntu.com``, which is
+where every architecture other than amd64 and i386 is published. Set
+``site.ubuntu_apt_mirror`` to point at a local mirror instead.
 
 Crash dumps
 ~~~~~~~~~~~
@@ -116,6 +157,15 @@ management node needs the riscv64 user-mode emulator registered with
 systemd-binfmt, as described in
 :doc:`/advanced/mixed_cluster/building_stateless_images`.
 
+On Ubuntu, ``genimage`` builds the image with ``debootstrap`` from the
+``compute.ubuntu24.04.riscv64`` and ``compute.ubuntu26.04.riscv64`` package
+lists. It bootstraps from ``ports.ubuntu.com``, because ``archive.ubuntu.com``
+publishes amd64 and i386 only; ``site.ubuntu_apt_mirror`` overrides that for a
+local mirror serving every architecture. A management node of another
+architecture needs the same ``qemu-user-static`` binfmt registration as EL, and
+a release older than the one being built needs the target's ``debootstrap``
+script, which is a symlink to ``gutsy`` for every modern Ubuntu.
+
 Management node on riscv64
 --------------------------
 
@@ -142,6 +192,15 @@ that disables weak dependencies (``install_weak_deps=False``) has to install
 ``perl-DB_File`` explicitly to keep the Confluent client working.
 xCAT does not install anything from CPAN; every dependency is an rpm.
 
+On Ubuntu the ``xcat`` and ``xcatsn`` packages are built for riscv64 and the
+apt repository indexes the architecture, so ``apt install xcat`` brings up a
+riscv64 management node. Everything else xCAT needs comes from the Ubuntu
+riscv64 archive, except the xcat-dep packages that carry a binary:
+``goconserver``, ``ipmitool-xcat`` and ``conserver-xcat`` must come from a
+riscv64 xcat-dep apt repository. The remaining xcat-dep packages, including
+``grub2-xcat`` and the x86-only boot loaders, are ``Architecture: all`` and
+install anywhere.
+
 Limitations
 -----------
 
@@ -151,7 +210,9 @@ Limitations
   HTTP boot firmware yet, and a node that ``nodeset`` has configured is offered
   its per-node boot loader over TFTP, as on the other architectures, so keep PXE
   boot enabled in the firmware.
-* Ubuntu riscv64 is not supported yet.
+* Ubuntu 26.04 riscv64 requires the RVA23 profile. A machine that implements
+  only the older profile stops with an illegal instruction early in userspace;
+  24.04 runs on the older profile.
 * The serial console defaults to ``ttyS<site.defserialport>``; boards whose
   firmware exposes the console on another device need
   ``linuximage.addkcmdline`` or the serial settings adjusted.

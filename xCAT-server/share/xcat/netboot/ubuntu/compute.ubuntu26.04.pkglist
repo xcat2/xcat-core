@@ -1,0 +1,17 @@
+bash
+nfs-common
+openssl
+isc-dhcp-client
+linux-image-generic
+openssh-server
+openssh-client
+wget
+vim
+chrony
+rsyslog
+rsync
+busybox-static
+gawk
+tar
+gzip
+xz-utils

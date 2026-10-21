@@ -1,7 +1,10 @@
 start:SN_setup_case
-os:Linux
+os:rhels,sles
 label:sn_diskful,provision
 #stop:yes
+# createrepo, the xcat/ prefix in the otherpkgs pkglist paths, and yum or zypper for
+# perl-Sys-Virt are all rpm. A Debian management node has none of them, so os: above
+# names the rpm families only and SN_setup_case_ub covers Ubuntu.
 cmd:fdisk -l
 cmd:df -T
 cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__

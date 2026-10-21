@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# verify-genesis-payload [--commands-from <module-setup.sh>] <payload-root> [required-path ...]
+#
+# dracut_install() reports a missing binary and returns, so the module install function keeps
+# going and the image ships without it. Check the extracted payload before it is packaged.
+#
+# Paths given on the command line are relative to <payload-root>. --commands-from reads back
+# what the dracut module installs. XCAT::GenesisPayload, in lib/ beside this script, holds
+# the rules, so the unit tests call the same code.
+#
+# Exit status: 0 complete, 1 something missing, 2 usage error.
+
+exec perl -I"$(dirname "$0")/lib" -MXCAT::GenesisPayload=main -e 'exit main(@ARGV)' -- "$@"

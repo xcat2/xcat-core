@@ -735,20 +735,8 @@ Usage:
             $warnstr .= "Details: $retstrref->[1]";
         }
     }
-    # For each node in the noderange remove its configureation files in $config_dir, if file exists
     setrsp_progress("Removing configuration files...");
-    my $config_dir = "/install/autoinst/";
-    foreach my $one_node (@$nodes) {
-        if ( -e "$config_dir/$one_node") {
-            unlink "$config_dir/$one_node";
-        }
-        if ( -e "$config_dir/$one_node.post") {
-            unlink "$config_dir/$one_node.post";
-        }
-        if ( -e "$config_dir/$one_node.pre") {
-            unlink "$config_dir/$one_node.pre";
-        }
-    }
+    xCAT::ProfiledNodeUtils->remove_node_config_files("/install/autoinst", $nodes);
     setrsp_progress("Removed all nodes.");
     setrsp_success($nodes, $warnstr);
 }
@@ -964,13 +952,19 @@ Usage:
     }
 
     # Update nodes' attributes
+    my $netbootents = {};
+    if ($new_netboot) {
+        my $nrtab = xCAT::Table->new('noderes');
+        $netbootents = $nrtab->getNodesAttribs($nodes, ['netboot']) if $nrtab;
+    }
     foreach (@$nodes) {
         $updatenodeshash{$_}{'groups'} .= $profile_groups;
         if ($is_kvm_hypv) {
             $updatenodeshash{$_}{'groups'} .= ",__Hypervisor_kvm";
         }
         if ($new_netboot) {
-            $updatenodereshash{$_}{'netboot'} = $new_netboot;
+            my $current = $netbootents->{$_} ? $netbootents->{$_}->[0]->{netboot} : undef;
+            $updatenodereshash{$_}{'netboot'} = xCAT::ProfiledNodeUtils->profile_netboot($new_netboot, $current);
         }
     }
 

@@ -36,7 +36,36 @@ installed under `/opt/xcat/share/xcat/tools/autotest/unit` is not a substitute -
 skip. The CI takes a copy of the checkout before the build for this reason; see
 `preserve_source_tree()`.
 
+## Running commands from Perl tests
+
+Use `XCAT::Test::Process` when a test needs a command's exit code and combined
+standard output and standard error:
+
+```perl
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use XCAT::Test::Process qw(run_command);
+
+my ($status, $output) = run_command('/bin/sh', $script, '--check');
+```
+
+Call `run_command` in list context. It passes arguments without shell expansion
+and returns the normal exit code with the captured output. A command that cannot
+execute or terminates on a signal raises an error. Scalar and void contexts also
+raise errors, so they cannot discard the exit code.
+
+The helper uses `Capture::Tiny`, which the unit suite already requires. Captured
+output follows the caller's STDOUT PerlIO layers. Use `binmode STDOUT, ':raw'`
+before capture when comparing raw bytes.
+
+The command inherits the caller's environment and working directory. Keep
+fixture-specific environment changes and directory selection in the test.
+
 ## What does not belong here
+
+Tests that build RPMs, create Linux namespaces or start service binaries belong
+in [`../native`](../native/README.md). They run explicitly on a suitable host,
+outside the default unit suite.
 
 Anything that needs an installed xCAT, a populated `/install`, a real service binary
 or a live daemon. Those go in [`../integration`](../integration/README.md) and run on
@@ -45,6 +74,11 @@ workflow installs xCAT on the runner and then runs the `ci_test` cases against i
 so putting a test in `integration/` does not cost it CI coverage. What differs is what
 each suite is allowed to depend on, and that unit tests also run standalone from a
 bare checkout with no xCAT at all.
+
+Shell-script unit tests belong in [`../bats`](../bats/README.md)
+and run with BATS. Do not add Perl `.t` tests that grep shell source when the
+behavior can be exercised by sourcing a shell library or script and shadowing the
+external commands it calls.
 
 The distinction matters because a test that needs an absent environment does not fail
 -- it calls `plan skip_all` and reports as skipped. A handful of those in a suite of
@@ -58,3 +92,23 @@ plan skip_all => "compute.subiquity.tmpl not found" unless -f $tmpl_path;
 ```
 
 That guard never fires when the tree is intact.
+
+## Fixture files
+
+Use `XCAT::Test::File::repo_path` for checkout paths. `slurp_repo_file` reads a
+checkout-relative path. For an already resolved path or a temporary byte-oriented
+fixture, use `File::Slurper::read_binary` and `write_binary`:
+
+```perl
+use File::Slurper qw(read_binary write_binary);
+
+write_binary($fixture, $contents);
+is(scalar read_binary($fixture), $expected, 'fixture contents are preserved');
+```
+
+Read in scalar context, including assertion arguments and hash values. An empty
+file can return an empty list in list context. Use `read_text` and `write_text`
+when the fixture requires decoded text, with its encoding explicit.
+
+Keep caller-specific missing-file handling and executable permissions explicit.
+Use the existing handle when its lifetime, position or redirection is under test.

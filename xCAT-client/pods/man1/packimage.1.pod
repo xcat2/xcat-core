@@ -14,7 +14,9 @@ B<packimage> [B<-m>|B<--method> B<cpio|tar|squashfs>] [B<-c>|B<--compress> B<gzi
 
 Packs the stateless image from the chroot file system into a file to be sent to the node for a diskless boot.
 
-Note: For an osimage that is deployed on a cluster, running B<packimage> will overwrite the existing rootimage file and be unavailable to the compute nodes while B<packimage> is running.
+Note: B<packimage> writes the new file next to the existing one and replaces it only when the new file is complete. Compute nodes can download the existing file while B<packimage> runs, and the existing file stays if B<packimage> fails. The image directory needs space for both files while B<packimage> runs.
+
+B<packimage> also writes the SHA-256 checksum of the file to a file with the same name and the suffix I<.sha256>. When the I<rootimgchecksum> attribute of the osimage or of the site table is I<yes>, the default, B<nodeset> tells the compute nodes to check the downloaded file against this checksum. When the check fails, for example because the checksum file is missing, the node downloads the file again. To turn the check off, set the attribute to I<no>, then run B<nodeset> again. The first upgrade to a release with the check sets the attribute of the osimage to I<no> for the images that exist then. B<packimage> writes the checksum also when the check is off. B<nodeset> warns when the check is on but cannot tell whether the initial ramdisk of the image checks the file. Run B<genimage> to rebuild such an initial ramdisk. For a file that B<packimage> wrote before this release, B<genimage> and B<nodeset> write the checksum.
 
 =head1 PARAMETERS
 

@@ -232,6 +232,28 @@ foreach my $relative_path (
     );
 }
 
+my $bios_genesis = read_config(
+    "$xCAT::TableUtils::tftpdir/xcat/xnba/nets/192.168.144.0_20"
+);
+like(
+    $bios_genesis,
+    qr{^imgfetch -n kernel \S+/xcat/genesis\.kernel\.x86_64 .* BOOTIF=01-\$\{netX/mac:hexhyp\}$}m,
+    'the BIOS Genesis script takes BOOTIF from mac:hexhyp',
+);
+unlike(
+    $bios_genesis,
+    qr/machyp/,
+    'the BIOS Genesis script does not use the xNBA-only machyp setting',
+);
+
+# The upstream iPXE loader of an unknown client fetches the discovery scripts from xcat/ipxe/nets.
+foreach my $script ('192.168.144.0_20', '192.168.144.0_20.uefi', '192.168.144.0_20.elilo') {
+    my $ipxe = "$xCAT::TableUtils::tftpdir/xcat/ipxe/nets/$script";
+    ok( -s $ipxe, "mknb writes xcat/ipxe/nets/$script" );
+    is( -s $ipxe ? read_config($ipxe) : undef, read_config("$xCAT::TableUtils::tftpdir/xcat/xnba/nets/$script"),
+        "and it is the discovery script that xcat/xnba/nets keeps" );
+}
+
 use_reporter_address_maps();
 prepare_tftpdir($tmpdir, 'tftpboot-x86-legacy', 'x86_64', 'legacy');
 $responses = run_mknb('x86_64');
@@ -675,5 +697,27 @@ generation_succeeded($responses, 's390x configuration generation honors :noboot'
 ok(!-e $s390x_qemu_path, 'a :noboot network gets no QEMU s390x configuration');
 %xCAT::TableUtils::site_extra = ();
 $xCAT::NetworkUtils::nic_ips = undef;
+
+%xCAT::TableUtils::site_extra = ();
+use_reporter_address_maps();
+for my $case ([undef, ''], ['', ''], [0, ''], ['0', ''], ['80', ''], ['080', ':080'], ['8080', ':8080']) {
+    my ($port, $suffix) = @$case;
+    $xCAT::TableUtils::site_httpport = $port;
+    prepare_tftpdir($tmpdir, 'http-port', 'x86_64');
+    generation_succeeded(run_mknb('x86_64'), 'mknb renders the HTTP-port case');
+    for my $loader (qw(xnba ipxe)) {
+        for my $mode ('', '.uefi') {
+            my $script = read_config("$xCAT::TableUtils::tftpdir/xcat/$loader/nets/192.168.144.0_20$mode");
+            my @authorities = $script =~ m{^imgfetch -n \w+ (http://[^/\s]+)}mg;
+            is_deeply(\@authorities, [('http://${next-server}' . $suffix) x 2],
+                "$loader$mode preserves HTTP port defaulting for kernel and initrd");
+        }
+    }
+    prepare_tftpdir($tmpdir, 'http-port-grub', 'riscv64');
+    generation_succeeded(run_mknb('riscv64'), 'mknb renders the GRUB HTTP-port case');
+    like(read_config("$xCAT::TableUtils::tftpdir/boot/grub2/grub.cfg-C0A89"),
+        qr/^    set root=\Qhttp,192.168.148.10$suffix\E$/m,
+        'GRUB discovery preserves HTTP port defaulting');
+}
 
 done_testing();

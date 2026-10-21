@@ -1,0 +1,32 @@
+# The fast oracle of the service node change set: one test per fix, each written with its fix.
+#
+# Run it with:  xCAT-test/quick.sh -f xCAT-test/quick-servicenode.txt
+#
+# These are the tests that failed before their fix landed. Together they stand in for the
+# end-to-end service node suite, which provisions a management node, a service node and a
+# compute node on two families and takes 45 to 90 minutes a run.
+#
+# What each one covers:
+#   check_provisioning_source   the compute node was served by the service node, not the MN
+#   makenamed_forwarders        a Debian service node does not forward DNS to its own stub
+#   otherpkgs_apt_source_trusted  the staged apt source apt will accept
+#   stage_sn_apt_repo           the Debian repository index, where createrepo does not exist
+#   servicenode_builder_repo    the builder repository per EL release: crb, powertools, codeready
+#   svrutils_nfs_export_line    a service node that mounts /install still exports it
+#   ubuntu_service_subiquity_template  the service profile resolves a Subiquity template
+#
+# A SKIP is not a PASS. otherpkgs_apt_source_trusted skips its two resolving assertions where
+# apt-get is absent, so on an EL builder that file proves less than it does on a Debian one. Run
+# this list on the builder of the family the candidate touches, or read the skips.
+#
+# NOT covered, and known: the xdsh PATH fix, and the named working directory and reload fixes.
+# A candidate that removes those passes this list and fails the end-to-end suite. Fill these in
+# before trusting the list for a minimization.
+
+xCAT-test/bats/check_provisioning_source.bats
+xCAT-test/bats/makenamed_forwarders.bats
+xCAT-test/bats/otherpkgs_apt_source_trusted.bats
+xCAT-test/bats/stage_sn_apt_repo.bats
+xCAT-test/unit/servicenode_builder_repo.t
+xCAT-test/unit/svrutils_nfs_export_line.t
+xCAT-test/unit/ubuntu_service_subiquity_template.t

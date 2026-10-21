@@ -25,6 +25,7 @@ use IO::Socket;
 use IO::Select;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
+use xCAT::KVMUtils;
 use strict;
 use feature "switch"; # For given-when block
 
@@ -390,104 +391,13 @@ sub waitforack {
 
 sub reconfigvm {
     $node = shift;
-    my $xml      = shift;
-    my $domdesc  = $parser->parse_string($xml);
-    my @bootdevs = $domdesc->findnodes("/domain/os/boot");
-    my $curroffset = $domdesc->findnodes("/domain/clock")->[0]->getAttribute("offset");
-    my $newoffset;
-    my $needfixin = 0;
-    if (defined($confdata->{vm}->{$node}->[0]->{clockoffset})) {
-
-        #If user requested a specific behavior, give it
-        $newoffset = $confdata->{vm}->{$node}->[0]->{clockoffset};
-    } else {
-
-        #Otherwise, only do local time for things that look MS
-        if (defined($confdata->{nodetype}->{$node}->[0]->{os}) and $confdata->{nodetype}->{$node}->[0]->{os} =~ /win.*/) {
-            $newoffset = 'localtime';
-        } else {    #For everyone else, utc is preferred generally
-            $newoffset = 'utc';
-        }
-    }
-    if ($curroffset ne $newoffset) {
-        $needfixin = 1;
-        $domdesc->findnodes("/domain/clock")->[0]->setAttribute("offset", $newoffset);
-    }
-    my @oldbootdevs;
-    if (defined $confdata->{vm}->{$node}->[0]->{memory}) {
-        $needfixin = 1;
-        $domdesc->findnodes("/domain/memory/text()")->[0]->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory}, "M", 1024));
-        foreach ($domdesc->findnodes("/domain/currentMemory/text()")) {
-            $_->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory}, "M", 1024));
-        }
-    }
-    if (defined $confdata->{vm}->{$node}->[0]->{vcpus}) {
-        $needfixin = 1;
-        $domdesc->findnodes("/domain/vcpu/text()")->[0]->setData($confdata->{vm}->{$node}->[0]->{vcpus});
-    }
-    if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
-        my @expectedorder = split(/[:,]/, $confdata->{vm}->{$node}->[0]->{bootorder});
-        foreach (@expectedorder) { #this loop will check for changes and fix 'n' and 'net'
-            my $currdev = shift @bootdevs;
-            if ("net" eq $_ or "n" eq $_) {
-                $_ = "network";
-            }
-            unless ($currdev and $currdev->getAttribute("dev") eq $_) {
-                $needfixin = 1;
-            }
-            if ($currdev) {
-                push @oldbootdevs, $currdev;
-            }
-        }
-        if (scalar(@bootdevs)) {
-            $needfixin = 1;
-            push @oldbootdevs, @bootdevs;
-        }
-        unless ($needfixin) { return 0; }
-
-        #ok, we need to remove all 'boot' nodes from current xml, and put in new ones in the order we like
-        foreach (@oldbootdevs) {
-            $_->parentNode->removeChild($_);
-        }
-
-        #now to add what we want...
-        my $osnode = $domdesc->findnodes("/domain/os")->[0];
-        foreach (@expectedorder) {
-            my $fragment = $parser->parse_balanced_chunk('<boot dev="' . $_ . '"/>');
-            $osnode->appendChild($fragment);
-        }
-    }
-    if ($needfixin) {
-        return $domdesc->toString();
-    } else { return 0; }
-}
-
-sub build_oshash {
-    my %rethash;
-    $rethash{type}->{content} = 'hvm';
-
-    my $hypcpumodel = $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel};
-    unless (defined($hypcpumodel) and $hypcpumodel eq "ppc64le") {
-        $rethash{bios}->{useserial} = 'yes';
-    }
-
-    if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
-        my $bootorder = $confdata->{vm}->{$node}->[0]->{bootorder};
-        my @bootdevs  = split(/[:,]/, $bootorder);
-        my $bootnum   = 0;
-        foreach (@bootdevs) {
-            if ("net" eq $_ or "n" eq $_) {
-                $rethash{boot}->[$bootnum]->{dev} = "network";
-            } else {
-                $rethash{boot}->[$bootnum]->{dev} = $_;
-            }
-            $bootnum++;
-        }
-    } else {
-        $rethash{boot}->[0]->{dev} = 'network';
-        $rethash{boot}->[1]->{dev} = 'hd';
-    }
-    return \%rethash;
+    my $xml = shift;
+    my $vm  = $confdata->{vm}->{$node}->[0];
+    return xCAT::KVMUtils::reconfigure_domain($xml,
+        clock_offset => xCAT::KVMUtils::clock_offset($vm->{clockoffset}, $confdata->{nodetype}->{$node}->[0]->{os}),
+        memory       => (defined $vm->{memory} ? getUnits($vm->{memory}, "M", 1024) : undef),
+        vcpus        => $vm->{vcpus},
+        bootorder    => $vm->{bootorder});
 }
 
 sub build_diskstruct {
@@ -498,6 +408,9 @@ sub build_diskstruct {
     my @suffixes     = ('a', 'b', 'd' .. 'zzz');
     my $suffidx      = 0;
     my $storagemodel = $confdata->{vm}->{$node}->[0]->{storagemodel};
+    my $profile      = xCAT::KVMUtils::guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch},
+        $confdata->{ $confdata->{vm}->{$node}->[0]->{host} }->{cpumodel},
+        xCAT::KVMUtils::requested_firmware(xCAT::KVMUtils::vm_othersettings($confdata, $node)));
     my $cachemethod  = "none";
     if ($confdata->{vm}->{$node}->[0]->{storagecache}) {
         $cachemethod = $confdata->{vm}->{$node}->[0]->{storagecache};
@@ -511,20 +424,9 @@ sub build_diskstruct {
 
             #Setting default values of a virtual disk backed by a file at hd*.
             my $diskhash;
-            $disk =~ s/=(.*)//;
-            my $model = $1;
-            unless ($model) {
-
-                #if not defined, model will stay undefined like above
-                $model = $storagemodel;
-                unless ($model) { $model = 'ide'; }   #if still not defined, ide
-            }
-            my $prefix = 'hd';
-            if ($model eq 'virtio') {
-                $prefix = 'vd';
-            } elsif ($model eq 'scsi') {
-                $prefix = 'sd';
-            }
+            my ($model, $prefix);
+            ($disk, $model, $prefix) =
+              xCAT::KVMUtils::split_disk_spec($disk, $storagemodel, $profile->{disk_model});
             $diskhash->{type}          = 'file';
             $diskhash->{device}        = 'disk';
             $diskhash->{target}->{dev} = $prefix . $suffixes[$suffidx];
@@ -549,15 +451,10 @@ sub build_diskstruct {
                     $tdiskhash->{driver}->{type}  = $disks{$_}->{format};
                     $tdiskhash->{driver}->{cache} = $cachemethod;
                     $tdiskhash->{source}->{file}  = $_;
-                    $tdiskhash->{target}->{dev}   = $disks{$_}->{device};
-
-                    if ($disks{$_} =~ /^vd/) {
-                        $tdiskhash->{target}->{bus} = 'virtio';
-                    } elsif ($disks{$_} =~ /^hd/) {
-                        $tdiskhash->{target}->{bus} = 'ide';
-                    } elsif ($disks{$_} =~ /^sd/) {
-                        $tdiskhash->{target}->{bus} = 'scsi';
-                    }
+                    my $device = $disks{$_}->{device};
+                    $tdiskhash->{target}->{dev}   = $device;
+                    my $bus = xCAT::KVMUtils::pool_disk_bus($device);
+                    $tdiskhash->{target}->{bus} = $bus if defined $bus;
                     push @returns, $tdiskhash;
 
                 }
@@ -586,15 +483,7 @@ sub build_diskstruct {
             push @returns, $diskhash;
         }
     }
-    my $cdprefix = 'hd';
-
-    # Normally for vmstoragemodel=virtio, we would set prefix of "vd", but device name vd*
-    # doesn't work for CDROM, so for now use the same prefix "sd" as for vmstoragemodel=scsi.
-    if ($storagemodel eq 'virtio') {
-        $cdprefix='sd';
-    } elsif ($storagemodel eq 'scsi') {
-        $cdprefix = 'sd';
-    }
+    my $cdprefix = xCAT::KVMUtils::cdrom_prefix($profile, $storagemodel);
     $suffidx += 1;
     if ($cdloc) {
         my $cdhash;
@@ -716,19 +605,15 @@ sub build_xmldesc {
         $hypcputhreads = "1";
     }
 
-    $xtree{type}            = 'kvm';
+    my $firmware = xCAT::KVMUtils::requested_firmware(xCAT::KVMUtils::vm_othersettings($confdata, $node));
+    my $firmware_error = xCAT::KVMUtils::firmware_error($firmware, $node);
+    return (-1, $firmware_error) if $firmware_error;
+
+    my $profile = xCAT::KVMUtils::guest_arch_profile($confdata->{nodetype}->{$node}->[0]->{arch}, $hypcpumodel, $firmware);
+
+    $xtree{type}            = $profile->{domtype};
     $xtree{name}->{content} = $node;
     $xtree{uuid}->{content} = getNodeUUID($node);
-    $xtree{os}              = build_oshash();
-    # ppc64le hypervisors report cpumodel "ppc64le" (not "ppc64"); both are pseries
-    # guests whose libvirt <os> arch is "ppc64". Without this the guest is emitted
-    # as an x86-style domain (no machine, plus the pae/acpi/apic below) which libvirt
-    # rejects on ppc64le hosts: "machine type 'pseries-*' does not support ACPI".
-    if (defined($hypcpumodel) and ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le")) {
-        $xtree{os}->{type}->{arch}    = "ppc64";
-        $xtree{os}->{type}->{machine} = "pseries";
-        delete $xtree{os}->{bios};
-    }
     if ($args{memory}) {
         $xtree{memory}->{content} = getUnits($args{memory}, "M", 1024);
         if ($confdata->{vm}->{$node}->[0]->{memory}) {
@@ -757,6 +642,7 @@ sub build_xmldesc {
     #memory binding:     "membind:<numa node set>"
     #cpu mode:           "cpumode:<host-model|host-passthrough>"
     #machine type:       "machine:<pc|q35|any valid VM machine type>"
+    #firmware:           "firmware:efi"
     if ($advsettings) {
         my @tmp_array = split ";", $advsettings;
         foreach (@tmp_array) {
@@ -789,9 +675,10 @@ sub build_xmldesc {
     }
 
     # Support VM machine types specified through vm.othersettings, e.g., q35, pseries-rhel7.4.0.
-    if (defined $machine_type) {
-        $xtree{os}->{type}->{machine} = $machine_type;
-    }
+    $xtree{os} = xCAT::KVMUtils::guest_os($profile,
+        hyp_cpumodel => $hypcpumodel,
+        bootorder    => $confdata->{vm}->{$node}->[0]->{bootorder},
+        machine      => $machine_type);
 
     #prepare the xml hash for memory binding
     if (defined $memnumanodes) {
@@ -805,12 +692,6 @@ sub build_xmldesc {
         $xtree{vcpu}->{placement} = 'static';
         $xtree{vcpu}->{cpuset}    = "$cpupinhash{ALL}";
         $xtree{vcpu}->{cpuset} =~ s/\"\'//g;
-    }
-
-    if (defined $cpumode) {
-        if ($cpumode eq 'host-passthrough' or $cpumode eq 'host-model') {
-            $xtree{cpu}->{mode} = $cpumode;
-        }
     }
 
     #prepare the xml hash for pci passthrough
@@ -891,29 +772,17 @@ sub build_xmldesc {
     $xtree{devices}->{hostdev} = \@prdevarray;
 
 
-    if ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le") {
-        my %cpuhash = ();
-        if ($hypcputype) {
-            $cpuhash{model} = $hypcputype;
-        }
+    my $cores;
+    if ($profile->{pseries}) {
         if ($args{cpus}) {
-            $xtree{vcpu}->{content}             = $args{cpus} * $hypcputhreads;
-            $cpuhash{topology}->{sockets}       = 1;
-            $cpuhash{topology}->{cores}         = $args{cpus};
-            $cpuhash{topology}->{threads}       = $hypcputhreads;
+            $cores = $args{cpus};
             $updatetable->{vm}->{$node}->{cpus} = $args{cpus};
         } elsif (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
-            $xtree{vcpu}->{content} = $confdata->{vm}->{$node}->[0]->{cpus} * $hypcputhreads;
-            $cpuhash{topology}->{sockets} = 1;
-            $cpuhash{topology}->{cores} = $confdata->{vm}->{$node}->[0]->{cpus};
-            $cpuhash{topology}->{threads} = $hypcputhreads;
+            $cores = $confdata->{vm}->{$node}->[0]->{cpus};
         } else {
-            $xtree{vcpu}->{content}       = 1 * $hypcputhreads;
-            $cpuhash{topology}->{sockets} = 1;
-            $cpuhash{topology}->{cores}   = 1;
-            $cpuhash{topology}->{threads} = $hypcputhreads;
+            $cores = 1;
         }
-        $xtree{cpu} = \%cpuhash;
+        $xtree{vcpu}->{content} = $cores * $hypcputhreads;
     } else {
         if ($args{cpus}) {
             $xtree{vcpu}->{content} = $args{cpus};
@@ -926,6 +795,12 @@ sub build_xmldesc {
             $xtree{vcpu}->{content} = 1;
         }
     }
+    my $cpu = xCAT::KVMUtils::guest_cpu($profile,
+        cpumode => $cpumode,
+        cputype => $hypcputype,
+        cores   => $cores,
+        threads => $hypcputhreads);
+    $xtree{cpu} = $cpu if $cpu;
     if (defined($confdata->{vm}->{$node}->[0]->{clockoffset})) {
 
         #If user requested a specific behavior, give it
@@ -940,9 +815,7 @@ sub build_xmldesc {
         }
     }
 
-    # pae/acpi/apic are x86 features; pseries (ppc64/ppc64le) guests do not support
-    # them and libvirt rejects the domain if they are present.
-    unless (defined($hypcpumodel) and ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le")) {
+    if ($profile->{x86_features}) {
         $xtree{features}->{pae}     = {};
         $xtree{features}->{acpi}    = {};
         $xtree{features}->{apic}    = {};
@@ -954,39 +827,59 @@ sub build_xmldesc {
     }
     $xtree{devices}->{interface} = build_nicstruct($node);
 
+    my $vidmodel = $confdata->{vm}->{$node}->[0]->{vidmodel};
+    my ($caps, $caps_error);
+    if (!defined($vidmodel) and $profile->{video_prefer}) {
+        if ($hypconn) {
+            eval {
+                my $capsxml = $hypconn->get_domain_capabilities(undef, $profile->{arch},
+                    $profile->{machine}, $profile->{domtype});
+                $caps = XMLin($capsxml, ForceArray => [ 'enum', 'value' ], KeyAttr => [])
+                  if defined $capsxml;
+            };
+            $caps_error = "$@" if $@;
+        } else {
+            $caps_error = 'no connection to the hypervisor';
+        }
+    }
+    my $model = eval { xCAT::KVMUtils::guest_video_model($profile, $vidmodel, $caps, $caps_error) };
+    if ($@) {
+        chomp(my $err = $@);
+        return (-1, $err);
+    }
+    my $vram  = '8192';
+    if (defined $model and $model eq 'qxl') {
+        $xtree{devices}->{channel}->{type}           = 'spicevmc';
+        $xtree{devices}->{channel}->{target}->{type} = 'virtio';
+        $xtree{devices}->{channel}->{target}->{name} = 'com.redhat.spice.0';
+        $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
     #use content to force xml simple to not make model the 'name' of video
-    if (defined($confdata->{vm}->{$node}->[0]->{vidmodel})) {
-        my $model = $confdata->{vm}->{$node}->[0]->{vidmodel};
-        my $vram  = '8192';
-        if ($model eq 'qxl') {
-            $xtree{devices}->{channel}->{type}           = 'spicevmc';
-            $xtree{devices}->{channel}->{target}->{type} = 'virtio';
-            $xtree{devices}->{channel}->{target}->{name} = 'com.redhat.spice.0';
-            $vram = 65536; } #surprise, spice blows up with less vram than this after version 0.6 and up
-        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ];
-    } else {
-        $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => 'vga', vram => 8192 } } ];
+    $xtree{devices}->{video} = [ { 'content' => '', 'model' => { type => $model, vram => $vram } } ]
+      if defined $model;
+    # The riscv64 virt machine has no USB controller, and libvirt refuses a USB device there.
+    if ($profile->{usb_input}) {
+        $xtree{devices}->{input}->{type} = 'tablet';
+        $xtree{devices}->{input}->{bus}  = 'usb';
     }
-    $xtree{devices}->{input}->{type} = 'tablet';
-    $xtree{devices}->{input}->{bus}  = 'usb';
-    if (defined($confdata->{vm}->{$node}->[0]->{vidproto})) {
-        $xtree{devices}->{graphics}->{type} = $confdata->{vm}->{$node}->[0]->{vidproto};
-    } else {
-        $xtree{devices}->{graphics}->{type} = 'vnc';
+    # libvirt adds a default video device to a domain with <graphics>, so a guest with no
+    # video device also gets no <graphics> and uses its serial console.
+    if (defined $model) {
+        if (defined($confdata->{vm}->{$node}->[0]->{vidproto})) {
+            $xtree{devices}->{graphics}->{type} = $confdata->{vm}->{$node}->[0]->{vidproto};
+        } else {
+            $xtree{devices}->{graphics}->{type} = 'vnc';
+        }
+        $xtree{devices}->{graphics}->{autoport} = 'yes';
+        $xtree{devices}->{graphics}->{listen}   = '0.0.0.0';
+        if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
+            $xtree{devices}->{graphics}->{password} = $confdata->{vm}->{$node}->[0]->{vidpassword};
+        } else {
+            $xtree{devices}->{graphics}->{password} = genpassword(8);
+        }
     }
-    $xtree{devices}->{graphics}->{autoport} = 'yes';
-    $xtree{devices}->{graphics}->{listen}   = '0.0.0.0';
-    if ($confdata->{vm}->{$node}->[0]->{vidpassword}) {
-        $xtree{devices}->{graphics}->{password} = $confdata->{vm}->{$node}->[0]->{vidpassword};
-    } else {
-        $xtree{devices}->{graphics}->{password} = genpassword(8);
-    }
-    if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
-        $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
-    } elsif (defined($hypcpumodel) and $hypcpumodel eq 'ppc64le') {
-        # do nothing for ppc64le, do not support sound at this time
-        ;
-    } else {
+    my $emulator = xCAT::KVMUtils::guest_emulator($profile, $hypcpumodel);
+    $xtree{devices}->{emulator}->{content} = $emulator if defined $emulator;
+    if ($profile->{sound}) {
         $xtree{devices}->{sound}->{model} = 'ich6';
     }
 
@@ -1531,19 +1424,9 @@ sub createstorage {
     if ($mastername and $size) {
         return 1, "Can not specify both a master to clone and size(s)";
     }
-    $filename =~ s/=(.*)//;
-    my $model = $1;
-    unless ($model) {
-
-        #if not defined, model will stay undefined like above
-        $model = $cfginfo->{storagemodel};
-    }
-    my $prefix = 'hd';
-    if ($model eq 'scsi') {
-        $prefix = 'sd';
-    } elsif ($model eq 'virtio') {
-        $prefix = 'vd';
-    }
+    my ($model, $prefix);
+    ($filename, $model, $prefix) =
+      xCAT::KVMUtils::split_disk_spec($filename, $cfginfo->{storagemodel});
     my @suffixes = ('a', 'b', 'd' .. 'zzz');
     if ($filename =~ /^nfs:/ or $filename =~ /^dir:/ or $filename =~ /^lvm:/) { #libvirt storage pool to be used for this
         my @sizes = split /,/, $size;
@@ -4251,8 +4134,7 @@ sub dohyp {
 
     foreach $node (sort (keys %{ $hyphash{$hyp}->{nodes} })) {
         unless ($confdata->{vm}->{$node}->[0]->{storagemodel}) {
-            # Storage model is not set, default to  scsi for all architectures
-            $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
+            $confdata->{vm}->{$node}->[0]->{storagemodel} = xCAT::KVMUtils::default_storagemodel();
         }
         if ($confdata->{$hyp}->{cpu_thread}) {
             $confdata->{vm}->{$node}->[0]->{cpu_thread} = $confdata->{$hyp}->{cpu_thread};

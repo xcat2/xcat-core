@@ -17,6 +17,9 @@ Source3: xCATSN
 Source4: etc.tar.gz
 Source5: templates.tar.gz
 Source6: xcat.conf.apach24
+%ifos linux
+Source9: xcat-apache-pretrans.lua
+%endif
 Requires: perl-DBD-SQLite
 Requires: xCAT-client = 4:%{version}-%{release}
 Requires: xCAT-server = 4:%{version}-%{release}
@@ -54,14 +57,8 @@ Requires: net-tools
 Requires: /usr/bin/killall
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
-# DHCP backend resolved at INSTALL time (not build time) via an RPM rich
-# dependency, so a single flat xcat-core build is correct on every EL: el10+
-# dropped ISC dhcp from its distro and uses Kea; el8/el9 use ISC dhcpd. SLES
-# has no "system-release" provide, so the condition is false there and it
-# falls to dhcp-server (/usr/sbin/dhcpd), preserving prior behavior.
-# system-release is versioned per release package (el10=10.x, el9=9.x, el8=8.x).
-Requires: (kea if (system-release >= 10) else /usr/sbin/dhcpd)
-Requires: (kea-hooks if (system-release >= 10))
+# openEuler's system-release version does not identify an EL release.
+Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %ifnarch s390x
@@ -76,17 +73,15 @@ Requires: goconserver >= 0.3.3
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
+Requires: ipxe-xcat
 Requires: xnba-undi
 Requires: syslinux-xcat
 Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %ifos linux
-%ifarch ppc ppc64 ppc64le
-Requires: ipmitool-xcat >= 1.8.17-1
-%endif
-%endif
-%ifos linux
-%ifarch riscv64
+%ifarch ppc ppc64 ppc64le riscv64
+# A POWER or riscv64 service node can serve x86 nodes, which boot the upstream iPXE loader.
+Requires: ipxe-xcat
 Requires: ipmitool-xcat >= 1.8.17-1
 %endif
 %endif
@@ -101,6 +96,7 @@ set of compute node. xCATsn package provides xCAT service node support.
 %ifos linux
 tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
+cp %{SOURCE9} xcat-apache-pretrans.lua
 %else
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
 gunzip -f license.tar.gz
@@ -120,7 +116,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 # cd -
 # Pick the Apache generation at build time.  Selecting it in the post scriptlet
 # instead rewrites a file rpm has already checksummed, defeating noreplace.
-%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200
+%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200 || 0%{?openEuler}
 cp %{SOURCE6} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE6} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 %else
@@ -155,41 +151,9 @@ rm templates.tar
 %endif
 
 %ifos linux
-# rpm fixes each config file's fate before %pre runs, so a migration there can
-# delete an active file rpm has already decided to leave as xcat.conf.rpmnew.
-# %pretrans runs before that decision.  It is Lua because a pre-transaction
-# scriptlet cannot rely on any dependency being unpacked yet.
-%pretrans -p <lua>
--- Older packages shipped xcat.conf as ordinary payload and then rewrote it
--- from conf.orig in %post, so rpm's recorded digest cannot tell a stock file
--- from a customised one.  Compare against the outgoing package's templates,
--- still on disk at this point, and drop only a file that still matches one.
-if arg[2] and tonumber(arg[2]) == 1 then return end
-
-local function contents(path)
-    local handle = io.open(path, "rb")
-    if not handle then return nil end
-    local data = handle:read("*a")
-    handle:close()
-    return data
-end
-
-local templates = { contents("/etc/xcat/conf.orig/xcat.conf.apach24"),
-                    contents("/etc/xcat/conf.orig/xcat.conf.apach22") }
-
-for _, active in ipairs({ "/etc/httpd/conf.d/xcat.conf",
-                          "/etc/apache2/conf.d/xcat.conf" }) do
-    -- A symlink or any other non-regular path is treated as locally managed.
-    if posix.stat(active, "type") == "regular" then
-        local current = contents(active)
-        for _, template in ipairs(templates) do
-            if current and current == template then
-                os.remove(active)
-                break
-            end
-        end
-    end
-end
+# RPM decides configuration ownership before pre-install scripts run.
+%pretrans -p <lua> -f xcat-apache-pretrans.lua
+local template_dir = "/etc/xcat/conf.orig"
 %endif
 
 %pre
@@ -258,7 +222,7 @@ fi
 fi
 # for install or upgrade restart the daemon
 %ifos linux
-if [ -e "/etc/redhat-release" ]; then
+if [ -e "/etc/redhat-release" ] || [ -e "/etc/openEuler-release" ]; then
     apachedaemon='httpd'
     apacheserviceunit='httpd.service'
 else # SuSE

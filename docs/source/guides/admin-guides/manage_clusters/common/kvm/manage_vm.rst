@@ -104,7 +104,7 @@ After the VM object is created, several key attributes need to be specified with
 
     * **[x86_64]** ::
 
-        chdef vm1 netboot=xnba
+        chdef vm1 netboot=ipxe
 
     * **[PPC64LE]** ::
 

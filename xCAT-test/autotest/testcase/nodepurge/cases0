@@ -21,9 +21,9 @@ cmd:ls /install/autoinst/testnode1*
 check:output=~No such file or directory
 cmd:ls /install/autoinst/testnode2*
 check:output=~No such file or directory
-cmd:ping testnode1
+cmd:ping -c 1 -w 2 testnode1
 check:rc!=0
-cmd:ping testnode2
+cmd:ping -c 1 -w 2 testnode2
 check:rc!=0
 end
 

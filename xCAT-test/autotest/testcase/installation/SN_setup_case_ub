@@ -1,0 +1,118 @@
+start:SN_setup_case_ub
+os:ubuntu
+label:sn_diskful,provision
+#stop:yes
+# The Debian counterpart of SN_setup_case. Same order, same database setup and the same node
+# state at the end, so reg_linux_diskless_installation_hierarchy and
+# reg_linux_diskfull_installation_hierarchy run after either one without a change.
+#
+# Four things differ, all of them package format. A Debian management node has no createrepo,
+# so the staged repositories are indexed with dpkg-scanpackages. service.ubuntu.otherpkgs.pkglist
+# names its directories as xcat-core and xcat-dep, without the xcat/ prefix the EL pkglists use,
+# so otherpkgdir goes one level deeper. perl-Sys-Virt is libsys-virt-perl. SN_install_openbmc_py.sh
+# is not called: it acts on rhels7 ppc64 only.
+cmd:fdisk -l
+cmd:df -T
+cmd:XCAT_DATABASE=$$XCAT_DATABASE /opt/xcat/share/xcat/tools/autotest/testcase/installation/pre_deploy_sn __GETNODEATTR($$SN,os)__  __GETNODEATTR($$SN,arch)__
+check:rc==0
+
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons $$SN; else makeconservercf $$SN;fi
+check:rc==0
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then getmacs -D $$SN -V; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:sleep 2
+cmd:if [ -f /etc/kea/kea-dhcp4.conf ]; then grep $$SN /etc/kea/kea-dhcp4.conf; elif [ -f /var/lib/dhcp/dhcpd.leases ]; then grep $$SN /var/lib/dhcp/dhcpd.leases; fi
+check:output=~$$SN
+cmd:chdef -t node $$SN groups=service,all
+check:rc==0
+cmd:chdef -t group -o service profile=service  primarynic=mac installnic=mac
+check:rc==0
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=2 setupntp=1
+check:rc==0
+cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
+check:rc==0
+cmd:chtab node=service postscripts.postscripts="servicenode"
+check:rc==0
+
+cmd:copycds $$ISO
+check:rc==0
+
+cmd:chdef -t site clustersite installloc="/install"
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/stage_sn_apt_repo.sh /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core
+check:rc==0
+check:output=~apt index ok
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/stage_sn_apt_repo.sh /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep __GETNODEATTR($$SN,os)__
+check:rc==0
+check:output=~apt index ok
+
+# service.ubuntu.otherpkgs.pkglist names mariadb-client with no directory, so the otherpkgs
+# postscript writes a source line for otherpkgdir itself. apt-get update then fails on it, and
+# the postscript deletes the source line it had just written for xcat-core, because the
+# apt-cache show that follows returns non-zero. Index this level too.
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/installation/stage_sn_apt_repo.sh /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat
+check:rc==0
+check:output=~apt index ok
+
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat
+check:rc==0
+
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/ubuntu/service.ubuntu.otherpkgs.pkglist
+check:rc==0
+
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh  $$SN __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+check:output=~Provision node\(s\)\: $$SN
+
+cmd:if [[ -f /var/lib/kea/kea-leases4.csv ]]; then cat /var/lib/kea/kea-leases4.csv; elif [[ -f /var/lib/dhcp/dhcpd.leases ]]; then cat /var/lib/dhcp/dhcpd.leases; fi
+
+cmd:ping $$SN -c 3
+check:rc==0
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$SN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$SN "ps -ef |grep xcatd"
+check:rc==0
+check:output=~xcatd:
+# Ubuntu's /etc/bash.bashrc returns before /etc/profile.d on a non-interactive shell, so the
+# xCAT commands are not on the PATH xdsh gets. The EL shell reads profile.d there and the EL
+# case does not need this.
+cmd:xdsh $$SN ". /etc/profile.d/xcat.sh; lsdef"
+check:rc==0
+check:output=~$$SN: $$SN
+cmd:xdsh $$SN ". /etc/profile.d/xcat.sh; tabdump site"
+check:rc==0
+check:output=~tftpdir
+cmd:xdsh $$SN "mount"
+check:rc==0
+check:output=~/install on /install
+cmd:xdsh $$SN "mount"
+check:rc==0
+check:output=~/tftpboot on /tftpboot
+cmd:xdsh $$SN cat /opt/xcat/xcatinfo
+check:rc==0
+check:output=~NODE=$$SN
+check:output=~IMAGENAME=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+cmd:xdsh $$SN  "cat /var/log/xcat/xcat.log"
+cmd:xdsh $$SN "DEBIAN_FRONTEND=noninteractive apt-get install -y libsys-virt-perl"
+check:rc==0
+cmd:makentp -a
+check:rc==0
+cmd:if [ -x /usr/bin/goconserver ]; then makegocons -d $$SN; else makeconservercf -d $$SN;fi
+end

@@ -555,6 +555,60 @@ sub isLinux
 
 #-------------------------------------------------------------------------------
 
+=head3    isFIPS
+    returns 1 when the local Linux kernel is running in FIPS mode
+    Arguments:
+        optional path to the kernel FIPS status file
+    Returns:
+        1 - FIPS mode is enabled
+        0 - FIPS mode is disabled or cannot be determined
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::Utils->isFIPS()) { blah; }
+    Comments:
+        Linux exposes the active FIPS state through
+        /proc/sys/crypto/fips_enabled.
+=cut
+
+#-------------------------------------------------------------------------------
+sub isFIPS
+{
+    my $status_file = shift;
+    if (defined($status_file) && $status_file eq __PACKAGE__) {
+        $status_file = shift;
+    }
+    $status_file ||= '/proc/sys/crypto/fips_enabled';
+
+    return 0 unless -r $status_file;
+    open(my $fh, '<', $status_file) or return 0;
+    my $enabled = <$fh>;
+    close($fh);
+
+    return (defined($enabled) && $enabled =~ /^\s*1\s*$/) ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 dsaHostKeyAllowed
+
+    Arguments: platform name and kernel FIPS state.
+    Returns: 1 when legacy DSA host-key generation is permitted, otherwise 0.
+
+=cut
+
+sub dsaHostKeyAllowed {
+    my ($class, $platform, $fips_mode) = @_;
+
+    return 0 if $fips_mode;
+    return 0 if defined($platform) && $platform =~ /el(\d+)/ && $1 >= 10;
+    return 1;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3   Version
     Arguments:
         Optional 'short' string to request only the version;
@@ -2255,6 +2309,23 @@ sub CheckVersion
     return 0;
 }
 
+sub normalize_openeuler_version {
+    my $version = shift;
+    $version = shift if defined($version) && $version eq __PACKAGE__;
+    return undef unless defined($version);
+    $version =~ s/^\s+|\s+$//g;
+
+    return '24.03' if $version =~ /^2403-LTS$/i;
+    if ($version =~ /^((?:20|22|24)\.03)(?:sp([1-9][0-9]*))?$/i) {
+        return $1 . (defined($2) ? "sp$2" : '');
+    }
+    if ($version =~ /^((?:20|22|24)\.03)(?:-LTS(?:-SP([1-9][0-9]*))?|\s+\(LTS(?:-SP([1-9][0-9]*))?\))$/i) {
+        my $sp = defined($2) ? $2 : $3;
+        return $1 . (defined($sp) ? "sp$sp" : '');
+    }
+    return undef;
+}
+
 #-------------------------------------------------------------------------------
 
 =head3  osver
@@ -2295,6 +2366,7 @@ sub osver
 
     if (-f "/etc/os-release") {
         my $version;
+        my $version_text;
         my $version_id;
         my $id;
         my $id_like;
@@ -2308,6 +2380,11 @@ sub osver
 
             #print Dumper(\@text);
             foreach my $line (@text) {
+                if ($line =~ /^\s*VERSION=(.*)$/) {
+                    $version_text = $1;
+                    $version_text =~ s/^\s+|\s+$//g;
+                    $version_text =~ s/^(['"])(.*)\1$/$2/;
+                }
                 if ($line =~ /^\s*VERSION=\"?([0-9\.]+).*/) {
                     $version = $1;
                 }
@@ -2316,7 +2393,9 @@ sub osver
                 }
 
 
-                if ($line =~ /^\s*ID=\"?([0-9a-z\_\-\.]+).*/) {
+                if ($line =~ /^\s*ID=(?:"openeuler"|'openeuler'|openeuler)\s*$/i) {
+                    $id = 'openeuler';
+                } elsif ($line =~ /^\s*ID=\"?([0-9a-z\_\-\.]+).*/) {
                     $id = $1;
                 }
                 if ($line =~ /^\s*ID_LIKE=\"?([0-9a-z\_\-\.]+).*/) {
@@ -2337,6 +2416,12 @@ sub osver
         }
 
         $os = $id;
+        if (defined($os) && $os eq 'openeuler') {
+            $version = normalize_openeuler_version(
+                defined($version_text) ? $version_text : $version_id);
+            $version_id = undef;
+            $platform = '';
+        }
         if (!$os and $id_like) {
             $os = $id_like;
         }
@@ -2512,22 +2597,37 @@ sub osver
         A reference for the lock being held.
 =cut
 
+# Returns the directory of the lock files of acquire_lock.
+sub lock_dir {
+    return "/var/lock/xcat";
+}
+
 sub acquire_lock {
     my $class         = shift;
     my $lock_name     = shift;
     my $nonblock_mode = shift;
 
     use File::Path;
-    mkpath("/var/lock/xcat/");
+    my $lock_dir = lock_dir();
+    mkpath("$lock_dir/");
     use Fcntl ":flock";
     my $tlock;
-    $tlock->{path} = "/var/lock/xcat/" . $lock_name;
-    sysopen($tlock->{fd}, $tlock->{path}, POSIX::O_CREAT | POSIX::O_WRONLY) or return undef;
-    unless ($tlock->{fd}) { return undef; }
-    if ($nonblock_mode) {
-        flock($tlock->{fd}, LOCK_EX | LOCK_NB) or return undef;
-    } else {
-        flock($tlock->{fd}, LOCK_EX) or return undef;
+    $tlock->{path} = "$lock_dir/" . $lock_name;
+    while (1) {
+        sysopen($tlock->{fd}, $tlock->{path}, POSIX::O_CREAT | POSIX::O_WRONLY) or return undef;
+        unless ($tlock->{fd}) { return undef; }
+        if ($nonblock_mode) {
+            flock($tlock->{fd}, LOCK_EX | LOCK_NB) or return undef;
+        } else {
+            flock($tlock->{fd}, LOCK_EX) or return undef;
+        }
+
+        # release_lock removes the file before it unlocks it. A process that waited then holds a file without a
+        # name, while another one can lock a new file at the path, so only the file at the path counts.
+        my @held  = stat($tlock->{fd});
+        my @named = stat($tlock->{path});
+        last if @named && $held[0] == $named[0] && $held[1] == $named[1];
+        close($tlock->{fd});
     }
 
     truncate $tlock->{fd},0;
@@ -3773,7 +3873,7 @@ sub filter_nostatusupdate {
     #filter out the nodes which support the node provision status feedback
     my @nodesfiltered = ();
     if (exists $inref->{$::STATUS_INSTALLING}) {
-        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|alma|rocky|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_INSTALLING} };
+        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|alma|rocky|sles|ubuntu|^openeuler[0-9])/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_INSTALLING} };
         delete $inref->{$::STATUS_INSTALLING};
         if (@nodesfiltered) {
             @{ $inref->{$::STATUS_INSTALLING} } = @nodesfiltered;
@@ -3782,7 +3882,7 @@ sub filter_nostatusupdate {
 
     @nodesfiltered = ();
     if (exists $inref->{$::STATUS_NETBOOTING}) {
-        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|alma|rocky|sles|ubuntu)/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_NETBOOTING} };
+        map { if ($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|alma|rocky|sles|ubuntu|^openeuler[0-9])/) { push @nodesfiltered, $_; } } @{ $inref->{$::STATUS_NETBOOTING} };
         delete $inref->{$::STATUS_NETBOOTING};
         if (@nodesfiltered) {
             @{ $inref->{$::STATUS_NETBOOTING} } = @nodesfiltered;
@@ -3909,36 +4009,80 @@ sub fullpathbin
 #--------------------------------------------------------------------------------
 sub gettimezone
 {
-    my ($class) = @_;
+    my ($class, %opt) = @_;
 
-    my $tz;
     if (xCAT::Utils->isAIX()) {
-        $tz = $ENV{'TZ'};
-    } else {    # all linux
-        my $localtime = "/etc/localtime";
-        my $zoneinfo  = "/usr/share/zoneinfo";
+        return $ENV{'TZ'};
+    }
+
+    # all linux. %opt{root} prefixes every path, so a test drives this against a scratch tree.
+    my $root      = defined($opt{root}) ? $opt{root} : '';
+    my $localtime = "$root/etc/localtime";
+    my $zoneinfo  = "$root/usr/share/zoneinfo";
+
+    # On every current distribution /etc/localtime is a symlink into the zoneinfo tree and its
+    # target is the name. Read it before the scan: the scan compares /etc/localtime against every
+    # file in the tree, and a cloud image running on UTC may ship no /etc/localtime at all.
+    if (-l $localtime) {
+        my $zone = _zone_from_path(readlink($localtime));
+        return $zone if defined $zone;
+    }
+
+    if (-e $localtime) {
         my $cmd = "find $zoneinfo -xtype f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV | grep -v right | grep -v localtime ";
         my $zone_result = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $tz = "Could not determine timezone checksum";
-            return $tz;
+        if ($::RUNCMD_RC == 0) {
+            my @zones = split /\n/, $zone_result;
+            my $zone = _zone_from_path($zones[0]);
+            return $zone if defined $zone;
         }
-        my @zones = split /\n/, $zone_result;
-
-        $zones[0] =~ s/$zoneinfo\///;
-        if (!$zones[0]) {    # if we still did not get one, then default
-            $tz = `cat /etc/timezone`;
-            chomp $tz;
-        } else {
-            $tz = $zones[0];
-        }
-
-
     }
-    return $tz;
 
+    if (open(my $tz_fh, '<', "$root/etc/timezone")) {
+        my $zone = <$tz_fh>;
+        close($tz_fh);
+        if (defined $zone) {
+            chomp $zone;
+            return $zone if length($zone) and $zone !~ /\s/;
+        }
+    }
 
+    # The caller writes this value into a kickstart or an autoyast profile, where it must be one
+    # token. Name the zone the host is actually on rather than a sentence that stops the installer.
+    return 'UTC';
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   _zone_from_path
+    Returns the timezone name inside a path under a zoneinfo tree, for a symlink target or a
+    line of the zoneinfo scan. Both absolute and relative targets carry "/zoneinfo/", so the
+    name is whatever follows it.
+    Arguments:
+      A path, or undef
+    Returns:
+      The timezone name, or undef when the path names no zone
+    Globals:
+        none
+    Error:
+      None
+    Example:
+         my $zone = _zone_from_path("../usr/share/zoneinfo/America/Sao_Paulo");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub _zone_from_path
+{
+    my ($path) = @_;
+
+    return undef unless defined($path) and length($path);
+    return undef unless $path =~ m{(?:^|/)zoneinfo/(.+)\z};
+    my $zone = $1;
+    $zone =~ s{^posix/}{};
+    return undef if $zone eq '' or $zone eq 'localtime' or $zone =~ /\s/;
+    return $zone;
 }
 
 #--------------------------------------------------------------------------------
@@ -4876,6 +5020,7 @@ sub splitkcmdline {
 # without network drivers instead of stopping at debootstrap.
 my %DEBIAN_ARCH = (
     'x86_64' => 'amd64',
+    'x86'    => 'i386',
 );
 
 sub debian_arch {
@@ -4898,6 +5043,7 @@ my @XCAT_ARCH_FROM_DEBIAN = (
     [ qr/^ppc64el$/ => 'ppc64el' ],
     [ qr/ppc|powerpc/ => 'ppc64' ],
     [ qr/^amd64$/   => 'x86_64' ],
+    [ qr/^riscv64$/ => 'riscv64' ],
 );
 
 sub xcat_arch_from_debian {
@@ -4953,7 +5099,7 @@ sub lookupNetboot {
         $ret = 'xnba' if $osvers eq 'freebsd15.1' && $osarch eq 'x86_64';
     } elsif ($imgtype =~ /^Linux$/i) {
         if ($osarch =~ /^x86_64$/i) {
-            $ret = "xnba,pxe,grub2";
+            $ret = "ipxe,xnba,pxe,grub2";
         } elsif ($osarch =~ /^ppc64$/i) {
             if (($osv =~ /rh/i and $osn < 7) or ($osv =~ /sles/i and ($osn < 11 or ($osn == 11 and $osm < 4)))) {
                 $ret = "yaboot";
@@ -5144,7 +5290,7 @@ sub acquire_lock_imageop {
     my $lock = xCAT::Utils->acquire_lock("$mylockfile", $NON_BLOCK);
     unless ($lock){
         my $pidfd;
-        open($pidfd,"<","/var/lock/xcat/$mylockfile");
+        open($pidfd,"<",lock_dir() . "/$mylockfile");
         my $pid=<$pidfd>;
         close($pidfd);
         return (1, "failed to acquire lock, seems there is another genimage/packimage/rmimage process $pid running on root image dir \"$rootimg_dir\"");

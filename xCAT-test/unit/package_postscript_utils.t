@@ -13,6 +13,7 @@ use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::Process qw(run_command);
 
 my $postscripts = repo_path(File::Spec->catdir('xCAT', 'postscripts'));
 my $library = File::Spec->catfile( $postscripts, 'xcatpkgutils.sh' );
@@ -68,12 +69,12 @@ for my $layout (@layouts) {
         if ( $invocation eq 'relative' ) {
             ( $status, $output ) = run_in_directory( $directory, "./$caller" );
         } elsif ( $invocation eq 'absolute' ) {
-            ( $status, $output ) = run_command(
+            ( $status, $output ) = run_postscript(
                 File::Spec->catfile( $directory, $caller )
             );
         } else {
             local $ENV{PATH} = "$directory:$ENV{PATH}";
-            ( $status, $output ) = run_command($caller);
+            ( $status, $output ) = run_postscript($caller);
         }
 
         is( $status, 0, "$caller loads the package helpers from the $name" )
@@ -102,7 +103,7 @@ for my $failure (
     for my $caller (@callers) {
         local $ENV{XCATPKGUTILS_LOADED};
         $ENV{XCATPKGUTILS_LOADED} = 1 if $name eq 'markerless';
-        my ( $status, $output ) = run_command(
+        my ( $status, $output ) = run_postscript(
             File::Spec->catfile( $directory, $caller )
         );
         isnt( $status, 0,
@@ -122,7 +123,7 @@ for my $caller (@callers) {
     copy( File::Spec->catfile( $postscripts, $caller ), $destination )
       or die "Unable to stage $caller: $!";
     chmod 0755, $destination or die "Unable to make $destination executable: $!";
-    my ( $status, $output ) = run_command($destination);
+    my ( $status, $output ) = run_postscript($destination);
     isnt( $status, 0, "$caller stops when the package utility loader is missing" )
       or diag($output);
     like( $output, qr/package utility loader is not readable/,
@@ -165,24 +166,14 @@ sub run_in_directory {
     my ( $directory, @command ) = @_;
     my $original = getcwd();
     chdir($directory) or die "Unable to enter $directory: $!";
-    my @result = run_command(@command);
+    my @result = run_postscript(@command);
     chdir($original) or die "Unable to return to $original: $!";
     return @result;
 }
 
-sub run_command {
-    my (@command) = @_;
-    my $pid = open( my $pipe, '-|' );
-    die "Unable to fork for @command: $!" unless defined($pid);
-    if ( $pid == 0 ) {
-        delete @ENV{qw(OSPKGS OTHERPKGS OTHERPKGS_INDEX UPDATENODE NODESETSTATE)};
-        $ENV{PATH} = "$test_bin:$ENV{PATH}";
-        open( STDERR, '>&', STDOUT ) or die "Unable to merge stderr: $!";
-        exec { $command[0] } @command;
-        die "Unable to execute @command: $!";
-    }
-
-    my $output = do { local $/; <$pipe> } // '';
-    close($pipe);
-    return ( $? >> 8, $output );
+sub run_postscript {
+    local %ENV = %ENV;
+    delete @ENV{qw(OSPKGS OTHERPKGS OTHERPKGS_INDEX UPDATENODE NODESETSTATE)};
+    $ENV{PATH} = "$test_bin:$ENV{PATH}";
+    return run_command(@_);
 }

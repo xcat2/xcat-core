@@ -66,7 +66,7 @@ def print_xcat_node_stanza(servers, hnmatch):
         print "\tip="+server['primaryBackendNetworkComponent']['primaryIpAddress']
         print "\tmac="+server['primaryBackendNetworkComponent']['macAddress']
         print "\tserial="+server['manufacturerSerialNumber']
-        print "\tnetboot=xnba"
+        print "\tnetboot=ipxe"
         print "\tarch=x86_64"
 
         # Find the root or Administrator username and pw

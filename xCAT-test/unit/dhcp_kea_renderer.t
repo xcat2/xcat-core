@@ -126,6 +126,10 @@ is( $config->{Dhcp4}{'lease-database'}{type}, 'memfile', 'memfile lease backend 
 is( $config->{Dhcp4}{'reservations-in-subnet'}, JSON::true, 'subnet host reservations are enabled by default' );
 is( $config->{Dhcp4}{'reservations-out-of-pool'}, JSON::true, 'out-of-pool host reservations are enabled for xCAT static addresses' );
 is( $config->{Dhcp4}{'match-client-id'}, JSON::false, 'DHCPv4 leases match MAC reservations when client-id changes across boot stages' );
+# ISC writes "authoritative;" into every subnet; Kea defaults to the opposite,
+# and a node that moved rack is then answered with nothing at all rather than
+# being told to start over.
+is( $config->{Dhcp4}{authoritative}, JSON::true, 'the server answers for the networks it serves, as the ISC side always has' );
 
 my $subnet = $config->{Dhcp4}{subnet4}[0];
 is( $subnet->{id}, 1, 'subnet id is rendered' );
@@ -300,6 +304,11 @@ my $reservation_policy_config = decode_json($reservation_policy_json);
 is( $reservation_policy_config->{Dhcp4}{'reservations-in-subnet'}, JSON::false, 'reservation in-subnet policy can be overridden' );
 is( $reservation_policy_config->{Dhcp4}{'reservations-out-of-pool'}, JSON::false, 'reservation out-of-pool policy can be overridden' );
 is( $reservation_policy_config->{Dhcp4}{'match-client-id'}, JSON::true, 'client-id lease matching policy can be overridden' );
+is(
+    decode_json( $backend->render_dhcp4_config( { authoritative => 0, subnets => [] } ) )->{Dhcp4}{authoritative},
+    JSON::false,
+    'a site that does not own its networks can say so',
+);
 
 my $client_id_policy_json = $backend->render_dhcp4_config(
     {
@@ -396,6 +405,29 @@ my $found = $backend->query_reservations( $reservation_config, { hostname => 'no
 is( scalar @$found, 1, 'reservation query finds hostname match' );
 is( $found->[0]{'subnet-id'}, 10, 'reservation query includes subnet id' );
 
+# A reservation written by another tool may carry its hostname fully qualified,
+# with the trailing dot that says so. Nothing that looks a node up knows about
+# that dot, so the lookup has to find the node either way -- otherwise
+# `makedhcp -d` stops matching by name and silently leaves it behind.
+$backend->upsert_reservations(
+    $reservation_config,
+    [
+        {
+            'subnet-id'  => 10,
+            'hw-address' => '00:11:22:33:44:66',
+            'ip-address' => '10.10.0.14',
+            hostname     => 'node14.',
+        },
+    ]
+);
+is( scalar @{ $backend->query_reservations( $reservation_config, { hostname => 'node14' } ) },
+    1, 'a qualified reservation is found by the bare node name' );
+is( scalar @{ $backend->query_reservations( $reservation_config, { hostname => 'node14.' } ) },
+    1, 'and by the name it was written under' );
+is( scalar @{ $backend->query_reservations( $reservation_config, { hostname => 'node1' } ) },
+    0, 'and a shorter name is still not a match' );
+$backend->delete_reservations( $reservation_config, { 'hw-address' => '00:11:22:33:44:66' } );
+
 my $deleted = $backend->delete_reservations( $reservation_config, { 'hw-address' => '00:11:22:33:44:55' } );
 is( scalar @$deleted, 1, 'reservation delete returns deleted reservation' );
 is( scalar @{ $reservation_config->{Dhcp4}{subnet4}[0]{reservations} }, 0, 'reservation is removed from config' );
@@ -407,6 +439,16 @@ close($hookfh);
 is( $backend->host_cmds_hook_path($hook), $hook, 'host commands hook lookup accepts an explicit existing path' );
 my $backend_without_default_hooks = xCAT::DHCP::Backend::Kea->new(host_cmds_hook_paths => []);
 is( $backend_without_default_hooks->host_cmds_hook_path("$hookdir/missing.so"), undef, 'host commands hook lookup returns undef when no hook exists' );
+
+# BOOTP is a hook on Kea and a keyword on the ISC range, but it is the same
+# decision either way: a client that speaks BOOTP and not DHCP gets an answer.
+my $bootp_hook = "$hookdir/libdhcp_bootp.so";
+open(my $bootpfh, '>', $bootp_hook) or die "Unable to create fake hook: $!";
+close($bootpfh);
+is( $backend->bootp_hook_path($bootp_hook), $bootp_hook, 'the BOOTP hook is looked up by the same rule as the others' );
+my $backend_without_bootp = xCAT::DHCP::Backend::Kea->new(bootp_hook_paths => []);
+is( $backend_without_bootp->bootp_hook_path("$hookdir/missing.so"), undef, 'a BOOTP hook that is not installed is reported as absent, not guessed at' );
+is( $backend_without_default_hooks->hook_path('host_cmds', $hook), $hook, 'the shared lookup takes the name of the hook' );
 
 my $backupdir = tempdir(CLEANUP => 1);
 my $config_path = "$backupdir/kea-dhcp4.conf";

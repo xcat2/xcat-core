@@ -147,7 +147,7 @@ sub _default_netboot {
     $currboot = '' unless defined $currboot;
 
     if ($arch =~ /x86/ and $currboot !~ /pxe/ and $currboot !~ /xnba/) {
-        return 'xnba';
+        return 'ipxe';
     } elsif ($arch =~ /ppc/ and $platform =~ /PowerNV/) {
         return 'petitboot';
     } elsif ($arch =~ /ppc/ and $currboot !~ /yaboot/) {

@@ -788,6 +788,8 @@ sub setup_FTP
 =cut
 
 #-----------------------------------------------------------------------------
+
+
 sub setup_DNS
 {
     my $srvclist = shift;
@@ -827,11 +829,15 @@ sub setup_DNS
     #}
 
     #my $rc = xCAT::Utils->startService($serv);
+    # Restart, not start. makenamed.conf has just rewritten named.conf, and a start is a no-op
+    # where the package already runs the daemon -- Debian does -- so the service keeps serving the
+    # configuration it read at install time.
     my $rc = 0;
-    if (xCAT::Utils->isAIX()) {
+    my $action = xCAT::SvrUtils::named_service_action(xCAT::Utils->isAIX() ? 'aix' : 'linux');
+    if ($action eq 'start') {
         $rc = xCAT::Utils->startService("named");
-    } elsif (xCAT::Utils->isLinux()) {
-        $rc = xCAT::Utils->startservice("named");
+    } elsif ($action eq 'restart') {
+        $rc = xCAT::Utils->restartservice("named");
     }
 
     if ($rc != 0)
@@ -919,6 +925,20 @@ sub setup_NFS
     my $rc = 0;
     if (xCAT::Utils->isLinux())
     {
+        # nfsserver=1 means this node serves files. With site.installloc set the install directory
+        # is itself a mount here, and re-exporting one needs an fsid.
+        my $installdir = xCAT::TableUtils->getInstallDir() || "/install";
+        unless (xCAT::SvrUtils->nfs_export_exists($installdir))
+        {
+            my $line = xCAT::SvrUtils->nfs_export_line($installdir,
+                reexport => (xCAT::Utils->isMounted($installdir) ? 1 : 0));
+            xCAT::Utils->runcmd("/bin/echo '$line' >> /etc/exports", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('S', "Could not add $installdir to /etc/exports.");
+            }
+        }
+
         #my $os = xCAT::Utils->osver();
         #if ($os =~ /sles.*/)
         #{
@@ -930,6 +950,13 @@ sub setup_NFS
         #    $rc = xCAT::Utils->startService("nfs");
         #}
         $rc = xCAT::Utils->startservice("nfs");
+
+        # After the daemon, so a fresh export is picked up.
+        xCAT::Utils->runcmd("/usr/sbin/exportfs -a", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('S', "Error with /usr/sbin/exportfs -a.");
+        }
     }
     else
     {    #AIX

@@ -43,7 +43,7 @@
 # 2022-11-01 Mark Gurevich <gurevich@us.ibm.com>
 #     - Make sure initscripts installed on RH family of OSes
 # 2022-12-06 Mark Gurevich <gurevich@us.ibm.com>
-#     - Check for EPEL and CRB repository on EL9 family of OSes
+#     - Check for EPEL and CRB repositories on EL9 and EL10 family of OSes
 # 2023-01-19 Mark Gurevich <gurevich@us.ibm.com>
 #     - Add support for Alma Linux
 # 2026-07-20 Daniel Hilst <392820+dhilst@users.noreply.github.com>
@@ -195,13 +195,13 @@ GO_XCAT_DEP_REPOSITORY_IDS=(xcat-dep)
 GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT-client xCAT xCAT-buildkit
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
-	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi)
+	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 ipxe-xcat xnba-undi)
 # For Debian/Ubuntu, it will need a slightly different package list
 type dpkg >/dev/null 2>&1 &&
 GO_XCAT_INSTALL_LIST=(perl-xcat xcat-client xcat xcat-buildkit
-	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64 xcat-server
+	xcat-genesis-scripts-amd64 xcat-genesis-scripts-ppc64el xcat-server
 	elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
-	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
+	xcat-genesis-base-amd64 xcat-genesis-base-ppc64el ipxe-xcat xnba-undi)
 # The package list of all the packages should be uninstalled
 GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 	goconserver xCAT-SoftLayer xCAT-confluent xCAT-csm xCAT-genesis-builder
@@ -223,8 +223,8 @@ GO_XCAT_UNINSTALL_LIST=("${GO_XCAT_INSTALL_LIST[@]}"
 
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 export PATH
-EL9_EPEL_TEST_RPM="perl-Crypt-CBC"
-EL9_CRB_TEST_RPM="perl-IO-Tty"
+EL_EPEL_TEST_RPM="perl-Crypt-CBC"
+EL_CRB_TEST_RPM="perl-IO-Tty"
 
 #
 # warn_if_bad		Put out warning message(s) if $1 has bad RC.
@@ -487,7 +487,7 @@ function debug_trace()
 	return "${rc}"
 }
 
-internal_setup
+[[ "${BASH_SOURCE[0]}" != "$0" ]] || internal_setup
 
 # Check operating system
 function check_os()
@@ -542,6 +542,9 @@ function check_linux_distro()
 {
 	local distro
 	distro="$(os_release_value ID)"
+	case "${distro}" in
+	"openEuler"|"openeuler"|"'openEuler'"|"'openeuler'") distro="openeuler" ;;
+	esac
 	[[ -z "${distro}" && -f /etc/redhat-release ]] && distro="rhel"
 	[[ -z "${distro}" && -f /etc/SuSE-release ]] && distro="sles"
 	[[ -z "${distro}" && -f /etc/SUSE-brand ]] && distro="sles"
@@ -551,6 +554,18 @@ function check_linux_distro()
 function check_linux_version()
 {
 	local ver
+	if [[ "$(check_linux_distro)" = "openeuler" ]]; then
+		ver="$(os_release_value VERSION)"
+		[[ -n "${ver}" ]] || ver="$(os_release_value VERSION_ID)"
+		ver="${ver#\'}"
+		ver="${ver%\'}"
+		if [[ "${ver}" =~ ^(20|22|24)\.03[[:space:]]+\(LTS(-SP([1-9][0-9]*))?\)$ ]]; then
+			ver="${BASH_REMATCH[1]}.03${BASH_REMATCH[3]:+sp${BASH_REMATCH[3]}}"
+		fi
+		[[ "${ver}" =~ ^(20|22|24)\.03(sp[1-9][0-9]*)?$ ]] || return 1
+		echo "${ver}"
+		return 0
+	fi
 	ver="$(os_release_value VERSION_ID)"
 	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
 		# Need gawk to do this trick
@@ -561,6 +576,19 @@ function check_linux_version()
 	[[ -z "${ver}" && -f /etc/SUSE-brand ]] &&
 		ver="$(awk '/VERSION/ { print $NF }' /etc/SUSE-brand)"
 	echo "${ver}"
+}
+
+function openeuler_repo_target()
+{
+	[[ "${GO_XCAT_LINUX_VERSION}" =~ ^(20|22|24)\.03(sp[1-9][0-9]*)?$ ]] || {
+		warn_if_bad 1 "${GO_XCAT_LINUX_VERSION}: unsupported openEuler LTS version"
+		return 1
+	}
+	case "${GO_XCAT_ARCH}" in
+	"x86_64"|"ppc64le") ;;
+	*) warn_if_bad 1 "${GO_XCAT_ARCH}: unsupported openEuler architecture"; return 1 ;;
+	esac
+	echo "openeuler${GO_XCAT_LINUX_VERSION}/${GO_XCAT_ARCH}"
 }
 
 function function_dispatch()
@@ -1422,7 +1450,7 @@ function add_repo_by_url_yum_or_zypper()
 			echo "skip_if_unavailable=1"
 		fi
 		} >"${tmp}"
-		if [ -f "${url%/}/repodata/repomd.xml.asc" ]
+		if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]] || [ -f "${url%/}/repodata/repomd.xml.asc" ]
 		then
 			echo "gpgcheck=1" >>"${tmp}"
 			[[ "${policy}" != "optional" ]] \
@@ -1508,7 +1536,11 @@ function add_repo_by_url()
 #       $1      repo id
 function remove_repo_yum()
 {
-	type yum >/dev/null 2>&1 || return 255
+	local manager="yum"
+	type yum >/dev/null 2>&1 || {
+		type dnf >/dev/null 2>&1 || return 255
+		manager="dnf"
+	}
 	local repo_id="$1"
 	# This deleting method is not good enough. Since there could be more
 	# than one repository definitions in a single repo file.
@@ -1525,7 +1557,7 @@ function remove_repo_yum()
 		mv /etc/yum.repos.d/xCAT-dep-common.repo{,.nouse} 2>/dev/null
 		;;
 	esac
-	yum clean metadata
+	"${manager}" clean metadata
 	:
 }
 
@@ -1567,7 +1599,7 @@ function remove_repo()
 #               can be "2.10", "2.11", "2.12", "latest" or "devel"
 function add_xcat_core_repo_yum_or_zypper()
 {
-	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	type dnf >/dev/null 2>&1 || type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
@@ -1585,6 +1617,11 @@ function add_xcat_core_repo_yum_or_zypper()
 			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core"
 			;;
 		esac
+		if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+			local target
+			target="$(openeuler_repo_target)" || return 1
+			url="${url}/${target}"
+		fi
 	fi
 	add_repo_by_url_yum_or_zypper "${url}" "xcat-core"
 }
@@ -1630,7 +1667,7 @@ function add_xcat_core_repo()
 
 function add_xcat_dep_common_repo_yum_or_zypper()
 {
-	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	type dnf >/dev/null 2>&1 || type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local url="$1"
 	local ver="$2"
 	local common_url=""
@@ -1685,7 +1722,7 @@ function refresh_xcat_dep_repository_ids()
 
 function add_xcat_dep_repo_yum_or_zypper()
 {
-	type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
+	type dnf >/dev/null 2>&1 || type yum >/dev/null 2>&1 || type zypper >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local url="$1"
@@ -1696,6 +1733,10 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
 	case "${distro}" in
+	"openeuler"*)
+		distro="$(openeuler_repo_target)" || return 1
+		distro="${distro%/*}"
+		;;
 	"centos"*)             distro="rh${distro#centos}" ;;
 	"ol"*)                 distro="rh${distro#ol}" ;;
 	"rocky"*)              distro="rh${distro#rocky}" ;;
@@ -1781,12 +1822,20 @@ function add_xcat_dep_repo()
 function update_repo_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		dnf --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' updateinfo
+		return "$?"
+	fi
 	dnf --nogpgcheck updateinfo
 }
 
 function update_repo_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		yum --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' updateinfo
+		return "$?"
+	fi
 	# Check if `yum' support `updateinfo' command.
 	yum --help 2>/dev/null | grep -q "^updateinfo" >/dev/null 2>&1
 	warn_if_bad "$?" "Lacking support of \`updateinfo' command for \`yum'."
@@ -1815,9 +1864,14 @@ function update_repo()
 function install_packages_dnf()
 {
 	type dnf >/dev/null 2>&1 || return 255
-	el9_epel_and_crb_check dnf
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		dnf --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' --setopt=localpkg_gpgcheck=1 --setopt=strict=1 \
+			"${yes[@]}" install initscripts "$@"
+		return "$?"
+	fi
+	el_epel_and_crb_check dnf
 	dnf --nogpgcheck "${yes[@]}" install initscripts
 	dnf --nogpgcheck --setopt=strict=0 "${yes[@]}" install "$@"
 }
@@ -1825,9 +1879,14 @@ function install_packages_dnf()
 function install_packages_yum()
 {
 	type yum >/dev/null 2>&1 || return 255
-	el9_epel_and_crb_check yum
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
+	if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+		yum --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' --setopt=localpkg_gpgcheck=1 \
+			"${yes[@]}" install initscripts "$@"
+		return "$?"
+	fi
+	el_epel_and_crb_check yum
 	yum --nogpgcheck "${yes[@]}" install initscripts
 	yum --nogpgcheck "${yes[@]}" install "$@"
 }
@@ -1850,10 +1909,31 @@ function github_issue_6525_workaround()
 	return 0
 }
 
-# Check for EPEL and CRB repositories when installing on RH family of OSes
-function el9_epel_and_crb_check()
+# Whether an enabled repository carries the package for this architecture. An
+# installed copy and a source repository do not count, so a binary repository
+# that was disabled is still reported. A failed query stops the run with the
+# package manager's own error.
+function repo_carries()
+{
+	local rpm="$1"
+	local found errors
+	errors="$(mktemp)"
+	found="$(${action} repoquery -q --arch "${GO_XCAT_ARCH},noarch" --qf '%{name}' "${rpm}" 2>"${errors}")" || {
+		cat "${errors}"
+		rm -f "${errors}"
+		echo "Could not query the package repositories with '${action} repoquery'"
+		exit 1
+	}
+	rm -f "${errors}"
+	grep -Fxq -- "${rpm}" <<<"${found}"
+}
+
+# Check for EPEL and CRB repositories when installing on RH family of OSes.
+# CentOS Stream reports the major version alone, the others report major.minor.
+function el_epel_and_crb_check()
 {
 	action="$*" # Passed parameter will only be 'yum' or 'dnf'
+	local major
 	if [[ "${GO_XCAT_LINUX_DISTRO}" = "fedora" ]]
 	then
 		# For Fedora, version 35 is equivalent to EL9
@@ -1862,40 +1942,24 @@ function el9_epel_and_crb_check()
 		# found
 		return 0
 	else
-		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^9(\.[0-9]) ]] || return 0
+		[[ "${GO_XCAT_LINUX_VERSION}" =~ ^(9|10)(\.[0-9]+)?$ ]] || return 0
 	fi
-	${action} list -q "${EL9_EPEL_TEST_RPM}"
-	ret="$?"
-	case "${ret}" in
-	"1")
-		# Can not find EL9_EPEL_TEST_RPM
+	major="${GO_XCAT_LINUX_VERSION%%.*}"
+	if ! repo_carries "${EL_EPEL_TEST_RPM}"
+	then
 		echo "
 Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires EPEL repository to be enabled"
-		echo "Running '${action} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm' will enable EPEL repository"
+		echo "Running '${action} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-${major}.noarch.rpm' will enable EPEL repository"
 		exit 1
-		;;
-	esac
-	${action} list -q "${EL9_CRB_TEST_RPM}"
-	ret="$?"
-	case "${ret}" in
-	"1")
-		# Can not find EL9_CRB_TEST_RPM
+	fi
+	if ! repo_carries "${EL_CRB_TEST_RPM}"
+	then
 		echo "
 Installation on ${GO_XCAT_LINUX_DISTRO} ${GO_XCAT_LINUX_VERSION} requires CRB repository to be enabled"
-		echo "Try adding the following entries to new or existing '.repo' file:"
-		echo "
-[crb]
-name=CentOS Stream \$releasever - CRB
-metalink=https://mirrors.centos.org/metalink?repo=centos-crb-\$stream&arch=\$basearch&protocol=https,http
-gpgcheck=0
-repo_gpgcheck=0
-metadata_expire=6h
-countme=1
-enabled=1
-		"
+		echo "Running '${action} update epel-release' and then 'crb enable' will enable it on Red Hat Enterprise Linux, Rocky Linux, AlmaLinux and CentOS Stream"
+		echo "On Oracle Linux, running 'dnf config-manager --enable ol${major}_codeready_builder' will enable it"
 		exit 1
-		;;
-	esac
+	fi
 	return 0
 }
 
@@ -2028,10 +2092,76 @@ function update_xcat()
 	install_packages "$@" "${install_list[@]}"
 }
 
+#       $@      package names
+#       Prints the ones this system actually has. `go-xcat uninstall` names packages xCAT no
+#       longer produces, so that a node installed before they went away is still cleaned up.
+#       Handing those names to the package manager on a node that never had them costs a
+#       warning each on apt, and fails the whole call on dnf when none of them match.
+function installed_packages_rpm()
+{
+	type rpm >/dev/null 2>&1 || return 255
+	local package=""
+	for package in "$@"
+	do
+		rpm -q --quiet "${package}" && echo "${package}"
+	done
+	return 0
+}
+
+#       $@      package names
+function installed_packages_deb()
+{
+	type dpkg-query >/dev/null 2>&1 || return 255
+	local package=""
+	for package in "$@"
+	do
+		[[ "$(dpkg-query --show '--showformat=${Status}' "${package}" 2>/dev/null)" \
+			= "install ok installed" ]] && echo "${package}"
+	done
+	return 0
+}
+
+function installed_packages()
+{
+	function_dispatch "${FUNCNAME[0]}" "$@"
+}
+
+#       $@      package names
+#       Prints the ones this system can purge. rpm has no removed-but-configured state.
+function purgeable_packages_rpm()
+{
+	installed_packages_rpm "$@"
+}
+
+#       $@      package names
+#       `apt-get remove` leaves "deinstall ok config-files". `apt-get purge` still removes those files.
+function purgeable_packages_deb()
+{
+	type dpkg-query >/dev/null 2>&1 || return 255
+	local package=""
+	for package in "$@"
+	do
+		case "$(dpkg-query --show '--showformat=${Status}' "${package}" 2>/dev/null)" in
+		"install ok installed"|*" ok config-files")
+			echo "${package}"
+			;;
+		esac
+	done
+	return 0
+}
+
+function purgeable_packages()
+{
+	function_dispatch "${FUNCNAME[0]}" "$@"
+}
+
 #       $1      -y
 function uninstall_xcat()
 {
-	remove_package "$@" "${GO_XCAT_UNINSTALL_LIST[@]}"
+	local -a present=()
+	readarray -t present < <(installed_packages "${GO_XCAT_UNINSTALL_LIST[@]}")
+	[[ "${#present[@]}" -gt "0" ]] || return 0
+	remove_package "$@" "${present[@]}"
 }
 
 function kill_xcat()
@@ -2086,7 +2216,9 @@ function trash_xcat()
 
 function uninstall_xcat_completely()
 {
-	purge_package -y "${GO_XCAT_UNINSTALL_LIST[@]}"
+	local -a present=()
+	readarray -t present < <(purgeable_packages "${GO_XCAT_UNINSTALL_LIST[@]}")
+	[[ "${#present[@]}" -eq "0" ]] || purge_package -y "${present[@]}"
 
 	kill_xcat
 	trash_xcat
@@ -2343,12 +2475,37 @@ function boo_boo_if_bad()
 	exit "${rc}"
 }
 
+# A riscv64 management node has no legacy Genesis: its image ships as the OpenEmbedded package,
+# which mknb installs. The legacy Genesis scripts and bases are therefore dropped and the
+# OpenEmbedded package of the architecture is asked for instead.
+#
+# The x86 boot loaders stay: they are payload a management node SERVES to x86 nodes over TFTP,
+# not host binaries, so a riscv64 management node needs them to boot a mixed cluster.
+function riscv64_install_list()
+{
+	local genesis_package="xCAT-genesis-openembedded-riscv64"
+	type dpkg >/dev/null 2>&1 && genesis_package="xcat-genesis-openembedded-riscv64"
+	local package
+	for package in "$@"; do
+		case "${package}" in
+		*genesis-scripts-*|*genesis-base-*)
+			;;
+		*)
+			printf '%s\n' "${package}"
+			;;
+		esac
+	done
+	printf '%s\n' "${genesis_package}"
+}
+
 #
 # |\/| _.o._   ._ .__  _ .__.._ _    _  _  _  _  |_  _ .__
 # |  |(_||| |  |_)|(_)(_||(_|| | |  (_|(_)(/__>  | |(/_|(/_ o
 #              |       _|            _|
 #
 # Main program goes here.
+
+[[ "${BASH_SOURCE[0]}" = "$0" ]] || return 0
 
 declare -a GO_XCAT_YES=()
 GO_XCAT_ACTION=""
@@ -2456,15 +2613,31 @@ case "${GO_XCAT_OS}" in
 esac
 
 case "${GO_XCAT_ARCH}" in
-"ppc64"|"ppc64le"|"x86_64")
+"ppc64"|"ppc64le"|"riscv64"|"x86_64")
 	;;
 *)
 	exit_if_bad 1 "${GO_XCAT_ARCH}: unsupported instruction set architecture"
 	;;
 esac
 
+if [ "${GO_XCAT_ARCH}" = "riscv64" ]; then
+	riscv64_list=()
+	while read -r package; do
+		riscv64_list+=("${package}")
+	done < <(riscv64_install_list "${GO_XCAT_INSTALL_LIST[@]}")
+	GO_XCAT_INSTALL_LIST=("${riscv64_list[@]}")
+	unset riscv64_list package
+fi
+
 GO_XCAT_LINUX_DISTRO="$(check_linux_distro)"
 GO_XCAT_LINUX_VERSION="$(check_linux_version)"
+exit_if_bad "$?" "Unsupported ${GO_XCAT_LINUX_DISTRO} release"
+
+if [[ "${GO_XCAT_LINUX_DISTRO}" = "openeuler" ]]; then
+	openeuler_repo_target >/dev/null
+	exit_if_bad "$?" "Unsupported openEuler platform"
+	GO_XCAT_INSTALL_LIST=(xCAT)
+fi
 
 debug_logger <<EOF
 Linux Distribution: ${GO_XCAT_LINUX_DISTRO}
@@ -2472,7 +2645,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol"|"rocky"|"almalinux")
+"centos"|"fedora"|"rhel"|"sles"|"ubuntu"|"ol"|"rocky"|"almalinux"|"openeuler")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"

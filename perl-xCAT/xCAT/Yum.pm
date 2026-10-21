@@ -3,19 +3,19 @@ use DBI;
 use File::Find;
 use File::Spec;
 use File::Path;
+use xCAT::TableUtils;
 
 my $yumrepofile;
 my $distname;
 my $arch;
 my $installpfx;
 
-my $distrepopfx="/install/postscripts/repos";
-
 sub localize_yumrepo {
     my $self        = shift;
     my $pkgdir = shift;
     $distname=shift;
     $arch=shift;
+    my $distrepopfx = xCAT::TableUtils->getInstallDir() . '/postscripts/repos';
 
     mkpath("$distrepopfx/$pkgdir");
     open($yumrepofile, ">", "$distrepopfx/$pkgdir/local-repository.tmpl");
@@ -31,6 +31,7 @@ sub localize_yumrepo {
 sub remove_yumrepo {
     my $self        = shift;
     my $pkgdir = shift;
+    my $distrepopfx = xCAT::TableUtils->getInstallDir() . '/postscripts/repos';
     rmtree("$distrepopfx/$pkgdir/local-repository.tmpl");
 }
 
@@ -61,7 +62,11 @@ sub generate_repo
     print $yumrepofile "name=xCAT configured yum repository for $yumurl\n";
     print $yumrepofile "baseurl=$yumurl\n";
     print $yumrepofile "enabled=1\n";
-    print $yumrepofile "gpgcheck=0\n\n";
+    if ($distname =~ /^openeuler/) {
+        print $yumrepofile "gpgcheck=1\nskip_if_unavailable=False\n\n";
+    } else {
+        print $yumrepofile "gpgcheck=0\n\n";
+    }
 }	
 
 sub fix_directory {

@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nfsrootopts*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgdir*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*
+\ **osimage Attributes:**\   \ *addkcmdline*\ , \ *boottarget*\ , \ *bosinst_data*\ , \ *cfmdir*\ , \ *configdump*\ , \ *crashkernelsize*\ , \ *description*\ , \ *driverupdatesrc*\ , \ *dump*\ , \ *environvar*\ , \ *exlist*\ , \ *fb_script*\ , \ *gpgcheck*\ , \ *groups*\ , \ *home*\ , \ *image_data*\ , \ *imagename*\ , \ *imagetype*\ , \ *installp_bundle*\ , \ *installto*\ , \ *isdeletable*\ , \ *kerneldir*\ , \ *kernelver*\ , \ *kitcomponents*\ , \ *krpmver*\ , \ *lpp_source*\ , \ *mksysb*\ , \ *netdrivers*\ , \ *nfsrootopts*\ , \ *nimmethod*\ , \ *nimtype*\ , \ *nodebootif*\ , \ *osarch*\ , \ *osdistroname*\ , \ *osname*\ , \ *osupdatename*\ , \ *osvers*\ , \ *otherifce*\ , \ *otherpkgdir*\ , \ *otherpkglist*\ , \ *otherpkgs*\ , \ *paging*\ , \ *partitionfile*\ , \ *permission*\ , \ *pkgdir*\ , \ *pkglist*\ , \ *postbootscripts*\ , \ *postinstall*\ , \ *postscripts*\ , \ *profile*\ , \ *provmethod*\ , \ *resolv_conf*\ , \ *root*\ , \ *rootfstype*\ , \ *rootimgchecksum*\ , \ *rootimgdir*\ , \ *script*\ , \ *serverrole*\ , \ *shared_home*\ , \ *shared_root*\ , \ *spot*\ , \ *synclists*\ , \ *template*\ , \ *tmp*\ , \ *usercomment*\ , \ *winpepath*
 
 
 ***********
@@ -112,6 +112,12 @@ osimage Attributes:
 \ **fb_script**\  (nimimage.fb_script)
  
  The name of a NIM fb_script resource.
+ 
+
+
+\ **gpgcheck**\  (linuximage.gpgcheck)
+ 
+ Diskless Red Hat family images only. Set to 'yes' or '1' to have genimage verify the signature of every package it installs from the pkgdir, kerneldir and otherpkgdir repositories, as it always does for openEuler images. The trusted keys are the RPM signing keys imported on the node that runs genimage (rpm -q gpg-pubkey), so import the key of every repository first, for example rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9. The default is no verification.
  
 
 
@@ -382,6 +388,12 @@ osimage Attributes:
 \ **rootfstype**\  (osimage.rootfstype)
  
  The filesystem type for the rootfs is used when the provmethod is statelite. The valid values are nfs or ramdisk. The default value is nfs
+ 
+
+
+\ **rootimgchecksum**\  (linuximage.rootimgchecksum)
+ 
+ Stateless images and statelite ramdisk images only. Set to 'yes' or '1' to have nodeset tell nodes to boot the compressed root image only after it matches its SHA-256 checksum. Set to 'no' or '0' to have nodes boot it unchecked. packimage, liteimg and imgimport always write the checksum. If not set, the default is the value of site.rootimgchecksum, which defaults to 'yes'. The first upgrade to a release with the check sets this attribute to 'no' for the images that exist then.
  
 
 

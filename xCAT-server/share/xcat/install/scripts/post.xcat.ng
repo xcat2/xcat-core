@@ -63,7 +63,7 @@ sleep "$RAND"
 if ! type openssl >/dev/null 2>&1
 then
     msgutil_r "$MASTER_IP" "error" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -107,7 +107,7 @@ msgutil_r "$MASTER_IP" "info" "trying to download postscripts from $MASTER_IP...
 if ! type curl >/dev/null 2>&1
 then
     msgutil_r "$MASTER_IP" "error" "Command curl not found, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -143,7 +143,7 @@ download_recursive "http://$MASTER_IP:${HTTPPORT}$INSTALLDIR/postscripts/" "/xca
 if [ "$?" -ne "0" ]
 then
     msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, check /tmp/download.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
 
@@ -189,7 +189,7 @@ if [ ! -x /xcatpost/mypostscript ]; then
     # Stop if no getpostscript.awk to help the next bit
     if [ ! -x /xcatpost/getpostscript.awk ]; then
         msgutil_r "$MASTER_IP" "error" "/xcatpost/getpostscript.awk does not exist, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-        /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+        /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
         sleep infinity
     fi
     /xcatpost/getpostscript.awk | egrep '<data>' | sed -e 's/<[^>]*>//g' | egrep -v '^ *$' | sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >/xcatpost/mypostscript
@@ -301,7 +301,7 @@ esac
 chmod 0755 /xcatpost/mypostscript
 if [ ! -x /xcatpost/mypostscript ]; then
     msgutil_r "$MASTER_IP" "error" "failed to generate mypostscript file, halt ..." "/var/log/xcat/xcat.log" "$log_label"
-    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus failed"
+    /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 else
     case "$XCATDEBUGMODE" in
@@ -330,7 +330,7 @@ fi
 export OSVER="#TABLE:nodetype:THISNODE:os#"
 # Create the post init service as a hook to run PS and PBS, as well as status updating
 cat >/etc/systemd/system/xcatpostinit1.service <<'EOF'
-#INCLUDE:/install/postscripts/xcatpostinit1.service#
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1.service#
 EOF
 
 case "$XCATDEBUGMODE" in
@@ -348,7 +348,7 @@ case "$XCATDEBUGMODE" in
 esac
 
 cat >/opt/xcat/xcatpostinit1 <<'EOF'
-#INCLUDE:/install/postscripts/xcatpostinit1.install#
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1.install#
 EOF
 chmod 0755 /opt/xcat/xcatpostinit1
 
@@ -356,30 +356,10 @@ chmod 0755 /opt/xcat/xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost <<'EOF'
 #!/bin/bash
-# Disable the xcatpostinit1 service *before* running the postscripts (the
-# INCLUDE at the end).  If a postscript reboots the node, the service is
-# already disabled, so the whole postscript set is not run again on reboot.
-# The disable decision needs RUNBOOTSCRIPTS and NODESTATUS, which the included
-# script would otherwise set; read them up front (it re-reads them), and source
-# xcatlib.sh so msgutil_r is available for the debug message.
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/postinit.sh#
 [ -f /xcatpost/xcatlib.sh ] && . /xcatpost/xcatlib.sh
-if [ -f /xcatpost/mypostscript.post ]
-then
-    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post | cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
-    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post | cut -d= -f2 | tr -d \'\" | tr A-Z a-z`
-    MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post | cut -d= -f2 | sed s/\'//g`
-fi
-[ -f /xcatpost/mypostscript ] && NODESTATUS=`grep 'NODESTATUS=' /xcatpost/mypostscript | awk -F = '{print $2}' | tr -d \'\" | tr A-Z a-z`
-[ -z "$NODESTATUS" ] && NODESTATUS="1"
-
-if [[ ! "$RUNBOOTSCRIPTS" =~ ^(1|yes|y)$ ]] && [[ ! "$NODESTATUS" =~ ^(1|yes|y)$ ]]; then
-    systemctl disable xcatpostinit1.service
-    case "$XCATDEBUGMODE" in
-    "1"|"2")
-        msgutil_r "$MASTER_IP" "debug" "systemctl disable xcatpostinit1.service" "/var/log/xcat/xcat.log" "xcat.xcatinstallpost"
-        ;;
-    esac
-fi
+# Disable the service before a postscript can reboot the node.
+xcat_disable_postinit systemd
 
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 
@@ -454,7 +434,7 @@ esac
 
 msgutil_r "$MASTER_IP" "info" "finished firstboot preparation, sending request to $MASTER:3002 for changing status..." "/var/log/xcat/xcat.log" "$log_label"
 # The following command should always be run to prevent infinite installation loops
-updateflag.awk "$MASTER" 3002
+updateflag.awk "$MASTER_IP" 3002
 
 cd /
 

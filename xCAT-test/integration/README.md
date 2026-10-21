@@ -4,7 +4,7 @@ Integration tests. These run against an **installed management node** -- they ne
 real xCAT installation, and depending on the test a populated `/install`, a service
 binary they can execute, or a live daemon.
 
-They are driven by `xcattest` through the testcase in
+The Perl tests are driven by `xcattest` through the testcase in
 `../autotest/testcase/integration/`, which proves the copy installed by the
 `xcat-test` package:
 
@@ -27,11 +27,10 @@ against it.
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
 
-The case checks `rc==0` and `output=~Files=5,`. The second assertion is there because
-`prove` exits 0 both when tests pass and when they all skip, so `rc==0` alone would let
-the case report green having run nothing. Matching `Files=5,` proves `prove` actually
-found all five files, which catches a packaging regression or a test renamed away from
-`.t` without updating the count. **Add to that number when you add a test.** A missing
+The case checks `rc==0` and `output=~Files=10,`. The file count checks that `prove`
+found all ten files, which catches a packaging regression or a test renamed away from
+`.t` without updating the count. It does not prove that environment-gated cases ran;
+inspect the TAP output for skips. **Add to that number when you add a test.** A missing
 directory is already caught by `rc==0` -- `prove -r` on a path that does not exist exits
 2.
 
@@ -49,11 +48,33 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 | --- | --- |
 | `copycds_packages_integrity.t` | `/install` populated by a real `copycds` |
 | `dhcp_isc_config_validation.t` | a `dhcpd` binary that can read the generated config, as root |
+| `dhcp_isc_ipxe_leases.t` | `dhcpd` and `omshell`, root, and `ip netns` for a private network namespace |
+| `dhcp_ipxe_dispatch.t` | `dhcpd` with `omshell`, or `kea-dhcp4`, root, and `ip netns` for two private network namespaces |
 | `dhcp_kea_config_validation.t` | a `kea-dhcp4` binary that can read the generated config |
 | `dhcp_kea_control_agent_smoke.t` | live `kea-dhcp4` and `kea-ctrl-agent`, root, and the Kea host-commands hook |
 | `html_form_runtime_dependency.t` | the installed `HTML::Form` module |
+| `openeuler_package_postscripts.t` | Linux root, private mount namespaces and DNF; tests complete package postscripts with command doubles and an isolated repository directory |
+| `openeuler_postscript_repositories.t` | Linux root, private mount namespaces, DNF and RPM signing tools; tests actual signed repository transactions in isolated install roots |
+| `wsapi_apache_access.t` | an Apache binary and its modules; reads `xcat-ws.conf` from the source tree, so `github_action_xcat_test.pl` runs it from the checkout and the installed copy skips |
+| `xcatd_dispatch_redaction.sh` | a live `xcatd`, syslog delivery to `/var/log/xcat/cluster.log`, and root |
+
+Run `xcattest -t xcatd_dispatch_redaction` to check password redaction in the
+daemon's syslog output. This separate case has the `ci_test` label. It enables
+`site.xcatdebugmode`, creates a temporary node, and restores the setting and removes
+the node on exit. Run it without concurrent changes to `site.xcatdebugmode`.
 
 ## Environment guards
+
+`openeuler_postscript_repositories.t` builds and signs RPM fixtures and runs real
+DNF transactions. Enable it explicitly on a disposable openEuler host:
+
+```
+sudo env XCAT_NATIVE_REPOSITORIES=1 prove -v \
+    xCAT-test/integration/openeuler_postscript_repositories.t
+```
+
+The Perl test builds the RPM fixtures directly. Its DNF adapter records arguments
+and uses only local fixture repositories, with a fixed fixture release version.
 
 Tests with optional runtime dependencies guard with `plan skip_all` -- an MN with no
 Kea installed should skip the Kea tests, not go red. The `HTML::Form` test is different:

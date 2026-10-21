@@ -9,7 +9,7 @@ In a homogeneous cluster, the management node is the same hardware architecture 
 
 The issues arises in a heterogeneous cluster, where the management node is running a different level operating system *or* hardware architecture as the compute nodes in which to deploy the image.  The ``genimage`` command that builds stateless images depends on various utilities provided by the base operating system and needs to be run on a node with the same hardware architecture and *major* Operating System release as the nodes that will be booted from the image.
 
-When running xCAT >= 2.17 on EL >= 8 based management node with x86_64 architecture, qemu-user-static can be used to cross-build ppc64*, aarch64 and riscv64 osimages. Therefore, you don't need to build images on systems with the target architecture anymore.
+When running xCAT >= 2.17 on EL >= 8 based management node with x86_64 architecture, qemu-user-static can be used to cross-build ppc64*, aarch64 and riscv64 osimages. Therefore, you don't need to build images on systems with the target architecture anymore. The same applies to an Ubuntu management node, where ``qemu-user-static`` and ``binfmt-support`` are packages of the distribution and register the handler on install.
 
 Cross-build ppc64*/aarch64/riscv64 stateless/statelite image on x86_64 management node
 --------------------------------------------------------------------------------------

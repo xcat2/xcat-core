@@ -1,0 +1,7 @@
+resolve_artifact() {
+    local path=$1 resolved
+
+    resolved=$(readlink -f -- "$path")
+    [[ -f $resolved && ! -L $resolved ]] || fail "missing artifact: $path"
+    printf '%s\n' "$resolved"
+}

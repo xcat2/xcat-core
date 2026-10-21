@@ -1,4 +1,10 @@
 #!/usr/bin/perl
+BEGIN {
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::CommandUtils;
+use xCAT::PacketCapture;
 use IO::Socket::INET;
 use Time::HiRes qw(gettimeofday sleep);
 use Getopt::Long;
@@ -27,7 +33,8 @@ if (!GetOptions(
 
 if ($::HELP) { print $::USAGE; exit 0; }
 
-unless (-x "/usr/sbin/tcpdump") {
+my $tcpdump = xCAT::CommandUtils::find_executable('tcpdump');
+unless ($tcpdump) {
     print "Error: Please install tcpdump before the detecting.\n";
     exit 1;
 }
@@ -85,17 +92,9 @@ if (-f "/etc/redhat-release") {
     exit 1;
 }
 
-# fork a process to capture the packet by tcpdump
-my $pid = fork;
-if (!defined $pid) { print "Fork failed.\n"; exit 1; }
-my $dumpfile = "/tmp/dhcpdumpfile.log";
-if ($pid == 0) {
-
-    # Child process
-    my $cmd = "tcpdump -i $IF port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
-    `$cmd`;
-    exit 0;
-}
+my $capture = xCAT::PacketCapture->start($tcpdump, $nic);
+unless ($capture) { print "Fork failed.\n"; exit 1; }
+my $dumpfile = $capture->file();
 
 # generate the discover package
 my $package = packdhcppkg($MAC);
@@ -123,7 +122,7 @@ unless ($sock) {
 
 unless ($sock) {
     print "Create socket error: $@\n";
-    kill_child();
+    $capture->stop();
     exit 1;
 }
 
@@ -135,25 +134,23 @@ if ($::TIMEOUT) {
 my $end = Time::HiRes::gettimeofday();
 $end =~ s/(\d.*)\.(\d.*)/$1/;
 while ($end - $start <= $timeout) {
-    $sock->send($package) or die "Send discover error: $@\n";
+    unless ($sock->send($package)) {
+        print "Send discover error: $!\n";
+        $capture->stop();
+        exit 1;
+    }
     sleep 2;
     $end = Time::HiRes::gettimeofday();
     $end =~ s/(\d.*)\.(\d.*)/$1/;
 }
 
 
-kill_child();
-
-#kill the child process
-kill 15, $pid;
-my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
-foreach my $cpid (@pidoftcpdump) {
-    kill 15, $cpid;
-
-    #  print "try to kill $cpid\n";
+my $capture_problem = $capture->stop();
+if ($capture_problem) {
+    print "tcpdump $capture_problem.\n";
+    exit 1;
 }
 
-sleep 2;
 open(FILE, "<$dumpfile") or die "Cannot open $dumpfile\n";
 my %output;
 my @snack      = ();
@@ -233,7 +230,6 @@ if (scalar(@server)) {
     }
 }
 
-#`rm -f $dumpfile`;
 exit 0;
 
 
@@ -337,14 +333,4 @@ sub packdhcppkg {
     $package .= pack("C*", @padding);
 
     return $package;
-}
-
-sub kill_child {
-    kill 15, $pid;
-    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
-    foreach my $cpid (@pidoftcpdump) {
-        kill 15, $cpid;
-
-        #print "try to kill $cpid\n";
-    }
 }

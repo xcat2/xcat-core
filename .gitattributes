@@ -1,2 +1,4 @@
-xCAT-genesis-builder/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/0001-s390-use-stable-generator-name.patch whitespace=-space-before-tab
+xCAT-genesis-base/oe/meta-xcat-genesis/recipes-kernel/linux/linux-yocto/0001-s390-use-stable-generator-name.patch whitespace=-space-before-tab
+xCAT-test/fixtures/openeuler-media/*/.treeinfo whitespace=-blank-at-eol,-blank-at-eof
 xCAT-server/share/xcat/install/freebsd/patches/dhcpcd-10.5.2-ipoib.patch whitespace=-space-before-tab,-blank-at-eol
+xCAT-server/share/xcat/install/freebsd/patches/pkg-2.6.2-apply.patch whitespace=-space-before-tab,-blank-at-eol

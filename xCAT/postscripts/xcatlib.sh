@@ -1,4 +1,48 @@
 #!/bin/bash
+# Postscripts ship separately from xCAT-genesis-scripts/usr/lib/xcat/fips.sh but must use the same FIPS policy.
+xcat_fips_enabled()
+{
+    grep -q '^1$' "${1:-/proc/sys/crypto/fips_enabled}" 2>/dev/null
+}
+
+xcat_fips_state()
+{
+    if xcat_fips_enabled "${1:-}"; then
+        printf '1'
+    else
+        printf '0'
+    fi
+}
+
+xcat_generate_discovery_private_key()
+{
+    case "$1" in
+        1) openssl ecparam -name prime256v1 -genkey -noout -out "$2" ;;
+        0) openssl genrsa -out "$2" 1024 ;;
+        *) return 1 ;;
+    esac
+}
+
+xcat_discovery_public_key()
+{
+    case "$1" in
+        0|1) ;;
+        *) return 1 ;;
+    esac
+    openssl pkey -in "$2" -pubout 2>/dev/null ||
+        openssl rsa -in "$2" -pubout 2>/dev/null ||
+        openssl ec -in "$2" -pubout
+}
+
+xcat_prepare_discovery_key()
+{
+    case "$1" in
+        1) xcat_generate_discovery_private_key "$1" "$2" ;;
+        0) [ -s "$2" ] || xcat_generate_discovery_private_key "$1" "$2" ;;
+        *) return 1 ;;
+    esac
+}
+
 function hashencode(){
     local str_map="$1"
     echo `echo $str_map | sed 's/\./xDOTx/g' | sed 's/:/xCOLONx/g' | sed 's/,/:xCOMMAx/g' | sed 's/-/xHYPHENx/g'`
@@ -17,10 +61,150 @@ function hashget(){
     eval echo "\$${str_hashname}"
 }
 
+# True when the live MTU of NIC $1 differs from the MTU $2 the networks table declares.
+# A wanted value that is empty or not a number means the network declares no MTU.
+xcat_nic_mtu_changed()
+{
+    local nic="$1"
+    local wanted="$2"
+    local live
+
+    [ -n "$nic" ] || return 1
+    case "$wanted" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    live=$(ip link show dev "$nic" 2>/dev/null | sed -n 's/.*[[:space:]]mtu[[:space:]]\{1,\}\([0-9]\{1,\}\).*/\1/p' | head -1)
+    [ -n "$live" ] || return 1
+    [ "$live" != "$wanted" ]
+}
+
 # Match the OSVER forms currently used by EL9+ postscript paths.
 xcat_is_el9_or_later()
 {
     [[ "$1" =~ ^(rhel|rhels|alma|almalinux|rocky|centos|ol)(9|1[0-9]) ]]
+}
+
+xcat_is_openeuler()
+{
+    case "$1" in
+        openeuler*) return 0 ;;
+        ?*) return 1 ;;
+    esac
+    grep -Eq '^ID="?openEuler"?$' /etc/os-release 2>/dev/null
+}
+
+# xcat_nm_conn_file <connection> -- the file NetworkManager reports, or non-zero if none.
+# NM renames it when a file of the plain name exists, so resolve rather than compose.
+xcat_nm_conn_file()
+{
+    local uuid
+    local file
+    uuid=$(nmcli -g connection.uuid connection show "$1" 2>/dev/null)
+    [ -n "$uuid" ] || return 1
+    file=$(nmcli -t -f UUID,FILENAME connection show 2>/dev/null | sed -n "s|^${uuid}:||p" | head -1)
+    [ -n "$file" ] || return 1
+    echo "$file"
+}
+
+# xcat_persist_nic_extra_param <file> <name> <value> -- a keyfile takes the key under [user]
+# with an "xcat." prefix, an ifcfg file takes it plain. An existing line of that key is replaced.
+xcat_persist_nic_extra_param()
+{
+    local file="$1"
+    local name="$2"
+    local value="$3"
+    local key="$name"
+    local section=""
+    local tmp
+    if [ -z "$file" ] || [ ! -f "$file" ]; then
+        echo "xcat_persist_nic_extra_param: no profile file '$file'" >&2
+        return 1
+    fi
+    if [ -z "$name" ]; then
+        echo "xcat_persist_nic_extra_param: no key name for '$file'" >&2
+        return 1
+    fi
+    case "$file" in
+        *.nmconnection)
+            key="xcat.${name}"
+            section="user"
+            ;;
+    esac
+    tmp=$(mktemp) || return 1
+    # awk ends every line it prints with a newline, so a profile without a final newline
+    # does not join the new key to its last line.
+    XCAT_KEY="$key" XCAT_VALUE="$value" XCAT_SECTION="$section" awk '
+        BEGIN {
+            key = ENVIRON["XCAT_KEY"]; line = key "=" ENVIRON["XCAT_VALUE"]
+            sect = ENVIRON["XCAT_SECTION"]; insect = (sect == ""); seen = 0; done = 0
+        }
+        /^\[.*\]$/ {
+            if (insect && !done) { print line; done = 1 }
+            insect = ($0 == "[" sect "]"); if (insect) seen = 1
+            print; next
+        }
+        insect && index($0, key "=") == 1 {
+            if (!done) { print line; done = 1 }
+            next
+        }
+        { print }
+        END {
+            if (!done) {
+                if (sect != "" && !seen) print "[" sect "]"
+                print line
+            }
+        }
+    ' "$file" >"$tmp" && cat "$tmp" >"$file"
+    local rc=$?
+    rm -f "$tmp"
+    [ "$rc" -eq 0 ] || return "$rc"
+    [ -z "$section" ] || chmod 600 "$file"
+}
+
+# xcat_nm_persist_nic_extra_params <connection> <params>... -- write each nicextraparams
+# entry ("KEY=value KEY2=value", or "default") into the file NM reports for <connection>.
+# nmcli con up drops keys NM does not model, so call this after the last one, with no reload.
+xcat_nm_persist_nic_extra_params()
+{
+    local conn="$1"
+    local file
+    local ep
+    local j
+    local wanted=""
+    shift
+    for ep in "$@"; do
+        [ -n "$ep" ] && [ "$ep" != "default" ] && wanted=1
+    done
+    [ -n "$wanted" ] || return 0
+    if ! file=$(xcat_nm_conn_file "$conn") || [ ! -f "$file" ]; then
+        echo "xcat_nm_persist_nic_extra_params: NetworkManager reports no file for '$conn'" >&2
+        return 1
+    fi
+    for ep in "$@"; do
+        [ -z "$ep" ] && continue
+        [ "$ep" = "default" ] && continue
+        parse_nic_extra_params "$ep"
+        j=0
+        while [ $j -lt ${#array_extra_param_names[@]} ]; do
+            xcat_persist_nic_extra_param "$file" \
+                "${array_extra_param_names[$j]}" "${array_extra_param_values[$j]}" || return 1
+            j=$((j+1))
+        done
+    done
+}
+
+xcat_uses_nm_keyfile()
+{
+    xcat_is_el9_or_later "$1" && return 0
+    [ "$networkmanager_active" = "1" ] && xcat_is_openeuler "$1" || return 1
+    local file
+    file=$(xcat_nm_conn_file "$2") || return 1
+    case "$file" in
+        /etc/NetworkManager/system-connections/*|/run/NetworkManager/system-connections/*|/var/run/NetworkManager/system-connections/*)
+            return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 function debianpreconf(){
@@ -831,6 +1015,52 @@ function msgutil_r {
 ####################################################################
 function msgutil {
    msgutil_r "" "$@"
+}
+
+function xcat_wait_for_processes_to_exit {
+    local pidlist="$1"
+    local max_wait="${2:-10}"
+    local waited=0
+    local alive
+    local pid
+
+    while [ $waited -lt $max_wait ]; do
+        alive=0
+        for pid in $pidlist; do
+            if kill -0 $pid 2>/dev/null; then
+                alive=1
+            fi
+        done
+        if [ $alive -eq 0 ]; then
+            return 0
+        fi
+        sleep 1
+        waited=`expr $waited + 1`
+    done
+
+    return 1
+}
+
+function xcat_restart_sshd_after_failed_service_restart {
+    local sshd_cmd="${1:-/usr/sbin/sshd}"
+    local PIDLIST
+
+    PIDLIST=`ps aux | grep -v grep | grep "/usr/sbin/sshd"|awk -F" " '{print $2}'|xargs`
+    if [ -n "$PIDLIST" ]; then
+        kill -9 $PIDLIST
+        xcat_wait_for_processes_to_exit "$PIDLIST"
+    fi
+    $sshd_cmd
+}
+
+function xcat_decode_credentials {
+    sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' \
+        -e 's/&quot/"/' -e "s/&apos;/'/"
+}
+
+function xcat_filter_credentials {
+    grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' |
+        xcat_decode_credentials
 }
 
 function fetch_mypostscript {

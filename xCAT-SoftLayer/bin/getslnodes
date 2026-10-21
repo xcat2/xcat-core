@@ -79,7 +79,7 @@ foreach my $server (@$servers) {
 
         #print "\tip=".$server->{privateIpAddress}."\n";	# getting this from the backendNetworkComponents instead
         print "\tserial=" . $server->{manufacturerSerialNumber} . "\n";
-        print "\tnetboot=xnba\n";
+        print "\tnetboot=ipxe\n";
         print "\tarch=x86_64\n";
         print "\tusercomment=hostname:" . $server->{fullyQualifiedDomainName} . ", user:" . $server->{operatingSystem}->{passwords}->[0]->{username} . ", pw:" . $server->{operatingSystem}->{passwords}->[0]->{password} . "\n";
 

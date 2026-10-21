@@ -541,13 +541,13 @@ node Attributes:
  .. code-block:: perl
  
                          Arch                    OS                           valid netboot options
-                         x86, x86_64             ALL                          pxe, xnba, grub2
+                         x86, x86_64             ALL                          pxe, ipxe, xnba (deprecated), grub2
                          ppc64                   <=rhel6, <=sles11.3          yaboot
                          ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
                          ppc64le NonVirtualize   ALL                          petitboot
                          ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
                          aarch64                 >=el8                        grub2
-                         riscv64                 >=el10                       grub2,grub2-http,grub2-tftp
+                         riscv64                 >=el10, >=ubuntu24.04        grub2,grub2-http,grub2-tftp
  
  
 

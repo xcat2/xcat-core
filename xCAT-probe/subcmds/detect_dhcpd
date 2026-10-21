@@ -5,6 +5,8 @@ BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/o
 
 use lib "$::XCATROOT/probe/lib/perl";
 use probe_utils;
+use xCAT::CommandUtils;
+use xCAT::PacketCapture;
 use File::Basename;
 use IO::Socket::INET;
 use Time::HiRes qw(gettimeofday sleep);
@@ -16,7 +18,6 @@ my $program_name = basename("$0");
 my $output       = "stdout";
 my $duration     = 10;
 my $test         = 0;
-my $dumpfile     = "/tmp/dhcpdumpfile.log";
 my $nic;
 
 $::USAGE = "Usage:
@@ -63,7 +64,8 @@ if ($::TEST) {
     exit 0;
 }
 
-unless (-x "/usr/sbin/tcpdump") {
+my $tcpdump = xCAT::CommandUtils::find_executable('tcpdump');
+unless ($tcpdump) {
     probe_utils->send_msg("$output", "f", "Tool 'tcpdump' is installed on current server");
     probe_utils->send_msg("$output", "d", "$program_name needs to leverage 'tcpdump', please install 'tcpdump' first");
     exit 1;
@@ -151,44 +153,45 @@ my $package = packdhcppkg($MAC);
 probe_utils->send_msg("$output", "i", "Start to detect DHCP, please wait $duration seconds");
 
 $msg = "fork a process to capture the packet by tcpdump";
-my $pid = fork;
-if (!defined $pid) {
+my $capture = xCAT::PacketCapture->start($tcpdump, $nic, sub {
+    my ($child) = @_;
+    probe_utils->send_msg("$output", "d", "Kill process $child used to capture the packet by 'tcpdump'") if ($::VERBOSE);
+});
+unless ($capture) {
     probe_utils->send_msg("$output", "f", $msg);
     exit 1;
-} elsif ($pid == 0) {
-
-    # Child process
-    my $cmd = "tcpdump -i $nic port 68 -n -vvvvvv > $dumpfile 2>/dev/null";
-    `$cmd`;
-    exit 0;
 }
+my $dumpfile = $capture->file();
+my $pid = $capture->pid();
 probe_utils->send_msg("$output", "d", "The id of process which is used to capture the packet by tcpdump is $pid") if ($::VERBOSE);
 
 my $start = Time::HiRes::gettimeofday();
 $start =~ s/(\d.*)\.(\d.*)/$1/;
 my $end = $start;
 while ($end - $start <= $duration) {
-    $sock->send($package);
-    probe_utils->send_msg("$output", "d", "Send DHCP rquest result: $@") if ($::VERBOSE && $@);
+    unless ($sock->send($package)) {
+        probe_utils->send_msg("$output", "d", "Send DHCP discover error: $!") if ($::VERBOSE);
+        probe_utils->send_msg("$output", "f", "Send out DHCP discover");
+        $capture->stop();
+        exit 1;
+    }
     sleep 2;
     $end = Time::HiRes::gettimeofday();
     $end =~ s/(\d.*)\.(\d.*)/$1/;
 }
 
-$msg = "Kill the process which is used to capture the packet by tcpdump";
-kill_child();
-waitpid($pid, 0);
-sleep 1;
-`ps aux|grep -v grep |grep $pid > /dev/null 2>&1`;
-if (!$?) {
+$msg = "Capture the packets by tcpdump";
+my $capture_problem = $capture->stop();
+if ($capture_problem) {
+    probe_utils->send_msg("$output", "d", "tcpdump $capture_problem") if ($::VERBOSE);
     probe_utils->send_msg("$output", "f", $msg);
+    exit 1;
 }
 
 $msg = "Dump test result";
 unless (open(FILE, "<$dumpfile")) {
     probe_utils->send_msg("$output", "d", "Open dump file $dumpfile failed") if ($::VERBOSE);
     probe_utils->send_msg("$output", "f", $msg);
-    `rm -f $dumpfile` if (-e "$dumpfile");
     exit 1;
 }
 my %output;
@@ -271,7 +274,6 @@ if (scalar(@server)) {
     }
 }
 
-`rm -f $dumpfile` if (-e "$dumpfile");
 exit 0;
 
 
@@ -375,13 +377,4 @@ sub packdhcppkg {
     $package .= pack("C*", @padding);
 
     return $package;
-}
-
-sub kill_child {
-    kill 15, $pid;
-    my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $nic" | awk -F' ' '{print \$2}'`;
-    foreach my $cpid (@pidoftcpdump) {
-        kill 15, $cpid;
-    }
-    probe_utils->send_msg("$output", "d", "Kill process $pid used to capture the packet by 'tcpdump'") if ($::VERBOSE);
 }

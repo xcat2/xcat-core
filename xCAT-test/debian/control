@@ -8,7 +8,7 @@ Homepage: https://xcat.org/
 
 Package: xcat-test
 Architecture: all
-Depends: ${perl:Depends}
+Depends: ${perl:Depends}, python3-scapy
 Description: xCAT automated test tool
  Provides automated test tool and buckets to help test xCAT commands
  automatically.

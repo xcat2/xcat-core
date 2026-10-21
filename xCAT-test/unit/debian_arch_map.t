@@ -16,6 +16,11 @@ use xCAT::Utils;
 # --- what debootstrap and the package lists are given ----------------------
 is(xCAT::Utils->debian_arch('x86_64'), 'amd64',
     'Debian calls x86_64 amd64');
+# genimage passes this value to debootstrap --arch and reads it to pick the apt mirror, and
+# debootstrap knows i386, not xCAT's x86.
+is(xCAT::Utils->debian_arch('x86'), 'i386',
+    'debian_arch: the 32-bit x86 token becomes i386');
+
 is(xCAT::Utils->debian_arch('ppc64el'), 'ppc64el',
     'the Debian name for POWER LE is unchanged');
 is(xCAT::Utils->debian_arch('ppc64le'), 'ppc64le',
@@ -38,6 +43,10 @@ is(xCAT::Utils->xcat_arch_from_debian('ppc64el'), 'ppc64el',
     'POWER LE media keeps the Debian name xCAT uses for Ubuntu');
 is(xCAT::Utils->xcat_arch_from_debian('powerpc'), 'ppc64',
     'POWER BE media installs ppc64 nodes');
+is(xCAT::Utils->xcat_arch_from_debian('riscv64'), 'riscv64',
+    'riscv64 media installs riscv64 nodes');
+is(xCAT::Utils->debian_arch('riscv64'), 'riscv64',
+    'Debian and xCAT agree on the riscv64 name');
 is(xCAT::Utils->xcat_arch_from_debian('nonesuch'), undef,
     'media xCAT has no name for resolves to nothing');
 is(xCAT::Utils->xcat_arch_from_debian(''), undef,

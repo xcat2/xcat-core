@@ -6,34 +6,17 @@ use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-probe/lib/perl";
 
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use Test::More;
 
 require probe_utils;
 
-sub write_file {
-    my ($file, $contents) = @_;
-
-    open(my $fh, '>', $file) or die "Unable to write $file: $!";
-    print $fh $contents;
-    close $fh;
-}
-
-sub read_file {
-    my $file = shift;
-
-    open(my $fh, '<', $file) or die "Unable to read $file: $!";
-    local $/;
-    my $contents = <$fh>;
-    close $fh;
-    return $contents;
-}
-
 my $fake_bin = tempdir(CLEANUP => 1);
 my $argv_file = "$fake_bin/argv";
 my $fake_netplan = "$fake_bin/netplan";
 
-write_file($fake_netplan, <<'EOF');
+write_binary($fake_netplan, <<'EOF');
 #!/usr/bin/env perl
 use strict;
 use warnings;
@@ -79,7 +62,7 @@ local $ENV{XCAT_TEST_NETPLAN_ARGV} = $argv_file;
         'netplan get returns only the first output line'
     );
     is(
-        read_file($argv_file),
+        scalar read_binary($argv_file),
         "get\nethernets.eth0.addresses\n",
         'netplan get receives the exact subcommand and key arguments'
     );

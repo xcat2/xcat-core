@@ -7,7 +7,7 @@ x86_64kvmguest-template:
     ip="MANDATORY:the ip address of the kvm guest"
     mac="OPTIONAL:the mac of the kvm guest"
     mgt=kvm
-    netboot=xnba
+    netboot=ipxe
     serialport=0
     serialspeed=115200
     vmcpus=2

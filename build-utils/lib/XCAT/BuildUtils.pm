@@ -14,28 +14,40 @@ package XCAT::BuildUtils;
 use strict;
 use warnings;
 use Exporter 'import';
+use Cwd ();
 use File::Copy qw(copy move);
+use File::Find qw(find);
 use File::Basename qw(basename);
 use File::Path qw(make_path remove_tree);
+use File::Temp qw(tempdir tempfile);
 use File::Slurper qw(read_text write_text);
 use POSIX qw(strftime);
+use Sys::Hostname ();
 use Pod::Usage qw(pod2usage);
 use feature 'say';
 
 our @EXPORT_OK = qw(
     source_date_epoch snap_release deb_version
-    stage_probe_helpers XCAT_PROBE_HELPERS
+    stage_probe_helpers XCAT_PROBE_HELPERS stage_genesis_base_sources
+    stage_xcat_probe_sources stage_xcatsn_templates
     deb_package_arches dist_arches default_dists
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock
+    build_sources_base build_sources_dir prepare_build_sources_dir
+    remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir
     sh_quote clean_debian_residue git_revision
     backup_file restore_file
     sh sh_or_die usage
     rewrite_file write_script read_line
     buildinfo_text
     targetarch_from_target
+    openeuler_build_target openeuler_repo_subdir
+    mock_config_text mock_build_owner prepare_mock_resultdirs
+    genesis_chroot_name genesis_target_arch genesis_build_plan
+    genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
+    genesis_dists genesis_dist_reason
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -107,11 +119,62 @@ sub rewrite_file {
 # status, which is the exit code times 256, so it is shifted here: a caller
 # comparing the result against a specific code gets the code it expects, not a
 # multiple of it.
+# The pid of the command sh() is running, so a cancellation handler can stop it before the
+# build lock is released. system() gives no pid, which is why this forks explicitly.
+our $CURRENT_CHILD;
+
+# Locks this process holds, weakly. Released by a signal handler or at exit, because
+# _BuildLock::DESTROY does not run when a signal ends the process.
+our @LIVE_LOCKS;
+END { release_build_locks() }
+
 sub sh {
     my ($cmd) = @_;
+    require POSIX;
     say "Running: $cmd" if $VERBOSE;
-    system($cmd);
-    return $? >> 8;
+
+    # Do not let cancellation run between fork and publishing the process group.
+    my $blocked = POSIX::SigSet->new(POSIX::SIGINT(), POSIX::SIGTERM());
+    my $oldmask = POSIX::SigSet->new();
+    POSIX::sigprocmask(POSIX::SIG_BLOCK(), $blocked, $oldmask)
+        or die "Cannot block build cancellation signals: $!\n";
+
+    my $pid = fork();
+    unless (defined $pid) {
+        my $error = "$!";
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
+        warn "FATAL: cannot fork to run $cmd: $error\n";
+        return 127;
+    }
+    unless ($pid) {
+        $SIG{INT} = $SIG{TERM} = 'DEFAULT';
+        POSIX::setpgid(0, 0) or POSIX::_exit(127);
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
+            or POSIX::_exit(127);
+        exec('/bin/sh', '-c', $cmd) or POSIX::_exit(127);
+    }
+
+    local $CURRENT_CHILD = $pid;  # also the command's process-group ID
+    # Both sides set the group, so neither depends on which side runs first.
+    # EACCES means the child already exec'd, after setting its group; ESRCH
+    # means it has already gone away.
+    unless (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) {
+        warn "FATAL: cannot create build process group $pid: $!; retaining locks\n";
+        kill 'KILL', $pid;
+        POSIX::_exit(127);
+    }
+    POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask) or do {
+        warn "FATAL: cannot restore signal mask: $!\n";
+        cancel_build('TERM');
+        POSIX::_exit(127);
+    };
+
+    my $got;
+    do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
+    my $status = $?;
+    return 127 if $got == -1;
+    return ($status & 127) ? 128 + ($status & 127) : $status >> 8;
 }
 
 # pod2usage reads the POD of the running program, so each builder keeps its own
@@ -144,19 +207,26 @@ use constant XCAT_PROBE_HELPERS => qw(
     CommandUtils.pm
     GlobalDef.pm
     NetworkUtils.pm
+    PacketCapture.pm
     ServiceNodeUtils.pm
 );
 
-# Packages whose .deb carries a real architecture. Everything else in xcat-core is
-# Perl and ships as Architecture: all -- one binary serving every Ubuntu release and
-# every arch, which is why this build never needs a per-codename chroot.
-my %ARCH_PACKAGES = map { $_ => 1 } qw(xCAT xCATsn xCAT-genesis-scripts);
+# Packages whose .deb carries a real architecture, and the architectures each is built
+# for. Everything else in xcat-core is Perl and ships as Architecture: all -- one binary
+# serving every Ubuntu release and every arch, which is why this build never needs a
+# per-codename chroot. xCAT-genesis-scripts has no riscv64 control file: riscv64 Genesis
+# ships as an OpenEmbedded package.
+my %ARCH_PACKAGES = (
+    'xCAT'                 => [qw(amd64 ppc64el riscv64)],
+    'xCATsn'               => [qw(amd64 ppc64el riscv64)],
+    'xCAT-genesis-scripts' => [qw(amd64 ppc64el)],
+);
 
 # Ubuntu releases predating ppc64el. Kept as data rather than an `if` in the caller so
 # the repo-assembly and the package-selection paths cannot disagree about it.
 my %NO_PPC64EL = map { $_ => 1 } qw(saucy);
 
-my @DEB_ARCHES = qw(amd64 ppc64el);
+my @DEB_ARCHES = qw(amd64 ppc64el riscv64);
 
 # The Ubuntu releases the apt repository serves by default. Single source of truth:
 # the builder, the repo assembly and the tests all read it here, so they cannot drift.
@@ -319,12 +389,134 @@ sub stage_probe_helpers {
     return @staged;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 stage_genesis_base_sources
+
+    Descriptions:
+        Write the build support tarball that xCAT-genesis-base.spec unpacks:
+        the dracut_105 modules, 80-net-name-slot.rules, and
+        verify-genesis-payload with its XCAT::GenesisPayload module, taken from
+        the xCAT-genesis-base directory of a checkout.
+    Arguments:
+        $checkout: the top of the xcat-core checkout
+        $tarball:  the path of the tarball to write
+        $epoch:    SOURCE_DATE_EPOCH, the mtime of every member
+    Returns:
+        $tarball. Dies when the checkout has no xCAT-genesis-base directory,
+        so a rename stops the build instead of producing an empty tarball.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_genesis_base_sources {
+    my ($checkout, $tarball, $epoch) = @_;
+    my $source = "$checkout/xCAT-genesis-base";
+    die "Assertion failed! No directory xCAT-genesis-base in $checkout\n"
+        unless -d $source;
+
+    my $staging_parent = "/tmp/xcat-genesis-base-build-support.$$";
+    my $staging_root   = "$staging_parent/xCAT-genesis-base-build-support";
+    remove_tree($staging_parent) if -e $staging_parent;
+    make_path("$staging_root/dracut_105");
+
+    sh_or_die(qq(cp -a "$source/dracut_105" "$staging_root/"),
+        "Error copying dracut_105 sources");
+    copy("$source/80-net-name-slot.rules", "$staging_root/80-net-name-slot.rules")
+        or die "Unable to stage $source/80-net-name-slot.rules: $!\n";
+    # The spec runs the verifier against the extracted payload in %install.
+    copy("$source/verify-genesis-payload", "$staging_root/verify-genesis-payload")
+        or die "Unable to stage $source/verify-genesis-payload: $!\n";
+    make_path("$staging_root/lib/XCAT");
+    copy("$source/lib/XCAT/GenesisPayload.pm", "$staging_root/lib/XCAT/GenesisPayload.pm")
+        or die "Unable to stage $source/lib/XCAT/GenesisPayload.pm: $!\n";
+
+    unlink $tarball if -f $tarball;
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$epoch" -cjf "$tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
+        "Error creating $tarball");
+
+    remove_tree($staging_parent);
+    return $tarball;
+}
+
+# Stage the xCAT-probe package sources, with the xCAT helper modules xcatprobe loads at
+# runtime copied in beside them. The archive is built under a temporary name in $sources_dir
+# and renamed into place, so a mock build never reads a partial file.
+#
+# $sources_dir is the staging directory of ONE package build, and it is validated rather than
+# interpolated: buildrpms.pl sets it in the child it forks per package, so a caller that runs
+# before the fork passes the empty string. That composed /xCAT-probe-<version>.tar.gz and every
+# RPM target died on the rename. Composing the file name here also keeps one spelling of it.
+sub stage_xcat_probe_sources {
+    my ($checkout, $sources_dir, $version, $epoch) = @_;
+    my $source = "$checkout/xCAT-probe";
+    die "Assertion failed! No directory xCAT-probe in $checkout\n"
+        unless -d $source;
+    die "stage_xcat_probe_sources: staging directory is required\n"
+        unless defined $sources_dir && length $sources_dir;
+    die "stage_xcat_probe_sources: no staging directory $sources_dir\n"
+        unless -d $sources_dir;
+    die "stage_xcat_probe_sources: version is required\n"
+        unless defined $version && length $version;
+
+    my $tarball        = "$sources_dir/xCAT-probe-$version.tar.gz";
+    my $staging_parent = tempdir("xcat-probe-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+    my $staging_root   = "$staging_parent/xCAT-probe";
+    sh_or_die(qq(cp -a "$source" "$staging_root"), "Error staging xCAT-probe sources");
+
+    my $helper_dir = "$staging_root/lib/perl/xCAT";
+    remove_tree($helper_dir) if -e $helper_dir;
+    make_path($helper_dir);
+    chmod 0755, $helper_dir;
+    chmod 0644, $_ for stage_probe_helpers("$checkout/perl-xCAT/xCAT", $helper_dir);
+
+    my ($archive_fh, $archive_path) =
+        tempfile(".xCAT-probe-$version.XXXXXX", DIR => $sources_dir, UNLINK => 1);
+    close $archive_fh;
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$epoch" )
+            . qq(--use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
+        "Error creating $tarball");
+    chmod 0644, $archive_path;
+    rename $archive_path, $tarball
+        or die "Unable to publish $tarball: $!\n";
+    return $tarball;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 stage_xcatsn_templates
+
+Descriptions: Write the templates archive that xCATsn.spec extracts into
+              %{prefix}/share/xcat, with members rooted at templates/.
+
+Arguments:
+  $checkout    - the xcat-core source tree
+  $sources_dir - the staging directory of the xCATsn build
+  $epoch       - SOURCE_DATE_EPOCH for the archive mtimes
+
+Returns: the path of the archive.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_xcatsn_templates {
+    my ($checkout, $sources_dir, $epoch) = @_;
+    die "stage_xcatsn_templates: no staging directory\n"
+        unless defined $sources_dir && -d $sources_dir;
+
+    my $tarball = "$sources_dir/templates.tar.gz";
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$epoch" )
+            . qq(-czf "$tarball" -C "$checkout/xCAT" templates),
+        "Error creating $tarball");
+    return $tarball;
+}
+
 # deb_package_arches: the architectures to build a package for.
 # 'all' is a single arch-independent build; the three arch packages get one per arch.
 sub deb_package_arches {
     my ($package) = @_;
-    return @DEB_ARCHES if $ARCH_PACKAGES{$package // ''};
-    return ('all');
+    my $arches = $ARCH_PACKAGES{ $package // '' };
+    return $arches ? @{$arches} : ('all');
 }
 
 # dist_arches: the architectures a release's apt repo declares.
@@ -457,12 +649,180 @@ sub lock_path_for {
 # Returns the open handle -- the lock is held for as long as the caller keeps it.
 sub take_build_lock {
     my ($path, $dir) = @_;
-    require Fcntl;
-    my $lockfile = lock_path_for($path, $dir);
-    open my $fh, '>', $lockfile or die "FATAL: cannot open $lockfile: $!\n";
-    flock($fh, Fcntl::LOCK_EX() | Fcntl::LOCK_NB())
-        or die "FATAL: another build of $path already holds $lockfile\n";
-    return $fh;
+    require POSIX;
+    # A directory, not an flock. A build tree can live on an NFS re-export, where the kernel
+    # refuses locks outright: every attempt answers errno 524. mkdir(2) is arbitrated by the
+    # server and needs no lock daemon.
+    my $lockdir = lock_path_for($path, $dir) . '.d';
+    unless (mkdir $lockdir) {
+        die "FATAL: cannot take $lockdir: $!\n" unless $! == POSIX::EEXIST();
+        my $who = ''; if (open(my $h, '<', "$lockdir/owner")) { local $/; $who = <$h> // ''; close $h }
+        chomp $who;
+        die "FATAL: another build of $path already holds $lockdir"
+          . ($who ? " (held by [$who])" : "") . "\n";
+    }
+    if (open(my $ow, '>', "$lockdir/owner")) { print {$ow} "pid=$$\n"; close $ow }
+    # The caller keeps the returned value; release is by pid so a fork cannot free the parent's.
+    my $owner = $$;
+    my $lock = XCAT::BuildUtils::_BuildLock->new($lockdir, $owner);
+    # Registered weakly, so holding it here does not keep the lock alive past its caller's
+    # scope. The registry exists only so a signal can release what DESTROY will not.
+    require Scalar::Util;
+    push @LIVE_LOCKS, $lock;
+    Scalar::Util::weaken($LIVE_LOCKS[-1]);
+    return $lock;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 release_build_locks
+
+Descriptions:
+    Release every build lock this process still holds.
+
+    DESTROY does not run when a signal terminates the process, so a cancelled build left its
+    lock directory behind and the next build of that checkout died on "another build already
+    holds" naming a pid that had long exited. One such directory blocked an openSUSE target
+    across three consecutive runs before anyone looked.
+
+Arguments:
+    None.
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub release_build_locks {
+    for my $l (@LIVE_LOCKS) { $l->release if defined $l }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 install_build_cancellation
+
+Descriptions:
+    Install the INT and TERM handlers that stop the build and release its locks.
+
+    It lives here rather than in the builder so the behaviour can be tested. A builder that
+    wired its own handler inline could only be covered by reading its source, and a test that
+    installs an equivalent handler of its own proves the helper works while saying nothing
+    about whether anything calls it.
+
+    The signal is re-raised with the default disposition afterwards, so the exit status still
+    tells a caller the build was cancelled rather than that it failed.
+
+Arguments:
+    $announce - optional coderef called with the signal name before the build is stopped
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub install_build_cancellation {
+    my ($announce) = @_;
+    for my $sig (qw(INT TERM)) {
+        $SIG{$sig} = sub {
+            my ($caught) = @_;
+            $announce->($caught) if $announce;
+            cancel_build($caught);
+            $SIG{$caught} = 'DEFAULT';
+            kill $caught => $$;
+        };
+    }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 cancel_build
+
+Descriptions:
+    Stop the command in flight, then release the build locks.
+
+    The order matters. Releasing first would hand the checkout to a second build while
+    dpkg-buildpackage is still rewriting debian/changelog and debian/control in it.
+
+    The wait is bounded: a child that ignores the signal must not keep the lock for ever, so
+    it is given a few seconds and then killed outright.
+
+Arguments:
+    $sig - the signal name that started the cancellation
+Returns:
+    Nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub cancel_build {
+    my ($sig) = @_;
+    require POSIX;
+    # A second Ctrl-C must not interrupt cleanup and release the lock early.
+    local $SIG{INT}  = 'IGNORE';
+    local $SIG{TERM} = 'IGNORE';
+
+    if (my $pgid = $CURRENT_CHILD) {
+        my $reaped = 0;
+        for my $stop_signal ($sig, 'KILL') {
+            kill $stop_signal, -$pgid;
+            for (1 .. 50) {
+                unless ($reaped) {
+                    my $got = waitpid($pgid, POSIX::WNOHANG());
+                    $reaped = 1 if $got == $pgid || ($got == -1 && $!{ECHILD});
+                }
+                # The shell exiting is not enough: its workers may still exist.
+                if (!kill(0, -$pgid) && $!{ESRCH}) {
+                    $CURRENT_CHILD = undef;
+                    release_build_locks();
+                    return;
+                }
+                select undef, undef, undef, 0.1;
+            }
+        }
+        # Never let END/DESTROY unlock a checkout whose workers may still run.
+        warn "FATAL: build process group $pgid has not disappeared; retaining locks\n";
+        POSIX::_exit(1);
+    }
+    release_build_locks();
+    return;
+}
+
+{   package XCAT::BuildUtils::_BuildLock;
+    sub new { my ($c,$d,$p)=@_; return bless { dir=>$d, pid=>$p, released=>0 }, $c }
+    # Idempotent: a signal handler and then DESTROY both reach here, and the second must not
+    # remove a directory a LATER build has since taken.
+    sub release {
+        my $s = shift;
+        return if $s->{released};
+        $s->{released} = 1;
+        return unless $$ == $s->{pid};
+        unlink "$s->{dir}/owner";
+        rmdir $s->{dir};
+        return;
+    }
+    sub DESTROY { shift->release }
+}
+
+sub openeuler_build_target {
+    my ($os, $arch) = @_;
+    return undef unless lc($os->{ID} // '') eq 'openeuler';
+    my $version = $os->{VERSION} || $os->{VERSION_ID} || '';
+    if ($version =~ /\A(20|22|24)\.03\s+\(LTS(?:-SP([1-9][0-9]*))?\)\z/) {
+        $version = "$1.03" . (defined($2) ? "sp$2" : '');
+    }
+    my $target = "openeuler-$version-$arch";
+    openeuler_repo_subdir($target);
+    return $target;
+}
+
+sub openeuler_repo_subdir {
+    my ($target) = @_;
+    return undef unless defined($target) && $target =~ /\Aopeneuler-/;
+    die "Unsupported openEuler build target '$target'\n"
+        unless $target =~ /\Aopeneuler-((?:20|22|24)\.03(?:sp[1-9][0-9]*)?)-(x86_64|ppc64le)\z/;
+    return "openeuler$1/$2";
 }
 
 # The rpm architecture a mock target builds for. A target carries the arch as its
@@ -485,4 +845,433 @@ sub targetarch_from_target {
     return $parts[-1];
 }
 
+# ------------------------------------------------------------------ Genesis --
+#
+# The Genesis image carries the kernel and the kernel modules of the release it boots,
+# because dracut copies them out of the root it runs in. So the Ubuntu Genesis deb is built
+# once per Ubuntu codename, inside that codename's chroot. A single build on the build host
+# gives every codename the build host's kernel.
+
+# genesis_chroot_name: the schroot chroot that builds the Genesis deb for one codename.
+#
+# Same name xcat-dep's sbuild-all.pl ensure_chroots creates, so both repositories build in
+# the same chroots and neither has to bootstrap a second set.
+sub genesis_chroot_name {
+    my ($codename, $arch) = @_;
+    die "genesis_chroot_name: a codename is required\n"
+        unless defined $codename && length $codename;
+    die "genesis_chroot_name: an architecture is required\n"
+        unless defined $arch && length $arch;
+    return "$codename-$arch-sbuild";
+}
+
+# genesis_target_arch: the directory xCAT reads the Genesis image from, for a deb
+# architecture. mknb reads /opt/xcat/share/xcat/netboot/genesis/<arch>, and that name is
+# the rpm architecture, not the deb one.
+my %GENESIS_TARGET_ARCH = (
+    amd64   => 'x86_64',
+    ppc64el => 'ppc64',
+);
+
+sub genesis_target_arch {
+    my ($arch) = @_;
+    my $target = $GENESIS_TARGET_ARCH{ $arch // '' };
+    die "genesis_target_arch: no Genesis image directory for '" . ($arch // '') . "'\n"
+        unless $target;
+    return $target;
+}
+
+# genesis_build_plan: one Genesis build per codename, for one architecture.
+#
+# The set of codenames comes from the caller, so a pipeline builds exactly the releases it
+# publishes.
+sub genesis_build_plan {
+    my ($dists, $arch) = @_;
+    my @dists = @{ $dists || [] };
+    die "genesis_build_plan: at least one codename is required\n" unless @dists;
+    die "genesis_build_plan: an architecture is required\n"
+        unless defined $arch && length $arch;
+
+    my %seen;
+    return map {
+        {
+            codename => $_,
+            arch     => $arch,
+            chroot   => genesis_chroot_name($_, $arch),
+            package  => "xcat-genesis-base-$arch",
+            target   => genesis_target_arch($arch),
+        }
+    } grep { !$seen{$_}++ } @dists;
+}
+
+# genesis_log_deny_rules / genesis_log_errors: what a Genesis build log says when the build
+# failed but the exit status did not.
+#
+# dracut reports a command it cannot install with a FAILED: line and returns 0. apt has the
+# same shape: a missing package leaves a diagnostic and a zero status behind a `|| true`. So
+# the log is the gate, not the exit status.
+my @GENESIS_LOG_DENY = (
+    [ qr/\bFAILED:/                    => 'dracut could not install a command' ],
+    [ qr/Cannot find module/           => 'a kernel module the build names is absent' ],
+    [ qr/dracut: Cannot/               => 'dracut refused the request' ],
+    [ qr/command not found/            => 'the build root has no such command' ],
+    [ qr/E: Unable to locate package/  => 'apt has no such package' ],
+    [ qr/Unable to correct problems/   => 'apt could not resolve the build root' ],
+);
+
+sub genesis_log_deny_rules { return @GENESIS_LOG_DENY; }
+
+# The package built once per codename. It is the only one: it carries the kernel and the kernel
+# modules of the root that built it.
+my $GENESIS_IMAGE_DEB = qr{\Axcat-genesis-base-};
+
+# Releases whose stock chroot cannot build that package, and why. focal ships debhelper 12 and
+# xCAT-genesis-base declares debhelper-compat (= 13), so sbuild stops on the build dependencies
+# before dracut runs.
+my %GENESIS_DIST_UNSUPPORTED = (
+    focal => 'debhelper 12 cannot satisfy debhelper-compat (= 13)',
+);
+
+# genesis_dists: the releases of @dists a Genesis image can be built on.
+sub genesis_dists {
+    my (@dists) = @_;
+    return grep { !exists $GENESIS_DIST_UNSUPPORTED{$_} } @dists;
+}
+
+# genesis_dist_reason: why a release was left out, or undef.
+sub genesis_dist_reason { return $GENESIS_DIST_UNSUPPORTED{ $_[0] // '' }; }
+
+# deb_belongs_to_dist: whether a built .deb may be published into one release.
+#
+# Almost every xcat-core deb is Architecture:all and the same file serves every release, so the
+# answer is yes. The Genesis image is not: it is built per codename and carries that codename in
+# its version (2.19.0-snap...~noble). Publishing all three into every suite lets apt serve the
+# newest, which is the image of another release.
+#
+# Only that package is asked. A ~ in a version is Debian's prerelease separator before it is
+# anything else, and --release takes whatever the caller gives it, so reading every ~ as a
+# codename drops a whole `--release 1~rc1` build from every suite.
+sub deb_belongs_to_dist {
+    my ($deb, $dist) = @_;
+    return 1 unless defined $deb && defined $dist && $dist ne '';
+    my $base = basename($deb);
+    my ($name) = $base =~ /\A([^_]+)_/;
+    return 1 unless defined $name && $name =~ $GENESIS_IMAGE_DEB;
+    return 1 unless $base =~ /_[^_]*~([A-Za-z0-9.]+)_[^_]*\.deb\z/;
+    return $1 eq $dist ? 1 : 0;
+}
+
+sub genesis_log_errors {
+    my ($text) = @_;
+    return () unless defined $text && length $text;
+    my @found;
+    for my $line (split /\n/, $text) {
+        for my $rule (@GENESIS_LOG_DENY) {
+            my ($pattern, $why) = @{$rule};
+            next unless $line =~ $pattern;
+            push @found, { line => $line, why => $why };
+            last;
+        }
+    }
+    return @found;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 build_sources_base
+
+Descriptions: The directory that holds the per-process rpmbuild SOURCES directories.
+
+Arguments:
+  $checkout - the source checkout; defaults to the working directory
+
+Returns: the absolute path of the base directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+# mock reads the sources as chrootuid, and $HOME of a root build is /root, mode 0550.
+sub build_sources_base {
+    my ($checkout) = @_;
+    $checkout = Cwd::getcwd() unless defined $checkout && length $checkout;
+    die "build_sources_base: no checkout directory\n" unless defined $checkout && length $checkout;
+    return "$checkout/dist/sources";
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 build_sources_dir
+
+Descriptions: The rpmbuild SOURCES directory of one build process.
+
+Arguments:
+  $base - the directory from build_sources_base
+  $pid  - the pid of the process that stages; defaults to $$
+  $host - the host name; defaults to this host
+
+Returns: the absolute path of the staging directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+# Keyed by the process that stages. buildrpms.pl forks a child per package and target,
+# and mock --sources copies the whole directory, so a shared directory lets a peer's tar
+# truncate an archive mid-copy. A pid is unique only on one host, and the checkout can be on NFS.
+sub build_sources_dir {
+    my ($base, $pid, $host) = @_;
+    die "build_sources_dir: no base directory\n" unless defined $base && length $base;
+    $pid  = $$ unless defined $pid;
+    die "build_sources_dir: pid '$pid' is not a number\n" unless $pid =~ /^[0-9]+$/;
+    $host = _sources_host($host);
+    return "$base/SOURCES.$host.$pid";
+}
+
+sub _sources_host {
+    my ($host) = @_;
+    $host = Sys::Hostname::hostname() unless defined $host && length $host;
+    $host =~ s/[^A-Za-z0-9._-]/-/g;
+    return $host;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 prepare_build_sources_dir
+
+Descriptions: Create the staging directory of one build process, empty, and return it.
+
+Arguments: the same as build_sources_dir.
+
+Returns: the absolute path of the staging directory.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prepare_build_sources_dir {
+    my $dir = build_sources_dir(@_);
+    # A directory with this name belongs to a dead process that had the same pid.
+    remove_tree($dir) if -e $dir;
+    chmod 0755, make_path($dir), $dir;
+    die "build_sources_dir: $dir was not created\n" unless -d $dir;
+    return $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 share_build_sources_dir
+
+Descriptions: Make a staging directory and its contents readable by every user,
+              whatever the umask was when they were written.
+
+Arguments:
+  $dir - the directory from prepare_build_sources_dir
+
+Returns: nothing.
+
+=cut
+
+#-------------------------------------------------------------------------------
+# mock copies --sources into the chroot as chrootuid, not as the uid that staged them.
+sub share_build_sources_dir {
+    my ($dir) = @_;
+    find({ no_chdir => 1, wanted => sub {
+        return if -l $_;
+        my $mode = (lstat $_)[2] & 07777;
+        chmod $mode | (-d _ ? 0555 : 0444), $_;
+    } }, $dir);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 remove_build_sources_dir
+
+Descriptions: Delete the staging directory of one build process.
+
+Arguments: the same as build_sources_dir. The caller makes sure the process has exited.
+
+Returns: true when the directory is gone.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub remove_build_sources_dir {
+    my $dir = build_sources_dir(@_);
+    remove_tree($dir) if -e $dir;
+    return !-e $dir;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 sweep_build_sources_dirs
+
+Descriptions: Delete the staging directories that processes on this host left behind
+              when they were killed before their parent could delete them.
+
+Arguments:
+  $base  - the directory from build_sources_base
+  $host  - the host name; defaults to this host
+  $alive - a sub that takes a pid and returns true when that process exists;
+           defaults to kill 0
+
+Returns: the list of directories deleted.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub sweep_build_sources_dirs {
+    my ($base, $host, $alive) = @_;
+    $host  = _sources_host($host);
+    $alive //= \&_pid_alive;
+    opendir(my $dh, $base) or return ();
+    my @entries = readdir $dh;
+    closedir $dh;
+
+    my @removed;
+    for my $entry (sort @entries) {
+        # Another host's pids say nothing about this host's processes.
+        my ($pid) = $entry =~ /^SOURCES\.\Q$host\E\.([0-9]+)$/ or next;
+        next if $alive->($pid);
+        remove_tree("$base/$entry");
+        push @removed, "$base/$entry" unless -e "$base/$entry";
+    }
+    return @removed;
+}
+
+# EPERM means the process exists and belongs to another user. An unreaped zombie
+# also answers here, and its parent deletes the directory when it reaps it.
+sub _pid_alive {
+    my ($pid) = @_;
+    return 1 if kill 0, $pid;
+    return $!{EPERM} ? 1 : 0;
+}
+
 1;
+
+#-------------------------------------------------------------------------------
+
+=head3 mock_config_text
+
+    Descriptions: Render the per-package mock configuration from a target configuration.
+
+    Arguments:
+        $pkg    - the package being built, e.g. xCAT or perl-xCAT
+        $target - the mock target, e.g. openeuler-24.03-ppc64le
+        $base   - the text of /etc/mock/<target>.cfg
+        $epoch  - SOURCE_DATE_EPOCH, passed into the chroot
+
+    Returns: the text to write to /etc/mock/<pkg>-<target>.cfg
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub mock_config_text {
+    my ($pkg, $target, $base, $epoch) = @_;
+    my $chroot = "$pkg-$target";
+    my $text = $base;
+    $text =~ s/config_opts\['root'\]\s+=.*/config_opts['root'] = \"$chroot\"/;
+    if ($pkg eq "perl-xCAT" && $target !~ /suse|sles|leap/i) {
+        # perl-generators exports perl(xCAT::...) provides on RHEL/Fedora; it does not
+        # exist on openSUSE/SLES (rpm there generates perl provides itself), so injecting
+        # it into a SUSE chroot aborts chroot setup. Suppress it for SUSE targets.
+        $text .= "config_opts['chroot_additional_packages'] = 'perl-generators'\n";
+    }
+    $text .= "config_opts['environment']['SOURCE_DATE_EPOCH'] = '$epoch'\n";
+    # Avoid systemd-nspawn: it INTERMITTENTLY fails chroot setup with
+    #   "Failed to determine whether the unified cgroups hierarchy is used: No medium found"
+    # (ENOMEDIUM), which drops that package from the (still-signed) core -> an incomplete build
+    # that only surfaces later as a confusing MN install failure. 'simple' isolation is a plain
+    # chroot -- reliable for these RPM builds -- and sidesteps the nspawn cgroup race entirely.
+    $text .= "config_opts['isolation'] = 'simple'\n";
+    return $text;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 mock_build_owner
+
+    Descriptions: Report the uid and gid mock builds as, from mock's own
+                  configuration loader. The loader resolves include() and
+                  the assignments around it as a build does.
+
+    Arguments:
+        $chroot    - the name passed to mock -r
+        $configdir - the mock configuration directory; mock's default when undef
+
+    Returns: ($uid, $gid). With no chrootuid, $uid is the caller, as in mock:
+             as root, the user that SUDO_UID, USERHELPER_UID or PKEXEC_UID
+             names. $gid is undef when the loader reports none.
+
+=cut
+
+#-------------------------------------------------------------------------------
+my $MOCK_OWNER_LOADER = <<'PYTHON';
+import sys
+import os
+try:
+    from mockbuild.config import MOCKCONFDIR, load_config
+    from mockbuild.uid import setup_uid_manager
+except ImportError:
+    sys.exit('mock is not installed: cannot import mockbuild.config')
+args = (sys.argv[2] or MOCKCONFDIR, sys.argv[1])
+if os.geteuid() == 0:
+    # As mock main(): load the configuration as the user that sudo names.
+    opts = setup_uid_manager().run_in_subprocess_without_privileges(load_config, *args)
+else:
+    opts = load_config(*args)
+print(opts['chrootuid'], opts.get('chrootgid', ''))
+PYTHON
+
+sub mock_build_owner {
+    my ($chroot, $configdir) = @_;
+    open my $pipe, '-|', 'python3', '-c', $MOCK_OWNER_LOADER, $chroot, $configdir // ''
+        or die "Cannot run python3 to load the mock configuration $chroot: $!\n";
+    my $out = do { local $/; <$pipe> } // '';
+    close $pipe or die "mock cannot load the configuration $chroot\n";
+    my ($uid, $gid) = $out =~ /\A(\d+) (\d*)\n\z/
+        or die "mock gives no chrootuid for $chroot\n";
+    return ($uid, length $gid ? $gid : undef);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 prepare_mock_resultdirs
+
+    Descriptions: Give the --resultdir directories, and the files a previous
+                  build left in them, to the uid and gid mock builds as.
+                  mock writes its logs and packages there as chrootuid. A
+                  root build that stopped part way leaves root-owned 0644
+                  files that a non-root build cannot append to or replace.
+
+    Arguments:
+        $chroot    - the name passed to mock -r
+        $configdir - the mock configuration directory; mock's default when undef
+        @dirs      - the result directories, created when missing
+
+    Returns: nothing. Dies when a chown fails. The parent directories
+             that this sub creates get mode 0755.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prepare_mock_resultdirs {
+    my ($chroot, $configdir, @dirs) = @_;
+    my ($uid, $gid) = mock_build_owner($chroot, $configdir);
+    my %resultdir = map { $_ => 1 } @dirs;
+    # make_path applies the umask, and mock must pass through the new parents.
+    for my $parent (grep { !$resultdir{$_} } make_path(@dirs)) {
+        chmod 0755, $parent or die "Cannot make $parent traversable: $!\n";
+    }
+    return if $uid == $>;
+    $gid //= -1;
+    for my $dir (@dirs) {
+        opendir(my $dh, $dir) or die "Cannot read $dir: $!\n";
+        my @files = grep { -f $_ && !-l $_ } map { "$dir/$_" } readdir $dh;
+        closedir $dh;
+        for my $path ($dir, @files) {
+            chown($uid, $gid, $path) == 1
+                or die "FATAL: cannot give $path to uid $uid: $!\n";
+        }
+        # mock writes the packages as chrootuid:chrootgid.
+        chmod 0775, $dir;
+    }
+}
+

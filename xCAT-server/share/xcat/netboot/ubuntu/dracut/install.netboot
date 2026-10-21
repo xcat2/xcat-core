@@ -1,6 +1,6 @@
 #!/bin/sh
 echo $drivers
-dracut_install wget tar cpio gzip dash modprobe touch echo cut wc xz
+dracut_install wget tar cpio gzip dash modprobe touch echo cut wc xz sha256sum
 dracut_install grep hostname awk egrep dirname expr ip sed tr cat
 dracut_install mount.nfs
 inst "$moddir/xcatroot" "/sbin/xcatroot"

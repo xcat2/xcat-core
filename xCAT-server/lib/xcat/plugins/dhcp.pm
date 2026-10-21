@@ -31,6 +31,7 @@ my $candoipv6 = eval {
 use Sys::Syslog;
 use IPC::Open2;
 use xCAT::Utils;
+use xCAT::HTTPUtils qw(httpport_suffix);
 use xCAT::SvrUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::DHCP::Backend;
@@ -56,7 +57,10 @@ my $omshellpid;
 my $omshell6pid;
 my $statements;    #Hold custom statements to be slipped into host declarations
 my $localonly;     # flag for running only on local server - needs to be global
-my $callback;
+# Package-scoped rather than file-lexical so a test can put its own collector in
+# place of the caller's response handler.
+our $callback;
+our $kea_ddns_key_path = '/etc/xcat/ddns.key';
 my $restartdhcp;
 my $restartdhcp6;
 my $sitenameservers;
@@ -230,6 +234,67 @@ sub _omapi_next_server_statement
     return 'next-server ' . $server . ';';
 }
 
+# dhcpd must load the iPXE feature options of an upgraded configuration before it gets a subnet or
+# an OMAPI host statement that tests them. The marker outlives a run that stops before dhcpd loads
+# them, so the next run restarts dhcpd before it changes a host.
+sub _isc_declare_ipxe_features
+{
+    my ($conf, $path) = @_;
+
+    my $pending = "$path.ipxe-restart";
+    my ($added, $why) = xCAT::DHCP::BootPolicy->isc_declare_ipxe_features($conf);
+    return "Unable to add the iPXE feature options to $path: $why. Run makedhcp -n." if $why;
+    if ($added) {
+        my $fh;
+        unless (open($fh, '>', $pending) and close($fh)) {
+            return "Unable to add the iPXE feature options to $path: cannot create $pending: $!";
+        }
+        unless (open($fh, '>', $path) and print($fh @$conf) and close($fh)) {
+            return "Unable to add the iPXE feature options to $path: $!";
+        }
+    }
+    return unless -e $pending;
+    return "Unable to restart the DHCP server after adding the iPXE feature options to $path"
+      if xCAT::Utils->restartservice("dhcp");
+    unlink($pending);
+    return;
+}
+
+# An external dhcpd keeps a configuration that makedhcp does not write, and OMAPI removes a host before
+# it adds it again. The netboot=ipxe nodes stay unchanged unless that dhcpd keeps a host that tests the
+# iPXE feature options: a second omshell reads it back, as only the dhcpd can return its address.
+sub _isc_external_ipxe_check
+{
+    my ($nodes, $nrhash, $settings, $secret) = @_;
+
+    my $server = $::XCATSITEVALS{externaldhcpservers};
+    return ({}) unless $server;
+    my @ipxe = grep { ((($nrhash->{$_} || [])->[0] || {})->{netboot} // '') eq 'ipxe' } @$nodes;
+    return ({}) unless @ipxe;
+
+    # A host of its own for each run, as other xCAT servers can check the same dhcpd at the same time.
+    # No cleanup open before the create: the omshell of Ubuntu 20.04 and 22.04 can hang on a failed open.
+    my $id = sprintf('%04x%06x', $$ & 0xffff, int(rand(0x1000000)));
+    my $name = "xcat-ipxe-check-$id";
+    my $mac = join ':', '02', unpack('(A2)5', substr($id, 0, 10));
+    my $test = join ' and ', map { /^option (\S+) code / ? "exists $1" : () }
+      @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() };
+    my $connect = xCAT::DHCP::OmapiPolicy->omshell_preamble($settings, secret => $secret, server => $server) . "connect\n";
+    my @created = _run_omshell(
+        $connect . "new host\nset name = \"$name\"\nset hardware-address = $mac\nset hardware-type = 1\n"
+          . "set statements = \"if $test { filename = \\\"\\\"; }\"\ncreate\nclose\n",
+        $settings);
+    my @kept = _run_omshell($connect . "new host\nset name = \"$name\"\nopen\nremove\nclose\n", $settings);
+    return ({}) if grep { /^hardware-address = \Q$mac\E$/ } @kept;
+
+    my $why = (grep { /parse error/i } @created)
+      ? "does not declare the iPXE feature options that the host statements of netboot=ipxe nodes test"
+      : "did not confirm a check of the iPXE feature options";
+    return ({ map { $_ => 1 } @ipxe },
+        "The DHCP server $server $why, so makedhcp leaves the reservations of these nodes unchanged: @ipxe. "
+          . "Declare the gpxe options of a makedhcp -n configuration on that server.");
+}
+
 sub _isc_static_host_fallback
 {
     return _ubuntu_isc_omapi_limited() && !$::XCATSITEVALS{externaldhcpservers};
@@ -308,7 +373,10 @@ sub _node_host_statements
 {
     my ($node, $statements) = @_;
 
-    return 'ddns-hostname \"' . $node . '\"; send host-name \"'
+    # "option host-name", not "send host-name": `send` is what a dhcpd *client*
+    # config uses and never reaches option 12 on a server. Genesis and the
+    # installers read option 12, and the Kea side has always sent it.
+    return 'ddns-hostname \"' . $node . '\"; option host-name \"'
       . $node . '\";' . ($statements || '');
 }
 
@@ -958,7 +1026,8 @@ sub _run_omshell
     print $in $omcmds;
     close($in);
 
-    my @output;
+    # A line read waits for a newline, and omshell writes its prompt without one.
+    my $output = '';
     my $selector = IO::Select->new($out, $err);
     my $deadline = time + 10;
     while ($selector->count) {
@@ -969,9 +1038,9 @@ sub _run_omshell
         }
 
         foreach my $fh ($selector->can_read($remaining)) {
-            my $line = <$fh>;
-            if (defined $line) {
-                push @output, $line if fileno($fh) == fileno($out);
+            my $chunk;
+            if (sysread($fh, $chunk, 4096)) {
+                $output .= $chunk if fileno($fh) == fileno($out);
             } else {
                 $selector->remove($fh);
                 close($fh);
@@ -988,7 +1057,7 @@ sub _run_omshell
         waitpid($pid, 0);
     }
 
-    return @output;
+    return split /^/m, $output;
 }
 
 sub _parse_omshell_host_output
@@ -1435,12 +1504,7 @@ sub _infiniband_twin_delete_commands
     my $addresscommands;
 
     if ($cleanup_supported && _is_infiniband_interface($mgtifname)) {
-        $addresscommands = "new host\n"
-          . "set hardware-address = $ibmac\n"
-          . "set hardware-type = 32\n"
-          . "open\n"
-          . "remove\n"
-          . "close\n";
+        $addresscommands = _hardware_address_delete_commands($ibmac, 32);
     }
 
     return ($namecommands, $addresscommands);
@@ -1481,6 +1545,58 @@ sub _infiniband_twin_update_commands
     return ($namecommands, $addresscommands, $createcommands);
 }
 
+sub _isc_omapi_host_commands
+{
+    my ($hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
+        $has_infiniband_identity) = @_;
+    my ($ibnamecommands, $ibaddresscommands, $ibcreatecommands) =
+      _infiniband_twin_update_commands(
+        $hostname, $mac, $hardwaretype, $mgtifname, $ip, $statements,
+        _omapi_pre_create_cleanup_supported(), $has_infiniband_identity
+      );
+
+    my $commands = '';
+    if (_omapi_pre_create_cleanup_supported()) {
+        $commands .= "new host\nset name = \"$hostname\"\nopen\nremove\nclose\n";    #Find and destroy conflict name
+        $commands .= $ibnamecommands if ($ibnamecommands);
+    }
+    if ($ip and $ip ne 'DENIED' and _omapi_ip_lookup_supported()) {
+        $commands .= "new host\nset ip-address = $ip\nopen\nremove\nclose\n";    #find and destroy ip conflict
+    }
+    if (_omapi_pre_create_cleanup_supported()) {
+        $commands .= _hardware_address_delete_commands($mac, $hardwaretype);
+        $commands .= $ibaddresscommands if ($ibaddresscommands);
+    }
+    $commands .= "new host\n"
+      . "set name = \"$hostname\"\n"
+      . "set hardware-address = $mac\n"
+      . "set dhcp-client-identifier = $mac\n"
+      . "set hardware-type = $hardwaretype\n";
+    if ($ip eq "DENIED") { #Blacklist this mac to preclude confusion, give best shot at things working
+        $commands .= "set statements = \"deny booting;\"\n";
+    } else {
+        $commands .= "set ip-address = $ip\n" if ($ip);
+        $commands .= "set statements = \"$statements\"\n";
+    }
+    $commands .= "create\nclose\n";
+    $commands .= $ibcreatecommands if ($ibcreatecommands);
+
+    return $commands;
+}
+
+# omshell reads 1023 bytes of a line, and the commands remove the old host before they create it again.
+sub _send_isc_omapi_host
+{
+    my ($omshell, $node, $commands) = @_;
+
+    my ($long) = grep { length($_) > 1023 } $commands =~ /([^\n]*\n)/g;
+    return "$node: an omshell command for its DHCP host is " . length($long)
+      . " bytes, over the 1023 bytes that omshell reads in a line, so makedhcp leaves the host unchanged"
+      if defined $long;
+    print $omshell $commands;
+    return;
+}
+
 
 sub addnode
 {
@@ -1505,7 +1621,7 @@ sub addnode
      if ($hports[0]){
          $httpport=$hports[0];
      }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     if ($chainents and $chainents->{$node}) {
         $chainent = $chainents->{$node}->[0];
@@ -1522,67 +1638,17 @@ sub addnode
     if ($nrhash)
     {
         $nrent = $nrhash->{$node}->[0];
-        if ($nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>')
-        {
-            #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
-            #the value of inet_ntoa() will be "undef", which will cause fatal error
-            my $tmp_name = inet_aton($nrent->{tftpserver});
-            unless ($tmp_name) {
-
-                #tell the reason to the user
-                $callback->(
-                    { error => ["Unable to resolve the tftpserver for node"], errorcode => [1] }
-                );
-                return;
-            }
-            $tftpserver = inet_ntoa($tmp_name);
-            $nxtsrv     = $tftpserver;
-            $lstatements = _omapi_next_server_statement($tftpserver) . $statements;
-        }
-        else
-        {
-            $guess_next_server = 1;
-        }
-        if ($nrent->{netboot} and ($nrent->{netboot} eq 'petitboot' or $nrent->{netboot} eq 'onie' or
-            xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent))) {
-            if ($guess_next_server) {
-                my $node_server = undef;
-                if ($nrent->{xcatmaster}) {
-                    $node_server = $nrent->{xcatmaster};
-                }
-                unless ($node_server) {
-                    my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
-                    unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1]; }
-                    elsif ($nxtsrvd[0] == 1) { $callback->({ error => [ $nxtsrvd[1] ] }); }
-                    else {
-                        $callback->({ error => ["Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
-                        return;
-                    }
-                } else {
-                    my $tmp_server = inet_aton($node_server);
-                    unless ($tmp_server) {
-                        $callback->({ error => ["Unable to resolve the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
-                        return;
-                    }
-                    $nxtsrv = inet_ntoa($tmp_server);
-                }
-                unless ($nxtsrv) {
-                    $callback->({ error => ["Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
-                    return;
-                }
-                $guess_next_server = 0;
-            }
-        }
-
-        #else {
-        # $nrent = $nrtab->getNodeAttribs($node,['servicenode']);
-        # if ($nrent and $nrent->{servicenode}) {
-        #  $statements = 'next-server  = \"'.inet_ntoa(inet_aton($nrent->{servicenode})).'\";'.$statements;
-        # }
-        #}
     }
-    else
-    {
+
+    # Which server this node is sent to. Both backends read the same answer out
+    # of next_server_for_node; an undefined tftpserver is the one case nothing
+    # here can name, and the subnet's own value carries it.
+    ( $nxtsrv, $tftpserver ) = next_server_for_node( $node, $nrent, $ntent );
+    return unless defined $nxtsrv;
+    if ( defined $tftpserver ) {
+        $lstatements = _omapi_next_server_statement($tftpserver) . $statements;
+    }
+    else {
         $guess_next_server = 1;
     }
     my $native_statement = '';
@@ -1702,33 +1768,20 @@ sub addnode
             }
         }
         my $douefi = check_uefi_support($ntent);
-        if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'xnba' and $lstatements !~ /filename/) {
-            if (-f "$tftpdir/xcat/xnba.kpxe") {
-                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-                    $lstatements = 'if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } ' . $lstatements;
-                } else {
 
-                    # If proxydhcp daemon is enabled for windows deployment, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
-                    if (($douefi == 2 and $chainent->{currstate} =~ /^install/) or $chainent->{currstate} =~ /^winshell/) {
-                        if (proxydhcp($nrent)) { #proxy dhcp required in uefi invocation
-                            $lstatements = 'if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }' . $lstatements; #If proxydhcp daemon is enable, use it.
-                        } else {
-                            $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . $portsuffix  . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
-                        }
-                    } elsif ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
-                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://' . $nxtsrv . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option user-class-identifier = \"xNBA\" and (option client-architecture = 00:09 or option client-architecture = 00:07) { filename = \"http://' . $nxtsrv . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node . '.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
-                    } else {
-                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://' . $nxtsrv . $portsuffix . '/tftpboot/xcat/xnba/nodes/' . $node . '\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }' . $lstatements; #Only PXE compliant clients should ever receive xNBA
-                    }
-                }
-            }    #TODO: warn when windows
-        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
-            if (-f "$tftpdir/xcat/xnba.kpxe") {
-                if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } ' . $lstatements;
-                } else {
-                    $lstatements = 'if option vendor-class-identifier = \"ScaleMP\" { filename = \"vsmp/pxelinux.0\"; } else { filename = \"pxelinux.0\"; }' . $lstatements;
-                }
+        if ($nrent and $nrent->{netboot} and $nrent->{netboot} =~ /^(?:ipxe|xnba|pxe)$/) {
+            if ($lstatements !~ /filename/) {
+                $lstatements = xCAT::DHCP::BootPolicy->isc_node_boot_statements(
+                    netboot        => $nrent->{netboot},
+                    loader_present => -f "$tftpdir/xcat/xnba.kpxe",
+                    iscsi          => $doiscsi,
+                    currstate      => $chainent ? $chainent->{currstate} : undef,
+                    uefi           => $douefi,
+                    proxydhcp      => sub { proxydhcp($nrent) },
+                    node           => $node,
+                    next_server    => $nxtsrv,
+                    portsuffix     => $portsuffix,
+                ) . $lstatements;
             }
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'yaboot') {
             $lstatements = 'filename = \"/yb/node/yaboot-' . $node . '\";' . $lstatements;
@@ -1809,57 +1862,19 @@ sub addnode
             if ($ip ne "DENIED") {
                 $lstatements = _node_host_statements($node, $lstatements);
             }
-            my ($ibnamecommands, $ibaddresscommands, $ibcreatecommands) =
-              _infiniband_twin_update_commands(
-                $hostname, $mac, $hardwaretype,
-                $client_nethash{$node}{mgtifname}, $ip, $lstatements,
-                _omapi_pre_create_cleanup_supported(),
-                $has_infiniband_identity
-              );
-
-            #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
-            if (_omapi_pre_create_cleanup_supported()) {
-                print $omshell "new host\n";
-                print $omshell
-                  "set name = \"$hostname\"\n";    #Find and destroy conflict name
-                print $omshell "open\n";
-                print $omshell "remove\n";
-                print $omshell "close\n";
-                print $omshell $ibnamecommands if ($ibnamecommands);
+            my $error = _send_isc_omapi_host(
+                $omshell, $node,
+                _isc_omapi_host_commands(
+                    $hostname, $mac, $hardwaretype,
+                    $client_nethash{$node}{mgtifname}, $ip, $lstatements,
+                    $has_infiniband_identity
+                )
+            );
+            if ($error) {
+                $callback->({ error => [$error], errorcode => [1] });
+                $count = $count + 2;
+                next;
             }
-            if ($ip and $ip ne 'DENIED' and _omapi_ip_lookup_supported()) {
-                print $omshell "new host\n";
-                print $omshell "set ip-address = $ip\n"; #find and destroy ip conflict
-                print $omshell "open\n";
-                print $omshell "remove\n";
-                print $omshell "close\n";
-            }
-            if (_omapi_pre_create_cleanup_supported()) {
-                print $omshell
-                  _hardware_address_delete_commands($mac, $hardwaretype);
-                print $omshell $ibaddresscommands if ($ibaddresscommands);
-            }
-            print $omshell "new host\n";
-            print $omshell "set name = \"$hostname\"\n";
-            print $omshell "set hardware-address = " . $mac . "\n";
-            print $omshell "set dhcp-client-identifier = " . $mac . "\n";
-            print $omshell "set hardware-type = $hardwaretype\n";
-
-            if ($ip eq "DENIED")
-            { #Blacklist this mac to preclude confusion, give best shot at things working
-                print $omshell "set statements = \"deny booting;\"\n";
-            }
-            else
-            {
-                if ($ip) {
-                    print $omshell "set ip-address = $ip\n";
-                }
-                print $omshell "set statements = \"$lstatements\"\n";
-            }
-
-            print $omshell "create\n";
-            print $omshell "close\n";
-            print $omshell $ibcreatecommands if ($ibcreatecommands);
             unless ($::XCATSITEVALS{externaldhcpservers}) {
                 unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
                 {
@@ -2415,6 +2430,13 @@ sub process_request
           . "Install '$from' or set site.dhcpbackend to silence this.";
         xCAT::MsgUtils->message("W", $rsp, $callback);
     }
+    if ( $opt{n} || $opt{a} ) {
+        foreach my $warning ( xCAT::DHCP::BootPolicy->upstream_loader_warnings( tftpdir => $tftpdir ) ) {
+            my $rsp = {};
+            $rsp->{data}->[0] = $warning;
+            xCAT::MsgUtils->message("W", $rsp, $callback);
+        }
+    }
     if ( $backend->name eq 'kea' && $statements ) {
         my $rsp = {};
         $rsp->{data}->[0] = "The -s option contains ISC DHCP statement text and is not supported with the Kea DHCP backend.";
@@ -2441,6 +2463,17 @@ sub process_request
         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: it is a service node, but not dhcpserver. Do nothing");
         print "Do nothing\n";
         return;
+    }
+
+    if ($backend->name eq 'isc' && xCAT::Utils->isLinux()
+        && !($opt{q} && _isc_static_host_fallback())) {
+        my $settings = _omapi_settings();
+        return unless $settings;
+        my $error = xCAT::DHCP::OmapiRunner->key_algorithm_error($settings);
+        if ($error) {
+            $callback->({ error => [$error], errorcode => [1] });
+            return;
+        }
     }
 
     # if not -n,  dhcp service needs to be running
@@ -2679,6 +2712,15 @@ sub process_request
             $restartdhcp = 1;
             @dhcpconf    = ();
         }
+        # newconfig() declares the options in the configuration it writes for a missing or foreign file.
+        if ($^O ne 'aix' and @dhcpconf) {
+            my $error = _isc_declare_ipxe_features(\@dhcpconf, $dhcpconffile);
+            if ($error) {
+                # OMAPI removes a host before it adds it again, so stop before any host update.
+                $callback->({ error => [$error], errorcode => [1] });
+                return;
+            }
+        }
         if ($dhcp6conffile and -e $dhcp6conffile) {
             open($rconf, $dhcp6conffile);
             while (<$rconf>) { push @dhcp6conf, $_; }
@@ -2809,15 +2851,15 @@ sub process_request
             foreach $syspath ("/etc/sysconfig", "/etc/default") {
 
                 my $generatedpath = "$syspath/$dhcpver";
-                my $dhcpd_key     = "DHCPDARGS";
+                my @dhcpd_keys    = ("DHCPDARGS");
 
                 # For SLES11+ and RHEL7+ Operating system releases, the
                 # dhcpd/dhcpd6 configuration is stored in the same file
                 if (dhcpd_sysconfig_uses_interface_key($os)) {
 
-                    $dhcpd_key = "DHCPD_INTERFACE";
+                    @dhcpd_keys = ("DHCPD_INTERFACE");
                     if ($usingipv6 and $dhcpver eq "dhcpd6") {
-                        $dhcpd_key     = "DHCPD6_INTERFACE";
+                        @dhcpd_keys    = ("DHCPD6_INTERFACE");
                         $generatedpath = "$syspath/dhcpd";
                     }
                 }
@@ -2840,35 +2882,19 @@ sub process_request
                         delete($missingfiles{"dhcpd6"});
                         delete($missingfiles{"dhcp3-server"});
 
-                        $dhcpd_key = "INTERFACES";
+                        @dhcpd_keys = debian_sysconfig_interface_keys(
+                            isc_dhcp_installed_version());
                     }
                     delete($missingfiles{$dhcpver});
 
-                    open DHCPD_FD, "$generatedpath";
                     my $syscfg_dhcpd = "";
-                    my $found        = 0;
-
-                    my $ifarg = "$dhcpd_key=\"";
-                    foreach (keys %activenics) {
-                        if (/!remote!/) { next; }
-                        $ifarg .= " $_";
+                    if (open(DHCPD_FD, "$generatedpath")) {
+                        local $/;
+                        $syscfg_dhcpd = <DHCPD_FD>;
+                        close DHCPD_FD;
                     }
-                    $ifarg =~ s/\=\" /\=\"/;
-                    $ifarg .= "\"\n";
-
-                    while (<DHCPD_FD>) {
-                        if ($_ =~ m/^$dhcpd_key/) {
-                            $found = 1;
-                            $syscfg_dhcpd .= $ifarg;
-                        } else {
-                            $syscfg_dhcpd .= $_;
-                        }
-                    }
-
-                    if ($found eq 0) {
-                        $syscfg_dhcpd .= $ifarg;
-                    }
-                    close DHCPD_FD;
+                    $syscfg_dhcpd = _sysconfig_interfaces_content(
+                        $syscfg_dhcpd, \@dhcpd_keys, [ keys %activenics ]);
 
                     # write out the new file with the interfaces defined
                     open DBG_FD, '>', "$generatedpath";
@@ -2896,10 +2922,22 @@ sub process_request
         }
     }
 
+    my $newconf;
     unless ($dhcpconf[0])
     {    #populate an empty config with some starter data...
         $restartdhcp = 1;
+        $newconf     = 1;
         newconfig();
+    }
+
+    # Until dhcpd restarts, it can run without the options of this new configuration: see _isc_declare_ipxe_features.
+    my $pending = "$dhcpconffile.ipxe-restart";
+    if ($newconf and $^O ne 'aix' and not $::XCATSITEVALS{externaldhcpservers}) {
+        my $fh;
+        unless (open($fh, '>', $pending) and close($fh)) {
+            $callback->({ error => ["Unable to write a new configuration to $dhcpconffile: cannot create $pending: $!"], errorcode => [1] });
+            return;
+        }
     }
     if ($usingipv6 and not $dhcp6conf[0]) {
         $restartdhcp6 = 1;
@@ -3079,6 +3117,7 @@ sub process_request
             }
         }
 
+        my ($omapi_settings, $omapi_secret);
         if ($^O ne 'aix' and !_isc_static_host_fallback())
         {
             my $settings = _omapi_settings();
@@ -3091,6 +3130,22 @@ sub process_request
                 syslog("local4|err", "Unable to access omapi key from passwd table, unable to update DHCP configuration");
                 return;
             }    # TODO sane err
+            ($omapi_settings, $omapi_secret) = ($settings, $ent->{password});
+
+            # OMAPI replaces each host on the running dhcpd, so dhcpd first loads the configuration this run built.
+            if ($newconf and @{ $req->{node} } and not $::XCATSITEVALS{externaldhcpservers}) {
+                # writeout() empties the configuration in memory, which the final writeout() still needs.
+                my @conf  = @dhcpconf;
+                my @conf6 = @dhcp6conf;
+                writeout();
+                @dhcpconf  = @conf;
+                @dhcp6conf = @conf6;
+                if (restart_dhcpd()) {
+                    $callback->({ error => ["Unable to restart the DHCP server with the new configuration in $dhcpconffile"], errorcode => [1] });
+                    return;
+                }
+                unlink($pending);
+            }
 
             #Have nodes to update
             #open2($omshellout,$omshell,"/usr/bin/omshell");
@@ -3155,6 +3210,11 @@ sub process_request
             eval { _isc_ipoib_external_prune(); };
             $callback->({ error => [$@], errorcode => [1] }) if $@;
         }
+        my ($unchanged, $external_error) = ({});
+        if ($omapi_settings and not $opt{d}) {
+            ($unchanged, $external_error) = _isc_external_ipxe_check($req->{node}, $nrhash, $omapi_settings, $omapi_secret);
+            $callback->({ error => [$external_error], errorcode => [1] }) if $external_error;
+        }
         foreach (@{ $req->{node} })
         {
             if ($opt{d})
@@ -3185,7 +3245,7 @@ sub process_request
                 }
                 my $previous = $^O ne 'aix' && !$::XCATSITEVALS{externaldhcpservers}
                     ? _isc_ipoib_hosts($_, \@dhcpconf) : [];
-                if ($boot_local) {
+                if ($boot_local && !$unchanged->{$_}) {
                     my $allowed = eval { $^O eq 'aix' || _isc_ipoib_boot_allowed($_); };
                     $callback->({ error => ["$_: $@"], errorcode => [1] }) if $@;
                     addnode $_ if $allowed;
@@ -3201,7 +3261,7 @@ sub process_request
                     };
                     $callback->({ error => ["$_: $@"], errorcode => [1] }) if $@;
                 }
-                if ($usingipv6 && $boot_local) {
+                if ($usingipv6 && $boot_local && !$unchanged->{$_}) {
                     addnode6 $_;
                 }
             }
@@ -3217,30 +3277,7 @@ sub process_request
             restart_dhcpd_aix();
         }
         else {
-            if ($distro =~ /ubuntu.*/ || $distro =~ /debian.*/i)
-            {
-                if (-e '/etc/dhcp/dhcpd.conf') {
-                    system("chmod a+r /etc/dhcp/dhcpd.conf");
-
-                    #system("/etc/init.d/isc-dhcp-server restart");
-                }
-                else {
-                    #ubuntu config
-                    system("chmod a+r /etc/dhcp3/dhcpd.conf");
-
-                    #system("/etc/init.d/dhcp3-server restart");
-                }
-            }
-
-            #else
-            #{
-            #    system("/etc/init.d/dhcpd restart");
-            #    # should not chkconfig dhcpd on every makedhcp invoation
-            #    # it is not appropriate and will cause problem for HAMN
-            #    # do it in xcatconfig instead
-            #    #system("chkconfig dhcpd on");
-            #}
-            xCAT::Utils->restartservice("dhcp");
+            unlink($pending) unless restart_dhcpd();
             print "xx";
         }
     }
@@ -3293,19 +3330,14 @@ sub kea_process_request
     }
     my $using_dhcp6 = @{ $intent6->{subnets} || [] } ? 1 : 0;
     my $ddns_intent = kea_build_ddns_intent();
-    my $using_ddns = $ddns_intent && !$ddns_intent->{error} ? 1 : 0;
     if ($ddns_intent && $ddns_intent->{error}) {
         $callback->({ error => [ $ddns_intent->{error} ], errorcode => [1] });
         flock($dhcplockfd, LOCK_UN);
         return;
     }
-    if ($using_ddns) {
-        my $dhcp_ddns = kea_dhcp_ddns_section();
-        $intent4->{'dhcp-ddns'} = $dhcp_ddns;
-        kea_apply_ddns_behavior($intent4);
-        $intent6->{'dhcp-ddns'} = $dhcp_ddns if $using_dhcp6;
-        kea_apply_ddns_behavior($intent6) if $using_dhcp6;
-    }
+    my ( $using_ddns, $ddns_warning ) =
+      kea_apply_ddns_intent($ddns_intent, $intent4, $intent6, $using_dhcp6);
+    $callback->({ warning => [$ddns_warning] }) if $ddns_warning;
 
     if ($opt->{n}) {
         my $result = $backend->write_dhcp4_config($intent4, backup_existing => 1);
@@ -3352,6 +3384,7 @@ sub kea_process_request
         flock($dhcplockfd, LOCK_UN);
         return;
     }
+    my $ddns_added = $using_ddns && !$loaded4->{Dhcp4}{'dhcp-ddns'};
     if (!@{ $loaded4->{Dhcp4}{subnet4} || [] }) {
         my $result = $backend->write_dhcp4_config($intent4);
         if ($result->{error}) {
@@ -3385,6 +3418,15 @@ sub kea_process_request
         }
     }
 
+    if ($ddns_added) {
+        my $added = kea_add_ddns_to_loaded($backend, $ddns_intent, $intent4, $loaded4, $intent6, $loaded6, $using_dhcp6);
+        if ($added->{error}) {
+            $callback->({ error => [ $added->{error} ], errorcode => [1] });
+            flock($dhcplockfd, LOCK_UN);
+            return;
+        }
+    }
+
     my $nodes = kea_expand_request_nodes($req, $opt);
     unless ($nodes) {
         flock($dhcplockfd, LOCK_UN);
@@ -3402,17 +3444,25 @@ sub kea_process_request
         flock($dhcplockfd, LOCK_UN);
         return;
     }
+    my $option_defs_added = 0;
     if ($opt->{d}) {
         foreach my $match (@{ kea_reservation_matches_for_nodes($nodes) }) {
             push @deleted4, @{ $backend->delete_reservations($loaded4, $match) };
             push @deleted6, @{ $backend->delete_reservations($loaded6, $match) } if $loaded6;
         }
-        $client_classes_changed = kea_remove_xnba_client_classes($loaded4, $nodes);
+        $client_classes_changed = kea_remove_node_client_classes($loaded4, $nodes);
     } else {
+        # An upgrade keeps the option definitions of an older makedhcp -n.
+        ( $option_defs_added, my $defs_error ) = xCAT::DHCP::BootPolicy->kea_declare_ipxe_features($loaded4->{Dhcp4});
+        if ($defs_error) {
+            $callback->({ error => [$defs_error], errorcode => [1] });
+            flock($dhcplockfd, LOCK_UN);
+            return;
+        }
         my @accepted;
         $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes, \@deleted4, \@accepted);
         $backend->upsert_reservations($loaded4, $reservations4);
-        $client_classes_changed = kea_sync_xnba_client_classes($loaded4, \@accepted);
+        $client_classes_changed = kea_sync_node_client_classes($loaded4, \@accepted);
         $client_classes_changed = 1 if _kea_ipoib_matching($loaded4, $reservations4);
         if ($loaded6) {
             $reservations6 = kea_build_node_reservations6($backend, $loaded6, \@accepted);
@@ -3453,8 +3503,8 @@ sub kea_process_request
         }
     }
 
-    unless ($live_ok && !$client_classes_changed) {
-        my $restart = $backend->restart_services(ipv6 => $using_dhcp6, ctrl_agent => kea_control_agent_enabled(), ddns => $using_ddns);
+    unless ($live_ok && !$client_classes_changed && !$ddns_added && !$option_defs_added) {
+        my $restart = $backend->restart_services(ipv6 => $using_dhcp6, ctrl_agent => kea_control_agent_enabled(), ddns => $using_ddns, enable => $ddns_added);
         if ($restart->{error}) {
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
@@ -3476,7 +3526,7 @@ sub kea_build_dhcp4_intent
     if ($hports[0]) {
         $httpport = $hports[0];
     }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     my $nettab = xCAT::Table->new("networks");
     return { error => "Unable to open networks table, please run makenetworks" } unless $nettab;
@@ -3525,9 +3575,10 @@ sub kea_build_dhcp4_intent
         my $interface = $netif;
         my $remote = 0;
         if ($interface =~ /!remote!\S*/) {
+            # A relayed network has no local NIC, so site.dhcpinterfaces never names it.
+            # Without a subnet4, subnet_id_for_ip finds nothing and no reservation is written.
             $remote = 1;
             $interface =~ s/!remote!\s*(.*)$/$1/;
-            next unless $dhcp_interfaces{'!remote!'};
         } else {
             next unless $dhcp_interfaces{$interface};
         }
@@ -3549,18 +3600,35 @@ sub kea_build_dhcp4_intent
         subnets        => \@subnets,
     };
 
+    # The daemon gets its own control socket whether or not the Control Agent is
+    # asked for: the agent is a REST front end onto this socket, not the thing
+    # that creates it.
+    $intent->{'control-socket'} = {
+        'socket-type' => 'unix',
+        'socket-name' => $backend->control_socket_path('kea4-ctrl-socket'),
+    };
+
+    my @hooks;
     if (kea_control_agent_enabled()) {
-        $intent->{'control-socket'} = {
-            'socket-type' => 'unix',
-            'socket-name' => $backend->control_socket_path('kea4-ctrl-socket'),
-        };
         my $hook = $backend->host_cmds_hook_path();
         if ($hook) {
-            $intent->{'hooks-libraries'} = [ { library => $hook } ];
+            push @hooks, { library => $hook };
         } else {
             $callback->({ warning => ["Kea Control Agent was requested, but libdhcp_host_cmds.so was not found. Host reservations will use JSON render and reload."] });
         }
     }
+
+    # ISC serves a BOOTP-only client from "range dynamic-bootp"; on Kea a hook
+    # does it, and without the hook such clients are never answered at all --
+    # they time out for ever with nothing on the wire to say why.
+    my $bootp_hook = $backend->bootp_hook_path();
+    if ($bootp_hook) {
+        push @hooks, { library => $bootp_hook };
+    } else {
+        $callback->({ warning => ["libdhcp_bootp.so was not found, so BOOTP-only clients will not be answered. Install the Kea hooks package to serve them."] });
+    }
+
+    $intent->{'hooks-libraries'} = \@hooks if @hooks;
 
     return $intent;
 }
@@ -3604,11 +3672,14 @@ sub kea_build_dhcp6_intent
         subnets              => \@subnets,
     };
 
+    # As for DHCPv4: the socket is how a reload is confirmed, so it is not
+    # conditional on the Control Agent.
+    $intent->{'control-socket'} = {
+        'socket-type' => 'unix',
+        'socket-name' => $backend->control_socket_path('kea6-ctrl-socket'),
+    };
+
     if (kea_control_agent_enabled()) {
-        $intent->{'control-socket'} = {
-            'socket-type' => 'unix',
-            'socket-name' => $backend->control_socket_path('kea6-ctrl-socket'),
-        };
         my $hook = $backend->host_cmds_hook_path();
         if ($hook) {
             $intent->{'hooks-libraries'} = [ { library => $hook } ];
@@ -3664,8 +3735,11 @@ sub kea_build_ddns_intent
     my @vnets = $nettab->getAllAttribs('net', 'mask', 'nameservers', 'ddnsdomain', 'domain');
     $nettab->close;
 
-    my ( $key_algorithm, $key_secret ) = kea_ddns_key();
-    return { error => "Unable to find DDNS key material for Kea D2. Run makedns with dnshandler=ddns first." } unless $key_secret;
+    # xcatconfig sets site.dnshandler=ddns on every new installation, and only makedns -n writes
+    # the key material.
+    my ( $key_algorithm, $key_secret, $key_error ) = kea_ddns_key();
+    return { error => $key_error } if $key_error;
+    return { warning => "No DDNS key material exists yet. DNS updates stay off until makedns -n runs." } unless $key_secret;
 
     my @tsig_keys = (
         {
@@ -3744,6 +3818,59 @@ sub kea_dhcp_ddns_section
     };
 }
 
+sub kea_apply_ddns_intent
+{
+    my ( $ddns_intent, $intent4, $intent6, $using_dhcp6 ) = @_;
+
+    return ( 0, undef ) unless $ddns_intent;
+    return ( 0, $ddns_intent->{warning} ) if $ddns_intent->{warning};
+
+    my $dhcp_ddns = kea_dhcp_ddns_section();
+    $intent4->{'dhcp-ddns'} = $dhcp_ddns;
+    kea_apply_ddns_behavior($intent4);
+    if ($using_dhcp6) {
+        $intent6->{'dhcp-ddns'} = $dhcp_ddns;
+        kea_apply_ddns_behavior($intent6);
+    }
+    return ( 1, undef );
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   kea_add_ddns_to_loaded
+
+    Descriptions:
+        Add the D2 connection to the loaded Kea configurations and write the D2
+        and Control Agent configurations.  makedhcp -a uses this when makedns -n
+        wrote the DDNS key after makedhcp -n.
+    Arguments:
+        $backend, $ddns_intent, $intent4, $loaded4, $intent6, $loaded6, $using_dhcp6
+    Returns:
+        {} on success, { error => $message } on failure
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub kea_add_ddns_to_loaded
+{
+    my ( $backend, $ddns_intent, $intent4, $loaded4, $intent6, $loaded6, $using_dhcp6 ) = @_;
+
+    my @fields = qw/dhcp-ddns ddns-send-updates ddns-override-no-update ddns-override-client-update ddns-qualifying-suffix ddns-update-on-renew/;
+    foreach my $field (@fields) {
+        $loaded4->{Dhcp4}{$field} = $intent4->{$field} if exists $intent4->{$field};
+        $loaded6->{Dhcp6}{$field} = $intent6->{$field} if $loaded6 && exists $intent6->{$field};
+    }
+
+    my $result = $backend->write_ddns_config($ddns_intent, backup_existing => 1);
+    return $result if $result->{error};
+
+    if (kea_control_agent_enabled()) {
+        $result = $backend->write_ctrl_agent_config({ dhcp6 => $using_dhcp6, ddns => 1 });
+        return $result if $result->{error};
+    }
+    return {};
+}
+
 sub kea_apply_ddns_behavior
 {
     my ($intent) = @_;
@@ -3779,6 +3906,124 @@ sub dhcpd_sysconfig_uses_interface_key
     return 0;
 }
 
+# The isc-dhcp-server revision at which the daemon stopped being launched with
+# $INTERFACES and started with $INTERFACESv4 / $INTERFACESv6. Not an upstream
+# ISC boundary: 20.04 and 22.04 both ship 4.4.1 and differ only in the Debian
+# revision, so the whole package version has to be compared.
+our $ISC_DHCP_SPLIT_INTERFACES_VERSION = "4.4.1-2.3";
+
+# Compare two isc-dhcp-server package versions. Not a general dpkg comparator:
+# it orders the digit runs in the upstream version and then in the Debian
+# revision, which is enough for every version isc-dhcp-server has shipped, and
+# needs no dpkg on the machine.
+sub _isc_dhcp_version_cmp
+{
+    my ($left, $right) = @_;
+
+    my @sides;
+    foreach my $version ($left, $right) {
+        $version =~ s/^\d+://;    # epoch plays no part here
+        my ($upstream, $revision) = ($version, "");
+        if ($version =~ /^(.*)-([^-]*)$/) {
+            ($upstream, $revision) = ($1, $2);
+        }
+        push @sides, [ [ $upstream =~ /(\d+)/g ], [ $revision =~ /(\d+)/g ] ];
+    }
+
+    foreach my $part (0, 1) {
+        my @l = @{ $sides[0][$part] };
+        my @r = @{ $sides[1][$part] };
+        while (@l or @r) {
+            my $lv = @l ? shift(@l) : 0;
+            my $rv = @r ? shift(@r) : 0;
+            return $lv <=> $rv if ($lv != $rv);
+        }
+    }
+
+    return 0;
+}
+
+# The version of isc-dhcp-server this machine has installed, or undef when that
+# cannot be established.
+sub isc_dhcp_installed_version
+{
+    my $version = `dpkg-query -W -f='\${Version}' isc-dhcp-server 2>/dev/null`;
+    return unless (defined($version));
+    $version =~ s/\s+//g;
+    return unless (length($version) && $version =~ /\d/);
+    return $version;
+}
+
+# Which variables /etc/default/isc-dhcp-server has to carry for dhcpd to be
+# started on the interfaces xCAT is serving. The systemd unit expands exactly one
+# of them onto the command line: $INTERFACES up to 20.04, $INTERFACESv4 from
+# 22.04, and $INTERFACESv6 for the v6 unit.
+#
+# The sysvinit script copies INTERFACES into INTERFACESv4, but nothing on a
+# systemd host runs it, so that bridge cannot be relied on.
+sub debian_sysconfig_interface_keys
+{
+    # The caller establishes the version, so what is passed here is the whole
+    # input: undefined means "could not be established", never "go and look at
+    # this machine". The result is then the same anywhere, which makes it
+    # testable.
+    my $version = shift;
+
+    # With no version to go on, write both spellings: an unset variable leaves
+    # dhcpd binding every interface, which is far worse than one no daemon reads.
+    unless (defined($version) && length($version) && $version =~ /\d/) {
+        return ("INTERFACESv4", "INTERFACESv6", "INTERFACES");
+    }
+
+    if (_isc_dhcp_version_cmp($version, $ISC_DHCP_SPLIT_INTERFACES_VERSION) >= 0) {
+        return ("INTERFACESv4", "INTERFACESv6");
+    }
+
+    return ("INTERFACES");
+}
+
+# Rewrite the daemon's default file so it names the interfaces xCAT is serving;
+# returns the new contents for the caller to write out.
+sub _sysconfig_interfaces_content
+{
+    my ($content, $keys, $nics) = @_;
+    $content = "" unless defined($content);
+    $keys = [$keys] unless (ref($keys) eq 'ARRAY');
+
+    my $iflist = "";
+    foreach my $nic (@{$nics}) {
+        next if ($nic =~ /!remote!/);
+        $iflist .= " $nic";
+    }
+    $iflist =~ s/^ //;
+
+    foreach my $key (@{$keys}) {
+        my $ifarg = "$key=\"$iflist\"\n";
+        my $out   = "";
+        my $found = 0;
+
+        foreach my $line (split /^/, $content) {
+
+            # Anchor on the assignment: INTERFACES is a prefix of INTERFACESv4
+            # and INTERFACESv6, and an unanchored match overwrites those.
+            if ($line =~ m/^\s*\Q$key\E\s*=/) {
+
+                # An earlier xCAT release could leave several assignments
+                # behind. Keep the first, drop the rest.
+                next if ($found);
+                $found = 1;
+                $out .= $ifarg;
+            } else {
+                $out .= $line;
+            }
+        }
+        $out .= $ifarg unless ($found);
+        $content = $out;
+    }
+
+    return $content;
+}
+
 sub kea_ddns_enabled
 {
     return defined($::XCATSITEVALS{dnshandler}) && $::XCATSITEVALS{dnshandler} =~ /ddns/ ? 1 : 0;
@@ -3786,8 +4031,10 @@ sub kea_ddns_enabled
 
 sub kea_ddns_key
 {
-    my $key_path = "/etc/xcat/ddns.key";
-    if (open(my $fh, '<', $key_path)) {
+    my $settings = xCAT::DHCP::OmapiPolicy->settings();
+    return (undef, undef, $settings->{error}) if $settings->{error};
+
+    if (open(my $fh, '<', $kea_ddns_key_path)) {
         local $/;
         my $contents = <$fh>;
         close($fh);
@@ -3795,11 +4042,13 @@ sub kea_ddns_key
         my ($secret)    = $contents =~ /secret\s+"([^"]+)"/;
         $algorithm ||= 'HMAC-SHA256';
         $algorithm = uc($algorithm);
+        if ($settings->{fips_mode} && $algorithm eq 'HMAC-MD5') {
+            return (undef, undef, 'The DDNS key uses HMAC-MD5 in FIPS mode. Run makedns -n to regenerate it.');
+        }
         $algorithm =~ s/^HMAC-/HMAC-/;
         return ($algorithm, $secret) if $secret;
     }
 
-    my $settings = xCAT::DHCP::OmapiPolicy->settings();
     my $passtab = xCAT::Table->new('passwd');
     my $pent = $passtab ? $passtab->getAttribs({ key => 'omapi', username => $settings->{key_name} }, ['password']) : undef;
     return (uc($settings->{algorithm}), $pent->{password}) if $pent && $pent->{password};
@@ -3865,7 +4114,7 @@ sub kea_command_path
 sub kea_subnet4_intent
 {
     my ( $nettab, $net, $mask, $interface, $remote, $id, $httpport ) = @_;
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     my @myipd = xCAT::NetworkUtils->my_ip_facing($net);
     my $myip;
@@ -3938,8 +4187,7 @@ sub kea_subnet4_intent
             prefix      => $prefix,
             next_server => $tftp,
             httpport    => $httpport,
-            xnba_kpxe   => -f "$tftpdir/xcat/xnba.kpxe" ? 1 : 0,
-            xnba_efi    => -f "$tftpdir/xcat/xnba.efi"  ? 1 : 0,
+            kea_ipxe_loader_flags(),
         );
     }
     my %subnet = (
@@ -3968,6 +4216,14 @@ sub kea_subnet4_intent
             prefix => $prefix,
         )
       };
+    push @client_classes, @{
+        xCAT::DHCP::BootPolicy->kea_onie_network_classes(
+            net         => $net,
+            prefix      => $prefix,
+            next_server => $tftp,
+            httpport    => $httpport,
+        )
+      };
     if (@client_classes) {
         $subnet{additional_client_classes} = [ map { $_->{name} } @client_classes ];
         $subnet{client_classes} = \@client_classes;
@@ -3979,7 +4235,7 @@ sub kea_subnet4_intent
 sub kea_opal_client_class
 {
     my ( $net, $prefix, $tftp, $httpport ) = @_;
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     return unless $net && defined($prefix) && $tftp;
 
@@ -4143,7 +4399,7 @@ sub kea_node_reservations
         return [];
     }
 
-    my ( $nxtsrv, $tftpserver ) = kea_next_server_for_node($node, $nrent);
+    my ( $nxtsrv, $tftpserver ) = next_server_for_node($node, $nrent, $ntent);
     my @reservations;
     my @macs = split(/\|/, $macent->{mac});
     foreach my $mace (@macs) {
@@ -4178,6 +4434,16 @@ sub kea_node_reservations
             next;
         }
 
+        # The name goes in the "hostname" field, and kea_boot_for_node writes it
+        # again as a host-name option. The field is the only one a client cannot
+        # displace: Kea reads the lease name and the DDNS name from it, and with
+        # the field absent it uses whatever the client advertised in option 12 --
+        # so a node calling itself "ubuntu" takes the node's DNS record.
+        #
+        # The cost is that Kea 2.4 runs the field through ddns-qualifying-suffix
+        # before it puts it in option 12, so the node is told "node01.cluster" and
+        # not "node01" where ISC says the short name. That is the node's own name
+        # either way. A name the client chose is not.
         my %reservation = (
             'subnet-id'  => $subnet_id,
             'hw-address' => $mac,
@@ -4197,24 +4463,148 @@ sub kea_node_reservations
     return \@reservations;
 }
 
-sub kea_sync_xnba_client_classes
+sub kea_sync_node_client_classes
 {
     my ( $config, $nodes ) = @_;
 
     my %rejected;
-    my $classes = kea_xnba_client_classes_for_nodes($nodes, \%rejected);
+    my $generated = kea_node_client_classes_for_nodes($nodes, \%rejected);
     my @accepted = grep { !$rejected{$_} } @$nodes;
-    my $changed = kea_remove_xnba_client_classes($config, \@accepted);
-    return $changed unless @$classes;
+    my $changed = kea_remove_node_client_classes($config, \@accepted);
 
-    $config->{Dhcp4} ||= {};
-    my @existing = @{ $config->{Dhcp4}{'client-classes'} || [] };
-    $config->{Dhcp4}{'client-classes'} = [ @$classes, @existing ];
+    # The remove above took this range's MACs out of the DROP class; these are
+    # the ones it is to have from now on.
+    if (@{ $generated->{noip} }) {
+        kea_set_drop_client_class(
+            $config,
+            [ @{ kea_drop_client_class_macs($config) }, @{ $generated->{noip} } ]
+        );
+        $changed = 1;
+    }
 
-    return 1;
+    # Same bookkeeping for the nodes that are to be handed no boot file.
+    if (@{ $generated->{localboot} }) {
+        kea_set_localboot_client_class(
+            $config,
+            [ @{ kea_localboot_client_class_macs($config) }, @{ $generated->{localboot} } ]
+        );
+        $changed = 1;
+    }
+
+    my $classes = $generated->{classes};
+    if (@$classes) {
+        $config->{Dhcp4} ||= {};
+        my @existing = @{ $config->{Dhcp4}{'client-classes'} || [] };
+        $config->{Dhcp4}{'client-classes'} = [ @$classes, @existing ];
+        $changed = 1;
+    }
+
+    kea_apply_localboot_guard($config) if $changed;
+
+    return $changed;
 }
 
-sub kea_remove_xnba_client_classes
+# Keep every class that names a boot file from matching a node that is to boot
+# from its disk, and keep the class those nodes are named in ahead of them: Kea
+# rejects a member() test naming a class not defined above it.
+#
+# This runs over the whole assembled config, so a class added later is guarded
+# too. It is its own inverse: with no such node left, the class and the guard
+# both go.
+sub kea_apply_localboot_guard
+{
+    my ($config) = @_;
+
+    return unless $config && $config->{Dhcp4};
+    my $classes = $config->{Dhcp4}{'client-classes'} || [];
+    my $name    = xCAT::DHCP::BootPolicy->kea_localboot_class_name();
+    my $guard   = xCAT::DHCP::BootPolicy->kea_localboot_guard();
+
+    my ($localboot) = grep { ( $_->{name} || '' ) eq $name } @$classes;
+    my @rest = grep { ( $_->{name} || '' ) ne $name } @$classes;
+
+    foreach my $class (@rest) {
+        next unless defined $class->{test} and defined $class->{'boot-file-name'};
+
+        # Take off the guard this sub put on last time before putting it back,
+        # brackets and all, so regenerating does not wrap the test one layer
+        # deeper every time.
+        my $test = $class->{test};
+        $test =~ s/^\((.*)\) and \Q$guard\E$/$1/s;
+
+        $class->{test} = $localboot ? "($test) and $guard" : $test;
+    }
+
+    $config->{Dhcp4}{'client-classes'} = $localboot ? [ $localboot, @rest ] : \@rest;
+
+    return;
+}
+
+sub kea_localboot_client_class_macs
+{
+    my ($config) = @_;
+
+    my $name = xCAT::DHCP::BootPolicy->kea_localboot_class_name();
+    foreach my $class ( @{ ( $config->{Dhcp4} || {} )->{'client-classes'} || [] } ) {
+        next unless ( $class->{name} || '' ) eq $name;
+        return ( $class->{'user-context'} || {} )->{'xcat-macs'} || [];
+    }
+    return [];
+}
+
+sub kea_set_localboot_client_class
+{
+    my ( $config, $macs ) = @_;
+
+    $config->{Dhcp4} ||= {};
+    my $name = xCAT::DHCP::BootPolicy->kea_localboot_class_name();
+    my @classes = grep { ( $_->{name} || '' ) ne $name }
+      @{ $config->{Dhcp4}{'client-classes'} || [] };
+    my $localboot = xCAT::DHCP::BootPolicy->kea_localboot_client_class( macs => $macs );
+    unshift @classes, $localboot if $localboot;
+    $config->{Dhcp4}{'client-classes'} = \@classes;
+
+    return;
+}
+
+sub kea_drop_client_class_macs
+{
+    my ($config) = @_;
+
+    foreach my $class ( @{ ( $config->{Dhcp4} || {} )->{'client-classes'} || [] } ) {
+        next unless ( $class->{name} || '' ) eq 'DROP';
+        return ( $class->{'user-context'} || {} )->{'xcat-macs'} || [];
+    }
+    return [];
+}
+
+sub kea_set_drop_client_class
+{
+    my ( $config, $macs ) = @_;
+
+    $config->{Dhcp4} ||= {};
+    my @classes = grep { ( $_->{name} || '' ) ne 'DROP' }
+      @{ $config->{Dhcp4}{'client-classes'} || [] };
+    my $drop = xCAT::DHCP::BootPolicy->kea_drop_client_class( macs => $macs );
+    push @classes, $drop if $drop;
+    $config->{Dhcp4}{'client-classes'} = \@classes;
+
+    return;
+}
+
+#: Every per-node class this plugin generates carries one of these, so a node
+#: that changes netboot method loses the classes the old one wrote.
+my %KEA_NODE_CLASS_PURPOSES = map { $_ => 1 } qw(
+  xnba-second-stage
+  freebsd-native-loader
+  xnba-first-stage
+  ipxe-boot
+  pxe-vendor
+  proxydhcp-deferral
+  iscsi-initiator
+);
+
+sub kea_remove_node_client_classes
 {
     my ( $config, $nodes ) = @_;
 
@@ -4226,7 +4616,7 @@ sub kea_remove_xnba_client_classes
 
     foreach my $class (@$classes) {
         my $context = $class->{'user-context'} || {};
-        if ( ( $context->{'xcat-purpose'} || '' ) =~ /\A(?:xnba-second-stage|freebsd-native-loader)\z/ && $nodes{ $context->{'xcat-node'} || '' } ) {
+        if ( $KEA_NODE_CLASS_PURPOSES{ $context->{'xcat-purpose'} || '' } && $nodes{ $context->{'xcat-node'} || '' } ) {
             $changed = 1;
             next;
         }
@@ -4234,46 +4624,86 @@ sub kea_remove_xnba_client_classes
     }
 
     $config->{Dhcp4}{'client-classes'} = \@kept if $changed;
+
+    # A node's *NOIP* interfaces share one DROP class with the rest of the
+    # cluster, so removing them means rewriting it rather than dropping it.
+    my $macs = kea_drop_client_class_macs($config);
+    my @kept_macs = grep { !$nodes{ $_->{node} || '' } } @$macs;
+    if ( scalar(@kept_macs) != scalar(@$macs) ) {
+        kea_set_drop_client_class( $config, \@kept_macs );
+        $changed = 1;
+    }
+
+    # And out of the class of nodes that are to be handed no boot file, which is
+    # shared the same way. A node just reinstalled leaves it here and is put back
+    # by the sync that follows if it is still in state boot.
+    my $lb_macs = kea_localboot_client_class_macs($config);
+    my @kept_lb = grep { !$nodes{ $_->{node} || '' } } @$lb_macs;
+    if ( scalar(@kept_lb) != scalar(@$lb_macs) ) {
+        kea_set_localboot_client_class( $config, \@kept_lb );
+        $changed = 1;
+    }
+
+    kea_apply_localboot_guard($config) if $changed;
+
     return $changed;
 }
 
-sub kea_xnba_client_classes_for_nodes
+sub kea_node_client_classes_for_nodes
 {
     my ($nodes, $rejected) = @_;
 
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
-    return [] unless $nrtab && $mactab;
+    return { classes => [], noip => [], localboot => [] } unless $nrtab && $mactab;
 
+    my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
+    my $chaintab = xCAT::Table->new('chain', -create => 0);
+    my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
     my $nrents = $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode' ]);
     my $macents = $mactab->getNodesAttribs($nodes, ['mac']);
-    my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
-    my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
-    my $ntents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, [qw(os arch)]) : undef;
-    my $iscsi = $iscsitab ? $iscsitab->getNodesAttribs($nodes, [qw(server target)]) : undef;
+    my $ients = $iscsitab ? $iscsitab->getNodesAttribs($nodes, [qw(server target lun iname)]) : undef;
+    my $chainents = $chaintab ? $chaintab->getNodesAttribs($nodes, ['currstate']) : undef;
+    my $ntents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, [qw(os provmethod arch)]) : undef;
     my $httpport = "80";
     my @hports = xCAT::TableUtils->get_site_attribute("httpport");
     if ($hports[0]) {
         $httpport = $hports[0];
     }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
 
-    my @records;
+    my @xnba;
+    my @pxe;
+    my @iscsi;
+    my @noip;
+    my @proxydhcp;
+    my @localboot;
     foreach my $node (@$nodes) {
         my $nrent = $nrents && $nrents->{$node} ? $nrents->{$node}->[0] : undef;
-        next unless $nrent && $nrent->{netboot} && $nrent->{netboot} eq 'xnba';
+        my $netboot = $nrent ? $nrent->{netboot} : undef;
+
+        # A node booting from disk, or waiting on the proxyDHCP daemon, is given
+        # no loader and so no boot classes. ISC suppresses the same thing by
+        # leaving the second-stage branches out of the node's host block.
+        my $intent = kea_node_boot_intent(
+            $nrent,
+            $chainents && $chainents->{$node} ? $chainents->{$node}->[0] : undef,
+            $ntents    && $ntents->{$node}    ? $ntents->{$node}->[0]    : undef,
+        );
 
         my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
 
         my $ntent = $ntents && $ntents->{$node} ? $ntents->{$node}->[0] : undef;
         my $native = xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent);
-        my ( $nxtsrv ) = kea_next_server_for_node($node, $nrent);
-        unless ($nxtsrv) {
-            $rejected->{$node} = 1 if $rejected && $native;
+        my ( $nxtsrv ) = next_server_for_node($node, $nrent, $ntent);
+        if ($native && !defined($nxtsrv)) {
+            $rejected->{$node} = 1 if $rejected;
             next;
         }
-        my $ient = $iscsi && $iscsi->{$node} ? $iscsi->{$node}->[0] : undef;
+
+        my $ient = $ients && $ients->{$node} ? $ients->{$node}->[0] : undef;
+        my $iname = ( $ient and $ient->{server} and $ient->{target} ) ? $ient->{iname} : undef;
+
         my $root_path;
         if ($native) {
             $root_path = freebsd_native_root_path($node, $nxtsrv, $ient);
@@ -4284,24 +4714,102 @@ sub kea_xnba_client_classes_for_nodes
         }
 
         foreach my $mace (split(/\|/, $macent->{mac})) {
-            my ($mac, $hname) = split(/!/, $mace);
-            next if defined($root_path) && defined($hname) && $hname eq '*NOIP*';
+            my ( $mac, $hname ) = split(/!/, $mace);
             $mac = kea_normalize_mac($mac);
             next unless $mac;
-            push @records, {
-                node        => $node,
-                mac         => $mac,
-                next_server => $nxtsrv,
-                httpport    => $httpport,
-                freebsd_root_path => $root_path,
-            };
+            my %record = ( node => $node, mac => $mac );
+
+            # Marked as having no address on purpose. ISC answers it with
+            # "deny booting;"; the Kea equivalent is the DROP class, which the
+            # caller merges with the rest of the cluster's.
+            if ( defined($hname) and $hname eq '*NOIP*' ) {
+                push @noip, {%record};
+                next;
+            }
+
+            if ( $intent eq 'proxydhcp' ) {
+
+                # Kea reads the reservation's empty boot file as unset, so the
+                # MAC also goes into the class every boot-file class excludes.
+                push @proxydhcp, {%record};
+                push @localboot, {%record};
+            } elsif ( $intent eq 'disk' ) {
+
+                # No boot classes of its own, and an empty boot file in the
+                # reservation -- but neither stops the shared classes from
+                # naming one, so the MAC goes into the class they exclude. A
+                # node that boots from an iSCSI target goes into it only for a
+                # client that can attach the disk, and gets the loader of its
+                # method on one that cannot.
+                if ( $ient and $ient->{server} and $ient->{target} ) {
+                    push @localboot, { %record, san => 1 };
+                    push @xnba, { %record, netboot => $netboot, san_boot => 1 }
+                      if $netboot and $netboot =~ /^(?:ipxe|xnba|pxe)$/;
+                } else {
+                    push @localboot, {%record};
+                }
+            } elsif ($netboot and ($netboot eq 'xnba' or $netboot eq 'ipxe') and $nxtsrv) {
+                push @xnba, {
+                    %record,
+                    next_server => $nxtsrv,
+                    httpport    => $httpport,
+                    netboot     => $netboot,
+                    freebsd_root_path => $root_path,
+                    iscsi       => ( $ient and $ient->{server} and $ient->{target} ) ? 1 : 0,
+                };
+            } elsif ($netboot and $netboot eq 'pxe') {
+                push @pxe, {%record};
+            }
+
+            if ( defined $iname ) {
+                push @iscsi,
+                  { %record, iname => $iname, root_path => kea_iscsi_root_path($ient) };
+            }
         }
     }
 
-    return xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
-        nodes    => \@records,
-        xnba_efi => -f "$tftpdir/xcat/xnba.efi" ? 1 : 0,
-    );
+    return {
+        classes => [
+            @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
+                    nodes     => \@xnba,
+                    xnba_kpxe => -f "$tftpdir/xcat/xnba.kpxe" ? 1 : 0,
+                    xnba_efi  => -f "$tftpdir/xcat/xnba.efi"  ? 1 : 0,
+                ) },
+            @{ xCAT::DHCP::BootPolicy->kea_pxe_node_classes( nodes => \@pxe ) },
+            @{ xCAT::DHCP::BootPolicy->kea_proxydhcp_node_classes( nodes => \@proxydhcp ) },
+            @{ xCAT::DHCP::BootPolicy->kea_iscsi_node_classes( nodes => \@iscsi ) },
+        ],
+        noip      => \@noip,
+        localboot => \@localboot,
+    };
+}
+
+# What the node has been told to do next, as far as this reply is concerned.
+#
+# 'disk'      -- chain.currstate is boot or iscsiboot: leave it to start.
+# 'proxydhcp' -- Windows install or winshell on UEFI, answered on 4011.
+# 'netboot'   -- everything else, which is to be given a loader.
+sub kea_node_boot_intent
+{
+    my ( $nrent, $chainent, $ntent ) = @_;
+
+    my $currstate = ( $chainent && defined $chainent->{currstate} ) ? $chainent->{currstate} : '';
+    return 'disk' if $currstate eq 'boot' or $currstate eq 'iscsiboot';
+
+    my $douefi = ( $ntent and $ntent->{os} ) ? check_uefi_support($ntent) : 1;
+    if ( ( $douefi == 2 and $currstate =~ /^install/ ) or $currstate =~ /^winshell/ ) {
+        return 'proxydhcp' if proxydhcp($nrent);
+    }
+
+    return 'netboot';
+}
+
+sub kea_iscsi_root_path
+{
+    my ($ient) = @_;
+
+    my $lun = defined( $ient->{lun} ) ? $ient->{lun} : 0;
+    return 'iscsi:' . $ient->{server} . ':6:3260:' . $lun . ':' . $ient->{target};
 }
 
 sub normalize_mac
@@ -4447,45 +4955,90 @@ sub kea_query_node
         next if ($owner->{'xcat-purpose'} || '') eq 'freebsd-ipoib' && ($owner->{'xcat-node'} || '') ne $node;
         my $key = join('|', map { $reservation->{$_} || '' } qw(subnet-id hw-address client-id ip-address hostname));
         next if $seen{$key}++;
+        # The name a reservation carries is its host-name option, not a
+        # "hostname" field -- see kea_reservations_for_nodes -- so report
+        # whichever of the two it was written with.
+        my $hostname = $reservation->{hostname};
+        foreach my $option ( @{ $reservation->{'option-data'} || [] } ) {
+            next unless ( $option->{name} || '' ) eq 'host-name';
+            $hostname = $option->{data};
+            last;
+        }
+
         my $msg = "$node:";
         $msg .= " ip-address = $reservation->{'ip-address'}" if $reservation->{'ip-address'};
         $msg .= " hardware-address = $reservation->{'hw-address'}" if $reservation->{'hw-address'};
         $msg .= " client-id = $reservation->{'client-id'}" if $reservation->{'client-id'};
-        $msg .= " hostname = $reservation->{hostname}" if $reservation->{hostname};
+        $msg .= " hostname = $hostname" if $hostname;
         $msg .= " interface = $owner->{'xcat-interface'}" if ($owner->{'xcat-purpose'} || '') eq 'freebsd-ipoib';
         $callback->({ data => [$msg] });
     }
 }
 
-sub kea_next_server_for_node
+#: A netboot method that builds a URL needs the server's address in hand, so the
+#: search cannot end at "whatever the subnet says".
+sub _needs_absolute_next_server
 {
-    my ( $node, $nrent ) = @_;
+    my ($nrent, $ntent) = @_;
 
-    if ($nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>') {
-        my $tmp_name = inet_aton($nrent->{tftpserver});
+    return 1 if xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent);
+    my $netboot = $nrent ? $nrent->{netboot} : undef;
+    return 0 unless $netboot;
+    return ( $netboot eq 'petitboot' or $netboot eq 'onie' ) ? 1 : 0;
+}
+
+#: Which server a node is sent to, in the order noderes states it: the node's
+#: own tftpserver, then its xcatmaster, then -- only for the methods above --
+#: the interface of this machine that faces the node. A node that named none of
+#: them inherits the subnet's value, which is what '${next-server}' stands for
+#: and why the second return value is undefined there.
+#:
+#: Returns ( next-server, tftpserver ) or the empty list, having already told
+#: the caller's callback why.
+#:
+#: Both backends read this, so they answer a hierarchical cluster alike.
+sub next_server_for_node
+{
+    my ( $node, $nrent, $ntent ) = @_;
+
+    #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
+    #the value of inet_ntoa() will be "undef", which will cause fatal error
+    if ( $nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>' ) {
+        my $tmp_name = inet_aton( $nrent->{tftpserver} );
         unless ($tmp_name) {
+
+            #tell the reason to the user
             $callback->({ error => ["Unable to resolve the tftpserver for node"], errorcode => [1] });
             return;
         }
         my $server = inet_ntoa($tmp_name);
-        return ($server, $server);
+        return ( $server, $server );
     }
 
-    my $node_server = $nrent && $nrent->{xcatmaster} ? $nrent->{xcatmaster} : undef;
-    if ($node_server) {
-        my $tmp_server = inet_aton($node_server);
-        if ($tmp_server) {
-            my $server = inet_ntoa($tmp_server);
-            return ($server, $server);
+    if ( $nrent and $nrent->{xcatmaster} ) {
+        my $tmp_server = inet_aton( $nrent->{xcatmaster} );
+        unless ($tmp_server) {
+            $callback->({ error => ["Unable to resolve the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
+            return;
         }
+        my $server = inet_ntoa($tmp_server);
+        return ( $server, $server );
     }
 
-    my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
-    unless ($nxtsrvd[0]) {
-        return ($nxtsrvd[1], $nxtsrvd[1]);
+    if ( _needs_absolute_next_server($nrent, $ntent) ) {
+        my @facing = xCAT::NetworkUtils->my_ip_facing($node);
+        unless ( $facing[0] ) {
+            return ( $facing[1], $facing[1] );
+        }
+        my $why =
+          ( $facing[0] == 1 )
+          ? $facing[1]
+          : "Unable to determine the tftpserver for $node, verify \"xcatmaster\" is set correctly";
+        $callback->({ error => [$why], errorcode => [1] });
+        return;
     }
 
-    return ('${next-server}', undef);
+    return ( '${next-server}', undef );
 }
 
 sub freebsd_native_root_path
@@ -4508,36 +5061,48 @@ sub kea_boot_for_node
     if ($hports[0]) {
         $httpport = $hports[0];
     }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     my %boot = ( 'option-data' => [] );
     my $netboot = $nrent ? $nrent->{netboot} : undef;
     if (xCAT::DHCP::BootPolicy->freebsd_native_node($nrent, $ntent)) {
         return unless defined(freebsd_native_root_path($node, $nxtsrv, $ient));
     }
+    my $intent = kea_node_boot_intent( $nrent, $chainent, $ntent );
 
-    if ($ient and $ient->{server} and $ient->{target}) {
+    # A node with an initiator name chooses between the ISAN vendor form and the
+    # standard one; option-data outranks any class, so the choice is left to
+    # kea_iscsi_node_classes and nothing is reserved.
+    if ($ient and $ient->{server} and $ient->{target} and !defined($ient->{iname})) {
         $ient->{lun} = 0 unless defined($ient->{lun});
-        my $rootpath = 'iscsi:' . $ient->{server} . ':6:3260:' . $ient->{lun} . ':' . $ient->{target};
-        push @{ $boot{'option-data'} }, { name => 'root-path', data => $rootpath };
-        push @{ $boot{'option-data'} }, { name => 'iscsi-initiator-iqn', data => $ient->{iname} } if defined($ient->{iname});
+        push @{ $boot{'option-data'} },
+          { name => 'root-path', data => kea_iscsi_root_path($ient) };
     }
 
-    if ($netboot and $netboot eq 'pxe') {
-        $boot{'boot-file-name'} = 'pxelinux.0';
+    # netboot=pxe is absent from this chain for the same reason: a ScaleMP
+    # machine has to be able to win, and only a class can outrank nothing.
+    if ( $intent ne 'netboot' ) {
+
+        # A node told to boot from disk, and a Windows UEFI install waiting on
+        # the proxyDHCP daemon, are both handed no boot file. On Kea only a
+        # reservation outranks a class, so the empty name is set here.
+        $boot{'boot-file-name'} = '';
     } elsif ($netboot and $netboot eq 'yaboot') {
         $boot{'boot-file-name'} = "/yb/node/yaboot-$node";
     } elsif ($netboot and $netboot =~ /^grub2[-]?.*$/) {
         $boot{'boot-file-name'} = "/boot/grub2/grub2-$node";
+    } elsif ($netboot and $netboot eq 'nimol') {
+        $boot{'boot-file-name'} = "/vios/nodes/$node";
     } elsif ($netboot and $netboot eq 'petitboot') {
         if ($nxtsrv) {
-            my $petitboot_conf = "http://$nxtsrv$portsuffix/tftpboot/petitboot/$node";
-            $boot{'boot-file-name'} = $petitboot_conf;
-            push @{ $boot{'option-data'} }, { name => 'conf-file', data => $petitboot_conf };
+            # The conf-file and nothing else: petitboot acts on a boot file name
+            # if it sees one, sending the machine after a TFTP fetch that never
+            # happens on the other backend.
+            push @{ $boot{'option-data'} }, { name => 'conf-file', data => "http://$nxtsrv$portsuffix/tftpboot/petitboot/$node" };
         }
     } elsif ($netboot and $netboot eq 'onie') {
         my $onie_url = kea_onie_url_for_node($node, $ntent, $nxtsrv, $httpport);
-        push @{ $boot{'option-data'} }, { name => 'www-server', data => $onie_url } if $onie_url;
+        push @{ $boot{'option-data'} }, xCAT::DHCP::BootPolicy->kea_onie_url_option($onie_url) if $onie_url;
     }
 
     push @{ $boot{'option-data'} }, { name => 'host-name', data => $node };
@@ -4547,7 +5112,7 @@ sub kea_boot_for_node
 sub kea_onie_url_for_node
 {
     my ( $node, $ntent, $nxtsrv, $httpport ) = @_;
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
 
     return unless $nxtsrv;
     my $provmethod = $ntent ? $ntent->{provmethod} : undef;
@@ -4567,9 +5132,16 @@ sub kea_onie_url_for_node
 
 sub kea_boot_client_classes
 {
-    return xCAT::DHCP::BootPolicy->kea_client_classes(
-        xnba_kpxe => -f "$tftpdir/xcat/xnba.kpxe" ? 1 : 0,
-        xnba_efi  => -f "$tftpdir/xcat/xnba.efi"  ? 1 : 0,
+    return xCAT::DHCP::BootPolicy->kea_client_classes( kea_ipxe_loader_flags() );
+}
+
+# Which upstream loader files the local TFTP tree has, as the Kea class builders take them.
+sub kea_ipxe_loader_flags
+{
+    my $loader = xCAT::DHCP::BootPolicy->x86_loader( method => 'ipxe' );
+    return (
+        ipxe_bios => -f "$tftpdir/$loader->{bios}" ? 1 : 0,
+        ipxe_uefi => -f "$tftpdir/$loader->{uefi}" ? 1 : 0,
     );
 }
 
@@ -4579,6 +5151,8 @@ sub kea_option_defs
         { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' },
         { name => 'iscsi-initiator-iqn', code => 203, type => 'string', space => 'dhcp4' },
         { name => 'cumulus-provision-url', code => 239, type => 'string', space => 'dhcp4' },
+        @{ xCAT::DHCP::BootPolicy->kea_isan_option_defs() },
+        @{ xCAT::DHCP::BootPolicy->kea_ipxe_option_defs() },
     ];
 }
 
@@ -4623,6 +5197,20 @@ sub kea_skip_ipv4_network
     return 1 if $net eq "127.0.0.0" || $net eq '127';
     return 1 if ($firstoctet >= 224 and $firstoctet <= 239);
     return 0;
+}
+
+sub restart_dhcpd
+{
+    if ($distro =~ /ubuntu.*/ || $distro =~ /debian.*/i)
+    {
+        if (-e '/etc/dhcp/dhcpd.conf') {
+            system("chmod a+r /etc/dhcp/dhcpd.conf");
+        }
+        else {
+            system("chmod a+r /etc/dhcp3/dhcpd.conf");
+        }
+    }
+    return xCAT::Utils->restartservice("dhcp");
 }
 
 # Restart dhcpd on aix
@@ -4846,24 +5434,20 @@ sub addnet6
     if ($netcfgs{$net}->{ddnsdomain}) {
         $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
     }
-    if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
-        my $settings = _omapi_settings();
+    my $ddns_on = $::XCATSITEVALS{dnshandler} =~ /ddns/ ? 1 : 0;
+    my $settings;
+    if ($ddns_on) {
+        $settings = _omapi_settings();
         return 1 unless $settings;
-
-        if ($ddnsdomain) {
-            push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
-            push @netent, "    zone $ddnsdomain. {\n";
-        } else {
-            push @netent, "    zone $netdomain. {\n";
-        }
-        push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-        push @netent, "    }\n";
-        foreach (getzonesfornet($net)) {
-            push @netent, "    zone $_ {\n";
-            push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-            push @netent, "    }\n";
-        }
     }
+    push @netent, isc_ddns_zone_statements(
+        enabled    => $ddns_on,
+        domain     => "$netdomain.",
+        ddnsdomain => $ddnsdomain,
+        server     => $ddnserver,
+        key_name   => $settings ? $settings->{key_name} : undef,
+        zones      => [ getzonesfornet($net) ],
+    );
     if ($netcfgs{$net}->{range}) {
         push @netent, "    range6 " . $netcfgs{$net}->{range} . ";\n";
     } else {
@@ -4871,6 +5455,50 @@ sub addnet6
     }
     push @netent, "  } # $net subnet_end\n";
     splice(@dhcp6conf, $idx, 0, @netent);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isc_ddns_zone_statements
+
+Descriptions: The zone and key statements that let dhcpd update the cluster's
+DNS. One forward zone, plus one for every reverse zone the network covers.
+
+An update aimed at no server, or sent unsigned, is refused by named and lost
+without a word on the DHCP side, so the server and the key are written with the
+zone or not at all. With dynamic DNS switched off nothing is written: makedns
+owns the records then, and a second writer holding a key for the same names is
+how two answers for one node appear.
+
+Arguments:
+    %args - enabled, domain, ddnsdomain, server, key_name, zones (arrayref)
+Returns: the configuration lines, as a list. Empty when there is nothing to say.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isc_ddns_zone_statements
+{
+    my (%args) = @_;
+
+    return () unless $args{enabled};
+
+    my $forward = $args{ddnsdomain} ? "$args{ddnsdomain}." : $args{domain};
+    return () unless $forward;
+
+    # "primary <server>; key <name>;" is one statement in two halves. A zone
+    # written without it names a zone dhcpd cannot reach.
+    my @key_line;
+    @key_line = ("       primary $args{server}; key $args{key_name}; \n")
+      if $args{server} && $args{key_name};
+
+    my @lines;
+    push @lines, "    ddns-domainname \"$args{ddnsdomain}\";\n" if $args{ddnsdomain};
+    push @lines, "    zone $forward {\n", @key_line, "    }\n";
+    foreach my $zone ( @{ $args{zones} || [] } ) {
+        push @lines, "    zone $zone {\n", @key_line, "    }\n";
+    }
+    return @lines;
 }
 
 sub addnet
@@ -4885,7 +5513,7 @@ sub addnet
      if ($hports[0]){
          $httpport=$hports[0];
      }
-    my $portsuffix = ( $httpport eq "80" ) ? "" : ":$httpport";
+    my $portsuffix = httpport_suffix($httpport);
     my $firstoctet = $net;
     $firstoctet =~ s/^(\d+)\..*/$1/;
     if ($net eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239)) {
@@ -5176,30 +5804,20 @@ sub addnet
         if ($netcfgs{$net}->{ddnsdomain}) {
             $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
         }
-        if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
-            my $settings = _omapi_settings();
+        my $ddns_on = $::XCATSITEVALS{dnshandler} =~ /ddns/ ? 1 : 0;
+        my $settings;
+        if ($ddns_on) {
+            $settings = _omapi_settings();
             return 1 unless $settings;
-
-            if ($ddnsdomain) {
-                push @netent, "    ddns-domainname \"" . $ddnsdomain . "\";\n";
-                push @netent, "    zone $ddnsdomain. {\n";
-            } else {
-                push @netent, "    zone $domain. {\n";
-            }
-            if ($ddnserver)
-            {
-                push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-            }
-            push @netent, "    }\n";
-            foreach (getzonesfornet($net, $mask)) {
-                push @netent, "    zone $_ {\n";
-                if ($ddnserver)
-                {
-                    push @netent, "       primary $ddnserver; key $settings->{key_name}; \n";
-                }
-                push @netent, "    }\n";
-            }
         }
+        push @netent, isc_ddns_zone_statements(
+            enabled    => $ddns_on,
+            domain     => "$domain.",
+            ddnsdomain => $ddnsdomain,
+            server     => $ddnserver,
+            key_name   => $settings ? $settings->{key_name} : undef,
+            zones      => [ getzonesfornet($net, $mask) ],
+        );
 
         my $tmpmaskn = unpack("N", inet_aton($mask));
         my $maskbits = 32;
@@ -5210,11 +5828,12 @@ sub addnet
 
         # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
         push @netent, @{ xCAT::DHCP::BootPolicy->isc_client_architecture_lines(
-                next_server => $tftp,
-                portsuffix  => $portsuffix,
-                tftpdir     => $tftpdir,
-                net         => $net,
-                prefix      => $maskbits,
+                next_server    => $tftp,
+                portsuffix     => $portsuffix,
+                tftpdir        => $tftpdir,
+                net            => $net,
+                prefix         => $maskbits,
+                loader_present => sub { -e $_[0] },
             ) };
 
         if ($range) {
@@ -5491,12 +6110,22 @@ sub newconfig
     push @dhcpconf, "option space gpxe;\n";
     push @dhcpconf, "option gpxe-encap-opts code 175 = encapsulate gpxe;\n";
     push @dhcpconf, "option gpxe.bus-id code 177 = string;\n";
+    push @dhcpconf, @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() };
     push @dhcpconf, "option user-class-identifier code 77 = string;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp code 176 = unsigned integer 8;\n";
     push @dhcpconf, "option tcode code 101 = text;\n";
 
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style interim;\n";
+
+    # A node moved to another rack comes up asking for the address it held
+    # there. Silence leaves it retrying an address it can never have; a DHCPNAK
+    # tells it to start over now.
+    #
+    # Each subnet says "authoritative" as well, but that is read from the subnet
+    # the requested address belongs to -- and the point of this case is that it
+    # belongs to none of them. Only the global statement covers it.
+    push @dhcpconf, "authoritative;\n";
     push @dhcpconf, "ignore client-updates;\n"; #Windows clients like to do all caps, very un xCAT-like
 
     #    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
@@ -5510,7 +6139,7 @@ sub newconfig
     push @dhcpconf, "option cumulus-provision-url code 239 = text;\n";
     push @dhcpconf, "\n";
     _append_omapi_key_config( \@dhcpconf, $settings, 7911, $callback, $passtab );
-    push @dhcpconf, ('class "pxe" {' . "\n", "   match if substring (option vendor-class-identifier, 0, 9) = \"PXEClient\";\n", "   ddns-updates off;\n", "    max-lease-time 600;\n", "}\n");
+    push @dhcpconf, @{ xCAT::DHCP::BootPolicy->isc_pxe_lease_class_lines() };
 }
 
 sub newconfig_aix

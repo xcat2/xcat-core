@@ -267,14 +267,17 @@ if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
   fi
 fi
 
-if ! pmatch $OSVER "rhel*" && [ "$repoonly" -eq 1 ]; then
-    echo "$0: the option \"repoonly\" only support rhel right now"
+if ! pmatch "$OSVER" "rhel*" && ! pmatch "$OSVER" "openeuler*" && [ "$repoonly" -eq 1 ]; then
+    echo "$0: the option \"repoonly\" only supports rhel and openEuler"
     exit 0
 fi
 
 if [ -z "$OTHERPKGS_INDEX" ] && [ "$repoonly" -ne 1 ]; then
   echo "$(basename $0): no extra rpms to install"
   exit 0
+fi
+if pmatch "$OSVER" "openeuler*" && [ "$repoonly" -eq 1 ]; then
+    OTHERPKGS_INDEX=${OTHERPKGS_INDEX:-0}
 fi
 
 if [ -z "$NFSSERVER" ]; then
@@ -300,7 +303,7 @@ if [ -n "$OTHERPKGDIR" ]; then
     do
         dirtype=${dir:0:4}
         if [ $dirtype = 'http' ]; then
-            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir} ,"
+            OTHERPKGDIR_INTERNET="${OTHERPKGDIR_INTERNET}${dir},"
         else
             OTHERPKGDIR_LOCAL=$dir
         fi
@@ -511,6 +514,15 @@ fi
 
 
 
+if pmatch "$OSVER" "openeuler*"; then
+    if [ "$yumcmd" != dnf ]; then
+        echo "otherpkgs: openEuler package installation requires dnf" >&2
+        exit 1
+    fi
+    yumcmd=xcat_dnf_strict
+fi
+cleancmd=$yumcmd
+
 ###########
 ##start generating the os pkg repositories
 if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
@@ -582,9 +594,9 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
             result=`zypper ar $sdk_src xCAT-$OSVER-$bname 2>&1`
             if [ $? -ne 0 ]; then
                 if ( ! pmatch "$result" "*exists*" ); then
-                    logger -t $log_label -p local4.info "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
+                    logger -t $log_label -p local4.info "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-$bname\n    $result"
                     if [ $VERBOSE ]; then
-                        echo "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname"
+                        echo "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-$bname"
                         echo "    $result"
                     fi
                 fi
@@ -595,7 +607,7 @@ if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
 
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1`
 
-elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
+elif ( { is_el_yum_distro || pmatch "$OSVER" "openeuler*"; } && [ $hasyum -eq 1 ] ); then
     #remove old repo files
     mkdir -p /etc/yum.repos.d
     if [ `ls -1 /etc/yum.repos.d/local-repository*.repo 2>/dev/null | wc -l` -gt 0 ]; then
@@ -605,7 +617,7 @@ elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
     result=`rm /etc/yum.repos.d/xCAT-$OSVER-path*.repo 2>&1`
     result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
 
-    result=`$yumcmd clean all`
+    result=`$cleancmd clean all`
 
     SUM=$(array_get_size os_path)
     i=0
@@ -624,8 +636,7 @@ elif ( is_el_yum_distro && [ $hasyum -eq 1 ] ); then
 	           echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
 	       fi
 	       echo "enabled=1" >> $REPOFILE
-	       echo "gpgcheck=0" >> $REPOFILE
-               echo "skip_if_unavailable=True" >> $REPOFILE
+               xcat_rpm_repository_policy "$OSVER" >> "$REPOFILE"
            fi
            i=$((i+1))
       done
@@ -633,6 +644,11 @@ fi
 
 ##end generating the os pkg repositories
 ###########
+
+if pmatch "$OSVER" "openeuler*"; then
+    xcat_dnf_repositories="xCAT-$OSVER-path*,xcat-otherpkgs*"
+    yumcmd=xcat_dnf_scoped
+fi
 
 
 ###########
@@ -651,7 +667,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ $hasyum -eq 1 ]; then
         mkdir -p /etc/yum.repos.d
         result=`rm /etc/yum.repos.d/xCAT-otherpkgs*.repo 2>&1`
-        result=`$yumcmd clean all`
+        result=`$cleancmd clean all`
         repo_base="/etc/yum.repos.d"
     elif [ $haszypper -eq 1 ]; then
         #remove old repo
@@ -675,7 +691,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
     urlrepoindex=0
     #add repo for url repos in otherpkgdir
-    if [ -n "OTHERPKGDIR_INTERNET" ];then
+    if [ -n "$OTHERPKGDIR_INTERNET" ];then
          OIFS=$IFS
          IFS=','
          OTHERPKGDIRLIST_INTERNET=($OTHERPKGDIR_INTERNET)
@@ -689,8 +705,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                 echo "name=xcat-otherpkgs$urlrepoindex" >> $REPOFILE
                 echo "baseurl=$url" >> $REPOFILE
                 echo "enabled=1" >> $REPOFILE
-                echo "gpgcheck=0" >> $REPOFILE
-                echo "skip_if_unavailable=True" >> $REPOFILE
+                xcat_rpm_repository_policy "$OSVER" "${url%/}/repodata/repomd.xml.key" >> "$REPOFILE"
 
             elif [ $hasapt -eq 1 ] ; then 
                 REPOFILE="$repo_base/xCAT-otherpkgs${urlrepoindex}.list"
@@ -714,8 +729,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     IFS=$','
     pkgsarray=($pkglist)
     IFS=$oifs
-    echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
-    echo "yum/dnf: $hasyum ($yumcmd), apt: $hasapt, zypper: $haszypper"
+    if [ $VERBOSE  ]; then
+      echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
+      echo "yum/dnf: $hasyum ($yumcmd), apt: $hasapt, zypper: $haszypper"
+    fi
     for x in ${pkgsarray[@]}
     do
         #check if the file name starts with -- or -.
@@ -794,10 +811,13 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		        echo "baseurl=file://$whole_path" >> $REPOFILE
 	            fi
 	            echo "enabled=1" >> $REPOFILE
-	            echo "gpgcheck=0" >> $REPOFILE
-                    echo "skip_if_unavailable=True" >> $REPOFILE
+                    if [ $mounted -eq 0 ]; then
+                        xcat_rpm_repository_policy "$OSVER" "http://$whole_path/repodata/repomd.xml.key" >> "$REPOFILE"
+                    else
+                        xcat_rpm_repository_policy "$OSVER" "file://$whole_path/repodata/repomd.xml.key" >> "$REPOFILE"
+                    fi
                 if [ $hasyum -eq 1 ]; then
-                    $yumcmd clean all
+                    $cleancmd clean all
                 fi
                 if [ $haszypper -eq 1 ]; then
 	                     result=`zypper --non-interactive refresh 2>&1`
@@ -814,7 +834,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	                else
 		            type=file
 	                fi
-                        echo "deb $type://$whole_path ./"  > $REPOFILE
+                        # apt refuses an unsigned repository outright, and this one carries a
+                        # Packages file and no Release. The rpm arm writes gpgcheck=0 for this.
+                        echo "deb [trusted=yes] $type://$whole_path ./"  > $REPOFILE
                     fi
 		fi
 	    fi
@@ -836,7 +858,7 @@ EOF`
                         result=`zypper ar -c $REPOFILE`
                     fi
 
-		    result=`zypper --non-interactive refresh xcat-otherpkgs$index 2>&1`
+		    result=`zypper --non-interactive refresh xcat-otherpkgs$localrepoindex 2>&1`
 		    if [ $? -eq 0 ]; then
 		        rc=0
 		        array_set_element repo_path $index $path
@@ -846,7 +868,7 @@ EOF`
                             rc=0
                             array_set_element repo_path $index $path
                         else
-		            result=`zypper sd xcat-otherpkgs$index`
+		            result=`zypper sd xcat-otherpkgs$localrepoindex`
                         fi
 		    fi
 		elif [ $hasapt -eq 1 ]; then
@@ -865,6 +887,10 @@ EOF`
 	    if [ $rc -eq 0 ]; then
 	        repo_pkgs="$repo_pkgs $fn"
 	    else
+                if pmatch "$OSVER" "openeuler*"; then
+                    echo "otherpkgs: required native package $fn could not be resolved: $result" >&2
+                    exit 1
+                fi
                 #now no hope we have to use rpm command
 	        plain_pkgs="$plain_pkgs $x*"
 	    fi
@@ -890,7 +916,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t $log_label "$result"
+        printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -904,21 +930,21 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t $log_label "$result"
+        printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
     elif [ $hasapt -eq 1 ]; then
 	apt_get_update_if_repos_changed $REPOFILE
         if [ $VERBOSE  ]; then
-          echo "$envlist DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated --force-yes -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade"
+          echo "$envlist xcat_apt_get -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade"
         fi
-        result=`eval $envlist DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated --force-yes -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade 2>&1`
+        result=`eval $envlist xcat_apt_get -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-	logger -p local4.info -t $log_label "$result"
+	printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
 	  echo "$result"
         fi
@@ -939,7 +965,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t $log_label "$result"
+            printf '%s\n' "$result" | logger -p local4.info -t $log_label
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -952,7 +978,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t $log_label "$result"
+            printf '%s\n' "$result" | logger -p local4.info -t $log_label
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -966,7 +992,7 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
             fi
-            logger -p local4.info -t $log_label "$result"
+            printf '%s\n' "$result" | logger -p local4.info -t $log_label
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -982,7 +1008,7 @@ EOF`
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
         fi
-        logger -p local4.info -t $log_label "$result"
+        printf '%s\n' "$result" | logger -p local4.info -t $log_label
         if [ $VERBOSE  ]; then
           echo "$result"
         fi
@@ -1000,8 +1026,9 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
               logger -p local4.err -t $log_label "$envlist $yumcmd -y install $repo_pkgs failed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs installed."
             fi
-	    logger -p local4.info -t $log_label "$repo_pkgs installed."
             if [ $VERBOSE  ]; then
               echo "$result"
             fi
@@ -1014,8 +1041,9 @@ EOF`
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
               logger -p local4.err -t $log_label "$envlist zypper install -y $repo_pkgs 2>&1 failed."
-	    fi
-            logger -p local4.info -t $log_label "$repo_pkgs installed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs installed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1028,15 +1056,16 @@ EOF`
 	elif [ $hasapt -eq 1 ]; then
 	    apt_get_update_if_repos_changed $REPOFILE
             if [ $VERBOSE  ]; then
-	      echo "$envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes  -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' install $repo_pkgs"
+	      echo "$envlist xcat_apt_get -q -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' install $repo_pkgs"
 	    fi
-	    result=`eval $envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes  -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' install $repo_pkgs 2>&1`
+	    result=`eval $envlist xcat_apt_get -q -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' install $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
               logger -p local4.err -t $log_label "install $repo_pkgs failed."
-	    fi
-	    logger -p local4.info -t $log_label "$repo_pkgs installed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs installed."
+            fi
             if [ $VERBOSE  ]; then
              echo "$result"
 	    fi
@@ -1072,8 +1101,10 @@ EOF`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	fi
-        logger -p local4.info -t $log_label "$plain_pkgs installed."
+              logger -p local4.err -t $log_label "$envlist $supdatecommand $plain_pkgs failed."
+        else
+              logger -p local4.info -t $log_label "$plain_pkgs installed."
+        fi
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi
@@ -1096,8 +1127,10 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	    fi
-            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist $yumcmd -y remove $repo_pkgs_postremove failed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1109,8 +1142,10 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	    fi
-            logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist zypper remove -y $repo_pkgs_postremove failed."
+            else
+              logger -p local4.info -t $log_label "$repo_pkgs_postremove removed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1123,8 +1158,10 @@ EOF`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	    fi
-            logger -p local4.info  -t $log_label "$repo_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist apt-get -y remove $repo_pkgs_postremove failed."
+            else
+              logger -p local4.info  -t $log_label "$repo_pkgs_postremove removed."
+            fi
             if [ $VERBOSE  ]; then
               echo "$result"
 	    fi
@@ -1139,8 +1176,10 @@ EOF`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R
-	fi
-        logger -p local4.info -t $log_label "$plain_pkgs_postremove removed."
+              logger -p local4.err -t $log_label "$envlist $sremovecommand $plain_pkgs_postremove failed."
+        else
+              logger -p local4.info -t $log_label "$plain_pkgs_postremove removed."
+        fi
         if [ $VERBOSE  ]; then
           echo "$result"
 	fi

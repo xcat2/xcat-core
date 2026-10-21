@@ -33,13 +33,15 @@
 # know the connection naming.
 ###############################################################################
 
-NMDIR=/etc/NetworkManager/system-connections
-RHDIR=/etc/sysconfig/network-scripts
-SUSEDIR=/etc/sysconfig/network
-UBUDIR=/etc/network/interfaces.d
-BACKUP=/tmp/backupnet
+# Overridable so a bats test can drive the subcommands against a scratch tree.
+NMDIR=${NMDIR:-/etc/NetworkManager/system-connections}
+RHDIR=${RHDIR:-/etc/sysconfig/network-scripts}
+SUSEDIR=${SUSEDIR:-/etc/sysconfig/network}
+UBUDIR=${UBUDIR:-/etc/network/interfaces.d}
+BACKUP=${BACKUP:-/tmp/backupnet}
 
 detect_backend() {
+    if [ -n "$NIC_CFG_BACKEND" ]; then echo "$NIC_CFG_BACKEND"; return 0; fi
     if command -v nmcli >/dev/null 2>&1 && systemctl is-active --quiet NetworkManager 2>/dev/null; then
         echo nm
     elif [ -d "$SUSEDIR" ] && grep -qi suse /etc/*release 2>/dev/null; then
@@ -53,15 +55,21 @@ detect_backend() {
     fi
 }
 
-# Resolve a connection's on-disk keyfile path. NM names it "<id>-<uuid>.nmconnection"
-# (not just "<id>.nmconnection") whenever a same-named file already exists, so resolve by
-# UUID rather than assuming the plain name.
-nm_keyfile() {
-    local conn=$1 uuid
+# Resolve a connection's on-disk file, which NM reports. The keyfile plugin keeps it under
+# /etc/NetworkManager/system-connections; the ifcfg-rh plugin, which owns xCAT connections on
+# EL8, keeps it under /etc/sysconfig/network-scripts.
+#
+# Resolve by UUID: NM names a keyfile "<id>-<uuid>.nmconnection", not "<id>.nmconnection",
+# whenever a same-named file already exists.
+nm_conn_file() {
+    local conn=$1 uuid file
     uuid=$(nmcli -g connection.uuid connection show "$conn" 2>/dev/null)
-    if [ -n "$uuid" ]; then
-        grep -l "uuid=$uuid" "$NMDIR"/*.nmconnection 2>/dev/null | head -1
+    [ -n "$uuid" ] || return 0
+    file=$(nmcli -t -f UUID,FILENAME connection show 2>/dev/null | sed -n "s|^${uuid}:||p" | head -1)
+    if [ -z "$file" ]; then
+        file=$(grep -l "uuid=$uuid" "$NMDIR"/*.nmconnection 2>/dev/null | head -1)
     fi
+    printf '%s\n' "$file"
 }
 
 # Resolve the NetworkManager connection name bound to a device.
@@ -101,14 +109,15 @@ nm_show() {
     done
     IFS="$oldifs"
     mtu=$(nmcli -g 802-3-ethernet.mtu connection show "$conn" 2>/dev/null)
-    kf=$(nm_keyfile "$conn")
+    kf=$(nm_conn_file "$conn")
+    # A keyfile spells it "mtu=", an ifcfg file "MTU=".
     if { [ -z "$mtu" ] || [ "$mtu" = "auto" ]; } && [ -n "$kf" ] && [ -r "$kf" ]; then
-        mtu=$(awk -F= '/^[[:space:]]*mtu=/{print $2; exit}' "$kf")
+        mtu=$(awk -F= '/^[[:space:]]*[Mm][Tt][Uu]=/{print $2; exit}' "$kf")
     fi
     [ -n "$mtu" ] && [ "$mtu" != "auto" ] && echo "MTU=$mtu"
-    # Raw keyfile so anything not normalized above (extra params, slaves, vlan id, ...)
+    # Raw backend file so anything not normalized above (extra params, slaves, vlan id, ...)
     # is still visible and greppable by the case's check: lines.
-    if [ -r "$kf" ]; then echo "# --- $kf ---"; cat "$kf"; fi
+    if [ -n "$kf" ] && [ -r "$kf" ]; then echo "# --- $kf ---"; cat "$kf"; fi
 }
 
 file_show() {
@@ -134,6 +143,11 @@ nm_del() {
     done
     return 0
 }
+
+# Sourced by xCAT-test/bats/nic_cfg.bats: define the functions only.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+    return 0
+fi
 
 case "$1" in
     show)
@@ -167,12 +181,18 @@ case "$1" in
         esac
         ;;
     backup)
-        be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP"
+        # An absent source directory is the state of a node that has just netbooted.
+        be=$(detect_backend); rm -rf "$BACKUP"; mkdir -p "$BACKUP" || exit 1
         case "$be" in
-            nm)   cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null ;;
-            suse) cp -af "$SUSEDIR"/ifcfg-* "$BACKUP"/ 2>/dev/null ;;
-            rh)   cp -af "$RHDIR" "$BACKUP"/ 2>/dev/null ;;
-            ubuntu) cp -af "$UBUDIR"/. "$BACKUP"/ 2>/dev/null ;;
+            nm)     if [ -d "$NMDIR" ];   then cp -af "$NMDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
+            suse)
+                for f in "$SUSEDIR"/ifcfg-*; do
+                    [ -e "$f" ] || continue
+                    cp -af "$f" "$BACKUP"/ || exit 1
+                done
+                ;;
+            rh)     if [ -d "$RHDIR" ];   then cp -af "$RHDIR" "$BACKUP"/ 2>/dev/null; fi ;;
+            ubuntu) if [ -d "$UBUDIR" ];  then cp -af "$UBUDIR"/. "$BACKUP"/ 2>/dev/null; fi ;;
         esac
         ;;
     restore)

@@ -12,6 +12,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::BootUtils qw(find_genesis_boot_files);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
@@ -84,6 +85,39 @@ sub _centos_linux_distname
 }
 
 
+sub _openeuler_media_info
+{
+    my ($mntpath) = @_;
+    return unless defined($mntpath);
+    open(my $fh, '<', "$mntpath/.treeinfo") or return;
+
+    my (%general, $section, $duplicate, $openeuler);
+    while (my $line = <$fh>) {
+        if ($line =~ /^\s*\[([^\]]+)\]\s*$/) {
+            $section = lc($1);
+        } elsif (defined($section) && $section eq 'general'
+            && $line =~ /^\s*(family|version|arch)\s*=\s*(.*?)\s*$/i) {
+            my ($key, $value) = (lc($1), $2);
+            $openeuler = 1 if $key eq 'family' && lc($value) eq 'openeuler';
+            $duplicate = 1 if exists($general{$key});
+            $general{$key} = $value;
+        }
+    }
+    close($fh);
+    return unless $openeuler;
+    return { error => 'Duplicate openEuler media identity fields in .treeinfo' }
+      if $duplicate;
+
+    my $version = xCAT::Utils::normalize_openeuler_version($general{version});
+    return { error => 'Unsupported openEuler LTS version in .treeinfo' }
+      unless defined($version);
+    return { error => 'Unsupported openEuler architecture in .treeinfo' }
+      unless defined($general{arch}) && $general{arch} =~ /\A(?:x86_64|ppc64le)\z/;
+
+    return { distname => "openeuler$version", arch => $general{arch} };
+}
+
+
 sub _driver_disk_marker_path
 {
     my $initrd = shift;
@@ -111,11 +145,11 @@ sub _set_driver_disk_marker
 
 sub _driver_disk_kernel_arg
 {
-    my ($kversion, $initrd) = @_;
+    my ($kversion, $initrd, $modern_installer) = @_;
     my $marker = _driver_disk_marker_path($initrd);
 
     return '' unless defined($marker) && -f $initrd && -f $marker;
-    return '' if xCAT::Utils->version_cmp($kversion, "7.0") < 0;
+    return '' unless $modern_installer || xCAT::Utils->version_cmp($kversion, "7.0") >= 0;
     return " inst.dd=/dd.img";
 }
 
@@ -124,37 +158,12 @@ sub handled_commands
 {
     return {
         copycd => "anaconda",
-        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
-        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+        mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)|(openeuler.*)",
+        mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)|(openeuler.*)",
         mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
         mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(alma.*)|(rocky.*)|(rh.*)|(fedora.*)|(SL.*)",
 
     };
-}
-
-sub _find_genesis_boot_files
-{
-    my ($tftpdir, $arch) = @_;
-    return unless defined($arch) && $arch =~ /\A[A-Za-z0-9_]+\z/;
-
-    my $directory = "$tftpdir/xcat";
-    my $kernel = "genesis.kernel.$arch";
-    return unless -r "$directory/$kernel";
-
-    my $lzma = "genesis.fs.$arch.lzma";
-    my $gzip = "genesis.fs.$arch.gz";
-    my $initrd;
-    if (-r "$directory/$lzma" && -r "$directory/$gzip") {
-        $initrd = -C "$directory/$lzma" > -C "$directory/$gzip"
-          ? $gzip
-          : $lzma;
-    } elsif (-r "$directory/$lzma") {
-        $initrd = $lzma;
-    } elsif (-r "$directory/$gzip") {
-        $initrd = $gzip;
-    }
-    return unless defined($initrd);
-    return ($kernel, $initrd);
 }
 
 sub _install_media_pxeboot_paths
@@ -291,6 +300,8 @@ sub process_request
 sub using_dracut
 {
     my $os = shift;
+    return 1 if $os =~ /^openeuler(.+)$/
+      && defined(xCAT::Utils::normalize_openeuler_version($1));
     if ($os =~ /(rhels|rhel|centos|alma|rocky|ol)(\d+)/) {
         if ($2 >= 6) {
             return 1;
@@ -359,6 +370,7 @@ sub mknetboot
     }
 
     my %donetftp = ();
+    my %rootimg_warned;
     my $ostab           = xCAT::Table->new('nodetype');
     my %oents = %{ $ostab->getNodesAttribs(\@nodes, [qw(os arch profile provmethod)]) };
     my $restab = xCAT::Table->new('noderes');
@@ -391,6 +403,7 @@ sub mknetboot
         my $nfsrootopts;
         my $tftpdir;
         my $cfgpart;
+        my $rootimgchecksum;
         my $imagename;    # set it if running of 'nodeset osimage=xxx'
 
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{tftpdir}) {
@@ -422,10 +435,11 @@ sub mknetboot
                     if (!$linuximagetab) {
                         $linuximagetab = xCAT::Table->new('linuximage', -create => 1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile');
+                    (my $ref1) = $linuximagetab->getAttribs({ imagename => $imagename }, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                         $img_hash{$imagename}->{rootimgdir} = $ref1->{'rootimgdir'};
                     }
+                    $img_hash{$imagename}->{rootimgchecksum} = $ref1->{'rootimgchecksum'} if $ref1;
                     if (($ref1) && ($ref1->{'nodebootif'})) {
                         $img_hash{$imagename}->{nodebootif} = $ref1->{'nodebootif'};
                     }
@@ -482,6 +496,7 @@ sub mknetboot
             $crashkernelsize = $ph->{crashkernelsize};
             $dump            = $ph->{dump};
             $cfgpart         = $ph->{'cfgpart'};
+            $rootimgchecksum = $ph->{rootimgchecksum};
         }
         else {
             my @ents = xCAT::TableUtils->get_site_attribute("disablenodesetwarning");
@@ -528,10 +543,11 @@ sub mknetboot
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
             if ($linuximagetab) {
-                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile');
+                (my $ref1) = $linuximagetab->getAttribs({ imagename => $imgname }, 'dump', 'crashkernelsize', 'partitionfile', 'rootimgchecksum');
                 if ($ref1 and $ref1->{'dump'}) {
                     $dump = $ref1->{'dump'};
                 }
+                $rootimgchecksum = $ref1->{'rootimgchecksum'} if $ref1;
                 if ($ref1 and $ref1->{'crashkernelsize'}) {
                     $crashkernelsize = $ref1->{'crashkernelsize'};
                 }
@@ -629,42 +645,53 @@ sub mknetboot
         #mkpath "/install/postscripts/";
 
         # Copy the boot resource to /tftpboot and check to only copy once
-        my $docopy = 0;
         my $tftppath;
         my $rtftppath;    # the relative tftp path without /tftpboot/
+        my $copykey;
         if ($imagename) {
             $tftppath  = "$tftpdir/xcat/osimage/$imagename";
             $rtftppath = "xcat/osimage/$imagename";
-            unless ($donetftp{$imagename}) {
-                $docopy = 1;
-                $donetftp{$imagename} = 1;
-            }
+            $copykey   = $imagename;
         } else {
             $tftppath  = "/$tftpdir/xcat/netboot/$osver/$arch/$profile/";
             $rtftppath = "xcat/netboot/$osver/$arch/$profile/";
-            unless ($donetftp{ $osver, $arch, $profile }) {
-                $docopy = 1;
-                $donetftp{ $osver, $arch, $profile } = 1;
+            $copykey   = join($;, $osver, $arch, $profile);
+        }
+        my $docopy = !$donetftp{$copykey};
+
+        # This runs before the boot files are copied, so a failure keeps the boot files that the node uses now.
+        if (!$statelite || $rootfstype eq "ramdisk") {
+            my $error = xCAT::SvrUtils->prepare_rootimg_checksum(value => $rootimgchecksum, rootimgdir => $rootimgdir,
+                imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
+            if ($error) {
+                xCAT::MsgUtils->report_node_error($callback, $node, $error);
+                next;
             }
         }
 
+        my $copied = 1;
         if ($docopy && !$noupdateinitrd) {
             mkpath("$tftppath");
             if (-f "$rootimgdir/hypervisor") {
-                copy("$rootimgdir/hypervisor", "$tftppath");
+                $copied &&= copy("$rootimgdir/hypervisor", "$tftppath");
                 $xenstyle = 1;
             }
-            copy("$rootimgdir/kernel", "$tftppath");
+            $copied &&= copy("$rootimgdir/kernel", "$tftppath");
             if ($statelite) {
                 if ($rootfstype eq "ramdisk") {
-                    copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
+                    $copied &&= copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
                 } else {
-                    copy("$rootimgdir/initrd-statelite.gz", "$tftppath");
+                    $copied &&= copy("$rootimgdir/initrd-statelite.gz", "$tftppath");
                 }
             } else {
-                copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
+                $copied &&= copy("$rootimgdir/initrd-stateless.gz", "$tftppath");
             }
         }
+        unless ($copied) {
+            xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed: $!});
+            next;
+        }
+        $donetftp{$copykey} = 1;
 
         if ($statelite) {
             my $initrdloc = "$tftppath";
@@ -682,6 +709,13 @@ sub mknetboot
                 xCAT::MsgUtils->report_node_error($callback, $node, qq{Copying to $tftppath failed.});
                 next;
             }
+        }
+
+        # Nodes boot the initial ramdisk that is in TFTP now, so that copy decides the check.
+        my $checksum_arg = '';
+        if (!$statelite || $rootfstype eq "ramdisk") {
+            $checksum_arg = xCAT::SvrUtils->rootimg_checksum_boot(value => $rootimgchecksum, rootimgdir => $rootimgdir,
+                initrd => "$tftppath/initrd-stateless.gz", imagename => $imagename, warned => \%rootimg_warned, callback => $callback);
         }
 
         $ent = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['primarynic']);
@@ -780,6 +814,7 @@ sub mknetboot
                 } else {
                     $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
                 }
+                $kcmdline = $checksum_arg . $kcmdline;
             }
 
             # add support for subVars in the value of "statemnt"
@@ -837,6 +872,7 @@ sub mknetboot
             } else {
                 $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/$compressedrootimg ";
             }
+            $kcmdline .= $checksum_arg;
             $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
             $kcmdline .= "NODE=$node ";
 
@@ -1473,10 +1509,12 @@ sub mkinstall
             my $kversion = $os;
             $kversion =~ s/^\D*([\.0-9]+)/$1/;
             $kversion =~ s/\.$//;
+            my $modern_installer = $os =~ /^openeuler/
+              || xCAT::Utils->version_cmp($kversion, "7.0") >= 0;
             if ($pkvm) {
                 $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
             } else {
-                if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                if (!$modern_installer) {
                     $kcmdline = "repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
                       . $instserver . ":" . $httpport
                       . "/install/autoinst/"
@@ -1507,7 +1545,7 @@ sub mkinstall
 
             my $nicname = $net_params->{nicname};
 
-            if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+            if (!$modern_installer) {
                 $kcmdline .= " $net_params->{ksdevice} ";
             } elsif ($arch =~ /ppc/) {
                 $kcmdline .= " $net_params->{BOOTIF} ";
@@ -1527,7 +1565,7 @@ sub mkinstall
                     unless ($gatewayd[0]) { $gateway = $gatewayd[1]; }
                 }
 
-                if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                if (!$modern_installer) {
                     $kcmdline .= " ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
                 } else {
                     $kcmdline .= " ip=$ipaddr" . "::" . "$gateway" . ":" . "$netmask" . ":" . "$hostname" . ":";
@@ -1558,7 +1596,7 @@ sub mkinstall
                 }
 
                 if (scalar @nameserversIP) {
-                    if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                    if (!$modern_installer) {
                         $kcmdline .= " dns=" . join(",", @nameserversIP);
                     } else {
                         foreach (@nameserversIP) {
@@ -1567,7 +1605,7 @@ sub mkinstall
                     }
                 }
             } else {
-                if (xCAT::Utils->version_cmp($kversion, "7.0") >= 0) {
+                if ($modern_installer) {
                     $kcmdline .= " $net_params->{ip} ";
                 }
             }
@@ -1578,7 +1616,7 @@ sub mkinstall
                     $instserver = $ip;
                 }
 
-                if (xCAT::Utils->version_cmp($kversion, "7.0") >= 0) {
+                if ($modern_installer) {
                     if ($::XCATSITEVALS{xcatdebugmode} eq "2") {
 
                         #enable ssh access during installation
@@ -1602,7 +1640,7 @@ sub mkinstall
 
 
             $kcmdline .= _driver_disk_kernel_arg(
-                $kversion, "$tftppath/initrd.img"
+                $kversion, "$tftppath/initrd.img", $modern_installer
             );
             if (defined($sent->{serialport})) {
                 unless ($sent->{serialspeed}) {
@@ -1611,7 +1649,7 @@ sub mkinstall
                 }
 
                 #go cmdline if serial console is requested, the shiny ansi is just impractical
-                if (xCAT::Utils->version_cmp($kversion, "7.0") < 0) {
+                if (!$modern_installer) {
                     $kcmdline .= " cmdline ";
                 } else {
                     $kcmdline .= " inst.cmdline ";
@@ -1974,7 +2012,7 @@ sub mksysclone
 =cut
 
         my $ramdisk_size = 200000;
-        my ($kernpath, $initrdpath) = _find_genesis_boot_files($tftpdir, $arch);
+        my ($kernpath, $initrdpath) = find_genesis_boot_files($tftpdir, $arch);
 
         if (defined($kernpath) && defined($initrdpath))
         {
@@ -2193,6 +2231,7 @@ sub copycd
         and $distname !~ /^fedora/
         and $distname !~ /^SL/
         and $distname !~ /^ol/
+        and $distname !~ /^openeuler/
         and $distname !~ /^pkvm/
         and $distname !~ /^rh/)
     {
@@ -2234,7 +2273,23 @@ sub copycd
         $darch = "x86";
     }
 
-    if ($xCAT::data::discinfo::distnames{$did})
+    my $openeuler_media = _openeuler_media_info($mntpath);
+    if ($distname && $distname =~ /^openeuler/ && !$openeuler_media) {
+        $callback->({ error => 'openEuler media requires an openEuler .treeinfo identity', errorcode => [1] });
+        return;
+    }
+    if ($openeuler_media) {
+        if ($openeuler_media->{error}) {
+            $callback->({ error => $openeuler_media->{error}, errorcode => [1] });
+            return;
+        }
+        if ($darch && $darch ne $openeuler_media->{arch}) {
+            $callback->({ error => 'Conflicting openEuler media architectures in .discinfo and .treeinfo', errorcode => [1] });
+            return;
+        }
+        $distname ||= $openeuler_media->{distname};
+        $darch = $openeuler_media->{arch};
+    } elsif ($xCAT::data::discinfo::distnames{$did})
     {
         unless ($distname)
         {
@@ -2380,6 +2435,18 @@ sub copycd
             }
         );
         return;
+    }
+
+    if ($openeuler_media) {
+        my @bootfiles = $arch eq 'ppc64le'
+          ? ('ppc/ppc64/vmlinuz', 'ppc/ppc64/initrd.img')
+          : ('images/pxeboot/vmlinuz', 'images/pxeboot/initrd.img');
+        my @missing = grep { !-r "$mntpath/$_" || !-s "$mntpath/$_" }
+          (@bootfiles, 'images/install.img', 'repodata/repomd.xml');
+        if (@missing) {
+            $callback->({ error => 'Incomplete openEuler installation media: ' . join(', ', @missing), errorcode => [1] });
+            return;
+        }
     }
 
     %{$request} = ();    #clear request we've got it.
@@ -2563,7 +2630,9 @@ sub copycd
             #if ($ret[0] != 0) {
             #$callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
             #}
-            my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+            unless ($distname =~ /^openeuler/) {
+                my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite",$path,$osdistroname);
+            }
         }
     }
 }
@@ -2607,6 +2676,10 @@ sub getplatform {
     elsif ($os =~ /ol.*/)
     {
         $platform = "ol";
+    }
+    elsif ($os =~ /^openeuler/)
+    {
+        $platform = "openeuler";
     }
 
     return $platform;
@@ -3600,5 +3673,6 @@ EOMS
 
     return @inserted_dd;
 }
+
 
 1;

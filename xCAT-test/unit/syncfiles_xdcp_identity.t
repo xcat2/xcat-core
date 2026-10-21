@@ -3,62 +3,227 @@ use strict;
 use warnings;
 
 use FindBin;
-use File::Spec;
+use lib "$FindBin::Bin/../lib";
+use Storable qw(dclone);
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
-my $repo_root = File::Spec->catdir( $FindBin::Bin, '..', '..' );
+our $RCP;
 
-sub slurp {
-    my ($rel) = @_;
-    my $path = File::Spec->catfile( $repo_root, $rel );
-    return unless -r $path;
-    open( my $fh, '<', $path ) or die "Unable to read $path: $!";
-    my $c = do { local $/; <$fh> };
-    close($fh);
-    return $c;
+BEGIN {
+    package xCAT::Utils;
+    $INC{'xCAT/Utils.pm'} = __FILE__;
+
+    package xCAT::Postage;
+    $INC{'xCAT/Postage.pm'} = __FILE__;
+
+    package xCAT::SvrUtils;
+    our $synclist;
+    sub getsynclistfile {
+        my ( $class, $nodes ) = @_;
+        return unless defined $synclist;
+        return { map { $_ => $synclist->{$_} } @$nodes };
+    }
+    $INC{'xCAT/SvrUtils.pm'} = __FILE__;
+
+    package xCAT::MsgUtils;
+    our @messages;
+    sub message {
+        my ( $class, @message ) = @_;
+        push @messages, \@message;
+        return;
+    }
+    $INC{'xCAT/MsgUtils.pm'} = __FILE__;
+
+    package xCAT::NodeRange;
+    use Exporter qw(import);
+    our @EXPORT = qw(noderange);
+    our %nodes;
+    sub noderange { return $nodes{ $_[0] }; }
+    $INC{'xCAT/NodeRange.pm'} = __FILE__;
 }
 
-my $syncfiles  = slurp('xCAT-server/lib/xcat/plugins/syncfiles.pm');
-my $updatenode = slurp('xCAT-server/lib/xcat/plugins/updatenode.pm');
-my $xdsh       = slurp('xCAT-server/lib/xcat/plugins/xdsh.pm');
+my $plugin = repo_path('xCAT-server/lib/xcat/plugins/syncfiles.pm');
+require $plugin;
 
-plan skip_all => 'plugins not found'
-  unless defined($syncfiles) && defined($updatenode) && defined($xdsh);
+sub run_syncfiles {
+    my ($case) = @_;
+    local %xCAT::NodeRange::nodes = (
+        'node1.example.test' => 'node1',
+        'node2.example.test' => 'node2',
+    );
+    local $xCAT::SvrUtils::synclist = $case->{synclist};
+    local @xCAT::MsgUtils::messages;
+    local @ARGV;
+    my @sent;
+    my $callback = sub { return; };
+    my $request = dclone($case->{request} || {
+        command          => ['syncfiles'],
+        username         => ['operator'],
+        arg              => $case->{args},
+        _xcat_clienthost => [ $case->{client} ],
+    });
+    my $original = dclone($request);
+    my @warnings;
 
-# The xdcp subrequest has to state the identity the sync runs as.
-my ($call) = $syncfiles =~ /(\$subreq->\(\{[^}]*command\s*=>\s*\['xdcp'\][^}]*\})/s;
-ok( $call, 'the xdcp subrequest was located in syncfiles' )
-  or BAIL_OUT('syncfiles.pm no longer matches the expected subrequest shape');
+    {
+        local $SIG{__WARN__} = sub { push @warnings, @_ } if $case->{warnings};
+        xCAT_plugin::syncfiles::process_request(
+            $request,
+            $callback,
+            sub {
+                my ( $outgoing, $response_callback ) = @_;
+                push @sent, [ dclone($outgoing), $response_callback ];
+                return;
+            },
+        );
+    }
 
-like( $call, qr/username\s*=>/, 'the xdcp subrequest names a username' );
+    is_deeply( \@warnings, $case->{warnings}, 'the option diagnostics match' ) if $case->{warnings};
+    is_deeply( $request, $original, 'the caller request is unchanged' );
+    is( scalar @sent, scalar @{ $case->{expected} }, 'the request count matches' );
+    for my $index ( 0 .. $#{ $case->{expected} } ) {
+        my ( $node, $file, $copy_args ) = @{ $case->{expected}->[$index] };
+        my $sent = $sent[$index] || [];
+        is_deeply(
+            $sent->[0],
+            {
+                command  => ['xdcp'],
+                username => ['root'],
+                node     => [$node],
+                arg      => [ '-F', $file, @$copy_args ],
+                env      => ["DSH_RSYNC_FILE=$file"],
+            },
+            "request $index carries the root identity and copy parameters",
+        );
+        is( $sent->[1], $callback, "request $index retains the response callback" );
+    }
+    is( scalar @xCAT::MsgUtils::messages, scalar @{ $case->{messages} }, 'the diagnostic count matches' );
+    for my $index ( 0 .. $#{ $case->{messages} } ) {
+        my $message = $xCAT::MsgUtils::messages[$index] || [];
+        is( $message->[0], 'S', 'the diagnostic goes to the system log' );
+        like( $message->[1], $case->{messages}->[$index], 'the diagnostic identifies the failure' );
+    }
+    return;
+}
 
-# It must be an array reference. A bare string was the original form of this
-# change and broke the non-hierarchical path, because the consumers index it as
-# $request->{username}->[0].
-like(
-    $call,
-    qr/username\s*=>\s*\['root'\]/,
-    'the username is the arrayref form the consumers index into'
+my @cases = (
+    {
+        name     => 'daemon request without arguments or username',
+        request  => { command => ['syncfiles'], _xcat_clienthost => ['node1.example.test'] },
+        synclist => { node1 => '/install/custom/sync-a' },
+        expected => [ [ 'node1', '/install/custom/sync-a', [] ] ],
+        messages => [],
+    },
+    {
+        name     => 'multiple sync files retain order and identity',
+        client   => 'node2.example.test',
+        args     => [],
+        synclist => { node2 => '/install/custom/sync-b,/install/custom/sync-a,/install/custom/sync-c' },
+        expected => [
+            [ 'node2', '/install/custom/sync-b', [] ],
+            [ 'node2', '/install/custom/sync-a', [] ],
+            [ 'node2', '/install/custom/sync-c', [] ],
+        ],
+        messages => [],
+    },
 );
-unlike(
-    $call,
-    qr/username\s*=>\s*'root'\s*,/,
-    'the username is not a bare string, which would not survive ->[0]'
-);
 
-# The consumers this has to satisfy, pinned so the shape cannot drift apart.
-like(
-    $xdsh,
-    qr/\$ENV\{DSH_FROM_USERID\}\s*=\s*\$request->\{username\}->\[0\]/,
-    'xdsh still derives DSH_FROM_USERID from the request username'
-);
+for my $option ( '-r', '-c', '--node-rcp' ) {
+    push @cases, {
+        name     => "copy override $option retains identity on every request",
+        client   => 'node1.example.test',
+        args     => [ $option, '/usr/bin/scp' ],
+        synclist => { node1 => '/install/custom/sync-a,/install/custom/sync-b' },
+        expected => [
+            [ 'node1', '/install/custom/sync-a', [ '-r', '/usr/bin/scp' ] ],
+            [ 'node1', '/install/custom/sync-b', [ '-r', '/usr/bin/scp' ] ],
+        ],
+        messages => [],
+    };
+}
 
-# updatenode makes the same xdcp call and already passes a username. The two
-# should not diverge again.
-like(
-    $updatenode,
-    qr/command\s*=>\s*\["xdcp"\][^;]*username\s*=>/s,
-    'updatenode still passes a username on its own xdcp call'
-);
+push @cases,
+    {
+        name     => 'one sync file',
+        client   => 'node1.example.test',
+        args     => [],
+        synclist => { node1 => '/install/custom/sync-a' },
+        expected => [ [ 'node1', '/install/custom/sync-a', [] ] ],
+        messages => [],
+    },
+    {
+        name     => 'invalid option sends no request',
+        client   => 'node1.example.test',
+        args     => ['--bogus'],
+        synclist => { node1 => '/install/custom/sync-a' },
+        expected => [],
+        messages => [ qr/Received syncfiles from node1\.example\.test, with invalid options\b/ ],
+        warnings => ["Unknown option: bogus\n"],
+    },
+    {
+        name     => 'unavailable synclist lookup sends no request',
+        client   => 'node1.example.test',
+        args     => [],
+        synclist => undef,
+        expected => [],
+        messages => [ qr/\ACannot find synclist file for the node1\z/ ],
+    },
+    {
+        name     => 'node without a synclist sends no request',
+        client   => 'node1.example.test',
+        args     => [],
+        synclist => { node1 => undef },
+        expected => [],
+        messages => [],
+    },
+    {
+        name     => 'unresolved client sends no request',
+        client   => 'unknown.example.test',
+        args     => [],
+        synclist => { node1 => '/install/custom/sync-a' },
+        expected => [],
+        messages => [ qr/couldn't be correlated to a node/ ],
+    };
+
+for my $case (@cases) {
+    subtest $case->{name} => sub {
+        local $RCP;
+        run_syncfiles($case);
+    };
+}
+
+# Direct same-process calls share the existing override; daemon process isolation is outside this test.
+for my $option ( '-r', '-c', '--node-rcp' ) {
+    subtest "same-process copy override $option" => sub {
+        local $RCP;
+        for my $step (
+            [ 'clean sequence state', [], 'node1', 'sync-default', undef ],
+            [ 'initial override', [ $option, '/usr/bin/scp' ], 'node1', 'sync-a', '/usr/bin/scp' ],
+            [ 'rejected override', [ $option, '/usr/bin/false', '--bogus' ], 'node1', 'sync-rejected', undef, 1 ],
+            [ 'request without override', [], 'node2', 'sync-b', '/usr/bin/scp' ],
+            [ 'replacement override', [ $option, '/usr/bin/rsync' ], 'node1', 'sync-c', '/usr/bin/rsync' ],
+            [ 'request after replacement', [], 'node2', 'sync-d', '/usr/bin/rsync' ],
+          )
+        {
+            my ( $name, $args, $node, $list, $copy_command, $invalid ) = @$step;
+            subtest $name => sub {
+                my $file = "/install/custom/$list";
+                my $copy_args = defined $copy_command ? [ '-r', $copy_command ] : [];
+                my %diagnostics = $invalid ? (
+                    messages => [ qr/Received syncfiles from \Q$node.example.test\E, with invalid options\b/ ],
+                    warnings => ["Unknown option: bogus\n"],
+                ) : ( messages => [] );
+                run_syncfiles({
+                    client   => "$node.example.test",
+                    args     => $args,
+                    synclist => { $node => $file },
+                    expected => $invalid ? [] : [ [ $node, $file, $copy_args ] ],
+                    %diagnostics,
+                });
+            };
+        }
+    };
+}
 
 done_testing();

@@ -1070,7 +1070,7 @@ sub handle_tftp_msg {
             probe_utils->send_msg("stdout", "d", "[$ipnodemap{$ip}] $log_ref->{time_record} $record") if ($monitor);
             push(@{ $node_state_ref->{ $ipnodemap{$ip} }{log} }, $log_ref->{msg}) if ($debug);
 
-            if ($file =~ /xcat\/xnba.*/i or $file =~ /\/boot\/grub2\/powerpc-ieee1275\//i or $file =~ /\/yb\/node\/yaboot\-/i) {
+            if (probe_utils::boot_loader_download($file)) {
                 set_node_state($node_state_ref, $ipnodemap{$ip}, $::STATE_BOOTLODER);
                 if ($performance) {
                     $node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{start_time} = $log_ref->{time} if (!$node_status_time{$ipnodemap{$ip}}{$::STATE_BOOTLODER}{start_time});

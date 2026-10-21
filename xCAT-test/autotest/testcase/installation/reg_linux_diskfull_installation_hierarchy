@@ -47,6 +47,10 @@ check:rc==0
 cmd:if [[ -f /test.synclist ]] ;then mv -f /test.synclist /test.synclist.bak;fi;
 cmd:echo "/test.synclist -> /test.synclist" > /test.synclist;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/test.synclist
 check:rc==0
+# The logs carry requests from earlier runs, so record where both of them end
+# before this provision. The check below reads only what comes after.
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/check_provisioning_source.sh --baseline $$CN $$SN
+check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:updatenode $$CN -f
@@ -74,6 +78,13 @@ check:rc==0
 check:output=~NODE=$$CN
 check:output=~IMAGENAME=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:output=~SERVICEGROUP=$$SN
+# SERVICEGROUP above is a copy of the noderes.servicenode value this case wrote, so it says
+# what xCAT set and not which server sent the boot payload. Both dhcpd instances answer for
+# $$CN, so the management node can win the xNBA exchange and serve it. The httpd access logs
+# are what separates the two topologies.
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/check_provisioning_source.sh $$CN $$SN
+check:rc==0
+check:output=~provisioning source ok
 cmd:xdsh $$CN  "cat /var/log/xcat/xcat.log"
 cmd:xdsh $$CN "cat /test.synclist"
 check:rc==0

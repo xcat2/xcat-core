@@ -9,6 +9,15 @@ sub install_deps {
     system(<<"EOF");
     set -x
     source /etc/os-release
+    xcat_mock_bootstrap_package=podman
+    case "\$ID" in
+        openEuler|openeuler)
+            set -e
+            xcat_mock_bootstrap_package=
+            dnf() { command dnf --setopt=gpgcheck=1 '--setopt=*.gpgcheck=1' --setopt=strict=1 --setopt=install_weak_deps=False "\$@"; }
+            dnf install -y perl-generators /usr/bin/systemd-nspawn
+            ;;
+        *)
     case "\$ID" in
         rhel)
             subscription-manager repos --enable codeready-builder-for-rhel-10-\$(arch)-rpms
@@ -18,8 +27,10 @@ sub install_deps {
             ;;
     esac
     dnf install -y perl-generators https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+            ;;
+    esac
     dnf install -y \$(/usr/lib/rpm/perl.req $0)
-    dnf install -y tar mock nginx createrepo_c podman rpmdevtools rpm-sign
+    dnf install -y tar mock nginx createrepo_c \$xcat_mock_bootstrap_package rpmdevtools rpm-sign
 
     systemctl enable --now nginx
 
@@ -44,8 +55,13 @@ use File::Temp qw(tempdir tempfile);
 use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
-                        write_script read_line targetarch_from_target);
-use Fcntl qw(:flock);           # per-target build lock (concurrency guard; see main())
+    build_sources_base prepare_build_sources_dir remove_build_sources_dir share_build_sources_dir
+    sweep_build_sources_dirs stage_xcat_probe_sources stage_xcatsn_templates
+                        stage_genesis_base_sources
+                        write_script read_line targetarch_from_target
+                        openeuler_build_target openeuler_repo_subdir
+                        mock_config_text);
+use POSIX ();                   # EEXIST, for the directory build lock (see main())
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
 use Parallel::ForkManager;
@@ -55,7 +71,9 @@ use autodie;
 use autodie qw(cp);
 
 
-my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
+# Set in buildall to a directory named for the child's pid, so each forked child stages alone.
+my $SOURCES = '';
+my $SOURCES_BASE = build_sources_base();
 # Ensure the rpmbuild tree exists. buildrpms stages source tarballs into $SOURCES, but it only
 # runs rpmdev-setuptree in the one-time env-setup path -- so on a host where that never ran (or
 # $HOME/rpmbuild was cleaned) source staging fails with "SOURCES/...: No such file or directory",
@@ -64,13 +82,6 @@ my $SOURCES = "$ENV{HOME}/rpmbuild/SOURCES";
 system('mkdir', '-p', map { "$ENV{HOME}/rpmbuild/$_" } qw(SOURCES SPECS BUILD BUILDROOT RPMS SRPMS));
 my $VERSION = read_line("Version") // die "Cannot read Version\n";
 my $PWD = Cwd::cwd();
-my @XCAT_PROBE_HELPERS = qw(
-    CommandUtils.pm
-    GlobalDef.pm
-    NetworkUtils.pm
-    ServiceNodeUtils.pm
-);
-
 
 # Gitinfo is regenerated at each run with the current git revision.
 my $GITINFO = git_revision();
@@ -131,10 +142,7 @@ my @PACKAGES = qw(
     xCAT-release
 );
 
-# The arch-native packages: their rpms carry the target arch. Everything else in @PACKAGES
-# is noarch and byte-identical on every arch, so `--native-only` builds just these -- a
-# secondary-arch build (e.g. ppc64le) then produces only what the x86_64 build cannot already
-# provide, and the multi-arch merge has no duplicate noarch to reconcile.
+# --native-only selects architecture-tagged packages for assembly with separately validated noarch packages.
 my @NATIVE_PACKAGES = qw(xCAT xCATsn xCAT-genesis-scripts);
 
 my @TARGETS = (
@@ -142,6 +150,8 @@ my @TARGETS = (
     "$DISTRO+epel-9-$ARCH",
     "$DISTRO+epel-10-$ARCH",
 );
+my $native_target = openeuler_build_target(\%OS, $ARCH);
+@TARGETS = ($native_target) if defined($native_target);
 
 
 my %opts = (
@@ -157,7 +167,7 @@ my %opts = (
     packages => \@PACKAGES,
     release => "",
     repo_mode => "file",
-    repo_baseurl => "https://xcat.org/files/xcat/repos/yum/devel/xcat-core",
+    repo_baseurl => undef,
     targets => \@TARGETS,
     verbose => 0,
     xcat_dep_path => "$PWD/../xcat-dep/",
@@ -223,8 +233,13 @@ if (@cli_targets) {
         if @cli_targets > 1;
     $opts{targets} = [@cli_targets];
 } else {
-    $opts{targets} = ["$DISTRO+epel-10-$ARCH"];
+    $opts{targets} = [$native_target // "$DISTRO+epel-10-$ARCH"];
 }
+my $native_subdir = openeuler_repo_subdir($opts{targets}->[0]);
+usage(message => "openEuler repositories must retain their release and architecture; use dist/<target>/rpms instead of --merge-core-repos")
+    if defined($native_subdir) && $opts{merge_core_repos};
+$opts{repo_baseurl} //= "https://xcat.org/files/xcat/repos/yum/devel/xcat-core"
+    . (defined($native_subdir) ? "/$native_subdir" : '');
 
 # Release is derived from SOURCE_DATE_EPOCH (the git commit time), NOT wall-clock,
 # so identical sources -> identical Version-Release -> bit-reproducible packages
@@ -311,77 +326,46 @@ sub createmockconfig {
     my $chroot = "$pkg-$target$ext";
     my $cfgfile = "/etc/mock/$chroot.cfg";
     return if -f $cfgfile && ! $opts{force};
-    cp "/etc/mock/$target.cfg", $cfgfile;
-    my $contents = read_text($cfgfile);
-    $contents =~ s/config_opts\['root'\]\s+=.*/config_opts['root'] = \"$chroot\"/;
-    if ($pkg eq "perl-xCAT" && $target !~ /suse|sles|leap/i) {
-        # perl-generators exports perl(xCAT::...) provides on RHEL/Fedora; it does not
-        # exist on openSUSE/SLES (rpm there generates perl provides itself), so injecting
-        # it into a SUSE chroot aborts chroot setup. Suppress it for SUSE targets.
-        $contents .= "config_opts['chroot_additional_packages'] = 'perl-generators'\n";
-    }
-    $contents .= "config_opts['environment']['SOURCE_DATE_EPOCH'] = '$SOURCE_DATE_EPOCH'\n";
-    # Avoid systemd-nspawn: it INTERMITTENTLY fails chroot setup with
-    #   "Failed to determine whether the unified cgroups hierarchy is used: No medium found"
-    # (ENOMEDIUM), which drops that package from the (still-signed) core -> an incomplete build that
-    # only surfaces later as a confusing MN install failure. 'simple' isolation is a plain chroot --
-    # reliable for these RPM builds -- and sidesteps the nspawn cgroup race entirely.
-    $contents .= "config_opts['isolation'] = 'simple'\n";
-    write_text($cfgfile, $contents);
+    write_text($cfgfile,
+        mock_config_text($pkg, "$target$ext", read_text("/etc/mock/$target.cfg"), $SOURCE_DATE_EPOCH));
+}
+
+# mock writes --resultdir as chrootuid, and this script runs as root.
+sub prepare_mock_resultdirs {
+    my ($pkg, $target) = @_;
+    my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
+    XCAT::BuildUtils::prepare_mock_resultdirs("$pkg-$target$ext", undef,
+        "dist/$target/rpms", "dist/$target/rpms/SRPMS");
 }
 
 sub buildsources_genesis_base($) {
-    my ($target) = @_;
-
-    die "Assertion failed! No directory xCAT-genesis-builder in the current directory"
-        unless -d "./xCAT-genesis-builder";
-    my $staging_parent = "/tmp/xcat-genesis-base-build-support.$$";
-    my $staging_root = "$staging_parent/xCAT-genesis-base-build-support";
-    my $support_tarball = "$SOURCES/xCAT-genesis-base-build-support.tar.bz2";
-
-    remove_tree($staging_parent) if -e $staging_parent;
-    make_path("$staging_root/dracut_105");
-
-    sh_or_die(qq(cp -a "xCAT-genesis-builder/dracut_105" "$staging_root/"),
-        "Error copying dracut_105 sources");
-    cp "xCAT-genesis-builder/80-net-name-slot.rules",
-       "$staging_root/80-net-name-slot.rules";
-
-    unlink $support_tarball if -f $support_tarball;
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$support_tarball" -C "$staging_parent" xCAT-genesis-base-build-support),
-        "Error creating $support_tarball");
-
-    remove_tree($staging_parent);
+    stage_genesis_base_sources(".", "$SOURCES/xCAT-genesis-base-build-support.tar.bz2",
+        $SOURCE_DATE_EPOCH);
 }
 
-sub prepare_xcat_probe_source_tar {
-    my $staging_parent = tempdir("xcat-probe-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
-    my $staging_root = "$staging_parent/xCAT-probe";
-    my $helper_dir = "$staging_root/lib/perl/xCAT";
-    my $source_tarball = "$SOURCES/xCAT-probe-$VERSION.tar.gz";
+sub prepare_xcat_release_source_tar {
+    my ($subdir) = @_;
+    my $staging_parent = tempdir("xcat-release-source.XXXXXX", TMPDIR => 1, CLEANUP => 1);
+    my $staging_root = "$staging_parent/xCAT-release";
+    my $source_tarball = "$SOURCES/xCAT-release-$VERSION.tar.gz";
 
-    sh_or_die(qq(cp -a "xCAT-probe" "$staging_root"),
-        "Error staging xCAT-probe sources");
-
-    remove_tree($helper_dir) if -e $helper_dir;
-    make_path($helper_dir);
-    chmod 0755, $helper_dir;
-    for my $helper (@XCAT_PROBE_HELPERS) {
-        my $destination = "$helper_dir/$helper";
-        cp "perl-xCAT/xCAT/$helper", $destination;
-        chmod 0644, $destination;
+    sh_or_die(qq(cp -a "xCAT-release" "$staging_root"),
+        "Error staging xCAT-release sources");
+    for my $repo (qw(xcat-core xcat-dep)) {
+        my $path = "$staging_root/$repo.repo";
+        my $contents = read_text($path);
+        my $suffix = $repo eq 'xcat-dep' ? '/rh$releasever/$basearch' : '';
+        my $changed = $contents =~ s{^(baseurl=\S+/\Q$repo\E)\Q$suffix\E$}{$1/$subdir}mg;
+        die "Expected one bootstrap baseurl in $repo.repo\n" unless $changed == 1;
+        write_text($path, $contents);
     }
 
     my ($archive_fh, $archive_path) = tempfile(
-        ".xCAT-probe-$VERSION.XXXXXX",
-        DIR => $SOURCES,
-        UNLINK => 1,
+        ".xCAT-release-$VERSION.XXXXXX", DIR => $SOURCES, UNLINK => 1,
     );
     close $archive_fh;
-
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-release),
         "Error creating $source_tarball");
-
     chmod 0644, $archive_path;
     rename $archive_path, $source_tarball;
 }
@@ -389,7 +373,17 @@ sub prepare_xcat_probe_source_tar {
 sub buildsources {
     my ($pkg, $target) = @_;
 
+    die "FATAL: buildsources ran outside buildall; the staging directory is unset\n"
+        unless length $SOURCES;
+
+    if ($pkg eq 'xCAT' || $pkg eq 'xCATsn') {
+        cp 'xCAT/xcat-apache-pretrans.lua', "$SOURCES/xcat-apache-pretrans.lua"
+            or die "FATAL: unable to stage Apache configuration migration: $!\n";
+    }
+
     if ($pkg eq "xCAT") {
+        cp 'xCAT/xcat-upgrade-functions.sh', "$SOURCES/xcat-upgrade-functions.sh"
+            or die "FATAL: unable to stage upgrade functions: $!\n";
         my @files = ("bmcsetup", "getipmi");
         for my $f (@files) {
             cp "xCAT-genesis-scripts/usr/bin/$f", "$pkg/postscripts/$f";
@@ -406,6 +400,8 @@ sub buildsources {
           cp xcat.conf.apach24 $SOURCES
           cp xCATMN $SOURCES
 EOF
+    } elsif ($pkg eq "xCAT-release" && defined(openeuler_repo_subdir($target))) {
+        prepare_xcat_release_source_tar(openeuler_repo_subdir($target));
     } elsif ($pkg eq "xCAT-genesis-scripts") {
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -cjf "$SOURCES/$pkg.tar.bz2" $pkg);
     } elsif ($pkg eq "xCAT-genesis-base") {
@@ -419,11 +415,9 @@ EOF
       system('build-utils/sync-xcat-apache-configs', '--stage', $SOURCES) == 0
           or die "FATAL: unable to stage canonical Apache configurations\n";
       cp "$pkg/xCATSN", $SOURCES;
-      # xCATsn.spec consumes templates from xCAT shared templates payload.
-      sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/templates.tar.gz" xCAT/templates) unless -f "$SOURCES/templates.tar.gz";
+      stage_xcatsn_templates(".", $SOURCES, $SOURCE_DATE_EPOCH);
     } elsif ($pkg eq "xCAT-probe") {
-      # Prepared once before target builds fork so workers only read a complete archive.
-      return;
+      stage_xcat_probe_sources(".", $SOURCES, $VERSION, $SOURCE_DATE_EPOCH);
     } else {
       sh qq(tar --sort=name --owner=0 --group=0 --mtime="\@$SOURCE_DATE_EPOCH" -czf "$SOURCES/$pkg-$VERSION.tar.gz" $pkg);
     }
@@ -431,6 +425,9 @@ EOF
 
 sub buildspkgs {
     my ($pkg, $target) = @_;
+
+    die "FATAL: buildspkgs ran outside buildall; the staging directory is unset\n"
+        unless length $SOURCES;
 
     my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
     my $chroot = "$pkg-$target$ext";
@@ -444,11 +441,8 @@ sub buildspkgs {
       : "dist/$target/rpms/SRPMS/$pkg-$VERSION-$RELEASE.src.rpm";
     return if -f $diskcache and not $opts{force};
 
-    my $dir = sub {
-        return "xCAT-genesis-builder"
-            if $pkg eq "xCAT-genesis-base";
-        $pkg;
-    }->();
+    # The source directory is the package name now that xCAT-genesis-builder is gone.
+    my $dir = $pkg;
 
     my @opts;
     push @opts, "--quiet" unless $opts{verbose};
@@ -536,8 +530,12 @@ EOF
 
 sub buildall {
     my ($pkg, $target) = @_;
+    # The parent deletes this directory when it reaps the child.
+    $SOURCES = prepare_build_sources_dir($SOURCES_BASE, $$);
     createmockconfig($pkg, $target);
+    prepare_mock_resultdirs($pkg, $target);
     buildsources($pkg, $target);
+    share_build_sources_dir($SOURCES);
     buildspkgs($pkg, $target);
     # --source-only stops here: buildspkgs has produced the src.rpm, and the binary
     # rebuild is the only thing buildpkgs does. Everything upstream of this point --
@@ -552,7 +550,11 @@ sub configure_nginx {
     my $version = $os{VERSION_ID};
     my $xcat_dep_path;
 
-    if ($version > 10) {
+    if (defined($native_subdir)) {
+        $xcat_dep_path = $opts{xcat_dep_path};
+        confess "Missing xcat-dep folder in $xcat_dep_path: No such file or directory"
+            unless -d $xcat_dep_path;
+    } elsif ($version > 10) {
         setup_repo
             -id => "VersatusHPC",
             -baseurl => "https://mirror.versatushpc.com.br/versatushpc/rpm/el10/";
@@ -578,7 +580,7 @@ EOF
 
     # We always generate the nginx config for all
     # the targets, not $opts{targets}
-    for my $target (@TARGETS) {
+    for my $target (defined($native_subdir) ? @{$opts{targets}} : @TARGETS) {
         my $fullpath = "$PWD/dist/$target/rpms";
         $conf .= <<"EOF";
     location /$target/ {
@@ -610,12 +612,12 @@ sub repo_mode {
 }
 
 sub xcat_dep_file_repo_baseurl {
-    my ($version, $arch) = @_;
+    my ($version, $arch, $native) = @_;
     my $xcat_dep_path = $opts{xcat_dep_path};
     confess "Missing xcat-dep path: --xcat_dep_path is empty"
         unless defined $xcat_dep_path && length $xcat_dep_path;
     $xcat_dep_path =~ s{/+$}{};
-    my $repo_path = "$xcat_dep_path/el$version/$arch";
+    my $repo_path = "$xcat_dep_path/" . ($native // "el$version/$arch");
     confess "Missing xcat-dep repository path in $repo_path: No such directory"
         unless -d $repo_path;
     return "file://$repo_path";
@@ -626,12 +628,19 @@ sub setup_local_repos {
     $target //= $opts{targets}->[0]
         or die "A target must be provided for setup_local_repos";
     my $mode = repo_mode();
+    my $native = openeuler_repo_subdir($target);
+    if (defined($native)) {
+        for my $repo ("$PWD/dist/$target/rpms", "$opts{xcat_dep_path}/$native") {
+            die "Missing openEuler repository signing key: $repo/repodata/repomd.xml.key; build the repository with --gpg-sign first\n"
+                unless -s "$repo/repodata/repomd.xml.key";
+        }
+    }
     my $core_baseurl = (
         $mode eq "file"
         ? "file://$PWD/dist/$target/rpms"
         : "http://127.0.0.1:$opts{nginx_port}/$target"
     );
-    my $gpgkey = $opts{gpg_sign}
+    my $gpgkey = $opts{gpg_sign} || defined($native)
         ? "file://$PWD/dist/$target/rpms/repodata/repomd.xml.key"
         : undef;
     my $exit = setup_repo
@@ -640,28 +649,36 @@ sub setup_local_repos {
         -gpgkey => $gpgkey;
     return $exit if $exit;
     my %os = os_release();
-    my $version = int $os{VERSION_ID};
-    my $arch = $ARCH;
+    my $version = defined($native) ? undef : int $os{VERSION_ID};
+    my $arch = defined($native) ? targetarch_from_target($target, $ARCH) : $ARCH;
+    my $dep_subdir = $native // "el$version/$arch";
     my $xcat_dep_baseurl = (
         $mode eq "file"
-        ? xcat_dep_file_repo_baseurl($version, $arch)
-        : "http://127.0.0.1:$opts{nginx_port}/xcat-dep/el$version/$arch"
+        ? xcat_dep_file_repo_baseurl($version, $arch, $native)
+        : "http://127.0.0.1:$opts{nginx_port}/xcat-dep/$dep_subdir"
     );
 
     $exit = setup_repo
             -id => "xcat-dep",
-            -baseurl => $xcat_dep_baseurl;
+            -baseurl => $xcat_dep_baseurl,
+            -gpgkey => (defined($native) ? "$xcat_dep_baseurl/repodata/repomd.xml.key" : undef);
 }
 
 
-# Index one repo dir with deterministic, upstream-matching metadata. createrepo_c's
-# defaults already emit primary/filelists/other as *.xml.zst plus *.sqlite.bz2
-# (--database), exactly the upstream shape; --set-timestamp-to-revision pins the
-# repomd timestamp to SOURCE_DATE_EPOCH.
+# Index one repo dir with deterministic, upstream-matching metadata: primary/filelists/other as
+# *.xml.zst, with --set-timestamp-to-revision pinning the repomd timestamp to SOURCE_DATE_EPOCH.
+#
+# NO --database. It writes *.sqlite.bz2, and building those needs SQLite, which needs POSIX
+# locks. A build tree can live on an NFS re-export, where the kernel refuses locks outright:
+# every attempt answers errno 524, and createrepo_c then dies on every target with
+# "Cannot open .repodata/primary.sqlite: Can not create db_info table: disk I/O error".
+# Without --database it succeeds there.
+#
+# Nothing this project ships reads the sqlite metadata. dnf on el8+ and zypper both read the XML.
 sub createrepo_dir {
     my ($dir, $extra) = @_;
     $extra //= '';
-    sh_or_die(qq(createrepo_c --update --database )
+    sh_or_die(qq(createrepo_c --update )
        . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"),
         "Failed to createrepo_c $dir\n");
 }
@@ -774,8 +791,8 @@ sub write_repo_metadata_dir {
     # Shipped baseurl points at xcat.org (--repo-baseurl overrides it per family, e.g. the
     # sles/apt layout); mklocalrepo.sh rewrites baseurl/gpgkey to file:// at deploy time.
     my $baseurl = $opts{repo_baseurl};
-    my $gpgcheck = $opts{gpg_sign} ? 1 : 0;
-    my $gpgkey_line = $opts{gpg_sign}
+    my $gpgcheck = $opts{gpg_sign} || defined($native_subdir) ? 1 : 0;
+    my $gpgkey_line = $gpgcheck
         ? "gpgkey=$baseurl/repodata/repomd.xml.key"
         : "# gpgkey=";
     write_text("$repodir/xcat-core.repo", <<"EOF");
@@ -812,7 +829,8 @@ EOF2
     # BUILD_TIME from SOURCE_DATE_EPOCH keeps buildinfo reproducible across rebuilds.
     write_text("$repodir/buildinfo.txt", buildinfo_text(
         version => $VERSION, release => $RELEASE, epoch => $SOURCE_DATE_EPOCH,
-        commit => $GITINFO, time_format => "%a %b %e %H:%M:%S %Z %Y"));
+        commit => $GITINFO, time_format => "%a %b %e %H:%M:%S %Z %Y")
+        . (defined($native_subdir) ? "BUILD_TARGET=$opts{targets}->[0]\n" : ''));
 }
 
 # Assemble the flat MULTI-ARCH core from per-arch build outputs and sign it, in the upstream
@@ -831,6 +849,11 @@ sub merge_core_repos {
     my @ins = @{ $opts{input_core_repos} || [] };
     die "FATAL: --merge-core-repos requires at least one --input-core-repos dir\n" unless @ins;
     -d $_ or die "FATAL: --input-core-repos dir '$_' does not exist\n" for @ins;
+    for my $in (@ins) {
+        my $info = -f "$in/buildinfo.txt" ? read_text("$in/buildinfo.txt") : '';
+        die "FATAL: openEuler repositories must retain their release and architecture: $in\n"
+            if $in =~ m{(?:^|/)openeuler[/-]} || $info =~ /^BUILD_TARGET=openeuler-/m;
+    }
 
     sh_or_die(qq(rm -rf "$out"),
         "Failed to clean output dir '$out'\n");
@@ -867,9 +890,17 @@ sub merge_core_repos {
 # file and the cached chroot dirs left behind are normal mock state, not leaks.)
 my %MOCK_INFLIGHT;      # ForkManager child pid => mock chroot (-r) name it is building
 my $ABORTING = 0;
-my $BUILD_LOCK_FH;      # per-target build flock; MUST stay file-scoped so the fd (and thus the
-                        # lock) lives for the whole process. A lexical inside main()'s block would
-                        # be DESTROYED at block exit -> lock released before any worker forks.
+my $BUILD_LOCK_DIR;     # per-target build lock, an atomic mkdir rather than an flock. The build
+                        # tree can live on an NFS re-export, where the kernel refuses locks
+                        # outright ("Clients are not allowed to get file locks or delegations from
+                        # a reexport server"), so every flock there fails with errno 524. mkdir(2)
+                        # is arbitrated by the server and needs no lock daemon. File-scoped so the
+                        # release runs once, from END, for the whole process.
+my $BUILD_LOCK_PID;     # the pid that took it. ForkManager children inherit $BUILD_LOCK_DIR, and
+                        # their END would release the PARENT's lock -- the flock this replaces
+                        # could not be released by a child, and neither may this.
+END { rmdir $BUILD_LOCK_DIR if defined $BUILD_LOCK_DIR and defined $BUILD_LOCK_PID and $$ == $BUILD_LOCK_PID }
+
 my @CHILD_FAILURES;     # idents (chroot names) of ForkManager children that exited non-zero
 
 # PIDs of running mock processes whose `-r <chroot>` matches one of @chroots.
@@ -912,7 +943,8 @@ sub abort_builds {
     warn "\n[buildrpms] caught SIG$sig: aborting -- signalling mock to self-clean...\n";
     my @chroots = values %MOCK_INFLIGHT;
     kill 'TERM', mock_pids(@chroots);               # mock unmounts + orphanKills itself
-    kill 'TERM', keys %MOCK_INFLIGHT;               # unwind the ForkManager builders too
+    my @builders = keys %MOCK_INFLIGHT;
+    kill 'TERM', @builders;                         # unwind the ForkManager builders too
     my @mock;
     for (1 .. 30) {                                 # wait for mock to finish its own cleanup
         @mock = mock_pids(@chroots);
@@ -925,7 +957,21 @@ sub abort_builds {
         select undef, undef, undef, 2;
         sweep_mock_mounts(@chroots);
     }
+    # Delete the staging directory of each builder that has exited. A builder that is
+    # still alive keeps its directory, and the sweep in the next run deletes it.
+    for my $pid (@builders) {
+        my $reaped = 0;
+        for (1 .. 10) {
+            $reaped = waitpid($pid, POSIX::WNOHANG());
+            last if $reaped;
+            select undef, undef, undef, 0.5;
+        }
+        remove_build_sources_dir($SOURCES_BASE, $pid) if $reaped == $pid;
+    }
     warn "[buildrpms] abort cleanup done\n";
+    # The re-raise below kills this process by signal, and END blocks do not run then. Release the
+    # build lock here or a killed build strands it for every later run.
+    rmdir $BUILD_LOCK_DIR if defined $BUILD_LOCK_DIR and defined $BUILD_LOCK_PID and $$ == $BUILD_LOCK_PID;
     $SIG{$sig} = 'DEFAULT';
     kill $sig, $$;                                  # re-raise for the correct exit status
 }
@@ -940,8 +986,8 @@ sub main {
     return exit(setup_local_repos()) if $opts{setup_local_repos};
     return exit(merge_core_repos()) if $opts{merge_core_repos};
 
-    prepare_xcat_probe_source_tar()
-        if grep { $_ eq "xCAT-probe" } $opts{packages}->@*;
+    usage(message => "openEuler binary repository builds require --gpg-sign")
+        if defined($native_subdir) && !$opts{source_only} && !$opts{gpg_sign};
 
     # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------
     # Every per-package mock chroot/config for this run shares the "<pkg>-<target><ext>" namespace:
@@ -955,9 +1001,10 @@ sub main {
         my $key = join('-', $opts{targets}->@*)
                 . ($opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "");
         $key =~ s/[^A-Za-z0-9._-]/-/g;
-        my $lock = "/var/lock/buildrpms.$key.lock";
-        if (open($BUILD_LOCK_FH, '>', $lock)) {
-            unless (flock($BUILD_LOCK_FH, LOCK_EX | LOCK_NB)) {
+        my $lock = "/var/lock/buildrpms.$key.lock.d";
+        {
+            unless (mkdir $lock) {
+                die "FATAL: cannot take the build lock $lock: $!\n" unless $! == POSIX::EEXIST();
                 die "FATAL: another buildrpms.pl is already building target '@{$opts{targets}}'"
                   . ($opts{mock_uniqueext} ? " (uniqueext=$opts{mock_uniqueext})" : "") . ".\n"
                   . "       ($lock is held). Concurrent builds of the same target collide on the shared\n"
@@ -965,11 +1012,12 @@ sub main {
                   . "       cleanup unmounts this build's chroot). Serialize them, or pass a distinct\n"
                   . "       --mock-uniqueext per build.\n";
             }
-            # $BUILD_LOCK_FH is file-scoped, so the fd stays open (lock held) until this process
-            # exits. Child forks inherit the fd but their exits never release it (the parent's
-            # still-open fd keeps the lock), which is exactly what we want.
+            $BUILD_LOCK_DIR = $lock; $BUILD_LOCK_PID = $$;
         }
     }
+
+    # A builder killed with SIGKILL together with this parent leaves its directory behind.
+    sweep_build_sources_dirs($SOURCES_BASE);
 
     my @rpms = product($opts{packages}, $opts{targets});
     my $pm = Parallel::ForkManager->new($opts{nproc});
@@ -981,6 +1029,7 @@ sub main {
     $pm->run_on_finish(sub {
         my ($pid, $exit_code, $ident, $exit_signal, $core_dump) = @_;
         delete $MOCK_INFLIGHT{$pid};
+        remove_build_sources_dir($SOURCES_BASE, $pid);
         # A child that die()s exits non-zero; one killed by a SIGNAL (SIGKILL / OOM-killer) is reaped
         # with $exit_code==0 but $exit_signal!=0 (and maybe $core_dump). Checking $exit_code alone
         # would let an OOM-killed worker through and the parent would index+sign a partial repository
@@ -1077,14 +1126,21 @@ Show usage text and exit.
 
 Install host build dependencies, mock, nginx, and supporting tools.
 This option is handled before normal option parsing.
+On openEuler, use a build host whose native repositories provide mock and its
+Perl dependencies. OpenEuler 24.03 LTS-SP3 provides these tools; older target
+releases can use their exact mock configuration on that build host.
 
 =item B<--target>=I<TARGET>
 
 Build for the specified mock target, e.g. C<alma+epel-10-ppc64le>. Exactly ONE target
 is built per invocation: passing more than one C<--target> is an error (run the script
-once per target). When omitted, the default is a single C<< <distro>+epel-10-<arch> >>
-derived from the host. The multi-arch flat core is assembled from per-arch builds via
-C<--merge-core-repos>.
+once per target). On openEuler, the default retains the host release and service pack,
+for example C<openeuler-24.03sp3-x86_64>. Install the matching configuration from
+C<xcat-dep/mock-configs> before building. Other hosts retain the default
+C<< <distro>+epel-10-<arch> >>. OpenEuler output stays in
+C<dist/E<lt>targetE<gt>/rpms>; publish it under
+C<xcat-core/openeulerE<lt>releaseSPE<gt>/E<lt>archE<gt>>.
+C<--merge-core-repos> rejects native openEuler inputs.
 
 A riscv64 build on an x86_64 builder needs a mock configuration that sets
 C<config_opts['forcearch'] = 'riscv64'> (with the riscv64 qemu-user-static
@@ -1099,10 +1155,9 @@ Build only selected package(s). Repeatable.
 =item B<--native-only>
 
 Build only the arch-native packages (C<xCAT>, C<xCATsn>, C<xCAT-genesis-scripts>) -- the
-ones whose rpms carry the target arch. Everything else in the default set is C<noarch> and
-identical on every arch, so a secondary-arch builder (e.g. ppc64le or riscv64) uses this to avoid
-rebuilding the noarch packages that the x86_64 builder already produces. Ignored if
-C<--package> is given.
+ones whose rpms carry the target arch. Use this only when the remaining C<noarch>
+packages have been validated for the same distribution release and architecture.
+Ignored if C<--package> is given.
 
 =item B<--nproc>=I<N>
 
@@ -1184,6 +1239,9 @@ This is an explicit action and does not run during the default build flow.
 Sign RPMs and repository metadata after build. Requires a GPG key
 in the active keyring (default C<~/.gnupg> or the directory set by
 C<--gpg-home>).
+Required for native openEuler binary repository builds. C<--source-only>
+does not require signing. C<--setup_local_repos> consumes existing signed
+repositories and requires their exported keys, without requiring this flag.
 
 =item B<--gpg-home>=I<PATH>
 

@@ -13,6 +13,7 @@ use xCAT::Table;
 #use Data::Dumper;
 use File::Path;
 use File::Copy;
+use Cwd qw(realpath);
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -74,6 +75,7 @@ sub process_request {
     my $ignorekernelchk;
     my $noupdate;
     my $envar;
+    my $gpgcheck;
 
     GetOptions(
         'a=s'             => \$arch,
@@ -145,7 +147,7 @@ sub process_request {
             return 1;
         }
 
-        (my $ref_linuximage_tab) = $linuximagetab->getAttribs({ imagename => $imagename }, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'krpmver', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission', 'driverupdatesrc');
+        (my $ref_linuximage_tab) = $linuximagetab->getAttribs({ imagename => $imagename }, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'krpmver', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission', 'driverupdatesrc', 'gpgcheck');
         unless ($ref_linuximage_tab) {
             $callback->({ error => ["Cannot find $imagename from the linuximage table."], errorcode => [1] });
             return 1;
@@ -164,6 +166,10 @@ sub process_request {
 
         unless ($provmethod eq 'netboot' || $provmethod eq 'statelite') {
             $callback->({ error => ["\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'."], errorcode => [1] });
+            return 1;
+        }
+        if ($osver =~ /^openeuler/ && $provmethod eq 'statelite') {
+            $callback->({ error => ['openEuler StateLite images are not supported.'], errorcode => [1] });
             return 1;
         }
 
@@ -206,6 +212,14 @@ sub process_request {
         $destdir         = $ref_linuximage_tab->{'rootimgdir'};
         $rootimg_dir     = $ref_linuximage_tab->{'rootimgdir'};
         $driverupdatesrc = $ref_linuximage_tab->{'driverupdatesrc'};
+
+        my $gpgcheck_value = $ref_linuximage_tab->{'gpgcheck'};
+        if (defined($gpgcheck_value) && $gpgcheck_value =~ /^(?:1|yes)$/i) {
+            $gpgcheck = 1;
+        } elsif (defined($gpgcheck_value) && $gpgcheck_value !~ /^(?:0|no)?$/i) {
+            $callback->({ error => ["Invalid linuximage.gpgcheck value \'$gpgcheck_value\' for image \'$imagename\'. Valid values are 1, yes, 0 or no."], errorcode => [1] });
+            return 1;
+        }
 
         # TODO: how can we do if the user specifies one wrong value to the following attributes?
         # currently, one message is output to indicate the users there will be some updates
@@ -289,6 +303,14 @@ sub process_request {
     if ($osver =~ /^leap15/) {
         $osfamily = "sles";
     }
+    if ($osver =~ /^openeuler/) {
+        unless (defined(xCAT::Utils::normalize_openeuler_version(substr($osver, 9)))
+            && $arch =~ /^(?:x86_64|ppc64le)$/) {
+            $callback->({ error => ["Unsupported openEuler release or architecture: $osver $arch"], errorcode => [1] });
+            return 1;
+        }
+        $osfamily = 'openeuler';
+    }
 
     $osfamily =~ s/ //g;
 
@@ -305,6 +327,12 @@ sub process_request {
     $profDir = "$::XCATROOT/share/xcat/netboot/$osfamily";
     unless (-d $profDir) {
         $callback->({ error => ["Unable to find genimage script in $profDir."], errorcode => [1] });
+        return 1;
+    }
+
+    # Only the shared RPM image builder (rh/genimage) implements gpgcheck.
+    if ($gpgcheck && realpath("$profDir/genimage") ne realpath("$::XCATROOT/share/xcat/netboot/rh/genimage")) {
+        $callback->({ error => ["linuximage.gpgcheck is not supported for $osver diskless images."], errorcode => [1] });
         return 1;
     }
 
@@ -338,6 +366,7 @@ sub process_request {
     if ($driverupdatesrc) { $cmd .= " --driverupdatesrc $driverupdatesrc"; }
     if ($ignorekernelchk) { $cmd .= " --ignorekernelchk $ignorekernelchk"; }
     if ($noupdate)        { $cmd .= " --noupdate $noupdate"; }
+    if ($gpgcheck)        { $cmd .= " --gpgcheck"; }
 
     if ($osfamily eq "sles") {
         my @entries = xCAT::TableUtils->get_site_attribute("timezone");
@@ -422,6 +451,12 @@ sub process_request {
                 $installdir = $siteents[0];
             }
 
+            # The new initial ramdisk also checks for nodes with older boot entries, so an archive packed before the check gets a checksum.
+            if (my $error = xCAT::SvrUtils->publish_missing_rootimg_checksums($rootimg_dir)) {
+                $error =~ s/\.$//x;
+                $callback->({ error => ["$error. The new initial ramdisk is not copied to $tftppath. Run packimage $imagename, then nodeset."], errorcode => [1] });
+                return 1;
+            }
             unless (-d $tftppath) {
                 mkpath $tftppath;
             }

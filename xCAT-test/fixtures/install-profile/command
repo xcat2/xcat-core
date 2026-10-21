@@ -1,0 +1,37 @@
+#!/bin/sh
+
+case ${0##*/} in
+    curl)
+        output=
+        url=
+        while [ "$#" -gt 0 ]; do
+            case $1 in
+                --fail) shift ;;
+                --retry|--max-time) shift 2 ;;
+                -o) output=$2; shift 2 ;;
+                http://*) url=$1; shift ;;
+                *) break ;;
+            esac
+        done
+        if [ "$#" -eq 0 ]; then
+            case $url in
+                */postscripts/)
+                    printf '<a href="xcatlib.sh">xcatlib.sh</a>\n'
+                    exit 0 ;;
+                */postscripts/xcatlib.sh)
+                    exec cp /fixture/xcatlib.sh "$output" ;;
+                */mypostscripts/mypostscript.node)
+                    exec cp /fixture/mypostscript.node "$output" ;;
+            esac
+        fi
+        ;;
+    logger|updateflag.awk|nmcli) exit 0 ;;
+    sleep)
+        case $* in
+            ''|*[!0-9]*) ;;
+            *) exit 0 ;;
+        esac
+        ;;
+esac
+printf '%s %s\n' "${0##*/}" "$*" >> /fixture/unexpected-command
+exit 64

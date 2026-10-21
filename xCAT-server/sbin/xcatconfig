@@ -471,6 +471,10 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
 
 if ($::UPDATEINSTALL) {
     upgrade_conserver();
+
+    # The images of a release without the root image check keep booting unchecked.
+    my $error = xCAT::SvrUtils->upgrade_rootimg_checksum();
+    xCAT::MsgUtils->message('E', $error) if $error;
 }
 
 # more  config needed after xcatd start
@@ -507,8 +511,7 @@ if ($::INITIALINSTALL || $::FORCE)
             xCAT::Utils->enableservice("dhcp");
         }
 
-        # Turn off selinux on RedHat
-        if (-f "/etc/redhat-release")
+        if (-f "/etc/redhat-release" || -f "/etc/openEuler-release")
         {
             my $rc = xCAT::Utils->isSELINUX();
 
@@ -1022,8 +1025,9 @@ sub genSSHNodeHostKey
     }
 
 
-    # Skip DSA generation in EL10+
-    if (xCAT::Utils->osver("platform") =~ /el(\d+)/ and $1 < 10) {
+    my $platform = xCAT::Utils->osver("platform");
+    if ($platform =~ /el(\d+)/
+        && xCAT::Utils->dsaHostKeyAllowed($platform, xCAT::Utils->isFIPS())) {
         xCAT::MsgUtils->message('I', "Generating SSH2 DSA Key...");
         $cmd =
     "/usr/bin/ssh-keygen -t dsa -f /etc/xcat/hostkeys/ssh_host_dsa_key -C '' -N ''";
@@ -1261,11 +1265,15 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupdiskfullxcatpost site.value=no;";
+
+        # New images get the root image check, and a later upgrade keeps it.
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=rootimgchecksum site.value=yes;";
         my $omapi_algorithm =
           xCAT::DHCP::OmapiPolicy->new_install_default_algorithm(
             is_new_install => $initializing_new_site,
-            platform      => xCAT::Utils->osver("platform"),
-            os            => xCAT::Utils->osver("all"),
+            fips_mode      => xCAT::Utils->isFIPS(),
+            platform       => xCAT::Utils->osver("platform"),
+            os             => xCAT::Utils->osver("all"),
           );
         if ($omapi_algorithm) {
             $chtabcmds .=

@@ -1841,7 +1841,7 @@ function add_extra_params_nmcli {
     con_name=$2
     rc=0
 
-    if ! xcat_is_el9_or_later "$OSVER"; then
+    if ! xcat_uses_nm_keyfile "$OSVER" "$con_name"; then
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${con_name}"
         str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-${con_name}-1"
         if [ -f $str_conf_file_1 ]; then
@@ -1862,7 +1862,7 @@ function add_extra_params_nmcli {
 
         if [ -n "$name" -a -n "$value" ]; then
             # For RHEL 9, use nmcli directly, otherwise use ifcfg scheme.
-            if xcat_is_el9_or_later "$OSVER"; then
+            if xcat_uses_nm_keyfile "$OSVER" "$con_name"; then
                 nmcli con modify "$con_name" "$name" "$value"
                 rc+=$?
             else
@@ -1881,7 +1881,7 @@ function add_extra_params_nmcli {
         i=$((i+1))
     done
 
-    if ! xcat_is_el9_or_later "$OSVER"; then
+    if ! xcat_uses_nm_keyfile "$OSVER" "$con_name"; then
         $nmcli con reload $str_conf_file
     fi
     return $rc
@@ -2170,6 +2170,8 @@ function create_bond_interface_nmcli {
         key=$(echo "$1" | $cut -s -d= -f1)
         if [ "$key" = "bondname" ] || \
            [ "$key" = "_ipaddr" ] || \
+           [ "$key" = "_netmask" ] || \
+           [ "$key" = "_bonding_opts" ] || \
            [ "$key" = "slave_ports" ] || \
            [ "$key" = "next_nic" ] || \
            [ "$key" = "slave_type" ]; then
@@ -2180,12 +2182,12 @@ function create_bond_interface_nmcli {
     if [ "$slave_type" = "ethernet" ]; then
         slave_type="Ethernet"
         # - "802.3ad" mode requires a switch that is 802.3ad compliant.
-        _bonding_opts="mode=802.3ad,miimon=100"
+        _bonding_opts=${_bonding_opts:-mode=802.3ad,miimon=100}
     elif [ "$slave_type" = "infiniband" ]; then
         slave_type="Infiniband"
-        _bonding_opts="mode=1,miimon=100,fail_over_mac=1"
+        _bonding_opts=${_bonding_opts:-mode=1,miimon=100,fail_over_mac=1}
     else
-        _bonding_opts="mode=active-backup"
+        _bonding_opts=${_bonding_opts:-mode=active-backup}
     fi
     if [ -n "$_ipaddr" ]; then
         # query "nicnetworks" table about its target "xcatnet"
@@ -2199,10 +2201,12 @@ function create_bond_interface_nmcli {
         fi
 
         # Query mask value from "networks" table
-        _netmask=$(get_network_attr $xcatnet mask)
-        if [ $? -ne 0 ]; then
-            log_error "No valid netmask get for $bondname"
-            return 1
+        if [ -z "$_netmask" ]; then
+            _netmask=$(get_network_attr $xcatnet mask)
+            if [ $? -ne 0 ]; then
+                log_error "No valid netmask get for $bondname"
+                return 1
+            fi
         fi
             
         # Calculate prefix based on mask

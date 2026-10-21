@@ -10,6 +10,7 @@ use Test::More;
 
 use xCAT::CommandUtils;
 use xCAT::DHCP::Backend::Kea;
+use xCAT::DHCP::BootPolicy;
 
 my $kea_dhcp4 = xCAT::CommandUtils::find_executable('kea-dhcp4');
 plan skip_all => 'kea-dhcp4 is not installed' unless $kea_dhcp4;
@@ -116,7 +117,69 @@ my $result = $backend->validate_dhcp4_config($path);
 ok( !$result->{error}, 'generated Kea DHCPv4 config validates with kea-dhcp4 -t' )
   or diag $result->{error};
 
+# makedhcp without -n adds the iPXE feature options to the configuration of an older makedhcp -n, and
+# writes it back. The next makedhcp reads the upgraded configuration.
+{
+    my $source = $path;
+    my @written;
+    for my $label ( 'an upgraded', 'a current' ) {
+        my $loaded = $backend->load_dhcp4_config($source);
+        xCAT::DHCP::BootPolicy->kea_declare_ipxe_features( $loaded->{Dhcp4} );
+        $source = write_validation_file( $backend->encode_config($loaded), 'xcat-test-kea-dhcp4-upgraded' );
+        push @written, $source;
+        my $check = $backend->validate_dhcp4_config($source);
+        ok( !$check->{error}, "makedhcp writes $label Kea DHCPv4 config that validates with kea-dhcp4 -t" )
+          or diag $check->{error};
+    }
+    unlink @written;
+}
+
 unlink $path;
+# The x86 boot classes as makedhcp renders them, with an xnba node, an ipxe node and an ipxe node that
+# boots from SAN, and the option 175 definitions that the upstream loader classes test.
+{
+    my $boot_json = $backend->render_dhcp4_config(
+        {
+            interfaces   => ['*'],
+            'option-def' => [
+                { name => 'conf-file', code => 209, type => 'string', space => 'dhcp4' },
+                @{ xCAT::DHCP::BootPolicy->kea_ipxe_option_defs() },
+            ],
+            'client-classes' => [
+                @{ xCAT::DHCP::BootPolicy->kea_xnba_node_classes(
+                        xnba_kpxe => 1,
+                        xnba_efi  => 1,
+                        nodes     => [
+                            { node => 'node01', mac => '52:54:00:12:34:56', next_server => '192.168.122.1', httpport => 80, netboot => 'xnba' },
+                            { node => 'node02', mac => '52:54:00:12:34:57', next_server => '192.168.122.1', httpport => 80, netboot => 'ipxe' },
+                            { node => 'node03', mac => '52:54:00:12:34:58', next_server => '192.168.122.1', httpport => 80, netboot => 'ipxe', iscsi => 1 },
+                        ],
+                    ) },
+                @{ xCAT::DHCP::BootPolicy->kea_client_classes() },
+                @{ xCAT::DHCP::BootPolicy->kea_xnba_network_classes(
+                        net         => '192.168.122.0',
+                        prefix      => 24,
+                        next_server => '192.168.122.1',
+                        httpport    => 80,
+                    ) },
+            ],
+            subnets => [
+                {
+                    id           => 1,
+                    subnet       => '192.168.122.0/24',
+                    dynamicrange => '192.168.122.100-192.168.122.120',
+                    next_server  => '192.168.122.1',
+                },
+            ],
+        }
+    );
+    my $boot_path = write_validation_file( $boot_json, 'xcat-test-kea-dhcp4-boot' );
+    my $boot_result = $backend->validate_dhcp4_config($boot_path);
+    ok( !$boot_result->{error}, 'the x86 boot classes of xnba and ipxe nodes validate with kea-dhcp4 -t' )
+      or diag $boot_result->{error};
+    unlink $boot_path;
+}
+
 SKIP: {
     skip 'kea-dhcp6 is not installed', 1 unless xCAT::CommandUtils::find_executable('kea-dhcp6');
     my $dhcp6_json = $backend->render_dhcp6_config(

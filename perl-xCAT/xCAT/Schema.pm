@@ -670,13 +670,13 @@ passed as argument rather than by table value',
             netboot => 'The type of network booting to use for this node.  Valid values:
 
                        Arch                    OS                           valid netboot options
-                       x86, x86_64             ALL                          pxe, xnba, grub2
+                       x86, x86_64             ALL                          pxe, ipxe, xnba (deprecated), grub2
                        ppc64                   <=rhel6, <=sles11.3          yaboot
                        ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
                        ppc64le NonVirtualize   ALL                          petitboot
                        ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
                        aarch64                 >=el8                        grub2
-                       riscv64                 >=el10                       grub2,grub2-http,grub2-tftp
+                       riscv64                 >=el10, >=ubuntu24.04        grub2,grub2-http,grub2-tftp
 
 ',
             tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
@@ -808,7 +808,7 @@ passed as argument rather than by table value',
         },
     },
     linuximage => {
-        cols => [qw(imagename template boottarget addkcmdline pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile driverupdatesrc comments disable)],
+        cols => [qw(imagename template boottarget addkcmdline pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize partitionfile driverupdatesrc gpgcheck rootimgchecksum comments disable)],
         keys       => [qw(imagename)],
         tablespace => 'XCATTBS32K',
         table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
@@ -853,6 +853,8 @@ passed as argument rather than by table value',
                 "s:c:<the absolute path of the additional pressed config script>": only available for ubuntu osimages, runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma ","
 ',
             driverupdatesrc => 'The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_source_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm',
+            gpgcheck => "Diskless Red Hat family images only. Set to 'yes' or '1' to have genimage verify the signature of every package it installs from the pkgdir, kerneldir and otherpkgdir repositories, as it always does for openEuler images. The trusted keys are the RPM signing keys imported on the node that runs genimage (rpm -q gpg-pubkey), so import the key of every repository first, for example rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9. The default is no verification.",
+            rootimgchecksum => "Stateless images and statelite ramdisk images only. Set to 'yes' or '1' to have nodeset tell nodes to boot the compressed root image only after it matches its SHA-256 checksum. Set to 'no' or '0' to have nodes boot it unchecked. packimage, liteimg and imgimport always write the checksum. If not set, the default is the value of site.rootimgchecksum, which defaults to 'yes'. The first upgrade to a release with the check sets this attribute to 'no' for the images that exist then.",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1066,18 +1068,22 @@ passed as argument rather than by table value',
 " dhcpomapialgorithm:  The TSIG algorithm used by BIND DDNS and, for legacy\n" .
 "                      ISC DHCP, OMAPI. Valid values are hmac-md5,\n" .
 "                      hmac-sha1, hmac-sha224, hmac-sha256, hmac-sha384,\n" .
-"                      and hmac-sha512. New installations on Enterprise Linux\n" .
-"                      9 or later and Ubuntu 20.04 or later set hmac-sha256.\n" .
-"                      Ubuntu 18.04, SLES 12, SLES 15, and openSUSE Leap 15\n" .
-"                      leave this attribute unset because their bundled\n" .
-"                      omshell does not support the key-algorithm command.\n" .
-"                      When this attribute is not set, including on an\n" .
-"                      existing installation, xCAT uses hmac-md5 for\n" .
-"                      compatibility. HMAC-MD5 is not approved for FIPS\n" .
-"                      mode; a FIPS-mode site that needs OMAPI must provide\n" .
-"                      an omshell supporting key-algorithm and explicitly\n" .
-"                      select a SHA-2 algorithm. Kea does not use OMAPI, but\n" .
-"                      Kea DDNS uses this TSIG algorithm.\n\n" .
+"                      and hmac-sha512. For new installations on Enterprise\n" .
+"                      Linux 9 or later and Ubuntu 20.04 or later, xCAT sets\n" .
+"                      hmac-sha256. Outside FIPS mode, xCAT leaves this\n" .
+"                      attribute unset on Ubuntu 18.04, SLES 12, SLES 15,\n" .
+"                      and openSUSE Leap 15. On these systems, the bundled\n" .
+"                      omshell lacks key-algorithm support.\n" .
+"                      On new FIPS installations, xCAT always sets hmac-sha256.\n" .
+"                      Outside FIPS mode, if this value is unset, xCAT uses\n" .
+"                      hmac-md5 for compatibility, including on existing\n" .
+"                      installations. In FIPS mode, if this value is unset,\n" .
+"                      xCAT uses hmac-sha256. In FIPS mode, xCAT rejects\n" .
+"                      explicit hmac-md5 values. A FIPS-mode site\n" .
+"                      on a platform whose bundled omshell lacks the\n" .
+"                      key-algorithm command must provide a compatible\n" .
+"                      omshell. Kea does not use OMAPI, but Kea DDNS uses\n" .
+"                      this TSIG algorithm.\n\n" .
 " dhcpomapikeyname:  The TSIG/OMAPI key name used by legacy ISC DHCP and\n" .
 "                   BIND DDNS integration. The default is xcat_key. The\n" .
 "                   value maps to the passwd table entry where key=omapi\n" .
@@ -1217,7 +1223,9 @@ passed as argument rather than by table value',
 "                   postscripts are run. Default is no.\n\n" .
 " cleanupdiskfullxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost\n" .
 "                   directory on the diskfull nodes after the\n" .
-"                   postscripts are run with no errors. Default is no.\n\n" .
+"                   postscripts are run with no errors: at deployment, after each\n" .
+"                   updatenode run, and after a reboot. updateflag.awk stays, so\n" .
+"                   the node can still report its status. Default is no.\n\n" .
 " db2installloc:  The location which the service nodes should mount for\n" .
 "                 the db2 code to install. Format is hostname:/path.  If hostname is\n" .
 "                 omitted, it defaults to the management node. Default is /mntdb2.\n\n" .
@@ -1241,6 +1249,14 @@ passed as argument rather than by table value',
 " mnroutenames:  The name of the routes to be setup on the management node.\n" .
 "                It is a comma separated list of route names that are defined in the\n" .
 "                routes table.\n\n" .
+" rootimgchecksum:  (yes/1 or no/0). Default is yes. If yes, nodeset tells the\n" .
+"                   nodes of a stateless or statelite ramdisk image to boot the\n" .
+"                   compressed root image only after it matches its SHA-256\n" .
+"                   checksum. If no, nodes boot the image unchecked. packimage,\n" .
+"                   liteimg and imgimport always write the checksum. The\n" .
+"                   rootimgchecksum attribute of an osimage overrides this value.\n" .
+"                   The first upgrade to a release with the check sets that\n" .
+"                   attribute to no for the images that exist then.\n\n" .
 " runbootscripts:  If set to 'yes' the scripts listed in the postbootscripts\n" .
 "                  attribute in the osimage and postscripts tables will be run during\n" .
 "                  each reboot of stateful (diskful) nodes. This attribute has no\n" .
@@ -3331,6 +3347,16 @@ push(@{ $defspec{node}->{'attrs'} }, @nodeattrs);
     { attr_name => 'otherpkgdir',
         only_if         => 'imagetype=linux',
         tabentry        => 'linuximage.otherpkgdir',
+        access_tabentry => 'linuximage.imagename=attr:imagename',
+    },
+    { attr_name => 'gpgcheck',
+        only_if         => 'imagetype=linux',
+        tabentry        => 'linuximage.gpgcheck',
+        access_tabentry => 'linuximage.imagename=attr:imagename',
+    },
+    { attr_name => 'rootimgchecksum',
+        only_if         => 'imagetype=linux',
+        tabentry        => 'linuximage.rootimgchecksum',
         access_tabentry => 'linuximage.imagename=attr:imagename',
     },
     { attr_name => 'exlist',

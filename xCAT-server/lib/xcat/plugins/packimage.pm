@@ -191,6 +191,29 @@ sub process_request {
     }
     $rootimg_dir = "$destdir/rootimg";
 
+    # packimage passes the image directory through the shell, which splits a path at a space and expands other
+    # characters, so a command such as rm -rf would act on another path.
+    if ($destdir =~ /[\s'"`\$;&|<>()\\*?\[\]{}]/x) {
+        $callback->({ error => ["Cannot pack the image in $destdir: its path has a space or a shell character"], errorcode => [1] });
+        return 1;
+    }
+
+    my $is_openeuler = $osver =~ /^openeuler/;
+    if ($is_openeuler) {
+        unless (defined(xCAT::Utils::normalize_openeuler_version(substr($osver, 9)))
+            && $arch =~ /^(?:x86_64|ppc64le)$/) {
+            $callback->({ error => ["Unsupported openEuler image release or architecture: $osver $arch"], errorcode => [1] });
+            return 1;
+        }
+        if (-f "$rootimg_dir/.statelite/litefile.save") {
+            $callback->({ error => ["openEuler StateLite images are not supported"], errorcode => [1] });
+            return 1;
+        }
+        unless (-d $rootimg_dir) {
+            $callback->({ error => ["$rootimg_dir does not exist; run genimage first"], errorcode => [1] });
+            return 1;
+        }
+    }
 
     my $retcode;
     ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
@@ -241,21 +264,63 @@ sub process_request {
     my $rootimg_status = 0; # 0 means stateless mode, while 1 means statelite mode
     $rootimg_status = 1 if (-f "$rootimg_dir/.statelite/litefile.save");
 
-    my $ref_liteList;       # get the litefile entries
-
-    my @ret = xCAT::Utils->runcmd("ilitefile $osver-$arch-statelite-$profile", 0, 1);
-    $ref_liteList = $ret[0];
-
     my %liteHash;           # create hash table for the entries in @listList
-    if (parseLiteFiles($ref_liteList, \%liteHash)) {
-        $callback->({ error => ["Failed for parsing litefile table!"], errorcode => [1] });
-        return 1;
+    unless ($is_openeuler) {
+        my @ret = xCAT::Utils->runcmd("ilitefile $osver-$arch-statelite-$profile", 0, 1);
+        if (parseLiteFiles($ret[0], \%liteHash)) {
+            $callback->({ error => ["Failed for parsing litefile table!"], errorcode => [1] });
+            return 1;
+        }
     }
 
     $verbose && $callback->({ data => [ "rootimg_status = $rootimg_status at line " . __LINE__ ] });
 
+    # Each StateLite change is recorded, so that every exit undoes exactly what was done.
+    my ($statelite_converted, @statelite_moved, @statelite_created, %statelite_saved);
+    # Every return after the conversion below must call this.
+    my $restore_statelite = sub {
+        return 0 unless $statelite_converted;
+        $statelite_converted = 0;
+        my @failed;
+        foreach my $filename (@statelite_moved) {
+            xCAT::Utils->runcmd("rm -rf $rootimg_dir$filename", 0, 1);
+            xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup$filename $rootimg_dir$filename", 0, 1);
+            push @failed, $filename if $::RUNCMD_RC;
+        }
+        foreach my $filename (@statelite_created) {
+            xCAT::Utils->runcmd("rm -rf $rootimg_dir$filename", 0, 1);
+        }
+        foreach my $saved (sort keys %statelite_saved) {
+            xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup/$saved $rootimg_dir$statelite_saved{$saved}", 0, 1);
+            push @failed, $statelite_saved{$saved} if $::RUNCMD_RC;
+        }
+        if (@failed) {
+            $callback->({ error => ["Cannot restore the StateLite files " . join(', ', @failed)
+                  . " in $rootimg_dir. The originals stay in $rootimg_dir/.statebackup."], errorcode => [1] });
+            return 1;
+        }
+        xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statebackup", 0, 1);
+        return 0;
+    };
+    my $statelite_failure = sub {
+        my $message = shift;
+        $callback->({ error => [$message], errorcode => [1] });
+        $restore_statelite->();
+        return 1;
+    };
+
     if ($rootimg_status) {
-        xCAT::Utils->runcmd("mkdir $rootimg_dir/.statebackup", 0, 1);
+        # A .statebackup that an earlier pack could not restore holds the only copy of the original files.
+        if (-e "$rootimg_dir/.statebackup" || -l "$rootimg_dir/.statebackup") {
+            $callback->({ error => ["$rootimg_dir/.statebackup holds StateLite files that an earlier packimage did not restore. "
+                  . "Restore them and remove the directory, then run packimage again."], errorcode => [1] });
+            return 1;
+        }
+        unless (mkdir("$rootimg_dir/.statebackup")) {
+            $callback->({ error => ["Cannot create $rootimg_dir/.statebackup: $!"], errorcode => [1] });
+            return 1;
+        }
+        $statelite_converted = 1;
 
         # read through the litefile table to decide which file/directory should be restore
         my $defaultloc = "$rootimg_dir/.default";
@@ -278,35 +343,54 @@ sub process_request {
                     unlink "$rootimg_dir/.statebackup$parent";
                     $verbose && $callback->({ data => ["mkdir -p $rootimg_dir/.statebackup$parent"] });
                     xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.statebackup$parent", 0, 1);
+                    return $statelite_failure->("Cannot create $rootimg_dir/.statebackup$parent") if $::RUNCMD_RC;
                 }
                 $verbose && $callback->({ data => [ "backing up the file $filename.. at line " . __LINE__ ] });
                 $verbose && print "++ $defaultloc$filename ++ $rootimg_dir$filename ++ at " . __LINE__ . "\n";
-                xCAT::Utils->runcmd("mv $rootimg_dir$filename $rootimg_dir/.statebackup$filename", 0, 1);
+                if (-e "$rootimg_dir$filename" || -l "$rootimg_dir$filename") {
+                    xCAT::Utils->runcmd("mv $rootimg_dir$filename $rootimg_dir/.statebackup$filename", 0, 1);
+                    return $statelite_failure->("Cannot move $rootimg_dir$filename to $rootimg_dir/.statebackup") if $::RUNCMD_RC;
+                    push @statelite_moved, $filename;
+                } else {
+                    push @statelite_created, $filename;
+                }
                 xCAT::Utils->runcmd("cp -r -a $defaultloc$filename $rootimg_dir$filename", 0, 1);
             }
         }
     }
 
-    # TODO: following the old genimage code, to update the stateles-only files/directories
-    # # another file should be /opt/xcat/xcatdsklspost, but it seems  not necessary
-    xCAT::Utils->runcmd("mv $rootimg_dir/etc/init.d/statelite $rootimg_dir/.statebackup/statelite ", 0, 1) if (-e "$rootimg_dir/etc/init.d/statelite");
-    if (-e "$rootimg_dir/usr/share/dracut") {
-
-        # currently only used for redhat families, not available for SuSE families
-        if (-e "$rootimg_dir/etc/rc.sysinit.backup") {
-            xCAT::Utils->runcmd("mv $rootimg_dir/etc/rc.sysinit.backup $rootimg_dir/etc/rc.sysinit", 0, 1);
+    unless ($is_openeuler) {
+        # TODO: following the old genimage code, to update the stateles-only files/directories
+        # # another file should be /opt/xcat/xcatdsklspost, but it seems  not necessary
+        if (-e "$rootimg_dir/etc/init.d/statelite") {
+            xCAT::Utils->runcmd("mv $rootimg_dir/etc/init.d/statelite $rootimg_dir/.statebackup/statelite ", 0, 1);
+            if ($statelite_converted) {
+                return $statelite_failure->("Cannot move $rootimg_dir/etc/init.d/statelite to $rootimg_dir/.statebackup") if $::RUNCMD_RC;
+                $statelite_saved{statelite} = '/etc/init.d/statelite';
+            }
         }
-    }
+        if (-e "$rootimg_dir/usr/share/dracut") {
 
-    #restore the install.netboot of xcat dracut module
-    if (-e "$rootimg_dir/usr/lib/dracut/modules.d/97xcat/install") {
-        xCAT::Utils->runcmd("mv $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install $rootimg_dir/.statebackup/install", 0, 1);
+            # currently only used for redhat families, not available for SuSE families
+            if (-e "$rootimg_dir/etc/rc.sysinit.backup") {
+                xCAT::Utils->runcmd("mv $rootimg_dir/etc/rc.sysinit.backup $rootimg_dir/etc/rc.sysinit", 0, 1);
+            }
+        }
+
+        #restore the install.netboot of xcat dracut module
+        if (-e "$rootimg_dir/usr/lib/dracut/modules.d/97xcat/install") {
+            xCAT::Utils->runcmd("mv $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install $rootimg_dir/.statebackup/install", 0, 1);
+            if ($statelite_converted) {
+                return $statelite_failure->("Cannot move $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install to $rootimg_dir/.statebackup") if $::RUNCMD_RC;
+                $statelite_saved{install} = '/usr/lib/dracut/modules.d/97xcat/install';
+            }
+        }
+        my $dracut_install = "$::XCATROOT/share/xcat/netboot/$distname/dracut_033/install.netboot";
+        if (!-r $dracut_install) {
+            $dracut_install = "$::XCATROOT/share/xcat/netboot/rh/dracut_033/install.netboot";
+        }
+        xCAT::Utils->runcmd("cp $dracut_install $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install", 0, 1);
     }
-    my $dracut_install = "$::XCATROOT/share/xcat/netboot/$distname/dracut_033/install.netboot";
-    if (!-r $dracut_install) {
-        $dracut_install = "$::XCATROOT/share/xcat/netboot/rh/dracut_033/install.netboot";
-    }
-    xCAT::Utils->runcmd("cp $dracut_install $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install", 0, 1);
 
 
     # timedatectl requires /etc/localtime link to the zoneinfo in /usr/share/zoneinfo
@@ -321,7 +405,8 @@ sub process_request {
         $callback->({ info => ["No timezone defined in site table, skipping timezone /etc/localtime configuration"] });
     }
 
-    my $xcat_packimg_tmpfile = "/tmp/xcat_packimg.$$";
+    my $native_filelist = $is_openeuler ? File::Temp->new(TMPDIR => 1, UNLINK => 1) : undef;
+    my $xcat_packimg_tmpfile = $is_openeuler ? "$native_filelist" : "/tmp/xcat_packimg.$$";
     my $excludestr           = "find . -xdev ";
     my $includestr;
     if ($exlistloc) {
@@ -383,6 +468,8 @@ sub process_request {
 
     # the files specified for statelite should be excluded
     my @excludeStatelite = ("./etc/init.d/statelite", "./etc/rc.sysinit.backup", "./.statelite*", "./.default*", "./.statebackup*");
+    push @excludeStatelite, './etc/rc.d/init.d/statelite', './etc/rc.d/init.d/localdisk',
+      './etc/init.d/localdisk', './.sllocal*' if $is_openeuler;
     foreach my $entry (@excludeStatelite) {
         $excludestr .= "'!' -path '" . $entry . "' -a ";
     }
@@ -398,6 +485,7 @@ sub process_request {
     # add the xCAT post scripts to the image
     unless (-d "$rootimg_dir") {
         $callback->({ error => ["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"], errorcode => [1] });
+        $restore_statelite->();
         return 1;
     }
 
@@ -453,9 +541,18 @@ sub process_request {
 
     my $temppath;
     my $oldmask;
-    unless (-d $rootimg_dir) {
-        $callback->({ error => ["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"], errorcode => [1] });
+    my $native_failure = sub {
+        my $message = shift;
+        $callback->({ error => [$message], errorcode => [1] });
+        chdir($oldpath);
+        umask($oldmask) if defined($oldmask);
+        rmtree($temppath) if defined($temppath) && -d $temppath;
+        unlink($xcat_packimg_tmpfile);
+        $restore_statelite->();
         return 1;
+    };
+    unless (-d $rootimg_dir) {
+        return $native_failure->("$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture");
     }
 
     my $suffix;
@@ -463,27 +560,23 @@ sub process_request {
         if ($compress eq 'gzip') {
             my $isgzip = system("bash -c 'type -p gzip' >/dev/null 2>&1");
             unless ($isgzip == 0) {
-                $callback->({ error => ["Command gzip does not exist, please make sure it is installed."], errorcode => [1] });
-                return 1;
+                return $native_failure->("Command gzip does not exist, please make sure it is installed.");
             }
             $suffix = "gz";
         } elsif ($compress eq 'pigz') {
             my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
             unless ($ispigz == 0) {
-                $callback->({ error => ["Command pigz does not exist, please make sure it is installed."], errorcode => [1] });
-                return 1;
+                return $native_failure->("Command pigz does not exist, please make sure it is installed.");
             }
             $suffix = "gz";
         } elsif ($compress eq 'xz') {
             my $isxz = system("bash -c 'type -p xz' >/dev/null 2>&1");
             unless ($isxz == 0) {
-                $callback->({ error => ["Command xz does not exist, please make sure it is installed."], errorcode => [1] });
-                return 1;
+                return $native_failure->("Command xz does not exist, please make sure it is installed.");
             }
             $suffix = "xz";
         } else {
-            $callback->({ error => ["Invalid compress method '$compress' requested"], errorcode => [1] });
-            return 1;
+            return $native_failure->("Invalid compress method '$compress' requested");
         }
     } else {
         my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
@@ -494,16 +587,14 @@ sub process_request {
             if ($isgzip == 0) {
                 $compress = "gzip";
             } else {
-                $callback->({ error => ["The default compress tool 'gzip' and 'pigz' does not exist, please specify an available compress method with '-c'."], errorcode => [1] });
-                return 1;
+                return $native_failure->("The default compress tool 'gzip' and 'pigz' does not exist, please specify an available compress method with '-c'.");
             }
         }
         $suffix = "gz";
     }
 
     unless (($method eq 'cpio') or ($method eq 'tar') or ($method eq 'squashfs')) {
-        $callback->({ error => ["Invalid archive method '$method' requested"], errorcode => [1] });
-        return 1;
+        return $native_failure->("Invalid archive method '$method' requested");
     }
     $callback->({ data => ["Packing contents of $rootimg_dir"] });
     $callback->({ info => ["archive method:$method"] });
@@ -512,18 +603,26 @@ sub process_request {
     }
 
     $suffix = $method.".".$suffix;
-    unlink glob("$destdir/rootimg.*");
+    my $image_file = $method eq 'squashfs' ? 'rootimg.sfs' : "rootimg.$suffix";
+    # ctorrent names the metainfo after the archive, so both are built under their final names in a private directory.
+    my ($stage, $stage_error) = xCAT::SvrUtils->rootimg_stage($destdir);
+    return $native_failure->($stage_error) unless $stage;
+    my $archive_output = "$stage/$image_file";
+    $archive_output =~ s/'/'\\''/g;
+    $archive_output = "'$archive_output'";
+    chdir($rootimg_dir) or return $native_failure->("Cannot enter $rootimg_dir: $!");
+    my ($list_rc, $list_output) = native_pack_command("$excludestr > $xcat_packimg_tmpfile");
+    return $native_failure->("Cannot enumerate $rootimg_dir: $list_output") if $list_rc;
+    if ($includestr) {
+        ($list_rc, $list_output) = native_pack_command("$includestr >> $xcat_packimg_tmpfile");
+        return $native_failure->("Cannot enumerate included files: $list_output") if $list_rc;
+    }
 
     if ($method =~ /cpio/) {
         if (!$excludestr) {
-            $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > ../rootimg.$suffix";
+            $excludestr = "find . -xdev -print0 | cpio -H newc -o -0 | $compress -c - > $archive_output";
         } else {
-            chdir("$rootimg_dir");
-            system("$excludestr >> $xcat_packimg_tmpfile");
-            if ($includestr) {
-                system("$includestr >> $xcat_packimg_tmpfile");
-            }
-            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | $compress -c - > ../rootimg.$suffix";
+            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | $compress -c - > $archive_output";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /tar/) {
@@ -537,52 +636,26 @@ sub process_request {
             $option .= "--selinux ";
         }
         if (!$excludestr) {
-            $excludestr = "find . -xdev -print0 | tar $option --no-recursion --use-compress-program=$compress --null -T - -cf ../rootimg.$suffix";
+            $excludestr = "find . -xdev -print0 | tar $option --no-recursion --use-compress-program=$compress --null -T - -cf $archive_output";
         } else {
-            chdir("$rootimg_dir");
-            system("$excludestr >> $xcat_packimg_tmpfile");
-            if ($includestr) {
-                system("$includestr >> $xcat_packimg_tmpfile");
-            }
-            $excludestr = "cat $xcat_packimg_tmpfile| tar $option --no-recursion --use-compress-program=$compress -T - -cf  ../rootimg.$suffix";
+            $excludestr = "cat $xcat_packimg_tmpfile| tar $option --no-recursion --use-compress-program=$compress -T - -cf  $archive_output";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
-        $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
+        $temppath = eval { mkdtemp("/tmp/packimage.$$.XXXXXXXX") }
+          or return $native_failure->("Cannot create a staging directory: $@");
         chmod 0755, $temppath;
-        chdir("$rootimg_dir");
-        system("$excludestr >> $xcat_packimg_tmpfile");
-        if ($includestr) {
-            system("$includestr >> $xcat_packimg_tmpfile");
-        }
         $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath";
     }
     chdir("$rootimg_dir");
-    my $outputmsg = `$excludestr 2>&1`;
-    unless($?){
+    my ($archive_rc, $outputmsg) = native_pack_command($excludestr);
+    unless($archive_rc){
         $callback->({ info => ["$outputmsg"] });
     }else{
         $callback->({ info => ["$outputmsg"] });
-        $callback->({ error => ["packimage failed while running: \n $excludestr"], errorcode => [1] });
-        system("rm -rf $xcat_packimg_tmpfile");
-        return 1;
+        return $native_failure->("packimage failed while running: \n $excludestr");
     }
-
-    if ($method =~ /cpio/) {
-        chmod 0644, "$destdir/rootimg.$suffix";
-        if ($dotorrent) {
-            my $currdir = getcwd;
-            chdir($destdir);
-            unlink("rootimg.$suffix.metainfo");
-            system("ctorrent -t -u $dotorrent -l 1048576 -s rootimg.$suffix.metainfo rootimg.$suffix");
-            chmod 0644, "rootimg.$suffix.metainfo";
-            chdir($currdir);
-        }
-        umask $oldmask;
-    } elsif ($method =~ /tar/) {
-        chmod 0644, "$destdir/rootimg.$suffix";
-        umask $oldmask;
-    } elsif ($method =~ /squashfs/) {
+    if ($method =~ /squashfs/) {
         my $flags = "";
         if ($osver =~ /rhels5/) {
             if ($arch =~ /x86/) {
@@ -593,49 +666,55 @@ sub process_request {
         }
 
         if (!-x "/sbin/mksquashfs" && !-x "/usr/bin/mksquashfs") {
+            return $native_failure->("mksquashfs not found; install squashfs-tools") if $is_openeuler;
             if ($osver =~ /sle/) {
-                $callback->({ error => ["mksquashfs not found, squashfs rpm should be installed on the management node"], errorcode => [1] });
-            } else {
-                $callback->({ error => ["mksquashfs not found, squashfs-tools rpm should be installed on the management node"], errorcode => [1] });
+                return $native_failure->("mksquashfs not found, squashfs rpm should be installed on the management node");
             }
-            return 1;
+            return $native_failure->("mksquashfs not found, squashfs-tools rpm should be installed on the management node");
         }
-        my $mksquashfs_command = "mksquashfs $temppath ../rootimg.sfs $flags";
+        my $mksquashfs_command = "mksquashfs $temppath $archive_output $flags";
         xCAT::Utils->runcmd($mksquashfs_command, 0, 1);
         my $rc = $::RUNCMD_RC;
         if ($rc) {
-            $callback->({ error => ["Command \"$mksquashfs_command\" failed"], errorcode => [1] });
-            return 1;
+            return $native_failure->("Command \"$mksquashfs_command\" failed");
         }
         $rc = system("rm -rf $temppath");
         if ($rc) {
-            $callback->({ error => ["Failed to clean up temp space"], errorcode => [1] });
-            return 1;
+            return $native_failure->("Failed to clean up temp space");
         }
-        chmod(0644, "../rootimg.sfs");
     }
+
+    if (my $error = xCAT::SvrUtils->write_rootimg_checksum("$stage/$image_file")) {
+        return $native_failure->($error);
+    }
+
+    if ($dotorrent && $method =~ /cpio/) {
+        my $made = chdir("$stage") && !system("ctorrent -t -u $dotorrent -l 1048576 -s $image_file.metainfo $image_file");
+        return $native_failure->("ctorrent cannot create the metainfo of $destdir/$image_file") unless $made;
+    }
+
+    # The StateLite files must be back in place before the new archive replaces the previous one.
+    return $native_failure->("$destdir keeps its previous archive because the StateLite files of $rootimg_dir were not restored")
+      if $restore_statelite->();
+    if (my $error = xCAT::SvrUtils->publish_rootimg("$stage/$image_file", "$destdir/$image_file", 1)) {
+        return $native_failure->($error);
+    }
+
+    umask($oldmask) if defined($oldmask);
     system("rm -f $xcat_packimg_tmpfile");
 
-    # move the files in /.statebackup back to rootimg_dir
-    if ($rootimg_status) {    #  statelite mode
-        foreach my $entry (keys %liteHash) {
-            my @tmp      = split /\s+/, $entry;
-            my $filename = $tmp[1];
-            my $fileopt  = $tmp[0];
-            if ($fileopt =~ m/link/) {
-                chop $filename if ($filename =~ m/\/$/);
-                xCAT::Utils->runcmd("rm -rf $rootimg_dir$filename", 0, 1);
-                xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup$filename $rootimg_dir$filename", 0, 1);
-            }
-        }
 
-        xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup/install $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install", 0, 1);
-        xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup/statelite $rootimg_dir/etc/init.d/statelite", 0, 1);
-        xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statebackup", 0, 1);
-    }
+    my $restored = chdir($oldpath);
+    return $is_openeuler ? 0 : $restored;
+}
 
-
-    chdir($oldpath);
+sub native_pack_command {
+    my ($command) = @_;
+    open(my $pipe, '-|', '/bin/bash', '-o', 'pipefail', '-c', "{ $command; } 2>&1")
+      or return (1, "Cannot execute archive command: $!");
+    my $output = do { local $/; <$pipe> };
+    close($pipe);
+    return ($?, $output // '');
 }
 
 #-------------------------------------------------------

@@ -39,6 +39,8 @@ I<$imgroot/.default/etc/ntp.conf>
 
 Note: If you make any changes to your litefile table after running liteimg then you will need to rerun liteimg again.
 
+For an image with I<rootfstype> set to I<ramdisk>, B<liteimg> also packs the image into I<rootimg-statelite.gz>. It writes the new file and its SHA-256 checksum, I<rootimg-statelite.gz.sha256>, next to the existing files. It replaces them only when the new file is complete. Compute nodes check the file as described in B<packimage>(1), and the I<rootimgchecksum> attribute turns the check off in the same way.
+
 =head1 PARAMETERS
 
 I<imagename> specifies the name of a os image definition to be used. The specification for the image is stored in the I<osimage> table and I<linuximage> table.

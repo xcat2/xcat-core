@@ -83,9 +83,9 @@ start:updatenode_diskful_syncfiles_dir
 label:others,updatenode
 cmd:mkdir -p /tmp/sync/
 check:rc==0
-cmd:echo "test1" > /tmp/sync/test1.txt
+cmd:echo "syncdata1" > /tmp/sync/test1.txt
 check:rc==0
-cmd:echo "test2" > /tmp/sync/test2.txt
+cmd:echo "syncdata2" > /tmp/sync/test2.txt
 check:rc==0
 cmd:echo "/tmp/sync/* -> /tmp/" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
 check:rc==0
@@ -97,9 +97,9 @@ cmd:xdsh $$CN "ls -l /tmp"
 check:output=~test1.txt
 check:output=~test2.txt
 cmd:xdsh $$CN "cat /tmp/test1.txt"
-check:output=~test1
+check:output=~syncdata1
 cmd:xdsh $$CN "cat /tmp/test2.txt"
-check:output=~test2
+check:output=~syncdata2
 cmd:xdsh $$CN "rm -rf /tmp/test1.txt /tmp/test2.txt"
 check:rc==0
 cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=

@@ -3,8 +3,10 @@ ntp
 gawk
 nfs-common
 snmpd
-qemu-kvm
-libvirt-bin
+qemu-system
+qemu-utils
+libvirt-daemon-system
+libvirt-clients
 bridge-utils
 libcap2-bin
 vlan

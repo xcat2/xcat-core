@@ -21,6 +21,15 @@ BuildRequires: perl-Pod-Html
 BuildArch: noarch
 %endif
 
+# blackboxtest's DHCP steps need scapy, which lives in EPEL on EL. A hard
+# Requires: would make this package uninstallable on a management node without
+# EPEL, so it is only recommended: blackboxtest exits 3 with a message naming
+# the package when a DHCP step finds no scapy. rpm before EL 8 has no
+# Recommends:.
+%if 0%{?suse_version} || 0%{?rhel} >= 8
+Recommends: python3-scapy
+%endif
+
 %description
 Provides automated test tool and buckets to help test xCAT commands automatically.
 
@@ -44,6 +53,7 @@ rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
@@ -51,6 +61,9 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 cp bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 cp xcattest $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
+
+cp lib/xCAT/Test/OS.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test/OS.pm
 
 cp restapitest $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
@@ -64,6 +77,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
 cp -r autotest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp -r unit $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 cp -r integration $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
+cp -r blackboxtest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest/blackboxtest/src/blackboxtest
 
 
 %clean

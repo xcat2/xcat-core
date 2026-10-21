@@ -19,9 +19,11 @@ Source5: xCATMN
 Source4: prescripts.tar.gz
 Source6: winpostscripts.tar.gz
 Source8: etc.tar.gz
+Source9: xcat-apache-pretrans.lua
 %endif
 
 Source7: xcat.conf.apach24
+Source10: xcat-upgrade-functions.sh
 
 # These postscripts also execute on FreeBSD, which requires /bin/sh.
 %global __brp_mangle_shebangs_exclude_from ^/install/postscripts/((syslog|remoteshell|syncfiles|confignetwork)([.]freebsd)?|confignetwork-(dhclient|dhcp6|ipoib-dhcp4)[.]freebsd|ospkgs|otherpkgs|xcatpackages[.]freebsd|(configzfs|configstorage)[.]freebsd)$
@@ -80,14 +82,8 @@ Requires: /usr/bin/killall
 # makentp/setupntp configure the MN as an NTP server for its compute nodes and support chronyd/ntpd
 # only. chrony is the default on EL7+/SLES15+ (and the only option on EL8+); ntp covers the rest.
 Requires: (chrony or ntp)
-# DHCP backend resolved at INSTALL time (not build time) via an RPM rich
-# dependency, so a single flat xcat-core build is correct on every EL: el10+
-# dropped ISC dhcp from its distro and uses Kea; el8/el9 use ISC dhcpd. SLES
-# has no "system-release" provide, so the condition is false there and it
-# falls to dhcp-server (/usr/sbin/dhcpd), preserving prior behavior.
-# system-release is versioned per release package (el10=10.x, el9=9.x, el8=8.x).
-Requires: (kea if (system-release >= 10) else /usr/sbin/dhcpd)
-Requires: (kea-hooks if (system-release >= 10))
+# openEuler's system-release version does not identify an EL release.
+Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %if %nots390x
@@ -103,6 +99,7 @@ Requires: goconserver >= 0.3.3-snap202011021058
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64
+Requires: ipxe-xcat >= 2.0.0-1
 Requires: xnba-undi >= 1.21.1-1
 Requires: syslinux-xcat >= 6.03-1
 Requires: ipmitool-xcat >= 1.8.18-4
@@ -111,6 +108,7 @@ Requires: ipmitool-xcat >= 1.8.18-4
 %ifos linux
 %ifarch ppc ppc64 ppc64le
 # Mixed-arch management nodes also need the x86 PXE stack kept current.
+Requires: ipxe-xcat >= 2.0.0-1
 Requires: xnba-undi >= 1.21.1-1
 Requires: syslinux-xcat >= 6.03-1
 Requires: ipmitool-xcat >= 1.8.18-4
@@ -119,8 +117,18 @@ Requires: ipmitool-xcat >= 1.8.18-4
 
 %ifos linux
 %ifarch riscv64
-# riscv64 management nodes manage BMC based nodes; the x86 PXE loaders are
-# x86-only packages and riscv64 nodes boot through UEFI and grub2.
+# riscv64 nodes boot through UEFI and grub2. A riscv64 management node can serve x86
+# nodes, which boot the upstream iPXE loader.
+Requires: ipxe-xcat >= 2.0.0-1
+Requires: ipmitool-xcat >= 1.8.18-4
+%endif
+%endif
+
+%ifos linux
+%ifarch aarch64
+# aarch64 nodes boot through UEFI and grub2. An aarch64 management node can serve x86
+# nodes, which boot the upstream iPXE loader.
+Requires: ipxe-xcat >= 2.0.0-1
 Requires: ipmitool-xcat >= 1.8.18-4
 %endif
 %endif
@@ -135,6 +143,7 @@ tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
 tar zxf %{SOURCE6}
 tar zxf %{SOURCE8}
+cp %{SOURCE9} xcat-apache-pretrans.lua
 %else
 rm -rf postscripts
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
@@ -145,41 +154,9 @@ tar -xf postscripts.tar
 %build
 
 %ifos linux
-# rpm fixes each config file's fate before %pre runs, so a migration there can
-# delete an active file rpm has already decided to leave as xcat.conf.rpmnew.
-# %pretrans runs before that decision.  It is Lua because a pre-transaction
-# scriptlet cannot rely on any dependency being unpacked yet.
-%pretrans -p <lua>
--- Older packages shipped xcat.conf as ordinary payload and then rewrote it
--- from conf.orig in %post, so rpm's recorded digest cannot tell a stock file
--- from a customised one.  Compare against the outgoing package's templates,
--- still on disk at this point, and drop only a file that still matches one.
-if arg[2] and tonumber(arg[2]) == 1 then return end
-
-local function contents(path)
-    local handle = io.open(path, "rb")
-    if not handle then return nil end
-    local data = handle:read("*a")
-    handle:close()
-    return data
-end
-
-local templates = { contents("/etc/%httpconfigdir/conf.orig/xcat.conf.apach24"),
-                    contents("/etc/%httpconfigdir/conf.orig/xcat.conf.apach22") }
-
-for _, active in ipairs({ "/etc/httpd/conf.d/xcat.conf",
-                          "/etc/apache2/conf.d/xcat.conf" }) do
-    -- A symlink or any other non-regular path is treated as locally managed.
-    if posix.stat(active, "type") == "regular" then
-        local current = contents(active)
-        for _, template in ipairs(templates) do
-            if current and current == template then
-                os.remove(active)
-                break
-            end
-        end
-    end
-end
+# RPM decides configuration ownership before pre-install scripts run.
+%pretrans -p <lua> -f xcat-apache-pretrans.lua
+local template_dir = "/etc/%httpconfigdir/conf.orig"
 %endif
 
 %pre
@@ -258,7 +235,7 @@ mkdir -p postscripts/hostkeys
 cd -
 # Pick the Apache generation at build time.  Selecting it in the post scriptlet
 # instead rewrites a file rpm has already checksummed, defeating noreplace.
-%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200
+%if 0%{?fedora} || 0%{?rhel} >= 7 || 0%{?suse_version} >= 1200 || 0%{?openEuler}
 cp %{SOURCE7} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE7} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 %else
@@ -273,7 +250,8 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 
-%post
+cat %{SOURCE10} > xcat-post.sh
+cat >> xcat-post.sh <<'XCAT_POST'
 %ifos linux
 # On SUSE apache2, mod_headers is not loaded by default; enable it so the
 # security response headers in xcat.conf take effect (a no-op where a2enmod
@@ -312,26 +290,13 @@ if [ -r "/tmp/xcat/mainservice.pid" ]; then
   mv /tmp/xcat/mainservice.pid /var/run/xcat/mainservice.pid
 fi
 
-mkdir -p /var/log/xcat
-date >> /var/log/xcat/upgrade.log
-xcatupgradeout=$(mktemp /tmp/xcat-upgrade.XXXXXX)
-$RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V > "$xcatupgradeout" 2>&1
-cat "$xcatupgradeout" >> /var/log/xcat/upgrade.log
-
-# xcatconfig reports a failed mknb into the log, where an upgrade scrolls past
-# it and the node is left without a genesis image for no apparent reason. Repeat
-# it on the terminal. Only this run is examined, since the log is appended to.
-if grep -q "command returned error code" "$xcatupgradeout"; then
-    echo "WARNING: mknb did not complete, so the Genesis netboot image may be missing or out of date."
-    echo "         See /var/log/xcat/upgrade.log, then rerun 'mknb <arch>' once the cause is resolved."
-fi
-rm -f "$xcatupgradeout"
+xcat_run_upgrade $RPM_INSTALL_PREFIX0/sbin/xcatconfig -u -V
 
 # rpm has either updated a stock xcat.conf or preserved a modified one and left
 # the new file as xcat.conf.rpmnew.  Reload an active web server so an updated
 # stock configuration takes effect, but do not manage services in a chroot.
 if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /proc/1/root/. 2>/dev/null)" ]; then
-    if [ -e "/etc/redhat-release" ]; then
+    if [ -e "/etc/redhat-release" ] || [ -e "/etc/openEuler-release" ]; then
         apachedaemon='httpd'
     else
         apachedaemon='apache2'
@@ -347,6 +312,9 @@ if [ -f "/proc/cmdline" ] && [ "x$(stat -c '%i %d' /)" == "x$(stat -c '%i %d' /p
 fi
 fi
 exit 0
+XCAT_POST
+
+%post -f xcat-post.sh
 
 %clean
 

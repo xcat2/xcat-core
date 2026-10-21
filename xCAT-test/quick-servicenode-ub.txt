@@ -1,0 +1,21 @@
+# The fast oracle of the Ubuntu 24.04 service node cell.
+#
+#   xCAT-test/quick.sh -f xCAT-test/quick-servicenode-ub.txt
+#
+# RUN IT ON xcat-master-ub. otherpkgs_apt_source_trusted skips its two resolving assertions where
+# apt-get is absent, so on an EL host this list silently proves less and the trusted=yes fix
+# reads as unnecessary.
+#
+# KNOWN HOLES, where a wrong drop comes from. A first run dropped four real fixes:
+#   - the apt source line the postscript writes. otherpkgs_apt_source_trusted measures APT, not
+#     what xCAT wrote. STILL OPEN.
+#   - the NFS export casper needs. CLOSED by service_node_artifacts_ubuntu.t.
+#   - the xdsh PATH fix. STILL OPEN.
+#   - the named reload. CLOSED by aasn_named_service_action.t.
+
+xCAT-test/unit/service_node_artifacts_ubuntu.t
+xCAT-test/unit/aasn_named_service_action.t
+xCAT-test/unit/ubuntu_service_subiquity_template.t
+xCAT-test/bats/makenamed_forwarders.bats
+xCAT-test/bats/otherpkgs_apt_source_trusted.bats
+xCAT-test/bats/stage_sn_apt_repo.bats

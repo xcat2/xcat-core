@@ -38,6 +38,7 @@ use xCAT::Utils;
 use xCAT::NetworkUtils;
 use xCAT::PasswordUtils;
 use xCAT::TableUtils;
+use xCAT::StringUtils qw(trim);
 
 use xCAT::MsgUtils;
 use Getopt::Long;
@@ -126,6 +127,16 @@ sub process_request
         xCAT::MsgUtils->trace(0, "E", "Received getcredentials from $origclient, which couldn't be correlated to a node (domain mismatch?)");
         return;
     }
+
+    # Which credential is wanted is named in <arg>.  A request without one is
+    # checked here, before the callback is made, so that a malformed request
+    # is refused the same way a bad callback port is rather than dying in the
+    # dereference below and sending the client a Perl error.
+    unless (ref($request->{arg}) eq 'ARRAY' and scalar(@{ $request->{arg} })) {
+        xCAT::MsgUtils->trace(0, 'E', "Received getcredentials from $origclient naming no credential, ignore it.");
+        return;
+    }
+
     my $credcheck;
     if ($request->{'callback_port'} and $request->{'callback_port'}->[0] and $request->{'callback_port'}->[0] < 1024) {
         $credcheck = [ 0, $request->{'callback_port'}->[0] ];
@@ -328,12 +339,13 @@ sub process_request
             next;
         } elsif ($parm =~ /xcat_secure_pw:/) {
             xCAT::MsgUtils->trace(0, 'I', "credentials: sending $parm to $client");
-            my @users=split(/:/,$parm);
-            if (defined($users[1]) and $users[1] eq 'root') {
-                my $pass = xCAT::PasswordUtils::crypt_system_password();
-                if ($pass) {
-                    push @{$rsp->{'data'}}, { content => [ $pass ], desc => [ $parm ] };
-                }
+            my (undef, $user) = split(/:/, $parm);
+            my ($hash, $error) = system_password_hash($client, $user);
+            if ($hash) {
+                push @{ $rsp->{'data'} }, { content => [$hash], desc => [$parm] };
+            } else {
+                push @{ $rsp->{'error'} }, "Unable to get the password hash for $parm: $error";
+                xCAT::MsgUtils->trace(0, 'W', "credentials: Unable to get the password hash for $parm: $error");
             }
             next;
         } else {
@@ -399,7 +411,7 @@ sub _delegated_signer_allowed {
 sub _endpoint_identities {
     my $endpoint = shift;
     return unless defined($endpoint);
-    $endpoint =~ s/^\s+|\s+$//g;
+    $endpoint = trim($endpoint);
     return unless length($endpoint);
 
     my %identities;
@@ -548,6 +560,63 @@ sub _sign_x509_certificate {
         return;
     }
     return $certificate;
+}
+
+# A sudoer without a passwd row gets the locked field so the node applies the reply as is.
+sub system_password_hash {
+    my ($node, $user) = @_;
+    unless (defined($user) and $user =~ /^[A-Za-z_][A-Za-z0-9_.-]{0,31}$/) {
+        return (undef, 'invalid user name');
+    }
+    unless ($user eq 'root' or configured_sudoers($node)->{$user}) {
+        return (undef, "$user is not a configured sudoer of $node");
+    }
+
+    my %key = (key => 'system', username => $user);
+    my $passwd = xCAT::Table->new('passwd', -create => 0);
+    my $entry = $passwd ? $passwd->getAttribs(\%key, 'password') : undef;
+    $passwd->close() if $passwd;
+    unless ($entry and defined($entry->{password})) {
+        return ('!', undef) unless $user eq 'root';
+        return (undef, 'no password in the passwd table for root');
+    }
+
+    my $hash = xCAT::PasswordUtils::crypt_system_password('passwd', \%key, [ 'password', 'cryptmethod' ]);
+    return ($hash, $hash ? undef : "unable to hash the password of $user");
+}
+
+# The sudoer postscript entries of a node, from the same three sources
+# Postage.pm uses: xcatdefaults, the osimage of provmethod, and the node.
+sub configured_sudoers {
+    my $node = shift;
+    my @lists;
+
+    my $posttab = xCAT::Table->new('postscripts', -create => 0);
+    if ($posttab) {
+        my $defaults = $posttab->getAttribs({ node => 'xcatdefaults' }, 'postscripts', 'postbootscripts');
+        my $own = $posttab->getNodeAttribs($node, [ 'postscripts', 'postbootscripts' ]);
+        push @lists, map { ($_->{postscripts}, $_->{postbootscripts}) } grep { $_ } ($defaults, $own);
+        $posttab->close();
+    }
+
+    my $typetab = xCAT::Table->new('nodetype', -create => 0);
+    my $type = $typetab ? $typetab->getNodeAttribs($node, ['provmethod']) : undef;
+    $typetab->close() if $typetab;
+    if ($type and $type->{provmethod} and $type->{provmethod} !~ /^(?:install|netboot|statelite)$/) {
+        my $imagetab = xCAT::Table->new('osimage', -create => 0);
+        my $image = $imagetab ? $imagetab->getAttribs({ imagename => $type->{provmethod} }, 'postscripts', 'postbootscripts') : undef;
+        $imagetab->close() if $imagetab;
+        push @lists, ($image->{postscripts}, $image->{postbootscripts}) if $image;
+    }
+
+    my %sudoers;
+    foreach my $entry (map { split /,/, $_ } grep { defined } @lists) {
+        next unless $entry =~ /^\s*sudoer(?:\s+(.*?))?\s*$/;
+        my $args = defined $1 ? $1 : '';
+        my $name = $args =~ /(?:^|\s)-u\s*(\S+)/ ? $1 : 'xcat';
+        $sudoers{$name} = 1;
+    }
+    return \%sudoers;
 }
 
 sub ok_with_node {

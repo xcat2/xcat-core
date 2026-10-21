@@ -16,7 +16,7 @@ depends() {
 install() {
     # Install binaries
     # Note: Copied from dracut_047/install.netboot
-    dracut_install curl tar cpio gzip modprobe touch echo cut wc xz \
+    dracut_install curl tar cpio gzip modprobe touch echo cut wc xz sha256sum \
         grep ifconfig hostname awk egrep dirname expr \
         mount.nfs parted mke2fs bc mkswap swapon chmod mkfs mkfs.ext4 mkfs.xfs xfs_db \
         ethtool

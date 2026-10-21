@@ -3,13 +3,44 @@ NEWROOT=$3
 RWDIR=.statelite
 XCATMASTER=$XCAT
 
+# Downloads the checksum file published for the image at $1 to $2.
+rootimg_fetch_checksum() {
+	rm -f "$2"
+	wget -q -O "$2" "$1.sha256"
+}
+
+# Prints why the file $2 cannot be used, unless it matches the SHA-256 checksum published for the image at $1.
+rootimg_matches_checksum() {
+	command -v sha256sum >/dev/null 2>&1 || { echo "this initial ramdisk has no sha256sum to check $1"; return 1; }
+	rootimg_fetch_checksum "$1" /tmp/rootimg.sha256 || { echo "cannot download $1.sha256"; return 1; }
+	rootimg_sum=$(sha256sum <"$2") || { echo "sha256sum cannot read $2"; return 1; }
+	# While packimage replaces the archive, the checksum file lists the new and the previous archive.
+	# A download that began before the replacement matches the checksum file fetched before it.
+	cat /tmp/rootimg.sha256 /tmp/rootimg.sha256.before >/tmp/rootimg.sums 2>/dev/null
+	while read -r rootimg_expected rootimg_name; do
+		[ "${rootimg_sum%% *}" = "$rootimg_expected" ] && return 0
+	done </tmp/rootimg.sums
+	echo "$1 does not match $1.sha256"
+	return 1
+}
+
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ] || [ xhttps = x${imgurl%%:*} ]; then
 		NFS=0
 		FILENAME=${imgurl##*/}
+		[ "$rootimgchecksum" = yes ] || echo "nodeset did not ask for a check of $FILENAME, so it is not checked."
+		# A file that an earlier attempt left is checked like a new download.
+		if [ -r "$FILENAME" ] && [ "$rootimgchecksum" = yes ] && ! rootimg_matches_checksum "$imgurl" "$FILENAME" >/dev/null; then
+			rm -f $FILENAME
+		fi
 		while [ ! -r "$FILENAME" ]; do
 			echo Getting $imgurl...
+			[ "$rootimgchecksum" != yes ] || rootimg_fetch_checksum "$imgurl" /tmp/rootimg.sha256.before || rm -f /tmp/rootimg.sha256.before
 			if ! wget $imgurl; then
+				rm -f $FILENAME
+				sleep 27
+			elif [ "$rootimgchecksum" = yes ] && ! rootimg_check=$(rootimg_matches_checksum "$imgurl" "$FILENAME"); then
+				echo "$rootimg_check, retrying..."
 				rm -f $FILENAME
 				sleep 27
 			fi

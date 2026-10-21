@@ -23,11 +23,13 @@ take next.  Should the nodetype.os indicates an OS that does not support UEFI
 boot, then the dhcp definition will not include UEFI boot directives, even
 if doing B<nodeset shell>.
 
-B<nodeset> will manipulate the boot configuration files of xnba, grub2, petitboot, yaboot and pxelinux.0.
+B<nodeset> will manipulate the boot configuration files of ipxe, xnba, grub2, petitboot, yaboot and pxelinux.0.
 
 Assume that /tftpboot is the root for tftpd (set in L<site(5)|site.5>).
 
 B<nodeset> for petitboot makes changes to /tftpboot/petitboot/{node name}
+
+B<nodeset> for ipxe makes changes to /tftpboot/xcat/ipxe/nodes/{node name}
 
 B<nodeset> for xnba makes changes to /tftpboot/xcat/xnba/nodes/{node name}
 

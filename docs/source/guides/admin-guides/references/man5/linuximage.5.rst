@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **linuximage Attributes:**\   \ *imagename*\ , \ *template*\ , \ *boottarget*\ , \ *addkcmdline*\ , \ *pkglist*\ , \ *pkgdir*\ , \ *otherpkglist*\ , \ *otherpkgdir*\ , \ *exlist*\ , \ *postinstall*\ , \ *rootimgdir*\ , \ *kerneldir*\ , \ *nodebootif*\ , \ *otherifce*\ , \ *netdrivers*\ , \ *kernelver*\ , \ *krpmver*\ , \ *permission*\ , \ *dump*\ , \ *crashkernelsize*\ , \ *partitionfile*\ , \ *driverupdatesrc*\ , \ *comments*\ , \ *disable*\ 
+\ **linuximage Attributes:**\   \ *imagename*\ , \ *template*\ , \ *boottarget*\ , \ *addkcmdline*\ , \ *pkglist*\ , \ *pkgdir*\ , \ *otherpkglist*\ , \ *otherpkgdir*\ , \ *exlist*\ , \ *postinstall*\ , \ *rootimgdir*\ , \ *kerneldir*\ , \ *nodebootif*\ , \ *otherifce*\ , \ *netdrivers*\ , \ *kernelver*\ , \ *krpmver*\ , \ *permission*\ , \ *dump*\ , \ *crashkernelsize*\ , \ *partitionfile*\ , \ *driverupdatesrc*\ , \ *gpgcheck*\ , \ *rootimgchecksum*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -186,6 +186,18 @@ linuximage Attributes:
 \ **driverupdatesrc**\ 
  
  The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_source_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm
+ 
+
+
+\ **gpgcheck**\ 
+ 
+ Diskless Red Hat family images only. Set to 'yes' or '1' to have genimage verify the signature of every package it installs from the pkgdir, kerneldir and otherpkgdir repositories, as it always does for openEuler images. The trusted keys are the RPM signing keys imported on the node that runs genimage (rpm -q gpg-pubkey), so import the key of every repository first, for example rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-9. The default is no verification.
+ 
+
+
+\ **rootimgchecksum**\ 
+ 
+ Stateless images and statelite ramdisk images only. Set to 'yes' or '1' to have nodeset tell nodes to boot the compressed root image only after it matches its SHA-256 checksum. Set to 'no' or '0' to have nodes boot it unchecked. packimage, liteimg and imgimport always write the checksum. If not set, the default is the value of site.rootimgchecksum, which defaults to 'yes'. The first upgrade to a release with the check sets this attribute to 'no' for the images that exist then.
  
 
 
