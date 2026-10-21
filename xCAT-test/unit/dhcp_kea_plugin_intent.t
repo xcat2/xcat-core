@@ -2328,6 +2328,8 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
                 'nodev6http' => { netboot => 'grub2-http', tftpserver => 'boot6.example.test' },
                 'nodev6tftp' => { netboot => 'grub2-tftp', tftpserver => 'boot6.example.test' },
                 'nodev6xnba' => { netboot => 'xnba',       tftpserver => 'boot6.example.test' },
+                'nodev6aliasv4' => { netboot => 'xnba',    tftpserver => '<xcatmaster>' },
+                'nodev4aliasv6' => { netboot => 'xnba',    tftpserver => '<xcatmaster>' },
             }
         ),
         mac => DHCPKeaResTable->new(
@@ -2336,6 +2338,8 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
                 'nodev6http' => { mac => '02:00:00:00:00:62' },
                 'nodev6tftp' => { mac => '02:00:00:00:00:64' },
                 'nodev6xnba' => { mac => '02:00:00:00:00:63' },
+                'nodev6aliasv4' => { mac => '02:00:00:00:00:65!aliasv4' },
+                'nodev4aliasv6' => { mac => '02:00:00:00:00:66!aliasv6' },
             }
         ),
         vpd => DHCPKeaResTable->new(
@@ -2359,11 +2363,18 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
         nodev6tftp         => '2001:db8:64::50',
         nodev6xnba         => '2001:db8:63::50',
         'boot6.example.test' => '2001:db8::10',
+        aliasv6            => '2001:db8:66::50',
+        nodev6aliasv4      => '2001:db8:65::50',
+    );
+    my %node_v4_addresses = (
+        aliasv4       => '192.0.2.65',
+        nodev4aliasv6 => '192.0.2.66',
     );
     my $v6_getipaddr = sub {
         my ( $host, %opt ) = @_;
-        return unless $opt{OnlyV6};
-        return $node_addresses{$host};
+        return $node_v4_addresses{$host} if $opt{OnlyV4};
+        return $node_addresses{$host} if $opt{OnlyV6};
+        return;
     };
     local *xCAT::NetworkUtils::getipaddr = $v6_getipaddr;
     local *xCAT_plugin::dhcp::getipaddr = $v6_getipaddr;
@@ -2410,6 +2421,60 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
     is( $grub2_tftp->{'option-data'}[0]{data}, 'tftp://[2001:db8::10]/boot/grub2/grub2-nodev6tftp', 'grub2-tftp receives the DHCPv6 bootfile URL advertised as supported on x86_64' );
 
     ok( !exists($by_hostname{nodev6xnba}{'option-data'}), 'unsupported IPv6 netboot modes do not receive a GRUB bootfile URL' );
+
+    @errors = ();
+    my $v4_reservations = xCAT_plugin::dhcp::kea_build_node_reservations(
+        $backend,
+        {},
+        [qw(nodev6 nodev6http nodev6tftp nodev6xnba)]
+    );
+    is( scalar(@errors), 0, 'IPv6-only nodes do not enter the IPv4 TFTP resolver' );
+    is( scalar(@$v4_reservations), 0, 'IPv6-only nodes do not create DHCPv4 reservations' );
+
+    {
+        my $next_server_calls = 0;
+        local *xCAT_plugin::dhcp::kea_next_server_for_node = sub {
+            $next_server_calls++;
+            return ('192.0.2.1', '192.0.2.1');
+        };
+        my $config = { Dhcp4 => { 'client-classes' => [] } };
+        my $saved_mac = $res_tables{mac};
+        $res_tables{mac} = DHCPKeaResTable->new(
+            { 'nodev6xnba' => { mac => '02:00:00:00:00:63!*NOIP*' } }
+        );
+
+        xCAT_plugin::dhcp::kea_sync_xnba_client_classes(
+            $config, ['nodev6xnba']
+        );
+        $res_tables{mac} = $saved_mac;
+
+        is( scalar(@{ $config->{Dhcp4}{'client-classes'} }), 0, 'xNBA does not create a DHCPv4 client class for an explicit *NOIP* MAC alias' );
+        is( $next_server_calls, 0, 'IPv6-only xNBA node does not enter the IPv4 TFTP resolver' );
+    }
+
+    {
+        local *xCAT::NetworkUtils::my_ip_facing = sub {
+            return ( 0, '192.0.2.1' );
+        };
+        my $config = { Dhcp4 => { 'client-classes' => [] } };
+
+        xCAT_plugin::dhcp::kea_sync_xnba_client_classes(
+            $config, [qw(nodev6aliasv4 nodev4aliasv6)]
+        );
+
+        my @owners = map {
+            $_->{'user-context'}{'xcat-node'}
+        } @{ $config->{Dhcp4}{'client-classes'} };
+        ok(
+            scalar(grep { $_ eq 'nodev6aliasv4' } @owners),
+            'IPv6 base node retains xNBA when its per-MAC alias is IPv4'
+        );
+        ok(
+            !scalar(grep { $_ eq 'nodev4aliasv6' } @owners),
+            'IPv4 base node omits xNBA when its per-MAC alias is IPv6-only'
+        );
+    }
+
 }
 
 done_testing();

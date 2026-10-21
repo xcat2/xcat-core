@@ -3856,6 +3856,10 @@ sub kea_node_reservations
         }
         $mac = $normalized_mac;
 
+        # An IPv6-only node has no DHCPv4 reservation to write, and resolving
+        # it here would report it as an unresolved name.
+        next if xCAT::NetworkUtils->node_is_ipv6_only($hname);
+
         my $ip = getipaddr($hname, OnlyV4 => 1);
         unless ($ip) {
             $callback->({ warning => ["The hostname $hname of node $node could not be resolved."] });
@@ -4134,6 +4138,10 @@ sub kea_node_client_classes_for_nodes
 
         foreach my $mace (split(/\|/, $macent->{mac})) {
             my ( $mac, $hname ) = split(/!/, $mace);
+            # The *NOIP* sentinel still reaches the DROP class below, so only
+            # an IPv6-only node leaves the DHCPv4 boot classes here.
+            next if defined($hname) and $hname ne '*NOIP*'
+              and xCAT::NetworkUtils->node_is_ipv6_only($hname);
             $mac = kea_normalize_mac($mac);
             next unless $mac;
             my %record = ( node => $node, mac => $mac );
@@ -4252,6 +4260,7 @@ sub kea_node_reservations6
     my $nrent = $nrhash && $nrhash->{$node} ? $nrhash->{$node}->[0] : undef;
     my $macent = $machash && $machash->{$node} ? $machash->{$node}->[0] : undef;
     my $vpdent = $vpdhash && $vpdhash->{$node} ? $vpdhash->{$node}->[0] : undef;
+
     unless ($macent and $macent->{mac}) {
         $callback->({ warning => ["Unable to find mac address for $node"] });
         return [];
