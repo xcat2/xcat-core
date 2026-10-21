@@ -44,3 +44,41 @@ check_generated_policy()
 @test "generated Cumulus policy runs in bash" {
     check_generated_policy bash xCAT/postscripts/xcatlib.sh
 }
+
+@test "policy check reports stale artifacts without changing them" {
+    run perl "$ROOT/build-utils/sync-fips-policy" --check
+    printf '%s\n' "$output"
+    [ "$status" -eq 1 ]
+    local expected
+    expected=$(printf '%s is out of date; run build-utils/sync-fips-policy --write\n' \
+        xCAT-genesis-scripts/usr/lib/xcat/fips.sh xCAT/postscripts/xcatlib.sh)
+    [ "$output" = "$expected" ]
+    cmp "$(repo_path xCAT-genesis-scripts/usr/lib/xcat/fips.sh)" \
+        "$ROOT/xCAT-genesis-scripts/usr/lib/xcat/fips.sh"
+    cmp "$(repo_path xCAT/postscripts/xcatlib.sh)" "$ROOT/xCAT/postscripts/xcatlib.sh"
+}
+
+@test "policy check succeeds quietly after generation" {
+    run perl "$ROOT/build-utils/sync-fips-policy" --write
+    printf '%s\n' "$output"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+    run perl "$ROOT/build-utils/sync-fips-policy" --check
+    printf '%s\n' "$output"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "policy commands reject invalid input without changing artifacts" {
+    printf '%s' no-final-newline >"$ROOT/build-utils/fips-policy.sh"
+    local mode
+    for mode in --check --write; do
+        run perl "$ROOT/build-utils/sync-fips-policy" "$mode"
+        printf '%s\n' "$output"
+        [ "$status" -ne 0 ]
+        [[ "$output" == *"FIPS policy must end with a newline"* ]]
+        cmp "$(repo_path xCAT-genesis-scripts/usr/lib/xcat/fips.sh)" \
+            "$ROOT/xCAT-genesis-scripts/usr/lib/xcat/fips.sh"
+        cmp "$(repo_path xCAT/postscripts/xcatlib.sh)" "$ROOT/xCAT/postscripts/xcatlib.sh"
+    done
+}
