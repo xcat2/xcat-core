@@ -65,6 +65,10 @@ sub default_storagemodel {
         An x86_64 guest that asks for efi moves to q35, because every x86_64 OVMF descriptor
         targets pc-q35-* only. q35 has no IDE controller, so its disks and its optical drive
         move to scsi.
+
+        efi-secureboot also sets secureboot, which guest_os turns into the requirement
+        libvirt reads. efi alone states no requirement, so libvirt takes the descriptor of
+        highest priority that fits the guest, and that order belongs to the hypervisor.
     Arguments:
         $guest_arch - nodetype.arch of the node, or undef
         $hyp_cpumodel - the cpumodel of the hypervisor, or undef
@@ -82,6 +86,7 @@ sub guest_arch_profile {
         arch         => undef,
         machine      => undef,
         firmware     => undef,
+        secureboot   => 0,
         cpu_mode     => undef,
         cpu_model    => undef,
         pseries      => 0,
@@ -130,12 +135,15 @@ sub guest_arch_profile {
         $profile{bios}         = 0;
         $profile{sound}        = 0;
     }
-    if (defined($firmware) and $firmware eq 'efi' and not defined $profile{firmware}) {
-        $profile{firmware} = 'efi';
-        if ($profile{x86_features}) {
-            $profile{machine}    = 'q35';
-            $profile{disk_model} = 'scsi';
-            $profile{cd_prefix}  = 'sd';
+    if (defined($firmware) and $firmware =~ /^efi(?:-secureboot)?$/) {
+        $profile{secureboot} = 1 if $firmware eq 'efi-secureboot';
+        unless (defined $profile{firmware}) {
+            $profile{firmware} = 'efi';
+            if ($profile{x86_features}) {
+                $profile{machine}    = 'q35';
+                $profile{disk_model} = 'scsi';
+                $profile{cd_prefix}  = 'sd';
+            }
         }
     }
     return \%profile;
@@ -433,6 +441,8 @@ sub vm_othersettings {
     Descriptions:
         The firmware a node asks for in vm.othersettings. No node asks by default, so an
         existing guest keeps the firmware of its machine type.
+
+        efi asks for UEFI. efi-secureboot asks for UEFI that verifies what it boots.
     Arguments:
         $othersettings - vm.othersettings of the node, or undef
     Returns:
@@ -456,20 +466,21 @@ sub requested_firmware {
 
     Descriptions:
         The refusal of a firmware value that libvirt cannot select. A node with a typo must
-        not stay on SeaBIOS without a message.
+        not stay on SeaBIOS without a message, nor lose a Secure Boot requirement it asked
+        for.
     Arguments:
         $firmware - the value from requested_firmware, or undef
         $node - the node name
     Returns:
-        the error message, or undef when the value is efi or undef
+        the error message, or undef when the value is efi, efi-secureboot or undef
 
 =cut
 
 #-------------------------------------------------------
 sub firmware_error {
     my ($firmware, $node) = @_;
-    return undef if !defined($firmware) or $firmware eq 'efi';
-    return "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi.";
+    return undef if !defined($firmware) or $firmware =~ /^efi(?:-secureboot)?$/;
+    return "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi or firmware:efi-secureboot.";
 }
 
 #-------------------------------------------------------
@@ -481,6 +492,12 @@ sub firmware_error {
 
         A ppc64le hypervisor gets no <bios useserial>. A profile without bios drops it too.
         A machine type from vm.othersettings replaces the machine type of the profile.
+
+        A profile with secureboot states <loader secure='yes'/>. libvirt reads it while it
+        selects the firmware and keeps only the descriptors that carry secure-boot, so a
+        hypervisor with no such firmware refuses the domain. Without the element the guest
+        takes whichever firmware the hypervisor prefers, and the domain says nothing about
+        whether that firmware verifies what it boots.
     Arguments:
         $profile - the hash reference from guest_arch_profile
         %args - hyp_cpumodel: the cpumodel of the hypervisor; bootorder: vm.bootorder of the
@@ -508,6 +525,7 @@ sub guest_os {
     $os{type}->{arch}    = $profile->{arch}     if defined $profile->{arch};
     $os{type}->{machine} = $profile->{machine}  if defined $profile->{machine};
     $os{firmware}        = $profile->{firmware} if defined $profile->{firmware};
+    $os{loader}->{secure} = 'yes' if $profile->{secureboot};
     delete $os{bios} unless $profile->{bios};
     $os{type}->{machine} = $args{machine} if defined $args{machine};
     return \%os;

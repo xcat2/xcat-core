@@ -642,7 +642,7 @@ sub build_xmldesc {
     #memory binding:     "membind:<numa node set>"
     #cpu mode:           "cpumode:<host-model|host-passthrough>"
     #machine type:       "machine:<pc|q35|any valid VM machine type>"
-    #firmware:           "firmware:efi"
+    #firmware:           "firmware:efi" or "firmware:efi-secureboot"
     if ($advsettings) {
         my @tmp_array = split ";", $advsettings;
         foreach (@tmp_array) {
