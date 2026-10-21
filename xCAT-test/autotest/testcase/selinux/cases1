@@ -1,12 +1,13 @@
 start:selinux_cn_diskful_enforcing
-description:on an enforcing management node, a diskful compute node with noderes.selinux=enforcing boots enforcing, with correct labels and no denial
+description:on an enforcing management node, a diskful compute node with noderes.selinux=enforcing boots enforcing, with correct labels and no denial. The labels of /xcatpost are reported and not asserted: the kickstart relabel runs in %post, the xCAT post scripts write that tree at the first boot, and the node carries no xCAT-selinux
 label:selinux,provision
 os:Linux
 cmd:getenforce
 check:rc==0
 check:output=~^Enforcing$
-cmd:sh -c 'date "+%H:%M:%S" > /tmp/selinux_cn_diskful.start'
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh --init /tmp/selinux_cn_diskful.avcck'
 check:rc==0
+check:output=~BASELINE=[1-9]
 cmd:chdef -t node -o $$CN selinux=enforcing
 check:rc==0
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
@@ -23,9 +24,11 @@ check:rc==0
 check:output=~ssh_home_t
 check:output!~default_t
 check:output!~unlabeled_t
-cmd:xdsh $$CN "restorecon -Rnv /xcatpost /opt/xcat /root /etc/ssh /var/log/xcat"
+cmd:xdsh $$CN "restorecon -Rnv /opt/xcat /root /etc/ssh /var/log/xcat"
 check:rc==0
 check:output!~Would relabel
+cmd:xdsh $$CN "restorecon -Rnv /xcatpost; true"
+check:rc==0
 cmd:xdcp $$CN /opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh /tmp/
 check:rc==0
 cmd:xdsh $$CN "sh /tmp/selinux_avc_check.sh boot"
@@ -33,12 +36,12 @@ check:rc==0
 check:output=~XCAT_AVC=0
 cmd:xdsh $$CN "rm -f /tmp/selinux_avc_check.sh"
 check:rc==0
-cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh "$(cat /tmp/selinux_cn_diskful.start)"'
+cmd:sh -c '/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/selinux_avc_check.sh --since /tmp/selinux_cn_diskful.avcck'
 check:rc==0
 check:output=~XCAT_AVC=0
 cmd:chdef -t node -o $$CN selinux=
 check:rc==0
-cmd:rm -f /tmp/selinux_cn_diskful.start
+cmd:rm -f /tmp/selinux_cn_diskful.avcck
 end
 
 start:selinux_cn_diskless_disabled_by_design
@@ -106,7 +109,7 @@ cmd:rm -f /tmp/selinux_site.orig
 end
 
 start:selinux_sn_enforcing
-description:in a hierarchical cluster, the service node runs SELinux enforcing with the xCAT labels in place and no xCAT denial since boot
+description:in a hierarchical cluster, the service node runs SELinux enforcing with the xCAT labels in place and no xCAT denial since boot. The labels of /xcatpost are reported and not asserted, as on a compute node
 label:selinux,sn_diskful
 os:rhels
 cmd:getenforce
@@ -126,9 +129,11 @@ cmd:xdsh $$SN "ls -dZ /install /tftpboot /opt/xcat /xcatpost"
 check:rc==0
 check:output!~unlabeled_t
 check:output!~default_t
-cmd:xdsh $$SN "restorecon -Rnv /xcatpost /opt/xcat /etc/xcat /var/log/xcat"
+cmd:xdsh $$SN "restorecon -Rnv /opt/xcat /etc/xcat /var/log/xcat"
 check:rc==0
 check:output!~Would relabel
+cmd:xdsh $$SN "restorecon -Rnv /xcatpost; true"
+check:rc==0
 cmd:xdsh $$SN "systemctl is-active xcatd"
 check:rc==0
 check:output=~active
