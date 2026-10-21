@@ -177,6 +177,30 @@ is(scalar @{ $backend->delete_reservations($config, $owner) }, 1, 'Kea deletes b
         'live Kea deletion uses the complete client identifier');
 }
 
+subtest 'external ISC IPoIB rejects unsupported OMAPI clients before updates' => sub {
+    no warnings qw(once redefine);
+    for my $distro (qw(ubuntu20 ubuntu20.04 ubuntu22 ubuntu22.04)) {
+        local $xCAT_plugin::dhcp::distro = $distro;
+        local $XCATSITEVALS{externaldhcpservers} = 'dhcp.example.test';
+        my $directory = tempdir(CLEANUP => 1);
+        local *xCAT_plugin::dhcp::_isc_ipoib_state_directory = sub { return $directory; };
+        my $queries = 0;
+        local *xCAT_plugin::dhcp::_omapi_settings = sub { ++$queries; die "OMAPI was reached\n"; };
+        my $ok = eval { xCAT_plugin::dhcp::_isc_ipoib_external_update('compute', []); 1 };
+        ok($ok, "$distro leaves unrelated Ethernet-only requests available");
+        $ok = eval { xCAT_plugin::dhcp::_isc_ipoib_external_update('compute', [$entry]); 1 };
+        ok(!$ok, "$distro refuses a new external IPoIB reservation");
+        like($@, qr/unsupported on \Q$distro\E; use local ISC or Kea/,
+            'the error names the unsupported client and available backends');
+        xCAT_plugin::dhcp::_isc_ipoib_save_names('compute', [$entry->{hostname}]);
+        $ok = eval { xCAT_plugin::dhcp::_isc_ipoib_external_update('compute', []); 1 };
+        ok(!$ok, "$distro refuses external deletion without changing ownership");
+        like($@, qr/unsupported on \Q$distro\E/, 'deletion reports the same capability limit');
+        is_deeply(xCAT_plugin::dhcp::_isc_ipoib_external_names('compute'), [$entry->{hostname}],
+            'the retained reservation remains available for recovery');
+        is($queries, 0, 'unsupported requests stop before credentials or external operations');
+    }
+};
 
 {
     no warnings qw(once redefine);
