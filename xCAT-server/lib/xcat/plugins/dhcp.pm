@@ -802,6 +802,8 @@ sub _isc_ipoib_external_update
     my ($node, $reservations) = @_;
     my $old = _isc_ipoib_external_names($node);
     return unless @$old || @$reservations;
+    die "External ISC IPoIB reservation management is unsupported on $distro; use local ISC or Kea\n"
+        if _ubuntu_isc_omapi_limited();
     my $settings = _omapi_settings($callback);
     die "Invalid OMAPI settings\n" unless $settings;
     my $preamble = _isc_ipoib_external_preamble($settings);
