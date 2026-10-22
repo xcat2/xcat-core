@@ -31,7 +31,8 @@ my (%rows, %written, %kernels);
 my @responses;
 sub render {
     my ($method, $input, %options) = @_;
-    my $node = '192.0.2.10';
+    my @nodes = @{ $options{nodes} || ['192.0.2.10'] };
+    my $node = $nodes[0];
     %written = ();
     @responses = ();
     %kernels = ($node => {
@@ -47,12 +48,26 @@ sub render {
         boottarget => {custom => {kernel => 'vmlinuz', initrd => 'initrd', kcmdline => $input}},
         linuximage => {image => {addkcmdline => $options{image}, boottarget => $options{boottarget}}},
         hosts => {$node => {
-            ip => '192.0.2.10', empty => '', zero => '0',
+            ip => $node, empty => '', zero => '0',
             nested => '#NODEATTRIB:hosts:ip#',
             table => '#TABLE:hosts:THISNODE:ip#',
             special => 'a$1\\b&c',
         }},
     );
+    for my $other (@nodes) {
+        next if $other eq $node;
+        $kernels{$other} = dclone($kernels{$node});
+        for my $table (qw(noderes chain nodetype hosts)) {
+            $rows{$table}{$other} = dclone($rows{$table}{$node});
+        }
+        $rows{hosts}{$other}{ip} = $other;
+    }
+    if ($options{bad_node}) {
+        my $bad = $options{bad_node};
+        $kernels{$bad}{addkcmdline} = $options{bad_input};
+        $rows{nodetype}{$bad}{profile} = 'bad';
+        $rows{boottarget}{bad} = {kernel => 'vmlinuz', initrd => 'initrd', kcmdline => $options{bad_input}};
+    }
     no warnings qw(redefine once);
     local @ARGV;
     local *xCAT::Table::new = sub {
@@ -70,22 +85,34 @@ sub render {
     local *xCAT::NetworkUtils::determinehostname = sub { return ('mn.example'); };
     local *xCAT::NetworkUtils::checkNodeIPaddress = sub { return {ip => $_[1]}; };
     local *xCAT::MsgUtils::trace = sub { return; };
-    my $callback = sub { push @responses, dclone($_[0]); };
-    "xCAT_plugin::$method"->can('process_request')->(
+    my $callback = sub {
+        push @responses, dclone($_[0]) if @responses < 5;
+    };
+    my $completed = eval {
+        local $SIG{ALRM} = sub { die "template expansion timed out\n"; };
+        alarm(2);
+        "xCAT_plugin::$method"->can('process_request')->(
         {command => [$method eq 'boottarget' ? 'mknetboot' : 'nodeset'],
-            node => [$node], arg => ['install']},
+            node => \@nodes, arg => ['install']},
         $callback,
         sub {
             my ($request, $reply) = @_;
             if ($request->{command}[0] eq 'setdestiny') {
-                $request->{bootparams}{$node} = [$kernels{$node}];
+                $request->{bootparams}{$_} = [$kernels{$_}] for @nodes;
                 $reply->({node => [{name => [$node], _addkcmdlinehandled => 1}]})
                     if $options{handled};
             } elsif ($request->{command}[0] !~ /\A(?:runbeginpre|runendpre)\z/) {
                 die "Unexpected command $request->{command}[0]";
             }
         },
-    );
+        );
+        alarm(0);
+        1;
+    };
+    my $exception = $@;
+    alarm(0);
+    return $exception if $options{bad_node};
+    die $exception unless $completed;
     is_deeply(\@responses, [], "$method reports no errors");
     return $written{$node}{kcmdline} if $method eq 'boottarget';
     return $kernels{$node}{kcmdline};
@@ -157,6 +184,80 @@ for my $method (qw(pxe xnba ipxe boottarget)) {
             'direct UEFI boot receives the expanded arguments');
         unlink("$tftp/modern-kernel") or die "unlink kernel: $!";
     };
+}
+
+for my $method (qw(pxe xnba ipxe boottarget)) {
+    for my $position (0, 1, 2) {
+        for my $existing (0, 1) {
+            subtest "$method unsupported key at $position existing=$existing" => sub {
+                my @nodes = qw(192.0.2.20 192.0.2.21 192.0.2.22);
+                my $bad = $nodes[$position];
+                for my $good (grep { $_ ne $bad } @nodes) {
+                    next if $method eq 'boottarget';
+                    my $file = $method eq 'pxe' ? "$tftp/pxelinux.cfg/$good"
+                        : "$tftp/xcat/$method/nodes/$good";
+                    write_text($file, "previous boot configuration\n");
+                }
+                my @files = $method eq 'pxe' ? ("$tftp/pxelinux.cfg/$bad")
+                    : $method eq 'boottarget' ? ()
+                    : map { "$tftp/xcat/$method/nodes/$bad$_" } ('', '.pxelinux', '.uefi', '.elilo');
+                for my $file (@files) {
+                    if ($existing) {
+                        write_text($file, "previous boot configuration\n");
+                    } else {
+                        unlink($file) or die "unlink $file: $!" if -e $file;
+                    }
+                }
+                my $link;
+                if ($method eq 'pxe') {
+                    $link = "$tftp/pxelinux.cfg/" . sprintf('%02X%02X%02X%02X', split(/\./, $bad));
+                    unlink($link) or die "unlink $link: $!" if -e $link || -l $link;
+                    symlink($bad, $link) or die "symlink $link: $!" if $existing;
+                }
+                my $exception = render($method, 'marker=#NODEATTRIB:hosts:ip#',
+                    nodes => \@nodes, bad_node => $bad,
+                    bad_input => 'before=#NODEATTRIB:hosts:ip# #TABLE:hosts:unsupported:ip# #TABLE:hosts:other:ip#');
+                is($exception, '', 'request completes before the timeout');
+                my @node_errors = grep { $_->{errorcode} }
+                    map { @{ $_->{node} || [] } } @responses;
+                is(scalar @node_errors, 1, 'one node error is reported');
+                my $response = $node_errors[0] || {};
+                is_deeply($response->{name}, [$bad], 'error identifies the failed node');
+                is_deeply($response->{errorcode}, [1], 'response is an error');
+                is($response->{error}[0] // '', 'Table key of unsupported not yet supported by boottarget mini-template',
+                    'error identifies the unsupported table key');
+                for my $file (@files) {
+                    if ($existing) {
+                        is(read_text($file), "previous boot configuration\n", 'failure preserves the existing artifact');
+                    } else {
+                        ok(!-e $file, 'failure creates no artifact');
+                    }
+                }
+                if ($link) {
+                    if ($existing) {
+                        ok(-l $link, 'failure preserves the existing boot symlink');
+                        is(readlink($link), $bad, 'failure preserves the boot symlink target');
+                    } else {
+                        ok(!-e $link && !-l $link, 'failure creates no boot symlink');
+                    }
+                }
+                if ($method eq 'boottarget') {
+                    ok(!exists($written{$bad}), 'failure does not update bootparams');
+                } else {
+                    is($kernels{$bad}{kcmdline}, 'quiet', 'failure does not append a partial expansion');
+                }
+                for my $good (grep { $_ ne $bad } @nodes) {
+                    if ($method eq 'boottarget') {
+                        is($written{$good}{kcmdline}, "marker=$good", 'other nodes still update bootparams');
+                    } else {
+                        my $file = $method eq 'pxe' ? "$tftp/pxelinux.cfg/$good"
+                            : "$tftp/xcat/$method/nodes/$good";
+                        like(read_text($file), qr/marker=\Q$good\E /, 'other nodes still get boot artifacts');
+                    }
+                }
+            };
+        }
+    }
 }
 
 done_testing();
