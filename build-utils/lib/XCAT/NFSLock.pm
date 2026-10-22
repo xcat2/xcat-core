@@ -268,6 +268,9 @@ sub acquire {
                     my $again = _read_metadata($abs);
                     return 0 unless defined($again) && _key($again) eq _key($observed);
                     return 0 unless owner_is_dead($again, $here);
+                    # The owner is dead. The work it started may not be.
+                    my @live = live_workers($abs);
+                    if (@live) { $workers = $live[0]{pgid}; return 0 }
                     my $mine = this_process();
                     _at('before-commit');
                     _write_metadata($abs, $mine);
@@ -721,6 +724,7 @@ sub attach {
 sub detach {
     my ($self, $pgid) = @_;
     return 0 unless defined($pgid) && $pgid =~ /\A[1-9][0-9]*\z/;
+    return 0 unless !kill(0, -$pgid) && $!{ESRCH};
     delete($self->{workers}{$pgid});
     my $dir = _worker_dir($self->{path});
     opendir(my $dh, $dir) or return 0;
@@ -884,6 +888,12 @@ sub sweep_stranded {
     my $lock_of = sub { my $p = shift; $p =~ s/\.borrow(?:\.[0-9]+)?\z//; return $p };
     for my $d (sort { ($b =~ /\.borrow(?:\.[0-9]+)?\z/ ? 1 : 0) <=> ($a =~ /\.borrow(?:\.[0-9]+)?\z/ ? 1 : 0)
                       || $a cmp $b } @found) {
+        my @busy = live_workers($lock_of->($d));
+        if (@busy) {
+            push @report, { path => $d, action => 'kept',
+                            why => "build workers of process group $busy[0]{pgid} still exist" };
+            next;
+        }
         if ($d =~ /\.borrow(?:\.[0-9]+)?\z/) {
             unless ($opt{exclusive}) {
                 push @report, { path => $d, action => 'kept',

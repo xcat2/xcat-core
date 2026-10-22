@@ -35,6 +35,7 @@ our @EXPORT_OK = qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock acquire_lock_dir
+    attach_build_workers detach_build_workers
     build_sources_base build_sources_dir prepare_build_sources_dir
     remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir
     sh_quote clean_debian_residue git_revision
@@ -157,6 +158,10 @@ sub sh {
     }
 
     local $CURRENT_CHILD = $pid;  # also the command's process-group ID
+    # Recorded on every held lock BEFORE the signal mask comes back, so a cancellation cannot
+    # land between the fork and the record. A lock whose owner dies is recoverable; a lock with
+    # a group still in it is not, and this is what tells the two apart.
+    attach_build_workers($pid);
     # Both sides set the group, so neither depends on which side runs first.
     # EACCES means the child already exec'd, after setting its group; ESRCH
     # means it has already gone away.
@@ -174,6 +179,7 @@ sub sh {
     my $got;
     do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
     my $status = $?;
+    detach_build_workers($pid);
     return 127 if $got == -1;
     return ($status & 127) ? 128 + ($status & 127) : $status >> 8;
 }
@@ -725,6 +731,23 @@ sub release_build_locks {
     return;
 }
 
+# attach_build_workers: record a process group on every lock this process holds. A build lock
+# protects a checkout and a mock target, and sh() runs each command in its own group, so the
+# lock has to name the group rather than only the wrapper that started it.
+sub attach_build_workers {
+    my ($pgid) = @_;
+    for my $l (@LIVE_LOCKS) { $l->attach($pgid) if defined $l }
+    return;
+}
+
+# detach_build_workers: drop that record. Called once the group is reaped, and from
+# cancel_build once kill(0, -pgid) answers ESRCH.
+sub detach_build_workers {
+    my ($pgid) = @_;
+    for my $l (@LIVE_LOCKS) { $l->detach($pgid) if defined $l }
+    return;
+}
+
 #-------------------------------------------------------------------------------
 
 =head3 install_build_cancellation
@@ -802,13 +825,16 @@ sub cancel_build {
                 # The shell exiting is not enough: its workers may still exist.
                 if (!kill(0, -$pgid) && $!{ESRCH}) {
                     $CURRENT_CHILD = undef;
+                    detach_build_workers($pgid);
                     release_build_locks();
                     return;
                 }
                 select undef, undef, undef, 0.1;
             }
         }
-        # Never let END/DESTROY unlock a checkout whose workers may still run.
+        # Never let END/DESTROY unlock a checkout whose workers may still run. The group is
+        # still recorded on the lock, because it was not detached, so a later build reads that
+        # record and refuses the lock instead of recovering it from a dead owner.
         warn "FATAL: build process group $pgid has not disappeared; retaining locks\n";
         POSIX::_exit(1);
     }
