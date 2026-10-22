@@ -136,19 +136,6 @@ sub handled_commands
     return { "makedns" => "site:dnshandler" };
 }
 
-sub _local_addresses_for_network {
-    my $network = shift;
-    return unless defined($network) && length($network);
-
-    my $peer = $network;
-    $peer =~ s{/.*$}{};
-    my @facing = $peer =~ /:/
-      ? xCAT::NetworkUtils->my_ip_facing_family($peer, 6)
-      : xCAT::NetworkUtils->my_ip_facing($peer);
-    return if !@facing || $facing[0];
-    return @facing[ 1 .. $#facing ];
-}
-
 sub getzonesfornet {
     my $netent = shift;
     my $net    = $netent->{net};
@@ -450,7 +437,6 @@ sub process_request {
         if ($net and $net->{nameservers})
         {
             my $valid = 0;
-            my @myips = _local_addresses_for_network($net->{net});
             foreach (split /,/, $net->{nameservers})
             {
                 chomp $_;

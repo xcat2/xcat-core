@@ -44,32 +44,6 @@ my $has_core_ipv6_parser = defined(&Socket::inet_pton)
 my $has_ipv6_parser = $has_core_ipv6_parser
   || eval { require Socket6; 1 };
 
-{
-    no warnings qw(once redefine);
-    my @families;
-    local *xCAT::NetworkUtils::my_ip_facing = sub {
-        push @families, 4;
-        return (0, '192.0.2.1');
-    };
-    local *xCAT::NetworkUtils::my_ip_facing_family = sub {
-        my ($class, $peer, $family) = @_;
-        push @families, $family;
-        return (0, '2001:db8:1::1');
-    };
-
-    is_deeply(
-        [ xCAT_plugin::ddns::_local_addresses_for_network('192.0.2.0') ],
-        ['192.0.2.1'],
-        'IPv4 DNS-network ownership retains the legacy facing-address path'
-    );
-    is_deeply(
-        [ xCAT_plugin::ddns::_local_addresses_for_network('2001:db8:1::/64') ],
-        ['2001:db8:1::1'],
-        'IPv6 DNS-network ownership strips CIDR and uses the IPv6 facing path'
-    );
-    is_deeply(\@families, [4, 6], 'DNS-network ownership selects the matching address family');
-}
-
 SKIP: {
     skip 'No IPv6 literal parser is available', 9 unless $has_ipv6_parser;
 
