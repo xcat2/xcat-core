@@ -4,11 +4,13 @@ package XCAT::NFSLock;
 #
 # Copies
 #   This module is vendored three times, because no repo installs another's build tooling:
-#     xcat-dep         lib/XCAT/NFSLock.pm              (this file, the original)
+#     xcat-dep         lib/XCAT/NFSLock.pm              (the original)
 #     xcat-core        build-utils/lib/XCAT/NFSLock.pm
 #     xcat-core-ci-cd  ci/lib/XCAT/NFSLock.pm
 #   The three must stay identical. They have diverged once already: sweep_stranded was added to
-#   the ci-cd copy alone, so the protocol hole it covers stayed open in the other two.
+#   the ci-cd copy alone, so the protocol hole it covers stayed open in the other two. Its only
+#   caller is still in xcat-core-ci-cd (ci/sweep-stranded-locks.pl); it stays in all three copies
+#   because a copy that drops it reopens that hole.
 #
 # A lock on a shared, possibly re-exported, NFS tree. flock and fcntl are not
 # available there. The protocol uses mkdir, rmdir, unlink and plain file
@@ -27,10 +29,15 @@ package XCAT::NFSLock;
 #      Cloned VMs and images can share it by accident unless it is regenerated.
 #   3. Metadata writes eventually become readable completely and consistently.
 #   4. A host never declares one of its own live process incarnations dead.
-#   5. A process cannot die after it creates lock.d, until it publishes valid metadata.
-#      It MAY die while it holds lock.borrow: the borrow carries the same metadata as the lock,
-#      so a borrow whose taker is provably dead is recovered by the same rule. A borrow left by
-#      the earlier protocol carries none, and sweep_stranded removes those.
+#   5. A process MAY die at any point, lock.borrow included. The borrow carries the same
+#      metadata as the lock, so a borrow whose taker is provably dead is recovered by the same
+#      rule. A borrow with NO metadata is left by the earlier protocol, or by a death between
+#      mkdir and the first write; no version of this protocol holds one for more than
+#      milliseconds, so one that two attempts find unchanged is held by nobody.
+#      A lock.d with no metadata is a different case and acquire never recovers it. The build
+#      lock in xcat-core wrote no metadata and held lock.d for the whole build, so no fact on
+#      disk tells that holder from a dead one. Only sweep_stranded removes those, and only when
+#      the caller claims the root exclusively.
 #   6. A crashed worker leaves recoverable state. The owning host eventually
 #      returns and retries. Eventually one worker and its release complete.
 #   7. All participants follow the protocol.
@@ -46,6 +53,10 @@ package XCAT::NFSLock;
 #   If the metadata is missing, cannot be parsed or hashed, or the hash does not
 #   match, assume a partial or inconsistent read and retry. Never infer stale
 #   ownership from invalid metadata.
+#
+#   One case is not a partial read: a lock.borrow with no metadata FILE, unchanged over two
+#   attempts. Two attempts of one acquire or release are at least T seconds apart, and no
+#   participant holds a metadata-less borrow that long, so nobody holds it.
 #
 # Retry
 #   R = max retries, T = base delay, δ = jitter
@@ -67,7 +78,8 @@ package XCAT::NFSLock;
 #      - different machine-id: retry
 #      - same host: save the observed ownership identity
 #   3. mkdir lock.borrow, then write valid metadata into it
-#      - EEXIST: recover the borrow if its metadata proves its taker dead, then retry
+#      - EEXIST: recover the borrow if its metadata proves its taker dead, or if it has no
+#        metadata file and two attempts found it unchanged; then retry
 #      - other failure: retry
 #   4. Read and validate the metadata again.
 #      - invalid, missing, or ownership identity changed: rmdir lock.borrow, retry
@@ -78,7 +90,7 @@ package XCAT::NFSLock;
 #   7. rmdir lock.borrow
 #   8. Call the worker.
 #   9. mkdir lock.borrow, then write valid metadata into it
-#      - EEXIST: recover the borrow if its metadata proves its taker dead
+#      - EEXIST: recover the borrow by the same rule as step 3
 #      - failure: sleep(T + rand(-δ, δ)), retry step 9
 #  10. unlink lock.d/metadata
 #  11. rmdir lock.d (the actual unlock)
@@ -89,8 +101,9 @@ package XCAT::NFSLock;
 #   lock.d absent         => acquirable
 #   invalid metadata      => retry only
 #   different machine-id  => never recover here
-#   lock.borrow exists    => ownership transition or release in progress,
-#                            unless its metadata proves its taker dead
+#   lock.borrow exists    => ownership transition or release in progress, unless its metadata
+#                            proves its taker dead, or it has no metadata file and two attempts
+#                            found it unchanged
 #
 # Steps 1 to 7 are acquire, step 8 is the caller, steps 9 to 12 are release.
 # release does steps 10 and 11 only when the metadata names this acquisition.
@@ -175,6 +188,9 @@ sub acquire {
     }, $class;
     my $here = _here();
     my $seen;
+    # Directories this acquire has already observed, for _unchanged. The attempts of one acquire
+    # are one delay apart, which is what makes "unchanged" mean "untouched for T seconds".
+    my %observed_before;
 
     for (my $count = 0 ; ; $count++) {
         # Step 1.
@@ -219,8 +235,8 @@ sub acquire {
             elsif ($! == EEXIST) {
                 # Step 3 fails for as long as the borrow exists, and that skips steps 4 to 7, so
                 # a taker killed here blocked the lock for every later acquire.
-                $self->_log('reaped-borrow', "taker pid $1 is dead")
-                    if _reap_borrow($borrow, $here) =~ /\Apid (\d+)\z/;
+                my ($reaped, $why) = _reap_borrow($borrow, $here, \%observed_before);
+                $self->_log('reaped-borrow', $why) if $reaped;
             }
         }
 
@@ -231,7 +247,9 @@ sub acquire {
 
     my $who = _describe($seen);
     my $s   = $retries == 1 ? 'retry' : 'retries';
-    die "Trying to unlock $abs failed after $retries $s; $label owned by $who.\n"
+    # Names what happened, so a caller can tell a lock another process still holds from a mkdir
+    # that failed outright. The earlier wording said "Trying to unlock", which is the reverse.
+    die "Cannot lock $abs: still held after $retries $s by $who.\n"
       . "If you are sure it is safe, remove the lock: rm -rf $abs\n";
 }
 
@@ -259,6 +277,7 @@ sub release {
     return 0 unless defined($self->{identity});
     my $path   = $self->{path};
     my $borrow = "$path.borrow";
+    my %observed_before;
     while (1) {
         # Step 9.
         if (mkdir($borrow)) {
@@ -288,7 +307,7 @@ sub release {
         }
         else {
             # A taker killed while holding the borrow would otherwise block this release for ever.
-            _reap_borrow($borrow, _here());
+            _reap_borrow($borrow, _here(), \%observed_before);
         }
         _sleep(_wait($self->{delay}, $self->{jitter}));
     }
@@ -455,21 +474,43 @@ sub _drop_borrow {
     return rmdir($borrow);
 }
 
-# _reap_borrow: remove a borrow whose taker is provably dead, and say what was found.
+# _reap_borrow: remove a borrow no live taker holds, and say what was found.
 #
-# The same rule the lock itself uses: a borrow is recovered only when its metadata is valid, names
-# this machine, and names a process this host can prove is dead. A borrow with no metadata is one
-# the previous protocol left, and staleness is never inferred from metadata that cannot be
-# validated -- sweep_stranded removes those.
+# Two rules. A borrow with valid metadata is recovered when that metadata names this machine and a
+# process this host can prove dead -- the rule the lock itself uses. A borrow with no metadata
+# FILE is recovered when two attempts find it unchanged: the earlier protocol wrote none, and no
+# version of this one holds a metadata-less borrow for more than milliseconds. A borrow whose
+# metadata file exists but does not validate may be a partial read, so it is left alone.
+#
+# $seen carries the observations across the attempts of one acquire or release.
+# Returns ($removed, $why).
 sub _reap_borrow {
-    my ($borrow, $here) = @_;
+    my ($borrow, $here, $seen) = @_;
     $here //= _here();
     my $taker = _read_metadata($borrow);
-    return 'invalid' unless defined($taker);
-    return 'other machine' unless $taker->{'machine-id'} eq $here->{'machine-id'};
-    return 'alive' unless owner_is_dead($taker, $here);
+    unless (defined($taker)) {
+        return (0, 'metadata invalid') if -e "$borrow/metadata";
+        return (0, 'no metadata, first attempt') unless _unchanged($seen, $borrow);
+        _drop_borrow($borrow);
+        return (1, 'no metadata, and two attempts found the borrow unchanged');
+    }
+    return (0, 'other machine') unless $taker->{'machine-id'} eq $here->{'machine-id'};
+    return (0, 'taker is alive') unless owner_is_dead($taker, $here);
     _drop_borrow($borrow);
-    return "pid $taker->{pid}";
+    return (1, "taker pid $taker->{pid} is dead");
+}
+
+# _unchanged: true when $dir carries the identity and mtime of an earlier observation in $seen.
+# Creating or removing a file in a directory moves its mtime, so an unchanged directory had
+# nothing written in it between the two observations.
+sub _unchanged {
+    my ($seen, $dir) = @_;
+    return 0 unless defined($seen);
+    my @stat = stat($dir) or return 0;
+    my $mark = join(':', @stat[0, 1, 9]);
+    my $before = $seen->{$dir};
+    $seen->{$dir} = $mark;
+    return defined($before) && $before eq $mark ? 1 : 0;
 }
 
 sub _key {
@@ -591,16 +632,22 @@ sub DESTROY {
         A dead owner's lock.d is removed as well. acquire would take it over, so this only saves
         the wait.
 
-        It never infers staleness from metadata it cannot validate, and it never removes a lock
-        owned by a live process or by another machine.
+        It never removes a lock owned by a live process or by another machine, and it never
+        infers staleness from a metadata file it cannot validate.
+
+        A lock.d with NO metadata file is removed only with exclusive => 1. acquire refuses one,
+        because the build lock in xcat-core wrote no metadata and held lock.d for the whole
+        build, so no fact on disk tells that holder from a dead one. Only a caller that claims
+        the root exclusively can say it is abandoned.
 
     Arguments:
         $root: the directory to walk
         $here: hash ref with machine-id, boot-id and start_of, as owner_is_dead takes
         %opt:  exclusive => 1 when the caller holds the run's exclusive claim on $root, so no
-               live take-over can be in progress. Only then is a borrow removed: a borrow is
-               otherwise a transition that is milliseconds from finishing, and removing it lets
-               two takers rewrite one metadata file.
+               build and no take-over can be in progress. Only then is a borrow removed, and
+               only then a lock.d with no metadata: a borrow is otherwise a transition that is
+               milliseconds from finishing, and removing it lets two takers rewrite one
+               metadata file.
     Returns:
         A list of hash refs: path, action (removed or kept), why.
 
@@ -637,8 +684,17 @@ sub sweep_stranded {
         }
         my $owner = _read_metadata($d);
         unless (defined($owner)) {
-            push @report, { path => $d, action => 'kept',
-                            why => 'metadata missing or invalid; staleness is never inferred' };
+            if (-e "$d/metadata") {
+                push @report, { path => $d, action => 'kept',
+                                why => 'metadata invalid; staleness is never inferred' };
+                next;
+            }
+            unless ($opt{exclusive}) {
+                push @report, { path => $d, action => 'kept',
+                                why => 'no metadata; no exclusive claim on the root' };
+                next;
+            }
+            push @report, _remove($d, 'no metadata, and the caller claims the root exclusively');
             next;
         }
         if ($owner->{'machine-id'} ne $here->{'machine-id'}) {

@@ -61,7 +61,7 @@ use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildi
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir
                         mock_config_text acquire_lock_dir);
-use POSIX ();                   # EEXIST, for the directory build lock (see main())
+use POSIX ();                   # WNOHANG, for the non-blocking waitpid in abort_builds()
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
 use Parallel::ForkManager;

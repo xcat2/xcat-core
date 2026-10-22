@@ -658,8 +658,8 @@ sub lock_path_for {
 # and one target. A lock on the shared checkout would serialise the per-arch builds of one
 # checkout that run on two hosts, which share nothing.
 #
-# $held is the text appended when a live build holds the lock. $what names what contends, so the
-# two callers keep their own wording -- a checkout for builddebs.pl, a mock target for
+# $held is the advice printed when another build still holds the lock. $what names what contends,
+# so the two callers keep their own wording -- a checkout for builddebs.pl, a mock target for
 # buildrpms.pl -- while the protocol lives in one place.
 sub acquire_lock_dir {
     my ($lockdir, $what, $held) = @_;
@@ -667,15 +667,24 @@ sub acquire_lock_dir {
     $what = $lockdir unless defined $what;
     $held = ''       unless defined $held;
 
-    # Two attempts, because recovering a stranded borrow takes one turn and the take-over the
-    # next. Builds must fail fast rather than queue, so the budget stops there.
+    # Three attempts: reaping a stranded borrow takes two, because a borrow with no metadata is
+    # reclaimed only when two of them find it unchanged, and the take-over takes the third.
+    # Builds must fail fast rather than queue, so the budget stops there.
     my $lock = eval {
         XCAT::NFSLock->acquire($lockdir, retries => 2, label => $what, quiet => 1);
     };
     unless ($lock) {
         my $why = $@ // '';
         $why =~ s/\s+\z//;
-        die "FATAL: another build of $what already holds $lockdir\n$held$why\n";
+        $why =~ s/^/       /mg;
+        # NFSLock says which failure it was. Only an exhausted retry budget means something else
+        # holds the lock; a mkdir that failed outright is a different problem, and every failure
+        # used to be reported as a concurrent build.
+        my $contended = $why =~ /\bstill held after [0-9]+ retr/;
+        die "FATAL: cannot take the build lock for $what\n"
+          . ($contended ? "       another build still holds $lockdir\n" : '')
+          . "$why\n"
+          . ($contended ? $held : '');
     }
     push @LIVE_LOCKS, $lock;
     # Registered weakly, so holding it here does not keep the lock alive past its caller's
