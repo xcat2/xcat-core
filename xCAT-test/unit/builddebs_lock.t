@@ -38,7 +38,11 @@ ok( $first, 'the first build of a checkout takes the lock' );
 
 my $second = eval { take_build_lock($devel, $lockdir) };
 ok( !$second, 'a second build of the SAME checkout is refused' );
-like( $@, qr/already holds/, 'and says which checkout is already building' );
+my $refusal = $@ // '';
+like( $refusal, qr/another build still holds/, 'and reports contention' );
+like( $refusal, qr/still held after [0-9]+ retr\w+ by pid $$\b/,
+    'and names the pid holding it, so contention is told from any other failure' );
+like( $refusal, qr/\Q$devel\E/, 'and names the checkout that is already building' );
 
 # Different checkout: must not be blocked by the first.
 my $stable = eval { take_build_lock('/opt/builds/stable/xcat-core', $lockdir) };
