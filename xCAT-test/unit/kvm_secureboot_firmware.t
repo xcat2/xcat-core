@@ -8,16 +8,26 @@
 # neither. A node that must boot signed binaries has to say so, so that a hypervisor without a
 # Secure Boot firmware refuses the domain instead of starting it unverified.
 #
-# <loader secure='yes'/> is the requirement libvirt reads during firmware selection. Measured
-# with libvirt 11.10.0 on rome01: <os firmware='efi'> with that element resolves to
-# OVMF_CODE.secboot.fd and <smm state='on'/>, and the same domain with
-# <firmware><feature enabled='no' name='secure-boot'/></firmware> resolves to OVMF_CODE.fd.
+# <loader secure='yes'/> is not that requirement on its own. libvirt reads it as the secure-boot
+# feature, and a firmware with secure-boot and an empty key store boots an unsigned binary. The
+# two x86_64 descriptors of an EL 10 host name the same OVMF_CODE.secboot.fd and differ in the
+# nvram template: 30-edk2-ovmf-x64-sb-enrolled.json takes OVMF_VARS.secboot.fd, which holds the
+# keys, and 40-edk2-ovmf-x64-sb.json takes OVMF_VARS.fd, which does not. Only descriptor
+# priority picks the first one, and priority is host policy.
+#
+# So the domain asks for enrolled-keys as well. Measured with libvirt 11.10.0 on rome01, with
+# the 30- descriptor masked for one connection: the domain that states <loader secure='yes'/>
+# alone starts on OVMF_VARS.fd with enrolled-keys resolved to no, and the domain that asks for
+# enrolled-keys is refused with "Unable to find 'efi' firmware that is compatible with the
+# current configuration".
 use strict;
 use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
+use XML::LibXML;
+use XML::Simple qw(XMLout);
 
 require xCAT::KVMUtils;
 
@@ -104,5 +114,66 @@ is( xCAT::KVMUtils::firmware_machine_error( undef, 'pc', 'x86_64', 'cn1' ),
     undef, 'a node that asks for no firmware keeps i440fx' );
 is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'virt', 'riscv64', 'cn1' ),
     undef, 'the machine types of another architecture are not judged here' );
+
+# <firmware> carries the features libvirt filters the descriptors by. It is not in the hash
+# guest_os returns: the firmware attribute of <os> and the <firmware> child of <os> are one key
+# of one hash for XMLout, and the attribute is the one that starts the selection. So
+# add_firmware_features adds the element to the domain XMLout wrote, which is what kvm.pm does.
+my $features = xCAT::KVMUtils::firmware_features($sb);
+is_deeply(
+    $features,
+    [ { name => 'secure-boot', enabled => 'yes' }, { name => 'enrolled-keys', enabled => 'yes' } ],
+    'a Secure Boot node asks for secure-boot and for enrolled-keys'
+);
+is_deeply( xCAT::KVMUtils::firmware_features( node_profile('firmware:efi') ),
+    [], 'firmware:efi asks for no firmware feature' );
+is_deeply( xCAT::KVMUtils::firmware_features( node_profile(undef) ),
+    [], 'and neither does a node that asks for no firmware' );
+is_deeply( xCAT::KVMUtils::firmware_features(undef), [], 'and neither does an undefined profile' );
+
+# The domain as kvm.pm writes it: the <os> of guest_os, then the features.
+sub domain_of {
+    my ($profile) = @_;
+    my $os = XMLout( os_of($profile), RootName => 'os' );
+    $os =~ s/^<\?xml[^>]*\?>\s*//;
+    return xCAT::KVMUtils::add_firmware_features( "<domain type='kvm'>\n$os\n</domain>\n",
+        xCAT::KVMUtils::firmware_features($profile) );
+}
+
+sub feature_enabled {
+    my ( $xml, $name ) = @_;
+    my ($node) =
+      XML::LibXML->load_xml( string => $xml )
+      ->findnodes("/domain/os/firmware/feature[\@name='$name']");
+    return defined($node) ? $node->getAttribute('enabled') : undef;
+}
+
+my $sb_domain = domain_of($sb);
+is( feature_enabled( $sb_domain, 'enrolled-keys' ),
+    'yes', 'the domain of a Secure Boot node asks for a firmware whose keys are enrolled' );
+is( feature_enabled( $sb_domain, 'secure-boot' ),
+    'yes', 'and for one that verifies what it boots' );
+is( XML::LibXML->load_xml( string => $sb_domain )->findnodes('/domain/os')->[0]
+      ->getAttribute('firmware'),
+    'efi', 'and it keeps firmware="efi" on <os>, which is what starts the firmware selection' );
+is( XML::LibXML->load_xml( string => $sb_domain )->findnodes('/domain/os/loader')->[0]
+      ->getAttribute('secure'),
+    'yes', 'and keeps <loader secure="yes"/> beside the features' );
+
+# A node that asked only for UEFI gets no <firmware>, so it keeps taking the descriptor its
+# hypervisor prefers.
+foreach my $othersettings ( 'firmware:efi', undef ) {
+    my $name = defined($othersettings) ? $othersettings : 'no firmware';
+    my $domain = domain_of( node_profile($othersettings) );
+    is_deeply(
+        [ XML::LibXML->load_xml( string => $domain )->findnodes('/domain/os/firmware') ],
+        [], "$name states no firmware feature" );
+}
+
+is( xCAT::KVMUtils::add_firmware_features( "<domain type='kvm'><os/></domain>", [] ),
+    "<domain type='kvm'><os/></domain>",
+    'a domain that asks for no feature is returned unchanged, not re-serialised' );
+is( xCAT::KVMUtils::add_firmware_features( "<domain type='kvm'/>", $features ),
+    "<domain type='kvm'/>", 'a domain with no <os> is returned unchanged' );
 
 done_testing();

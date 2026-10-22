@@ -889,7 +889,8 @@ sub build_xmldesc {
 
     $xtree{devices}->{console}->{type} = 'pty';
     $xtree{devices}->{console}->{target}->{port} = '1';
-    return XMLout(\%xtree, RootName => "domain");
+    return xCAT::KVMUtils::add_firmware_features(XMLout(\%xtree, RootName => "domain"),
+        xCAT::KVMUtils::firmware_features($profile));
 }
 
 sub refresh_vm {

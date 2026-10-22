@@ -528,11 +528,12 @@ sub firmware_machine_error {
         A ppc64le hypervisor gets no <bios useserial>. A profile without bios drops it too.
         A machine type from vm.othersettings replaces the machine type of the profile.
 
-        A profile with secureboot states <loader secure='yes'/>. libvirt reads it while it
-        selects the firmware and keeps only the descriptors that carry secure-boot, so a
-        hypervisor with no such firmware refuses the domain. Without the element the guest
-        takes whichever firmware the hypervisor prefers, and the domain says nothing about
-        whether that firmware verifies what it boots.
+        A profile with secureboot states <loader secure='yes'/>. libvirt keeps only the
+        descriptors that carry the secure-boot feature while it selects the firmware, so a
+        hypervisor with no such firmware refuses the domain. The element says nothing about
+        the UEFI keys, so firmware_features asks for enrolled-keys beside it. Without the
+        element the guest takes whichever firmware the hypervisor prefers, and the domain
+        says nothing about whether that firmware verifies what it boots.
     Arguments:
         $profile - the hash reference from guest_arch_profile
         %args - hyp_cpumodel: the cpumodel of the hypervisor; bootorder: vm.bootorder of the
@@ -564,6 +565,79 @@ sub guest_os {
     delete $os{bios} unless $profile->{bios};
     $os{type}->{machine} = $args{machine} if defined $args{machine};
     return \%os;
+}
+
+#-------------------------------------------------------
+
+=head3 firmware_features
+
+    Descriptions:
+        The firmware autoselection features of one guest, in the form <firmware> states them.
+
+        A guest with secureboot asks for secure-boot and for enrolled-keys. secure-boot names
+        a firmware that can verify what it boots. It does not name the UEFI keys that decide
+        what passes, and a firmware with secure-boot and no enrolled keys boots an unsigned
+        binary. The two x86_64 descriptors of an EL 10 host show the difference:
+        30-edk2-ovmf-x64-sb-enrolled.json and 40-edk2-ovmf-x64-sb.json name the same
+        OVMF_CODE.secboot.fd and differ in the nvram template, OVMF_VARS.secboot.fd against
+        OVMF_VARS.fd. Only the first template holds keys.
+
+        libvirt reads <loader secure='yes'/> as the secure-boot feature alone, and picks the
+        descriptor of highest priority that carries it. A host that ships the 40- descriptor
+        and not the 30- one satisfies that domain with an empty key store.
+    Arguments:
+        $profile - the hash reference from guest_arch_profile, or undef
+    Returns:
+        an array reference of { name, enabled } pairs, empty when the guest asks for none
+
+=cut
+
+#-------------------------------------------------------
+sub firmware_features {
+    my ($profile) = @_;
+    return [] unless ref($profile) eq 'HASH' and $profile->{secureboot};
+    return [
+        { name => 'secure-boot',   enabled => 'yes' },
+        { name => 'enrolled-keys', enabled => 'yes' },
+    ];
+}
+
+#-------------------------------------------------------
+
+=head3 add_firmware_features
+
+    Descriptions:
+        Add <firmware> with the features firmware_features names to the <os> of one domain.
+
+        guest_os cannot carry this element. The firmware attribute of <os> and the <firmware>
+        child of <os> are one key of one hash for XMLout, which writes a scalar as an
+        attribute and a reference as an element, so the hash holds one of the two. The
+        attribute is the one that starts the firmware selection.
+    Arguments:
+        $xml - the domain XML
+        $features - the array reference from firmware_features
+    Returns:
+        the new domain XML, or $xml when the guest asks for no feature
+
+=cut
+
+#-------------------------------------------------------
+sub add_firmware_features {
+    my ($xml, $features) = @_;
+    return $xml unless ref($features) eq 'ARRAY' and scalar(@$features);
+    require XML::LibXML;
+    my $domdesc = XML::LibXML->new()->parse_string($xml);
+    my ($os) = $domdesc->findnodes('/domain/os');
+    return $xml unless $os;
+    my $element = $domdesc->createElement('firmware');
+    foreach my $feature (@$features) {
+        my $child = $domdesc->createElement('feature');
+        $child->setAttribute('enabled', $feature->{enabled});
+        $child->setAttribute('name',    $feature->{name});
+        $element->appendChild($child);
+    }
+    $os->appendChild($element);
+    return $domdesc->toString();
 }
 
 #-------------------------------------------------------
