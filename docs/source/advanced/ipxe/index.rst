@@ -36,6 +36,8 @@ An x86 client without a node definition, such as a node in discovery, gets the u
 
 On a server that serves x86 discovery, ``makedhcp -n`` and ``makedhcp -a`` warn when an upstream loader file is missing from the local TFTP directory, or when ``xcat/ipxe/nets`` has no network boot script.
 
+A client in discovery boots the Genesis kernel, which carries no signature, so discovery requires Secure Boot off on the node. See `UEFI Secure Boot`_.
+
 Move nodes to the ipxe method
 -----------------------------
 
@@ -63,7 +65,14 @@ The signature database of the firmware does not hold the keys of a Linux distrib
 
 iPXE fetches a shim only when it cannot load the kernel itself, so a node with Secure Boot off reads neither file.
 
-A shim also accepts a kernel that a MOK key signs. Nothing signs the Genesis kernel, so a node boots Genesis with Secure Boot on only after the site signs ``xcat/genesis.kernel.x86_64`` with its own key and enrolls that key with ``mokutil``. The discovery scripts under ``xcat/ipxe/nets`` name the shim of ``ipxe-xcat`` for that purpose.
+What this path supports
+~~~~~~~~~~~~~~~~~~~~~~~
+
+A node with ``netboot=ipxe`` boots the kernel of a distribution with Secure Boot on, for a disk installation and for a netboot image. The shim of the install source verifies that kernel.
+
+**Genesis requires Secure Boot off on the node.** ``xCAT-genesis-base`` ships ``xcat/genesis.kernel.x86_64`` unsigned, and a shim verifies a kernel only against the signature database of the firmware or a key in the MOK list. So a node that boots Genesis with Secure Boot on reports ``Verification failed: Security Policy Violation`` for the kernel, and the shim then stops in its own dialog. This covers node discovery, the Genesis shell, and the ``standby`` and ``runcmd`` destinies, which all boot that kernel. Turn Secure Boot off on a node for those tasks, and on again afterwards for a disk installation or a netboot image.
+
+A shim also accepts a kernel that a MOK key signs, so a site that signs ``xcat/genesis.kernel.x86_64`` with its own key and enrolls that key with ``mokutil`` boots Genesis with Secure Boot on. xCAT ships no key and no signature. The scripts under ``xcat/ipxe/nets`` name the shim of ``ipxe-xcat``, which reads the MOK list.
 
 Two paths stay Secure Boot off. A kernel without an EFI stub boots through ``elilo-x64.efi``, and ESXi boots through ``esxboot-x64.efi``. No key signs either file. Boot these nodes with Secure Boot off.
 
