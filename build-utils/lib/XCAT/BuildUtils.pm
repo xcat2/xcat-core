@@ -34,7 +34,7 @@ our @EXPORT_OK = qw(
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
-    lock_id_for take_build_lock
+    lock_id_for take_build_lock acquire_lock_dir
     build_sources_base build_sources_dir prepare_build_sources_dir
     remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir
     sh_quote clean_debian_residue git_revision
@@ -125,7 +125,7 @@ sub rewrite_file {
 our $CURRENT_CHILD;
 
 # Locks this process holds, weakly. Released by a signal handler or at exit, because
-# _BuildLock::DESTROY does not run when a signal ends the process.
+# DESTROY does not run when a signal ends the process.
 our @LIVE_LOCKS;
 END { release_build_locks() }
 
@@ -646,32 +646,50 @@ sub lock_path_for {
     return "$dir/xcatbld-" . lock_id_for($path) . ".lock";
 }
 
-# take_build_lock: take the checkout's lock, or die.
-# Returns the open handle -- the lock is held for as long as the caller keeps it.
-sub take_build_lock {
-    my ($path, $dir) = @_;
-    require POSIX;
-    # A directory, not an flock. A build tree can live on an NFS re-export, where the kernel
-    # refuses locks outright: every attempt answers errno 524. mkdir(2) is arbitrated by the
-    # server and needs no lock daemon.
-    my $lockdir = lock_path_for($path, $dir) . '.d';
-    unless (mkdir $lockdir) {
-        die "FATAL: cannot take $lockdir: $!\n" unless $! == POSIX::EEXIST();
-        my $who = ''; if (open(my $h, '<', "$lockdir/owner")) { local $/; $who = <$h> // ''; close $h }
-        chomp $who;
-        die "FATAL: another build of $path already holds $lockdir"
-          . ($who ? " (held by [$who])" : "") . "\n";
+# acquire_lock_dir: take one named lock, or die.
+#
+# XCAT::NFSLock, not an flock and not a bare mkdir. Its protocol recovers a lock whose owner is
+# provably dead, which is the whole point here: a build killed by SIGKILL or the OOM-killer runs
+# no handler, and a lock with no recovery then fails every later build of the same target until
+# an operator removes it by hand.
+#
+# The lock lives in /var/lock, which is local. What it guards is host-local too --
+# /etc/mock/<cfg>.cfg, /var/lib/mock/<cfg>/ and its buildroot.lock -- so the scope is one host
+# and one target. A lock on the shared checkout would serialise the per-arch builds of one
+# checkout that run on two hosts, which share nothing.
+#
+# $held is the text appended when a live build holds the lock. $what names what contends, so the
+# two callers keep their own wording -- a checkout for builddebs.pl, a mock target for
+# buildrpms.pl -- while the protocol lives in one place.
+sub acquire_lock_dir {
+    my ($lockdir, $what, $held) = @_;
+    require XCAT::NFSLock;
+    $what = $lockdir unless defined $what;
+    $held = ''       unless defined $held;
+
+    # Two attempts, because recovering a stranded borrow takes one turn and the take-over the
+    # next. Builds must fail fast rather than queue, so the budget stops there.
+    my $lock = eval {
+        XCAT::NFSLock->acquire($lockdir, retries => 2, label => $what, quiet => 1);
+    };
+    unless ($lock) {
+        my $why = $@ // '';
+        $why =~ s/\s+\z//;
+        die "FATAL: another build of $what already holds $lockdir\n$held$why\n";
     }
-    if (open(my $ow, '>', "$lockdir/owner")) { print {$ow} "pid=$$\n"; close $ow }
-    # The caller keeps the returned value; release is by pid so a fork cannot free the parent's.
-    my $owner = $$;
-    my $lock = XCAT::BuildUtils::_BuildLock->new($lockdir, $owner);
+    push @LIVE_LOCKS, $lock;
     # Registered weakly, so holding it here does not keep the lock alive past its caller's
     # scope. The registry exists only so a signal can release what DESTROY will not.
     require Scalar::Util;
-    push @LIVE_LOCKS, $lock;
     Scalar::Util::weaken($LIVE_LOCKS[-1]);
     return $lock;
+}
+
+# take_build_lock: take the checkout's lock, or die.
+# Returns the guard object -- the lock is held for as long as the caller keeps it.
+sub take_build_lock {
+    my ($path, $dir) = @_;
+    return acquire_lock_dir(lock_path_for($path, $dir) . '.d', $path);
 }
 
 #-------------------------------------------------------------------------------
@@ -790,21 +808,6 @@ sub cancel_build {
     return;
 }
 
-{   package XCAT::BuildUtils::_BuildLock;
-    sub new { my ($c,$d,$p)=@_; return bless { dir=>$d, pid=>$p, released=>0 }, $c }
-    # Idempotent: a signal handler and then DESTROY both reach here, and the second must not
-    # remove a directory a LATER build has since taken.
-    sub release {
-        my $s = shift;
-        return if $s->{released};
-        $s->{released} = 1;
-        return unless $$ == $s->{pid};
-        unlink "$s->{dir}/owner";
-        rmdir $s->{dir};
-        return;
-    }
-    sub DESTROY { shift->release }
-}
 
 sub openeuler_build_target {
     my ($os, $arch) = @_;
