@@ -19,9 +19,33 @@ package XCAT::NFSLock;
 # Names in this module
 #   lock.d           the lock path given to acquire
 #   lock.d/metadata  the metadata of the owner
+#   lock.d/workers/  one empty file per attached worker, named <pgid>.<leader pstart>
 #   lock.borrow      <lock path>.borrow, beside lock.d: borrow generation 0
 #   lock.borrow.N    borrow generation N, N >= 1
 #   R, T, δ          the options retries, delay and jitter
+#
+# Workers
+#   The owner of a lock is one process, and what a lock protects usually outlives it. A build
+#   wrapper starts each command in its OWN process group, so SIGKILL on the wrapper leaves that
+#   group running: an owner proven dead says nothing about the work it started, and a take-over
+#   then puts two builds in one checkout.
+#
+#   A caller therefore ATTACHES each process group it starts, and DETACHES it once reaped.
+#   attach records lock.d/workers/<pgid>.<pstart of the group leader>. An owner is recoverable
+#   only when it is provably dead AND every attached group is gone.
+#
+#   A group is provably gone when kill(0, -pgid) answers ESRCH, which is the test the build
+#   wrapper's own cancellation path uses to decide it may release. detach applies the same test,
+#   so the retention is a property of what is on disk and not of who called what. EPERM, or success, means some
+#   process is in the group, and then the lock is not recoverable. This is deliberately
+#   conservative: a recycled pgid reads as live and costs a wait, where the other error admits a
+#   second writer.
+#
+#   Reuse windows. The entry name carries the leader's start time, so removing an entry by name
+#   cannot remove the record of a LATER group that reused the pgid. The group test itself cannot
+#   tell a recycled pgid from the original group, and answers live for both. What neither can
+#   tell is a worker that left its group by calling setpgid itself; the wrapper's cancellation
+#   path has that same limit, and the two now agree rather than contradict each other.
 #
 # Borrow generations
 #   The borrow is the mutex for an ownership transition. The one safe way to end a transition its
@@ -52,6 +76,7 @@ package XCAT::NFSLock;
 #      that holder from a dead one.
 #   6. A crashed worker leaves recoverable state. The owning host eventually
 #      returns and retries. Eventually one worker and its release complete.
+#      An attached process group that outlives its owner holds the lock until the group is gone.
 #   7. All participants follow the protocol.
 #
 # Metadata
@@ -95,8 +120,10 @@ package XCAT::NFSLock;
 #      - other failure: retry
 #   4. Read and validate the metadata again.
 #      - invalid, missing, or ownership identity changed: rmdir lock.borrow, retry
-#   5. Prove that the recorded (boot-id, pid, pstart) is dead.
-#      - not provably dead: rmdir lock.borrow, retry
+#   5. Prove that the recorded (boot-id, pid, pstart) is dead, and that every group in
+#      lock.d/workers is gone.
+#      - the owner is not provably dead, or any attached group still exists: give up the borrow,
+#        retry
 #      - dead: continue
 #   6. Replace the metadata with the identity of this process and a fresh token.
 #   7. rmdir lock.borrow
@@ -110,6 +137,7 @@ package XCAT::NFSLock;
 # Core invariants
 #   lock.d exists         => locked
 #   lock.d absent         => acquirable
+#   an attached group     => locked, whatever the owner's state
 #   invalid metadata      => retry only
 #   different machine-id  => never recover here
 #   a borrow generation   => a transition or a release is in progress, unless the highest
@@ -132,6 +160,7 @@ use Cwd qw(abs_path);
 use File::Find ();
 use Digest::SHA qw(sha256_hex);
 use Errno qw(EEXIST ENOENT);
+use Fcntl qw(O_CREAT O_EXCL O_WRONLY);
 use Exporter 'import';
 use File::Basename qw(dirname basename);
 use POSIX qw(strftime);
@@ -139,7 +168,7 @@ use Sys::Hostname qw(hostname);
 use Time::HiRes ();
 
 our @EXPORT_OK = qw(this_process format_metadata parse_metadata owner_is_dead process_start
-                    sweep_stranded);
+                    sweep_stranded live_workers);
 
 my @IDENTITY = qw(machine-id boot-id pid pstart token);
 
@@ -200,6 +229,7 @@ sub acquire {
     }, $class;
     my $here = _here();
     my $seen;
+    my $workers;
 
     for (my $count = 0 ; ; $count++) {
         # Step 1.
@@ -248,6 +278,7 @@ sub acquire {
                 _drop_borrow($borrow);
                 die $error unless defined($taken);
                 if ($taken) {
+                    _drop_dead_workers($abs);
                     $self->_log('took-over', 'from dead pid ' . $observed->{pid});
                     return $self;
                 }
@@ -260,7 +291,8 @@ sub acquire {
     }
 
     my $who = _describe($seen);
-    my $s   = $retries == 1 ? 'retry' : 'retries';
+    $who .= ", retained for surviving build workers in process group $workers" if defined($workers);
+    my $s = $retries == 1 ? 'retry' : 'retries';
     # Names what happened, so a caller can tell a lock another process still holds from a mkdir
     # that failed outright. The earlier wording said "Trying to unlock", which is the reverse.
     die "Cannot lock $abs: still held after $retries $s by $who.\n"
@@ -305,6 +337,10 @@ sub release {
             if (defined($current) && _key($current) eq _key($self->{identity})) {
                 $self->{released} = 1;
                 unlink("$path/metadata");
+                # A group that died without a detach leaves its record; drop those. A LIVE one
+                # is kept, and rmdir then refuses the non-empty directory, so the release fails
+                # rather than freeing a lock whose workers still run.
+                _drop_dead_workers($path);
                 my $removed = rmdir($path);
                 my $error   = $!;
                 _drop_borrow($borrow);
@@ -624,6 +660,140 @@ sub _absolute {
 
 #--------------------------------------------------------------------------------
 
+=head3 attach
+
+    Descriptions:
+        Record a process group this lock holder started, so the lock is not recoverable while
+        any process is still in that group.
+
+        An owner is one process and the work it starts is not. A build wrapper runs each command
+        in its own process group, so SIGKILL on the wrapper leaves that group running, and an
+        owner proven dead says nothing about the build it started.
+    Arguments:
+        $pgid: the process group id, which is the pid of the group leader
+    Returns:
+        1 when the group is recorded, 0 when it names no process or cannot be recorded.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub attach {
+    my ($self, $pgid) = @_;
+    return 0 unless defined($pgid) && $pgid =~ /\A[1-9][0-9]*\z/;
+    # The leader's start time pins the record, so a later group that reuses the pgid gets its own
+    # entry and cannot be removed by a detach of this one.
+    my $pstart = process_start($pgid);
+    return 0 unless defined($pstart);
+    my $dir = _worker_dir($self->{path});
+    unless (mkdir($dir) || $! == EEXIST) {
+        warn "Cannot create $dir: $!\n";
+        return 0;
+    }
+    my $file = "$dir/$pgid.$pstart";
+    unless (sysopen(my $fh, $file, O_WRONLY | O_CREAT | O_EXCL) || $! == EEXIST) {
+        warn "Cannot record build worker $pgid: $!\n";
+        return 0;
+    }
+    $self->{workers}{$pgid} = $pstart;
+    return 1;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3 detach
+
+    Descriptions:
+        Remove the record of a process group this holder started. Call it once the group is
+        reaped.
+
+        It removes nothing while any process is still in the group. Reaping the group LEADER does
+        not end the group: its children inherit it and can outlive it. Refusing here makes the
+        retention a property of what is on disk rather than of who remembered to call this, so a
+        caller that detaches too early cannot free a lock whose workers still run.
+    Arguments:
+        $pgid: the process group id
+    Returns:
+        the number of records removed.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub detach {
+    my ($self, $pgid) = @_;
+    return 0 unless defined($pgid) && $pgid =~ /\A[1-9][0-9]*\z/;
+    delete($self->{workers}{$pgid});
+    my $dir = _worker_dir($self->{path});
+    opendir(my $dh, $dir) or return 0;
+    my @mine = grep { /\A\Q$pgid\E\.[0-9]+\z/ } readdir($dh);
+    closedir($dh);
+    my $removed = 0;
+    $removed += unlink("$dir/$_") for @mine;
+    rmdir($dir);
+    return $removed;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3 live_workers
+
+    Descriptions:
+        The attached process groups of the lock at $path that still have a process in them.
+
+        kill(0, -pgid) answering ESRCH is the only answer that proves a group gone, and it is the
+        test the build wrapper's own cancellation path uses before it releases. Success and EPERM
+        both mean some process is in the group. A recycled pgid therefore reads as live, which
+        costs a wait; the opposite error admits a second writer.
+    Arguments:
+        $path: the lock path
+    Returns:
+        A list of hash refs: pgid, pstart, entry. Empty when every attached group is gone.
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub live_workers {
+    my ($path) = @_;
+    opendir(my $dh, _worker_dir($path)) or return ();
+    my @live;
+    while (defined(my $entry = readdir($dh))) {
+        next unless $entry =~ /\A([1-9][0-9]*)\.([0-9]+)\z/;
+        my ($pgid, $pstart) = ($1, $2);
+        next if !kill(0, -$pgid) && $!{ESRCH};
+        push @live, { pgid => $pgid, pstart => $pstart, entry => $entry };
+    }
+    closedir($dh);
+    return @live;
+}
+
+sub _worker_dir { return "$_[0]/workers" }
+
+# _drop_dead_workers: remove the records of groups that are gone, and leave the rest.
+#
+# A group that died without a detach leaves its record behind -- the detach runs in the process
+# that reaped the group, and a process killed before it reaps nothing. Without this a holder
+# could never release its own lock, because rmdir refuses a non-empty directory. A live record
+# is kept for that reason: it is what stops the release, and what a later acquire reads.
+#
+# Removing an entry by name is safe. The name carries the leader's start time, so only the group
+# that was recorded can own that name, and a group that is gone creates nothing.
+sub _drop_dead_workers {
+    my ($path) = @_;
+    my $dir = _worker_dir($path);
+    opendir(my $dh, $dir) or return 0;
+    my @entry = grep { /\A[1-9][0-9]*\.[0-9]+\z/ } readdir($dh);
+    closedir($dh);
+    my $removed = 0;
+    for my $entry (@entry) {
+        my ($pgid) = $entry =~ /\A([1-9][0-9]*)\./;
+        next unless !kill(0, -$pgid) && $!{ESRCH};
+        $removed += unlink("$dir/$entry");
+    }
+    rmdir($dir);
+    return $removed;
+}
+
+#--------------------------------------------------------------------------------
+
 =head3 DESTROY
 
     Descriptions:
@@ -674,6 +844,10 @@ sub DESTROY {
         live one that has not written yet. Only a caller that claims the root exclusively can
         say either is abandoned.
 
+        A lock with an attached process group that still exists is kept whatever the caller
+        claims. The claim is an assertion that no build is running, and a live group is evidence
+        that one is.
+
     Arguments:
         $root: the directory to walk
         $here: hash ref with machine-id, boot-id and start_of, as owner_is_dead takes
@@ -706,6 +880,8 @@ sub sweep_stranded {
 
     my @report;
     # A borrow before its own lock: removing the borrow is what lets the lock be taken over.
+    # The lock a path belongs to, so a borrow is judged by its own lock's workers.
+    my $lock_of = sub { my $p = shift; $p =~ s/\.borrow(?:\.[0-9]+)?\z//; return $p };
     for my $d (sort { ($b =~ /\.borrow(?:\.[0-9]+)?\z/ ? 1 : 0) <=> ($a =~ /\.borrow(?:\.[0-9]+)?\z/ ? 1 : 0)
                       || $a cmp $b } @found) {
         if ($d =~ /\.borrow(?:\.[0-9]+)?\z/) {
