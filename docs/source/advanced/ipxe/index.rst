@@ -15,6 +15,11 @@ line before the kernel, so the firmware verifies what it loads. A node with ``ne
 does not: ``xnba.efi`` is unsigned, and no shim can chain to it. ``grub2`` and ``grub2-http``
 nodes, which is every ppc64le, aarch64 and riscv64 node, are outside this chapter.
 
+xCAT 2.20 supports Secure Boot on Enterprise Linux and on ``x86_64``. The shim chain itself is
+UEFI and distribution independent, and a node of another distribution can boot through it, but no
+other distribution is measured and none is supported. The CI names the Secure Boot case on its EL
+``x86_64`` cells only.
+
 New x86 nodes get ``netboot=ipxe``: node discovery, profile-based node definitions and the x86 node templates of ``mkdef --template`` set it.
 
 The upstream loader
