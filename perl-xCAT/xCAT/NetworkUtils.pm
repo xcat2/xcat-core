@@ -1508,6 +1508,66 @@ sub _pack_ip_address
     return $packed;
 }
 
+# Turns a packed address back into a literal. Core Socket has carried
+# inet_ntop since 5.14; Socket6 is the fallback for an older perl, and it is
+# optional, so a host can have neither.
+sub _unpack_ip_address
+{
+    my ($packed, $family) = @_;
+    return unless defined($packed);
+    return inet_ntoa($packed) if $family == 4;
+
+    my $address;
+    if (defined(&Socket::inet_ntop))
+    {
+        $address = eval { Socket::inet_ntop(Socket::AF_INET6(), $packed) };
+    }
+    if (!defined($address) && $socket6support)
+    {
+        $address = eval { Socket6::inet_ntop(Socket6::AF_INET6(), $packed) };
+    }
+    return $address;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    canonical_ip_address
+
+    Returns the one spelling of an address that every other spelling of it
+    shares, for use as a hash key.
+
+    Arguments:
+        IPv4 address or IPv6 address, with an optional zone identifier
+    Returns:
+        the canonical literal, or undef when the value is not an address or
+        this host has no parser for its family
+    Comments:
+        2001:db8::10 and 2001:0db8:0000:0000:0000:0000:0000:0010 are the same
+        address and have to reach the same key. A caller that keys on the
+        literal holds two entries for one host.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub canonical_ip_address
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    return unless defined($address) && length($address);
+
+    $address =~ s/%.*$//;
+    return unless length($address);
+    return unless xCAT::NetworkUtils->isValidIp($address);
+
+    my $family = $address =~ /:/ ? 6 : 4;
+    my $packed = _pack_ip_address($address, $family);
+    return unless defined($packed);
+    return _unpack_ip_address($packed, $family);
+}
+
 #-------------------------------------------------------------------------------
 
 =head3    getIPv6PrefixLength

@@ -21,110 +21,164 @@ if (-f $source_hosts_plugin) {
     require xCAT_plugin::hosts;
 }
 
-ok(
-    xCAT_plugin::hosts::_host_entry_matches(
-        '192.0.2.10 node01 node01.example.com',
-        'node01',
-        '192.0.2.10'
+# addnode and delnode are the paths makehosts takes for every host entry, and
+# they find an existing entry through the host-entry index. Each block below
+# runs them and reads the host entries that came out. _set_host_lines answers
+# the live array, so a later call is read through that reference.
+#
+# The index keys on a canonical address, so one host never gets a second entry
+# because its address is spelled another way.
+no warnings qw(once redefine);
+local *xCAT_plugin::hosts::getIPdomain = sub { return ( 'example.com', 'v6net' ); };
+
+# entries_after <lines> <operation> -- seed the host entries, run one
+# operation, and answer the entries that are left.
+sub entries_after {
+    my ( $lines, $operation ) = @_;
+    my $entries = xCAT_plugin::hosts::_set_host_lines($lines);
+    $operation->();
+    return [ grep { /\S/ } @{$entries} ];
+}
+
+sub add {
+    my ( $node, $ip ) = @_;
+    return sub {
+        xCAT_plugin::hosts::addnode( undef, $node, $ip, '', 'example.com' );
+    };
+}
+
+sub del {
+    my ( $node, $ip ) = @_;
+    return sub {
+        xCAT_plugin::hosts::delnode( $node, $ip, '', 'example.com' );
+    };
+}
+
+is_deeply(
+    entries_after( [], add( 'node01', '2001:db8::10' ) ),
+    ["2001:db8::10 node01 node01.example.com \n"],
+    'addnode writes a host entry for an IPv6 address'
+);
+
+is_deeply(
+    entries_after(
+        ["2001:db8::10 node01 node01.example.com \n"],
+        add( 'node01', '2001:db8::20' )
     ),
-    'host-entry matching preserves IPv4 behavior'
+    ["2001:db8::20 node01 node01.example.com \n"],
+    'an IPv6 address change leaves one host entry, not two'
 );
-ok(
-    !xCAT_plugin::hosts::_host_entry_matches('', 'node01', '192.0.2.10'),
-    'blank host entry does not match'
-);
-ok(
-    xCAT_plugin::hosts::_host_entry_matches(
-        '010.1.1.1 node01 node01.example.com',
-        'node01',
-        '192.0.2.10'
+
+is_deeply(
+    entries_after(
+        ["192.0.2.10 node01 node01.example.com \n"],
+        add( 'node01', '192.0.2.20' )
     ),
-    'legacy numeric-quad entries remain replaceable and deletable by node'
+    ["192.0.2.20 node01 node01.example.com \n"],
+    'an IPv4 address change still leaves one host entry'
 );
 
-my $has_core_ipv6_parser = defined(&Socket::inet_pton)
-  && eval { defined(Socket::inet_pton(Socket::AF_INET6(), '::1')) };
-my $has_ipv6_parser = $has_core_ipv6_parser
-  || eval { require Socket6; 1 };
+is_deeply(
+    entries_after(
+        ["2001:0db8:0000:0000:0000:0000:0000:0010 old-name old-name.example.com \n"],
+        add( 'node01', '2001:db8::10' )
+    ),
+    ["2001:db8::10 node01 node01.example.com \n"],
+    'an expanded IPv6 entry is replaced by the compressed spelling of it'
+);
 
-SKIP: {
-    skip 'No IPv6 literal parser is available', 8 unless $has_ipv6_parser;
+is_deeply(
+    entries_after(
+        ["2001:db8::10 node01 node01.example.com \n"],
+        add( 'node01', '2001:0db8:0000:0000:0000:0000:0000:0010' )
+    ),
+    ["2001:0db8:0000:0000:0000:0000:0000:0010 node01 node01.example.com \n"],
+    'a compressed IPv6 entry is replaced by the expanded spelling of it'
+);
 
-    ok(
-        xCAT_plugin::hosts::_host_entry_matches(
-            '2001:db8::10 node01 node01.example.com',
-            'node01',
-            '2001:db8::10'
-        ),
-        'IPv6 host entry matches its address and node'
-    );
-    ok(
-        xCAT_plugin::hosts::_host_entry_matches(
-            '2001:0db8:0000:0000:0000:0000:0000:0010 old-name',
-            'node01',
-            '2001:db8::10'
-        ),
-        'equivalent expanded and compressed IPv6 addresses are deduplicated'
-    );
-    ok(
-        xCAT_plugin::hosts::_host_entry_matches(
-            '2001:db8::20 node01.example.com node01',
-            'node01',
-            '2001:db8::10'
-        ),
-        'same-node IPv6 entry matches after an address change'
-    );
-    ok(
-        !xCAT_plugin::hosts::_host_entry_matches(
-            '2001:db8::20 node010 node010.example.com',
-            'node01',
-            '2001:db8::10'
-        ),
-        'similarly prefixed IPv6 node does not match'
-    );
-    ok(
-        !xCAT_plugin::hosts::_host_entry_matches(
-            '2001:db8::20 node010 node01',
-            'node01',
-            '2001:db8::10'
-        ),
-        'an alias alone does not identify a host entry for replacement'
-    );
-    ok(
-        !xCAT_plugin::hosts::_host_entry_matches(
-            'not-an-address node01 node01.example.com',
-            'node01',
-            '2001:db8::10'
-        ),
-        'a hostname-like first field is not treated as a host address'
-    );
+is_deeply(
+    entries_after(
+        ["2001:db8::10 node01 node01.example.com \n"],
+        del( 'node01', '2001:0db8:0000:0000:0000:0000:0000:0010' )
+    ),
+    [],
+    'delnode removes an entry whose address is spelled another way'
+);
 
-    my @addnode_args;
-    {
-        no warnings qw(once redefine);
-        local *xCAT_plugin::hosts::getIPdomain = sub {
-            return ('example.com', 'v6net');
-        };
-        local *xCAT_plugin::hosts::addnode = sub {
-            @addnode_args = @_;
-            return;
-        };
-        xCAT_plugin::hosts::addotherinterfaces(
-            undef,
-            'node01',
-            'node01-v6!2001:db8::10',
-            'example.com'
-        );
-    }
-    is(
-        $addnode_args[1],
-        'node01-v6',
-        'otherinterfaces parses an IPv6 interface hostname with !'
+# A different node name takes the node index out of the answer, so the match
+# comes from the address key alone.
+is_deeply(
+    entries_after(
+        ["2001:db8::10 node01 node01.example.com \n"],
+        add( 'node02', '2001:0db8:0000:0000:0000:0000:0000:0010' )
+    ),
+    ["2001:0db8:0000:0000:0000:0000:0000:0010 node02 node02.example.com \n"],
+    'an address already in use is one entry, whichever way each side spells it'
+);
+
+is_deeply(
+    entries_after(
+        ["2001:db8::10 node01 node01.example.com \n"],
+        del( 'node01', '2001:db8::10' )
+    ),
+    [],
+    'delnode removes an IPv6 entry'
+);
+
+is_deeply(
+    entries_after(
+        [   "2001:db8::10 node01 node01.example.com \n",
+            "2001:db8::11 node010 node010.example.com \n",
+        ],
+        add( 'node01', '2001:db8::20' )
+    ),
+    [   "2001:db8::20 node01 node01.example.com \n",
+        "2001:db8::11 node010 node010.example.com \n",
+    ],
+    'a node whose name is a prefix of another keeps its own entry'
+);
+
+is_deeply(
+    entries_after(
+        ["2001:db8::10 node01.example.com node01 \n"],
+        add( 'node01', '2001:db8::20' )
+    ),
+    ["2001:db8::20 node01 node01.example.com \n"],
+    'an entry whose first name is the FQDN is found by the short node name'
+);
+
+is_deeply(
+    entries_after(
+        ["010.1.1.1 node01 node01.example.com \n"],
+        add( 'node01', '192.0.2.10' )
+    ),
+    ["192.0.2.10 node01 node01.example.com \n"],
+    'a legacy numeric-quad entry is still replaceable by node name'
+);
+
+# A host with no IPv6 parser cannot canonicalise, so the index keys on the
+# literal. An address change written the same way still leaves one entry.
+# An equivalent spelling becomes a second entry, which is all such a host can
+# do.
+{
+    local *Socket::inet_pton = sub { return; };
+    is_deeply(
+        entries_after(
+            ["2001:db8::10 node01 node01.example.com \n"],
+            add( 'node01', '2001:db8::20' )
+        ),
+        ["2001:db8::20 node01 node01.example.com \n"],
+        'without an IPv6 parser an address change still leaves one entry'
     );
-    is(
-        $addnode_args[2],
-        '2001:db8::10',
-        'otherinterfaces passes the IPv6 literal to addnode'
+    is_deeply(
+        entries_after(
+            ["2001:db8::10 node01 node01.example.com \n"],
+            add( 'node02', '2001:0db8:0000:0000:0000:0000:0000:0010' )
+        ),
+        [   "2001:db8::10 node01 node01.example.com \n",
+            "2001:0db8:0000:0000:0000:0000:0000:0010 node02 node02.example.com \n",
+        ],
+        'without an IPv6 parser an equivalent spelling becomes a second entry'
     );
 }
 
@@ -134,11 +188,8 @@ SKIP: {
 # host entries each one produced. _set_host_lines answers the live host-entry
 # array, so the later calls are read through that reference.
 {
-    no warnings qw(once redefine);
-
     my @messages;
     my $collect = sub { push @messages, $_[0]; return; };
-    local *xCAT_plugin::hosts::getIPdomain = sub { return ( 'example.com', 'v6net' ); };
 
     my %table_rows;
     local *xCAT::Table::new = sub {

@@ -29,6 +29,29 @@ ok(
     'legacy IPv4-only validator remains IPv4-only'
 );
 
+# One key for every spelling of one address. The host-entry index of makehosts
+# keys on this, so a wrong answer leaves a node with two entries in /etc/hosts.
+is( xCAT::NetworkUtils->canonical_ip_address('192.0.2.10'),
+    '192.0.2.10', 'an IPv4 address is its own canonical form' );
+is( xCAT::NetworkUtils->canonical_ip_address('2001:db8::10'),
+    '2001:db8::10', 'a compressed IPv6 address is its own canonical form' );
+is( xCAT::NetworkUtils->canonical_ip_address(
+        '2001:0db8:0000:0000:0000:0000:0000:0010'),
+    '2001:db8::10',
+    'an expanded IPv6 address canonicalises to the compressed form' );
+is( xCAT::NetworkUtils->canonical_ip_address('2001:DB8::10'),
+    '2001:db8::10', 'an uppercase IPv6 address canonicalises to lower case' );
+is( xCAT::NetworkUtils->canonical_ip_address('2001:db8::10%eth0'),
+    '2001:db8::10', 'the zone identifier is removed' );
+ok( !defined( xCAT::NetworkUtils->canonical_ip_address('010.1.1.1') ),
+    'a legacy numeric-quad address has no canonical form' );
+ok( !defined( xCAT::NetworkUtils->canonical_ip_address('mn01.example.test') ),
+    'a hostname has no canonical form' );
+ok( !defined( xCAT::NetworkUtils->canonical_ip_address('') ),
+    'an empty value has no canonical form' );
+ok( !defined( xCAT::NetworkUtils->canonical_ip_address(undef) ),
+    'an undefined value has no canonical form' );
+
 my $has_core_ipv6_parser = defined(&Socket::inet_pton)
   && eval { defined(Socket::inet_pton(Socket::AF_INET6(), '::1')) };
 my $has_socket6 = eval { require Socket6; 1 };
