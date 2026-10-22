@@ -57,7 +57,13 @@ SHELL
         my $failed = $case eq 'command-failure' || $case eq 'warning-failure';
         $root->write('/command-status', "17\n") if $failed;
         if ($case eq 'temporary-failure') {
-            $root->write('/test-bin/mktemp', "#!/bin/sh\necho 'temporary allocation failed' >&2\nexit 19\n", 0755);
+            $root->write('/test-bin/mktemp', <<'SH', oct('755'));
+#!/bin/sh
+case "$1" in
+    /tmp/xcat-upgrade.*) echo 'temporary allocation failed' >&2; exit 19 ;;
+esac
+exec /usr/bin/mktemp "$@"
+SH
         }
         for my $service (qw(installservice udpservice mainservice)) {
             $root->write("/tmp/xcat/$service.pid", "$service pid\n");
