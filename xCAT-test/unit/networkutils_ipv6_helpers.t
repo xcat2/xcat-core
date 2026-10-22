@@ -354,7 +354,10 @@ SKIP: {
 }
 
 SKIP: {
-    skip 'Socket6 is required for family-specific resolution', 6 unless $has_socket6;
+    # The family-specific cache keys are the same on both resolver paths, so
+    # any IPv6 resolver measures this block. It was guarded on Socket6 and
+    # skipped where the unit suite runs, which has no Socket6.
+    skip 'No IPv6 resolver is available', 6 unless $has_core_resolver || $has_socket6;
 
     local %::hostiphash;
     is(
