@@ -21,26 +21,6 @@ my $ADDNAMES;
 my $MACTOLINKLOCAL;
 
 
-sub _host_entry_matches
-{
-    my ($line, $node, $ip) = @_;
-    return 0 unless defined($line) && defined($node);
-
-    $line =~ s/^\s+//;
-    my ($line_ip, $primary_name) = split(/\s+/, $line, 3);
-    return 0 unless defined($line_ip) && length($line_ip);
-    return 1 if defined($ip)
-      && xCAT::NetworkUtils->isSameIPAddress($line_ip, $ip);
-    my $legacy_ipv4 = $line_ip =~ /^\d+\.\d+\.\d+\.\d+\z/;
-    return 0 unless $legacy_ipv4
-      || xCAT::NetworkUtils->isValidIp($line_ip);
-    return 0 unless defined($primary_name);
-
-    return 1 if $primary_name eq $node;
-    return $primary_name =~ /^\Q$node\E\./ ? 1 : 0;
-}
-
-
 #############   TODO - add return code checking !!!!!
 
 
@@ -57,8 +37,19 @@ sub _host_line_index_values
     my ($ip) = $line =~ /^(\S+)\s/;
     return unless defined($ip);
 
+    # Every spelling of one address has to reach one key, or makehosts leaves
+    # a second entry when a node changes address. A host with no parser for
+    # the family gets the literal back, which is a match on the exact
+    # spelling and nothing wider.
+    my $canonical = xCAT::NetworkUtils->canonical_ip_address($ip);
+    my $key = defined($canonical) ? $canonical : $ip;
+
+    # The node index needs to know the first field is an address, which is a
+    # question about its shape. A dotted quad covers a legacy entry such as
+    # 010.1.1.1 that no parser accepts, and a colon covers an IPv6 literal on
+    # a host with no parser for one. A hostname in /etc/hosts has neither.
     my @nodes;
-    if ($ip =~ /^\d+\.\d+\.\d+\.\d+$/)
+    if (defined($canonical) || $ip =~ /^\d+\.\d+\.\d+\.\d+$/ || $ip =~ /:/)
     {
         my ($primary_name) = $line =~ /^\S+\s+(\S+)/;
         if (defined($primary_name))
@@ -74,7 +65,7 @@ sub _host_line_index_values
         }
     }
 
-    return ($ip, \@nodes);
+    return ($key, \@nodes);
 }
 
 sub _index_host_line
@@ -149,9 +140,11 @@ sub _matching_host_indexes
     my ($node, $ip) = @_;
     my %matches;
 
-    if (exists($host_indexes_by_ip{$ip}))
+    my $canonical = xCAT::NetworkUtils->canonical_ip_address($ip);
+    my $key = defined($canonical) ? $canonical : $ip;
+    if (defined($key) && exists($host_indexes_by_ip{$key}))
     {
-        $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$ip} };
+        $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$key} };
     }
     if (exists($host_indexes_by_node{$node}))
     {
