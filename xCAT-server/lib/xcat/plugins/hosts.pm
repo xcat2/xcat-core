@@ -442,6 +442,68 @@ sub add_hosts_content {
     }
 }
 
+#-------------------------------------------------------------------------------
+
+=head3    add_all_hosts_content
+
+    Adds a host entry for every row of the hosts table.
+
+    Arguments:
+        hostents - reference to the list of hosts table rows
+        callback - the command callback
+        domain   - the domain to use when a row resolves to none
+    Returns:
+        the node name of every row, in order
+    Comments:
+        makehosts with no noderange takes this path, so an address the entry
+        test rejects reaches no host entry at all.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub add_all_hosts_content
+{
+    my %args     = @_;
+    my $hostents = $args{hostents};
+    my $callback = $args{callback};
+    my $domain   = $args{domain};
+
+    my @allnodes;
+    foreach my $hostent (@{$hostents})
+    {
+        push @allnodes, $hostent->{node};
+
+        my $netn;
+        ($domain, $netn) = &getIPdomain($hostent->{ip});
+        if (!$domain) {
+            $domain = $::sitedomain;
+        }
+        if (!$domain) {
+            $domain = $::XCATSITEVALS{domain};
+        }
+
+        if (xCAT::NetworkUtils->isValidIp($hostent->{ip}))
+        {
+            addnode $callback, $hostent->{node}, $hostent->{ip},
+              $hostent->{hostnames}, $domain;
+        }
+        else
+        {
+            my $rsp;
+            push @{ $rsp->{data} },
+              "Invalid IP Addr \'$hostent->{ip}\' for node \'$hostent->{node}\'.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+
+        if (defined($hostent->{otherinterfaces}))
+        {
+            addotherinterfaces $callback, $hostent->{node},
+              $hostent->{otherinterfaces}, $domain;
+        }
+    }
+    return @allnodes;
+}
+
 sub process_request
 {
     Getopt::Long::Configure("bundling");
@@ -637,37 +699,11 @@ sub process_request
           $hoststab->getAllNodeAttribs(
             [ 'ip', 'node', 'hostnames', 'otherinterfaces' ]);
 
-        my @allnodes;
-        foreach (@hostents)
-        {
-
-            push @allnodes, $_->{node};
-
-            my $netn;
-            ($domain, $netn) = &getIPdomain($_->{ip});
-            if (!$domain) {
-                $domain = $::sitedomain;
-            }
-            if (!$domain) {
-                $domain = $::XCATSITEVALS{domain};
-            }
-
-            if (xCAT::NetworkUtils->isValidIp($_->{ip}))
-            {
-                addnode $callback, $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
-            }
-            else
-            {
-                my $rsp;
-                push @{ $rsp->{data} }, "Invalid IP Addr \'$_->{ip}\' for node \'$_->{node}\'.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-            }
-
-            if (defined($_->{otherinterfaces}))
-            {
-                addotherinterfaces $callback, $_->{node}, $_->{otherinterfaces}, $domain;
-            }
-        }
+        my @allnodes = add_all_hosts_content(
+            hostents => \@hostents,
+            callback => $callback,
+            domain   => $domain
+        );
 
         # also do nics table
         &donics(nodes => \@allnodes, callback => $callback, delnode => $DELNODE);

@@ -128,4 +128,96 @@ SKIP: {
     );
 }
 
+# makehosts reads the entry test in four places, and an address it rejects
+# reaches no host entry at all. addotherinterfaces is covered above; the three
+# blocks below drive the remaining places with an IPv6 address and read the
+# host entries each one produced. _set_host_lines answers the live host-entry
+# array, so the later calls are read through that reference.
+{
+    no warnings qw(once redefine);
+
+    my @messages;
+    my $collect = sub { push @messages, $_[0]; return; };
+    local *xCAT_plugin::hosts::getIPdomain = sub { return ( 'example.com', 'v6net' ); };
+
+    my %table_rows;
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return bless { name => $name }, 'xCAT::Table';
+    };
+    local *xCAT::Table::getNodesAttribs = sub { return \%table_rows; };
+
+    # add_hosts_content - makehosts with a noderange.
+    %table_rows = ( node01 => [ { node => 'node01', ip => '2001:db8::10' } ] );
+    @messages = ();
+    xCAT_plugin::hosts::_set_host_lines( [] );
+    my @written;
+    xCAT_plugin::hosts::add_hosts_content(
+        nodelist => ['node01'],
+        callback => $collect,
+        delnode  => 0,
+        domain   => 'example.com',
+        hostsref => \@written
+    );
+    is_deeply(
+        [ grep { /\S/ } @written ],
+        ["2001:db8::10 node01 node01.example.com \n"],
+        'add_hosts_content writes a host entry for an IPv6 node address'
+    );
+    is( scalar(@messages), 0,
+        'add_hosts_content reports no warning for an IPv6 node address' );
+
+    %table_rows = ( node01 => [ { node => 'node01', ip => 'not-an-address' } ] );
+    @messages = ();
+    xCAT_plugin::hosts::_set_host_lines( [] );
+    my @rejected;
+    xCAT_plugin::hosts::add_hosts_content(
+        nodelist => ['node01'],
+        callback => $collect,
+        delnode  => 0,
+        domain   => 'example.com',
+        hostsref => \@rejected
+    );
+    is_deeply( [ grep { /\S/ } @rejected ],
+        [], 'add_hosts_content writes no host entry for an address it rejects' );
+    ok( scalar(@messages), 'add_hosts_content reports the address it rejects' );
+
+    # delotherinterfaces - makehosts -d on a node with IPv6 otherinterfaces.
+    my $entries = xCAT_plugin::hosts::_set_host_lines(
+        [   "2001:db8::10 node01 node01.example.com \n",
+            "2001:db8::20 node01-v6 node01-v6.example.com \n",
+        ]
+    );
+    xCAT_plugin::hosts::delotherinterfaces( 'node01', 'node01-v6!2001:db8::20',
+        'example.com' );
+    is_deeply(
+        [ grep { /\S/ } @{$entries} ],
+        ["2001:db8::10 node01 node01.example.com \n"],
+        'delotherinterfaces removes the entry of an IPv6 otherinterfaces address'
+    );
+
+    # add_all_hosts_content - makehosts with no noderange.
+    @messages = ();
+    $entries  = xCAT_plugin::hosts::_set_host_lines( [] );
+    my @allnodes = xCAT_plugin::hosts::add_all_hosts_content(
+        hostents => [
+            { node => 'node01', ip => '2001:db8::10' },
+            { node => 'node02', ip => '192.0.2.10' },
+        ],
+        callback => $collect,
+        domain   => 'example.com'
+    );
+    is_deeply( \@allnodes, [ 'node01', 'node02' ],
+        'add_all_hosts_content answers every node of the hosts table' );
+    is_deeply(
+        [ grep { /\S/ } @{$entries} ],
+        [   "2001:db8::10 node01 node01.example.com \n",
+            "192.0.2.10 node02 node02.example.com \n",
+        ],
+        'add_all_hosts_content writes a host entry for an IPv6 and an IPv4 address'
+    );
+    is( scalar(@messages), 0,
+        'add_all_hosts_content reports no error for an IPv6 address' );
+}
+
 done_testing();
