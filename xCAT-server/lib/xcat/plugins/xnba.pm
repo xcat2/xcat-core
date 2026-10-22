@@ -203,10 +203,12 @@ sub setstate {
             $kcmdlinehack = xCAT::BootUtils::volatile_addkcmdline($kcmdlinehack);
 
 
+            my $template_error;
             $kcmdlinehack = xCAT::BootUtils::expand_node_template(
                 $node, $kcmdlinehack,
-                sub { $::XNBA_callback->({error => [$_[0]], errorcode => [1]}); }
+                sub { $template_error = shift; }
             );
+            return (1, $template_error) if defined($template_error);
 
             #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
             $kern->{kcmdline} .= " " . $kcmdlinehack;

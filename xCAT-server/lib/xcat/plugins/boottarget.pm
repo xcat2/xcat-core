@@ -159,10 +159,15 @@ sub mknetboot
         $kcmdline = $tent->{kcmdline};
 
         #TODO: big todo, cheap and rapid, but should be more like esx.pm implementation, i.e. more scalable
+        my $template_error;
         $kcmdline = xCAT::BootUtils::expand_node_template(
             $node, $kcmdline,
-            sub { $callback->({error => [$_[0]], errorcode => [1]}); }
+            sub { $template_error = shift; }
         );
+        if (defined($template_error)) {
+            xCAT::MsgUtils->report_node_error($callback, $node, $template_error);
+            next;
+        }
 
         if ($initrd eq '') {
             $bptab->setNodeAttribs(

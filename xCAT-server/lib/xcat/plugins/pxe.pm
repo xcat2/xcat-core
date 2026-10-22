@@ -118,10 +118,12 @@ sub setstate {
         $kcmdlinehack = xCAT::BootUtils::volatile_addkcmdline($kcmdlinehack);
 
 
+        my $template_error;
         $kcmdlinehack = xCAT::BootUtils::expand_node_template(
             $node, $kcmdlinehack,
-            sub { $::PXE_callback->({error => [$_[0]], errorcode => [1]}); }
+            sub { $template_error = shift; }
         );
+        return (1, $template_error) if defined($template_error);
 
         #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
 
@@ -514,7 +516,7 @@ sub process_request {
             ($rc, $errstr) = setstate($_, \%bphash, \%chainhash, \%machash, \%nthash, $tftpdir, $linuximghash);
             if ($rc) {
                 $response{node}->[0]->{errorcode}->[0] = $rc;
-                $response{node}->[0]->{errorc}->[0]    = $errstr;
+                $response{node}->[0]->{error}->[0]     = $errstr;
                 $::PXE_callback->(\%response);
             }
         }

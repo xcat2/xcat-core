@@ -62,6 +62,7 @@ sub expand_node_template {
             $text =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$value/;
         } else {
             $on_error->("Table key of $key not yet supported by boottarget mini-template");
+            return;
         }
     }
     return $text;
