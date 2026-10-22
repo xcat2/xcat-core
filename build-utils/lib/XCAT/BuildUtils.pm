@@ -667,9 +667,8 @@ sub acquire_lock_dir {
     $what = $lockdir unless defined $what;
     $held = ''       unless defined $held;
 
-    # Three attempts: reaping a stranded borrow takes two, because a borrow with no metadata is
-    # reclaimed only when two of them find it unchanged, and the take-over takes the third.
-    # Builds must fail fast rather than queue, so the budget stops there.
+    # Three attempts. A take-over needs one; the budget leaves two for a contended lock, where
+    # another build is superseding the same dead owner. Builds must fail fast rather than queue.
     my $lock = eval {
         XCAT::NFSLock->acquire($lockdir, retries => 2, label => $what, quiet => 1);
     };
