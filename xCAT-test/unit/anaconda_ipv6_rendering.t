@@ -18,9 +18,6 @@ my $anaconda = File::Spec->catfile(
     'xCAT-server/lib/xcat/plugins/anaconda.pm'
 );
 do $anaconda or die $@ || "Unable to load $anaconda: $!";
-open(my $anaconda_fh, '<', $anaconda) or die "Unable to read $anaconda: $!";
-my $anaconda_source = do { local $/; <$anaconda_fh> };
-close($anaconda_fh);
 
 my %addresses = (
     nodev4                => { 4 => '192.0.2.50' },
@@ -118,15 +115,36 @@ ok(
     !defined(xCAT_plugin::anaconda::_syslog_server_arg('bad host')),
     'malformed syslog server arguments remain rejected'
 );
-like(
-    $anaconda_source,
-    qr/syslog\.server=\$syslog_server syslog\.type=rsyslogd/,
-    'stateless debug boot uses the family-safe syslog argument'
+# The two kernel command lines that carry the debug syslog server, rendered.
+is(
+    xCAT_plugin::anaconda::_netboot_syslog_kcmdline_args('2001:db8::1'),
+    ' syslog.server=[2001:db8::1] syslog.type=rsyslogd syslog.filter=*.* ',
+    'stateless debug boot brackets an IPv6 syslog server'
 );
-like(
-    $anaconda_source,
-    qr/inst\.syslog=\$syslog_server/,
-    'stateful EL10 debug install uses the family-safe syslog argument'
+is(
+    xCAT_plugin::anaconda::_netboot_syslog_kcmdline_args('192.0.2.1'),
+    ' syslog.server=192.0.2.1 syslog.type=rsyslogd syslog.filter=*.* ',
+    'stateless debug boot leaves an IPv4 syslog server unbracketed'
+);
+is(
+    xCAT_plugin::anaconda::_netboot_syslog_kcmdline_args('bad host'),
+    '',
+    'stateless debug boot omits the syslog arguments for an unusable server'
+);
+is(
+    xCAT_plugin::anaconda::_install_syslog_kcmdline_args( '2001:db8::1', 1 ),
+    ' inst.syslog=[2001:db8::1]',
+    'stateful EL10 debug install brackets an IPv6 syslog server'
+);
+is(
+    xCAT_plugin::anaconda::_install_syslog_kcmdline_args( '192.0.2.1', 1 ),
+    ' inst.syslog=192.0.2.1',
+    'stateful EL10 debug install leaves an IPv4 syslog server unbracketed'
+);
+is(
+    xCAT_plugin::anaconda::_install_syslog_kcmdline_args( '192.0.2.1', 0 ),
+    ' syslog=192.0.2.1',
+    'the legacy installer keeps its own syslog argument'
 );
 
 is(

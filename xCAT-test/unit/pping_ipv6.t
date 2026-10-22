@@ -235,50 +235,82 @@ is_deeply(
     'pping result parser ignores non-result diagnostics'
 );
 
-my $pping_source = "$FindBin::Bin/../../xCAT-client/bin/pping";
-open(my $fh, '<', $pping_source) or die "Unable to read $pping_source: $!";
-my $content = do { local $/; <$fh> };
-close($fh);
+# pping runs nmap or fping as a list, never through a shell, so the command it
+# builds is the thing to measure. The two builders below carry that decision.
+is_deeply(
+    [   xCAT::DSHCore->nmap_ping_command( 6, '', [ '2001:db8::20', 'v6only' ] )
+    ],
+    [   'nmap', '-6', '-PE', '--system-dns', '--send-ip', '-sP',
+        '--unprivileged', '-PA80,443,22', '2001:db8::20', 'v6only'
+    ],
+    'the nmap command for an IPv6 partition selects nmap -6'
+);
+is_deeply(
+    [ xCAT::DSHCore->nmap_ping_command( 4, '', ['192.0.2.10'] ) ],
+    [   'nmap', '-PE', '--system-dns', '--send-ip', '-sP',
+        '--unprivileged', '-PA80,443,22', '192.0.2.10'
+    ],
+    'the nmap command for an IPv4 partition does not select nmap -6'
+);
+is_deeply(
+    [   xCAT::DSHCore->nmap_ping_command(
+            4, '--max-retries 2 -T4', ['192.0.2.10']
+        )
+    ],
+    [   'nmap', '-PE', '--system-dns', '--send-ip', '-sP',
+        '--unprivileged', '-PA80,443,22', '--max-retries', '2', '-T4',
+        '192.0.2.10'
+    ],
+    'the site nmap options become separate command arguments'
+);
+is_deeply(
+    [   xCAT::DSHCore->nmap_ping_command(
+            4, q{--script 'a b'}, ['192.0.2.10']
+        )
+    ],
+    [   'nmap', '-PE', '--system-dns', '--send-ip', '-sP',
+        '--unprivileged', '-PA80,443,22', '--script', 'a b', '192.0.2.10'
+    ],
+    'a quoted site nmap option stays one argument'
+);
+is_deeply(
+    [ xCAT::DSHCore->nmap_ping_command( 4, undef, ['192.0.2.10'] ) ],
+    [   'nmap', '-PE', '--system-dns', '--send-ip', '-sP',
+        '--unprivileged', '-PA80,443,22', '192.0.2.10'
+    ],
+    'no site nmap options adds no empty argument'
+);
 
-like(
-    $content,
-    qr/nmap_pping\(\$ipv6_nodes,\s*6\)/,
-    'pping sends its IPv6 target partition through the IPv6 nmap path'
+is_deeply(
+    [   xCAT::DSHCore->fping_ping_command(
+            6, { fping => '/usr/bin/fping', fping6 => '/usr/sbin/fping6' },
+            ['2001:db8::20']
+        )
+    ],
+    [ '/usr/sbin/fping6', '-a', '2001:db8::20' ],
+    'fping6 probes an IPv6 partition where the host has it'
 );
-like(
-    $content,
-    qr/push \@command, '-6' if \$family == 6;/,
-    'the IPv6 nmap path explicitly selects nmap -6'
+is_deeply(
+    [   xCAT::DSHCore->fping_ping_command(
+            6, { fping => '/usr/bin/fping' }, ['2001:db8::20']
+        )
+    ],
+    [ '/usr/bin/fping', '-6', '-a', '2001:db8::20' ],
+    'fping -6 probes an IPv6 partition on a host that ships no fping6'
 );
-like(
-    $content,
-    qr/push \@command, shellwords\(\$more_options\)/,
-    'site nmap options are parsed into list-form command arguments'
+is_deeply(
+    [   xCAT::DSHCore->fping_ping_command(
+            4, { fping => '/usr/bin/fping', fping6 => '/usr/sbin/fping6' },
+            ['192.0.2.10']
+        )
+    ],
+    [ '/usr/bin/fping', '-a', '192.0.2.10' ],
+    'fping probes an IPv4 partition without a family option'
 );
-like(
-    $content,
-    qr/open\(my \$nmap_output, '-\|'\)/,
-    'nmap output uses a lexical pipe'
-);
-like(
-    $content,
-    qr/exec \{ \$command\[0\] \} \@command;/,
-    'nmap executes without an interpolated shell command'
-);
-like(
-    $content,
-    qr/xCAT::NetworkUtils->nmap_alive_targets/,
-    'pping reuses the shared NetworkUtils nmap parser'
-);
-like(
-    $content,
-    qr/xCAT::NetworkUtils->match_ping_targets/,
-    'pping reuses one shared address index for an fping result batch'
-);
-unlike(
-    $content,
-    qr/open\(NMAP,/,
-    'pping no longer uses the legacy bareword two-argument nmap pipe'
+is_deeply(
+    [ xCAT::DSHCore->fping_ping_command( 6, {}, ['2001:db8::20'] ) ],
+    [],
+    'no fping on the host gives no command, so pping reports noping'
 );
 
 done_testing();
