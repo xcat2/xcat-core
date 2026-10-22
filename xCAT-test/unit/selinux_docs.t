@@ -51,4 +51,21 @@ foreach my $page (@pages) {
         "$page does not say xCAT leaves the mode of a node alone");
 }
 
+# A repair of a published artifact is a persistent file-context mapping, applied
+# with restorecon. chcon writes a type that no mapping selects, and a recursive
+# chcon over an image root walks into both guest trees.
+my $repair = 'docs/source/advanced/selinux/index.rst';
+unlike($text{$repair}, qr/chcon\s+-R/, "$repair documents no recursive chcon");
+like($text{$repair}, qr/semanage fcontext -a/, "$repair maps the artifact with semanage");
+like($text{$repair}, qr/restorecon -R/, "$repair applies the mapping with restorecon");
+like($text{$repair}, qr/installdir/,
+    "$repair takes the publication directory from site.installdir");
+foreach my $guest (qw(rootimg rootimg-statelite)) {
+    like($text{$repair}, qr/\Q$guest\E/, "$repair names the $guest tree");
+}
+
+my $fc = read_text("$root/xCAT-selinux/xcat.fc");
+unlike($fc, qr/chcon/, 'xcat.fc advises no chcon');
+like($fc, qr/semanage fcontext/, 'xcat.fc names the command that maps a path');
+
 done_testing();

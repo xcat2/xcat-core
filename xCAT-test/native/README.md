@@ -214,6 +214,20 @@ The case looks up labels in the compiled `file_contexts` and relabels a copy of
 `/install` with `setfiles`. It does not need an enforcing kernel, and it does not
 run the rpm scriptlets.
 
+The repair case drives the procedure the SELinux page documents for a published
+artifact that carries the wrong type:
+
+```
+TMPDIR=/mnt/labels prove xCAT-test/native/selinux_image_repair.t
+```
+
+It adds local file-context mappings with `semanage`, so it also needs
+`policycoreutils-python-utils`. Those mappings go into the policy store of the
+host, so the case refuses to run where SELinux is enabled, and it removes every
+mapping it adds. `restorecon` is a no-op where SELinux is disabled, so the case
+applies the mappings with `setfiles` and asserts that the merged `file_contexts`
+answers what the store answers for each path it measures.
+
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
 

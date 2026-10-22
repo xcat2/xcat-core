@@ -142,9 +142,12 @@ jobs:
       - name: Install policy test dependencies
         run: |
           dnf install -y epel-release
-          dnf --enablerepo=crb install -y make selinux-policy-devel selinux-policy-targeted libselinux-utils policycoreutils attr perl perl-Capture-Tiny perl-Test-Simple perl-Test-Harness
+          dnf --enablerepo=crb install -y make selinux-policy-devel selinux-policy-targeted libselinux-utils policycoreutils policycoreutils-python-utils attr perl perl-Capture-Tiny perl-Test-Simple perl-Test-Harness
       - name: Look up and relabel the xCAT file contexts
         run: |
           mkdir -p /mnt/labels
           mount -t tmpfs -o size=1g tmpfs /mnt/labels
           TMPDIR=/mnt/labels prove -v xCAT-test/native/selinux_file_contexts.t
+      - name: Repair a published artifact and keep the guest labels
+        if: ${{ !cancelled() }}
+        run: TMPDIR=/mnt/labels prove -v xCAT-test/native/selinux_image_repair.t
