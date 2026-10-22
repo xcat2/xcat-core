@@ -498,6 +498,9 @@ sub firmware_error {
         Only the i440fx family is judged, and only on x86_64. xCAT does not know which
         machine types a hypervisor offers, so any other value goes to libvirt, which reports
         a machine type it cannot use.
+
+        build_xmldesc returns the message, and both mkvm and makedom call build_xmldesc, so
+        the refusal reaches mkvm and the rpower boot of a node whose domain is not yet built.
     Arguments:
         $firmware - the result of requested_firmware, or undef
         $machine - the machine: setting of vm.othersettings, or undef

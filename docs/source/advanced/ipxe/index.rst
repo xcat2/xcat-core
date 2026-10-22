@@ -76,6 +76,19 @@ A shim also accepts a kernel that a MOK key signs, so a site that signs ``xcat/g
 
 Two paths stay Secure Boot off. A kernel without an EFI stub boots through ``elilo-x64.efi``, and ESXi boots through ``esxboot-x64.efi``. No key signs either file. Boot these nodes with Secure Boot off.
 
+A KVM node takes Secure Boot from ``vm.othersettings``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``vm.othersettings`` of a KVM node takes ``firmware:efi-secureboot``. ``mkvm`` then asks libvirt for a firmware with the ``secure-boot`` feature and with the UEFI keys enrolled, and places the node on ``q35``, the only machine type the x86_64 OVMF descriptors target::
+
+    chdef cn1 vmothersetting=firmware:efi-secureboot
+
+Both features are asked for, because the two are separate. ``secure-boot`` names a firmware that can verify what it boots, and ``enrolled-keys`` names the key store that decides what passes. A firmware with ``secure-boot`` and an empty key store boots an unsigned binary. On an EL 10 host the descriptors ``30-edk2-ovmf-x64-sb-enrolled.json`` and ``40-edk2-ovmf-x64-sb.json`` name the same OVMF binary and differ only in that key store.
+
+A hypervisor that ships no such firmware refuses the domain with ``Unable to find 'efi' firmware that is compatible with the current configuration``, rather than starting the node on a firmware that verifies nothing.
+
+``firmware:efi`` keeps its meaning and asks for no feature, so a node that asks only for UEFI takes the firmware its hypervisor prefers.
+
 Known limits of the upstream loader
 -----------------------------------
 
