@@ -104,7 +104,7 @@ Requires: perl-IO-Tty perl-Crypt-SSLeay make httpd
 Requires: perl-xCAT   = 4:%{version}-%{release}
 Requires: xCAT-client = 4:%{version}-%{release}
 
-%if 0%{?rhel} >= 8 || 0%{?fedora} || 0%{?openEuler}
+%if 0%{?rhel} >= 8 || 0%{?fedora}
 Requires: (xCAT-selinux = 4:%{version}-%{release} if selinux-policy-targeted)
 %endif
 

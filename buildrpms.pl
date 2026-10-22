@@ -60,6 +60,7 @@ use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildi
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir
+                        package_skip_reason
                         mock_config_text);
 use POSIX ();                   # EEXIST, for the directory build lock (see main())
 use Getopt::Long qw(GetOptions);
@@ -1028,7 +1029,13 @@ sub main {
     # A builder killed with SIGKILL together with this parent leaves its directory behind.
     sweep_build_sources_dirs($SOURCES_BASE);
 
-    my @rpms = product($opts{packages}, $opts{targets});
+    my @rpms;
+    for my $pair (product($opts{packages}, $opts{targets})) {
+        my $why = package_skip_reason($pair->@*);
+        $why ? print "Skipping $pair->[0] for $pair->[1]: $why\n" : push @rpms, $pair;
+    }
+    die "FATAL: every requested package is out of scope for the requested targets\n"
+        unless @rpms;
     my $pm = Parallel::ForkManager->new($opts{nproc});
 
     # Track which mock chroot each live child is building so abort_builds can scrub it.
