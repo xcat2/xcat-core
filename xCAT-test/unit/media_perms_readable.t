@@ -41,7 +41,18 @@ chmod 0444, "$root/EFI/BOOT/grub.cfg";
 chmod 0600, "$root/EFI/BOOT/fonts/unicode.pf2";
 chmod 0700, "$root/EFI/BOOT/fonts";
 
+# A symbolic link out of the tree. chmod follows a link, so make_readable has to skip it: the
+# install directory of one osimage must not change the mode of a path in another.
+my $outside = tempdir( CLEANUP => 1 );
+open my $out_fh, '>', "$outside/vmlinuz" or die "write vmlinuz: $!";
+close $out_fh or die "close vmlinuz: $!";
+chmod 0600, "$outside/vmlinuz";
+symlink "$outside/vmlinuz", "$root/EFI/BOOT/vmlinuz" or die "symlink: $!";
+
 my $changed = xCAT::MediaPerms::make_readable("$root/EFI");
+
+is( mode_of("$outside/vmlinuz"), '0600',
+    'a symbolic link is skipped, so the path it names outside the tree keeps its mode' );
 
 is( mode_of("$root/EFI/BOOT/BOOTX64.EFI"), '0744',
     'a boot loader the media ships 0700 becomes readable, and keeps its owner execute bit' );
@@ -56,8 +67,16 @@ is( $changed, 4, 'make_readable reports the number of paths it changed' );
 is( xCAT::MediaPerms::make_readable("$root/EFI"), 0,
     'a second call changes nothing, so copycds can be re-run' );
 
-is( xCAT::MediaPerms::make_readable("$root/no-such-directory"), 0,
-    'a directory that does not exist changes nothing' );
+# An osimage whose media carries no EFI directory is the common case, and copycds calls
+# make_readable for it too. Without the -d test File::Find warns "Can't stat", which reaches
+# the output of copycds as an error the admin cannot act on.
+my @warnings;
+my $absent = do {
+    local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+    xCAT::MediaPerms::make_readable("$root/no-such-directory");
+};
+is( $absent, 0, 'a directory that does not exist changes nothing' );
+is_deeply( \@warnings, [], 'and it is not reported, because copycds calls it for every osimage' );
 
 # No write permission is ever added. /install holds the media of every osimage on the
 # management node.

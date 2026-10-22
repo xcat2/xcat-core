@@ -112,6 +112,16 @@ is( xCAT::KVMUtils::firmware_machine_error( 'efi-secureboot', undef, 'x86_64', '
     undef, 'a node that names no machine type is not refused' );
 is( xCAT::KVMUtils::firmware_machine_error( undef, 'pc', 'x86_64', 'cn1' ),
     undef, 'a node that asks for no firmware keeps i440fx' );
+# Only x86_64 is judged. The i440fx family and the q35 the refusal names belong to that
+# architecture, so a node of another one goes to libvirt whatever it names. The machine type
+# has to be one the x86_64 branch would refuse, or the test measures the i440fx match instead
+# of the architecture guard.
+is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'pc', 'ppc64le', 'cn1' ),
+    undef, 'a machine type of the i440fx family is not judged on another architecture' );
+is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'pc-i440fx-rhel10.0.0', 'aarch64', 'cn1' ),
+    undef, 'and neither is a versioned one' );
+is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'pc', undef, 'cn1' ),
+    undef, 'a node whose nodetype.arch is unset is not judged either' );
 is( xCAT::KVMUtils::firmware_machine_error( 'efi', 'virt', 'riscv64', 'cn1' ),
     undef, 'the machine types of another architecture are not judged here' );
 
