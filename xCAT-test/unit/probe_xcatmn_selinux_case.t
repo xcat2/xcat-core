@@ -13,6 +13,7 @@ use lib "$FindBin::Bin/../../xCAT-probe/lib/perl";
 use Test::More;
 
 require probe_utils;
+require probe_format;
 like($INC{'probe_utils.pm'}, qr/\Q$FindBin::Bin\E/, 'probe_utils comes from this checkout');
 
 # The case ran the probe through grep. ausearch is not involved here: grep kept
@@ -60,10 +61,18 @@ isnt($mark{o}, $mark{f},
     "send_msg marks an ok checkpoint '$mark{o}' apart from a failed one '$mark{f}'");
 like($mark{o}, qr/\QSELinux\E/, 'the ok mark carries the checkpoint text');
 
-my %rendered = (
-    ok     => $checkpoint . (' ' x 39) . '[ OK ]',
-    failed => $checkpoint . (' ' x 39) . '[FAIL]',
-);
+# Lay the marks out the way xcatprobe does, at the width the GitHub Actions
+# container gives: it sets TERM to a name terminfo does not carry, so
+# 'tput cols' writes nothing. The case reads what this renders.
+my $width = probe_format::screen_width('');
+my %rendered;
+foreach my $tag (qw(o f)) {
+    my ($lines, $flag) = probe_format::render($mark{$tag}, 0, $width);
+    chomp($flag);
+    $rendered{ $tag eq 'o' ? 'ok' : 'failed' } = join("\n", @$lines) . $flag;
+}
+like($rendered{ok}, qr/\Q$checkpoint\E/,
+    "the rendered checkpoint keeps its text without a terminal: '$rendered{ok}'");
 foreach my $pattern (@positive) {
     like($rendered{ok}, qr/$pattern/, "a passing SELinux checkpoint matches '$pattern'");
     unlike($rendered{failed}, qr/$pattern/,
