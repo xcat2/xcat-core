@@ -32,6 +32,10 @@ foreach my $file (qw(EFI/BOOT/BOOTX64.EFI EFI/BOOT/mmx64.efi EFI/BOOT/grub.cfg E
     print $fh 'x';
     close $fh or die "close $file: $!";
 }
+# make_path takes the mode of the umask of the caller, so the modes of the two directories it
+# creates are those of whoever runs the test. The count below is a count of the paths that
+# change, so every mode in the fixture is set here.
+chmod 0755, "$root/EFI", "$root/EFI/BOOT";
 chmod 0700, "$root/EFI/BOOT/BOOTX64.EFI", "$root/EFI/BOOT/mmx64.efi";
 chmod 0444, "$root/EFI/BOOT/grub.cfg";
 chmod 0600, "$root/EFI/BOOT/fonts/unicode.pf2";
