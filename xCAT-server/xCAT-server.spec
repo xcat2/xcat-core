@@ -88,14 +88,19 @@ Requires: chkconfig
 # openssl is present on all EL; require it uniformly (not just el10) so a single
 # flat xcat-core build is correct everywhere. Excluded on SLES, where the package
 # name differs and it was never required before.
-#
-# IO::Socket::INET6 and Socket6 carry the AF_INET6 constants the dual-stack
-# listener and the discovery callbacks need. They are not in core perl, so a
-# management node without them falls back to IPv4 and an IPv6-only node cannot
-# reach xcatd.
 %if !0%{?suse_version}
 Requires: openssl
-Requires: perl-IO-Socket-INET6 perl-Socket6
+%endif
+
+# IO::Socket::INET6 and Socket6 carry the AF_INET6 constants the discovery
+# callbacks use. Every caller loads them with an eval and keeps working on
+# IPv4 when they are absent, so a hard Requires would state a dependency the
+# code does not have. Recommends installs them by default and still lets xCAT
+# install where they are missing.
+# Both are in EL AppStream and in openEuler 24.03 everything.
+%if !0%{?suse_version}
+Recommends: perl-IO-Socket-INET6
+Recommends: perl-Socket6
 %endif
 
 %if %fsm
