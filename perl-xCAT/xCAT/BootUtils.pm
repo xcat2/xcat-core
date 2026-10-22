@@ -6,6 +6,7 @@ use warnings;
 use Exporter qw(import);
 
 use xCAT::Utils;
+use xCAT::Table;
 
 our @EXPORT_OK = qw(find_genesis_boot_files);
 
@@ -40,6 +41,30 @@ sub volatile_addkcmdline {
 
     my $cmdhashref = xCAT::Utils->splitkcmdline($kcmdline);
     return $cmdhashref->{volatile} // '';
+}
+
+sub expand_node_template {
+    my ($node, $text, $on_error) = @_;
+    return $text unless defined($text);
+
+    while ($text =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
+        my $table = xCAT::Table->new($1);
+        my $entry = $table->getNodeAttribs($node, [$2]);
+        my $value = $entry->{$2} // '';
+        $text =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$value/;
+    }
+    while ($text =~ /#TABLE:([^:#]+):([^:#]+):([^:#]+)#/) {
+        my ($table_name, $key, $column) = ($1, $2, $3);
+        if ($key =~ /THISNODE/ or $key =~ /\$NODE/) {
+            my $table = xCAT::Table->new($table_name);
+            my $entry = $table->getNodeAttribs($node, [$column]);
+            my $value = $entry->{$column} // '';
+            $text =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$value/;
+        } else {
+            $on_error->("Table key of $key not yet supported by boottarget mini-template");
+        }
+    }
+    return $text;
 }
 
 1;

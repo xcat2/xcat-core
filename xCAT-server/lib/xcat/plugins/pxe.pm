@@ -118,29 +118,10 @@ sub setstate {
         $kcmdlinehack = xCAT::BootUtils::volatile_addkcmdline($kcmdlinehack);
 
 
-        while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
-            my $natab = xCAT::Table->new($1);
-            my $naent = $natab->getNodeAttribs($node, [$2]);
-            my $naval = $naent->{$2};
-            $kcmdlinehack =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
-        }
-        while ($kcmdlinehack =~ /#TABLE:([^:#]+):([^:#]+):([^:#]+)#/) {
-            my $tabname = $1;
-            my $keyname = $2;
-            my $colname = $3;
-            if ($2 =~ /THISNODE/ or $2 =~ /\$NODE/) {
-                my $natab = xCAT::Table->new($tabname);
-                my $naent = $natab->getNodeAttribs($node, [$colname]);
-                my $naval = $naent->{$colname};
-                $kcmdlinehack =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
-            } else {
-                my $msg = "Table key of $2 not yet supported by boottarget mini-template";
-                $::PXE_callback->({
-                        error     => ["$msg"],
-                        errorcode => [1]
-                });
-            }
-        }
+        $kcmdlinehack = xCAT::BootUtils::expand_node_template(
+            $node, $kcmdlinehack,
+            sub { $::PXE_callback->({error => [$_[0]], errorcode => [1]}); }
+        );
 
         #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
 
