@@ -37,8 +37,8 @@
 # An entry of <<none>> keeps whatever label the path has. It does not clear one.
 # genimage creates such a kernel under an image root that restorecon already
 # made public_content_t, so the kernel inherits that type and httpd serves it.
-# A path that carries another type keeps it, and no restorecon repairs that:
-# chcon -R -t public_content_t over the image root does.
+# A path that carries another type keeps it. The repair is one semanage fcontext
+# mapping for that one file, then restorecon. The SELinux page carries it.
 /install(/.*)?/rootimg(-statelite)?/kernel		--	gen_context(system_u:object_r:public_content_t,s0)
 /install(/.*)?/rootimg(-statelite)?/hypervisor		--	gen_context(system_u:object_r:public_content_t,s0)
 /install(/.*)?/rootimg(-statelite)?/initrd[^/]*		--	gen_context(system_u:object_r:public_content_t,s0)
