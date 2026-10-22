@@ -24,7 +24,6 @@ $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;
-use Text::ParseWords qw(shellwords);
 
 my $USAGE = "Usage: pping [-i|--interface interfaces][-f|--use_fping] noderange
        pping -h|--help
@@ -166,30 +165,22 @@ sub fping_pping {
     my ($nodes, $family) = @_;
     return unless @{$nodes};
 
-    my $fping = -x '/usr/bin/fping'  ? '/usr/bin/fping'
-      : -x '/usr/sbin/fping'         ? '/usr/sbin/fping'
-      :                                undef;
-    my @command;
-    if ($family == 6) {
-        my $fping6 = -x '/usr/bin/fping6' ? '/usr/bin/fping6'
-          : -x '/usr/sbin/fping6'         ? '/usr/sbin/fping6'
-          :                                 undef;
-        if ($fping6) {
-            @command = ($fping6);
-        } elsif ($fping) {
-            @command = ($fping, '-6');
+    my %binaries;
+    foreach my $program (qw(fping fping6)) {
+        foreach my $directory (qw(/usr/bin /usr/sbin)) {
+            next unless -x "$directory/$program";
+            $binaries{$program} = "$directory/$program";
+            last;
         }
-    } elsif ($fping) {
-        @command = ($fping);
     }
 
+    my @command =
+      xCAT::DSHCore->fping_ping_command($family, \%binaries, $nodes);
     unless (@command) {
         warn "fping is not available for IPv$family ping.\n";
         print "$_: noping\n" foreach @{$nodes};
         return;
     }
-
-    push @command, '-a', @{$nodes};
     my @output;
     my $pid = open(my $fping_output, '-|');
     if (!defined($pid)) {
@@ -230,12 +221,8 @@ sub nmap_pping {
     }
     $more_options = '' unless defined($more_options);
 
-    # Added port 22 for unprivileged case (#4324)
-    my @command = ('nmap');
-    push @command, '-6' if $family == 6;
-    push @command, qw(-PE --system-dns --send-ip -sP --unprivileged -PA80,443,22);
-    push @command, shellwords($more_options) if length($more_options);
-    push @command, @{$nodes};
+    my @command =
+      xCAT::DSHCore->nmap_ping_command($family, $more_options, $nodes);
 
     my $pid = open(my $nmap_output, '-|');
     die("Cannot open nmap pipe: $!") unless defined($pid);

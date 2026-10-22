@@ -72,6 +72,30 @@ sub _syslog_server_arg
     return xCAT::NetworkUtils->format_uri_host($server);
 }
 
+# The debug syslog arguments of the stateless kernel command line. An IPv6
+# server has to be bracketed, or the kernel reads the last colon group as the
+# port. An unusable server name gives no arguments at all, rather than
+# "syslog.server=" with nothing after it.
+sub _netboot_syslog_kcmdline_args
+{
+    my $server = shift;
+    my $arg = _syslog_server_arg($server);
+    return '' unless defined($arg);
+    return " syslog.server=$arg syslog.type=rsyslogd syslog.filter=*.* ";
+}
+
+# The same arguments for a stateful install. The modern installer takes
+# inst.syslog and brackets an IPv6 server; the legacy one takes syslog and
+# never saw an IPv6 address.
+sub _install_syslog_kcmdline_args
+{
+    my ($server, $modern_installer) = @_;
+    return " syslog=$server" unless $modern_installer;
+    my $arg = _syslog_server_arg($server);
+    return '' unless defined($arg);
+    return " inst.syslog=$arg";
+}
+
 sub _el10_install_url_args
 {
     my ($method, $authority, $httpprefix, $node) = @_;
@@ -999,8 +1023,7 @@ sub mknetboot
             #for use in postscript and postbootscript in xcatdsklspost in the rootimg
             $kcmdline .= " LOGSERVER=$xcatmasterip ";
             #for use in syslog dracut module in the initrd
-            my $syslog_server = _syslog_server_arg($xcatmasterip);
-            $kcmdline .= " syslog.server=$syslog_server syslog.type=rsyslogd syslog.filter=*.* ";
+            $kcmdline .= _netboot_syslog_kcmdline_args($xcatmasterip);
             $kcmdline .= " xcatdebugmode=$::XCATSITEVALS{xcatdebugmode} ";
         }
 
@@ -1772,13 +1795,12 @@ sub mkinstall
                     $kcmdline .= " inst.loglevel=debug";
 
                     #all the logs during installation will be forwarded to xcatmster
-                    my $syslog_server = _syslog_server_arg($instserver);
-                    $kcmdline .= " inst.syslog=$syslog_server";
+                    $kcmdline .= _install_syslog_kcmdline_args($instserver, 1);
                 } else {
                     if ($::XCATSITEVALS{xcatdebugmode} eq "2") {
                         $kcmdline .= " sshd=1";
                     }
-                    $kcmdline .= " syslog=$instserver";
+                    $kcmdline .= _install_syslog_kcmdline_args($instserver, 0);
                 }
 
             }
