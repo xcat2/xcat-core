@@ -17,7 +17,7 @@ my $FLAG_WIDTH    = 6;
     Arguments:
         raw: the output of 'tput cols', or undef when there is no terminal
     Returns:
-        the column count
+        the column count, always more than the flag width
 
 =cut
 
@@ -25,8 +25,12 @@ my $FLAG_WIDTH    = 6;
 sub screen_width {
     my ($raw) = @_;
 
-    return $DEFAULT_WIDTH unless (defined($raw));
-    return $raw =~ /(\d+)/ ? $1 + 0 : 0;
+    # 'tput cols' writes nothing when TERM names a terminal terminfo does not
+    # carry, and the GitHub Actions container sets TERM=unknown. A width of 0
+    # cuts every checkpoint message down to the empty string.
+    return $DEFAULT_WIDTH unless (defined($raw) && $raw =~ /(\d+)/);
+    my $cols = $1 + 0;
+    return $cols > $FLAG_WIDTH ? $cols : $DEFAULT_WIDTH;
 }
 
 #-----------------------------------
