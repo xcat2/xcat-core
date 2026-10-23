@@ -68,7 +68,7 @@ vpd Attributes:
 
 \ **uuid**\ 
  
- The UUID applicable to the node
+ The system UUID of the node as the operating system reports it, for example in /sys/class/dmi/id/product_uuid.
  
 
 
