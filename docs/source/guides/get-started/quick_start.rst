@@ -20,10 +20,9 @@ All the following steps should be executed in ``xcatmn.mydomain.com``.
 Prepare the Management Node ``xcatmn.mydomain.com``
 ```````````````````````````````````````````````````
 
-#. Disable SELinux: ::
-
-    echo 0 > /selinux/enforce
-    sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
+#. SELinux can stay enabled. xCAT runs with SELinux enforcing on the management node, and
+   the ``xCAT-selinux`` package carries the rules the confined OS services need. See
+   :doc:`SELinux <../../advanced/security/selinux>`.
 
 #. Set the hostname of ``xcatmn.mydomain.com``: ::
 
@@ -102,7 +101,7 @@ Stage 2 Provision a node and manage it with parallel shell
     [mn]: Checking provision network is configured...                                   [ OK ]
     [mn]: Checking 'passwd' table is configured...                                      [ OK ]
     [mn]: Checking important directories(installdir,tftpdir) are configured...          [ OK ]
-    [mn]: Checking SELinux is disabled...                                               [ OK ]
+    [mn]: Checking SELinux policy for xCAT...                                           [ OK ]
     [mn]: Checking HTTP service is configured...                                        [ OK ]
     [mn]: Checking TFTP service is configured...                                        [ OK ]
     [mn]: Checking DNS service is configured...                                         [ OK ]
