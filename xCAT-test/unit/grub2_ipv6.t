@@ -5,6 +5,10 @@ no warnings 'once';
 
 use Cwd qw(getcwd);
 use FindBin;
+# grub2.pm loads xCAT::DHCP::BootPolicy, which lives in perl-xCAT. xcat-core/#7980 added that
+# use, and without this the require below dies at compile time: the file then reports NO PLAN
+# at all, which in a prove summary reads as a count discrepancy rather than a failure.
+use lib "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Test::More;
