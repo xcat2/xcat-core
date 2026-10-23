@@ -802,11 +802,17 @@ sub addnode6 {
     #don't think dhclient is smart enough to assemble advertised domain with it's own name and then
     #request FQDN update
     #goal is simple enough, we want `hostname` to look sane *and* we want DNS to look right
-    my $uuid = $ent->{uuid};
-    $uuid =~ s/-//g;
-    $uuid =~ s/(..)/$1:/g;
-    $uuid =~ s/:\z//;
-    $uuid =~ s/^/00:04:/;
+    # The same DUID-UUID the Kea path builds: the first three UUID fields are reversed, because
+    # SMBIOS stores them little-endian and a UEFI client sends them that way. One sub, so the two
+    # backends cannot disagree about what a client's DUID looks like.
+    my $uuid = kea_duid_from_uuid($ent->{uuid});
+    # A uuid that is not sixteen octets has no DUID. The old inline transformation produced a
+    # malformed string and wrote it to omshell; skipping with the same warning the missing-uuid
+    # path uses says what happened instead.
+    unless ($uuid) {
+        $callback->({ node => [ { name => [$node], warning => ["Skipping DHCPv6 setup: vpd.uuid is not a UUID."] } ] });
+        return;
+    }
     my $ip = getipaddr($node);
     if ( $ip and $ip =~ /:/ and _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
         return;
@@ -4218,7 +4224,12 @@ sub kea_node_client_classes_for_nodes
         my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
 
-        my ( $nxtsrv ) = next_server_for_node($node, $nrent);
+        # Resolved on FIRST USE, not here. next_server_for_node reports an unresolvable
+        # tftpserver, and an IPv6-only node leaves the loop below before it needs one -- so
+        # resolving up front made makedhcp exit 1 on a node whose DHCPv6 reservation and
+        # bootfile-url it had just written correctly. 6f171a22b made the same call lazy in
+        # kea_node_reservations and missed this second site.
+        my ( $nxtsrv, $next_server_resolved );
 
         my $ient = $ients && $ients->{$node} ? $ients->{$node}->[0] : undef;
         my $iname = ( $ient and $ient->{server} and $ient->{target} ) ? $ient->{iname} : undef;
@@ -4234,6 +4245,10 @@ sub kea_node_client_classes_for_nodes
             next unless kea_reservation_is_local($node);
             $mac = kea_normalize_mac($mac);
             next unless $mac;
+            unless ($next_server_resolved) {
+                ( $nxtsrv ) = next_server_for_node($node, $nrent);
+                $next_server_resolved = 1;
+            }
             my %record = ( node => $node, mac => $mac );
 
             # Marked as having no address on purpose. ISC answers it with
@@ -4477,9 +4492,19 @@ sub kea_duid_from_uuid
     return unless $uuid;
     $uuid =~ s/[^0-9a-fA-F]//g;
     return unless length($uuid) == 32;
-    $uuid =~ s/(..)/$1:/g;
-    $uuid =~ s/:$//;
-    return "00:04:$uuid";
+    # RFC 6355 carries the sixteen octets of the UUID as the FIRMWARE holds them. SMBIOS 2.6 and
+    # later store time_low, time_mid and time_hi_and_version little-endian, and vpd.uuid holds the
+    # canonical spelling that Linux reports in product_uuid, so the first three fields are reversed
+    # here. Without this the DUID does not match what the client sends, Kea never matches the
+    # reservation, and the node takes a pool address with no bootfile-url.
+    my @octets = unpack('(A2)16', $uuid);
+    @octets = (
+        reverse(@octets[0 .. 3]),
+        reverse(@octets[4 .. 5]),
+        reverse(@octets[6 .. 7]),
+        @octets[8 .. 15],
+    );
+    return '00:04:' . join(':', @octets);
 }
 
 sub kea_reservation_matches_for_nodes

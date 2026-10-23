@@ -1324,7 +1324,7 @@ foreach my $case (@invalid_mac_cases) {
         'query and delete retain alias matches when the associated MAC is malformed'
     );
     ok(
-        grep( { ( $_->{duid} || '' ) eq '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff' } @$matches ),
+        grep( { ( $_->{duid} || '' ) eq '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff' } @$matches ),
         'query and delete retain DUID matches when the associated MAC is malformed'
     );
 }
@@ -2472,7 +2472,10 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 
     my %by_hostname = map { $_->{hostname} => $_ } @$reservations;
     my $grub2 = $by_hostname{nodev6};
-    is( $grub2->{duid}, '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation retains DUID-UUID matching' );
+    # The first three UUID fields are reversed, because that is what a UEFI client sends --
+    # see kea_duid_from_uuid. This expectation held the canonical spelling and so agreed with a
+    # DUID no firmware ever presents.
+    is( $grub2->{duid}, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation matches the DUID-UUID a UEFI client sends' );
     is( $grub2->{'option-data'}[0]{name}, 'bootfile-url', 'grub2 reservation carries RFC 5970 bootfile-url' );
     is( $grub2->{'option-data'}[0]{data}, 'tftp://[2001:db8::1]/boot/grub2/grub2-nodev6', 'grub2 bootfile URL uses the IPv6-facing xCAT server and bracketed authority' );
     ok( $grub2->{'option-data'}[0]{'always-send'}, 'grub2 bootfile URL is always sent' );
@@ -2582,6 +2585,68 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 
         is( scalar(@$owned), 1, 'global dynamic-range DHCP owner retains an unrelated IPv6 reservation like legacy dispatch' );
     }
+}
+
+# AN IPv6-ONLY NODE MUST NOT REACH THE IPv4 NEXT-SERVER RESOLVER.
+#
+# kea_node_client_classes_for_nodes resolved next_server_for_node before the per-MAC loop that
+# skips an IPv6-only node, so the node still reached the IPv4 resolver. With noderes.xcatmaster
+# naming a host that has only an AAAA record, inet_aton fails, the sub reports "Unable to resolve
+# the tftpserver" with errorcode 1, and makedhcp exits 1 on a node whose DHCPv6 reservation and
+# bootfile-url it had just written correctly -- measured on xcat76-cn, 2026-10-23.
+#
+# 6f171a22b made the same call lazy in kea_node_reservations and missed this site. The assertion
+# is on the CALL, not on the exit code, because the error is what the exit code is made of.
+{
+    no warnings 'redefine';
+    my $resolver_calls = 0;
+    my %v6only_tables = (
+        noderes => DHCPKeaResTable->new(
+            { nodev6only => { netboot => 'grub2', xcatmaster => 'v6only.example.test' } } ),
+        mac     => DHCPKeaResTable->new( { nodev6only => { mac => 'aa:bb:cc:dd:ee:01' } } ),
+    );
+    local *xCAT::Table::new = sub { my ( $class, $name ) = @_; return $v6only_tables{$name}; };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub {
+        $resolver_calls++;
+        return ( '192.0.2.1', '192.0.2.1' );
+    };
+    # The node answers only on IPv6, which is what makes the loop skip it.
+    local *xCAT::NetworkUtils::node_is_ipv6_only = sub { return 1; };
+
+    xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( ['nodev6only'] );
+    is( $resolver_calls, 0,
+        'an IPv6-only node never reaches the IPv4 next-server resolver' );
+}
+
+# A DUID-UUID CARRIES THE UUID AS THE FIRMWARE HOLDS IT, NOT AS vpd.uuid SPELLS IT.
+#
+# RFC 6355 puts the sixteen octets of the system UUID in the DUID. SMBIOS 2.6 and later store
+# time_low, time_mid and time_hi_and_version LITTLE-ENDIAN, while vpd.uuid holds the canonical
+# spelling -- which is what Linux reports in product_uuid and what discovery writes. So the two
+# disagree in the first eight octets, Kea never matches the reservation, and the node takes a pool
+# address with no bootfile-url and stops at PXE-E21.
+#
+# Measured on xcat76-cn, 2026-10-23, with vpd.uuid c78c76bf-3286-46f3-b80d-8fe079dd6de7:
+#   xCAT wrote        00:04:c7:8c:76:bf:32:86:46:f3:b8:0d:8f:e0:79:dd:6d:e7
+#   the firmware sent 00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7
+{
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('c78c76bf-3286-46f3-b80d-8fe079dd6de7'),
+        '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
+        'the DUID reverses the first three UUID fields, as the firmware sends them' );
+
+    # The last eight octets are byte order independent and must NOT move.
+    my $duid = xCAT_plugin::dhcp::kea_duid_from_uuid('00112233-4455-6677-8899-aabbccddeeff');
+    is( $duid, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff',
+        'the clock-seq and node fields keep their order' );
+
+    # A UUID with no separators is the same value.
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('c78c76bf328646f3b80d8fe079dd6de7'),
+        '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
+        'separators in vpd.uuid do not change the DUID' );
+
+    # Anything that is not sixteen octets has no DUID rather than a truncated one.
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('not-a-uuid'), undef, 'a malformed uuid gives no DUID' );
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid(undef),        undef, 'an absent uuid gives no DUID' );
 }
 
 done_testing();
