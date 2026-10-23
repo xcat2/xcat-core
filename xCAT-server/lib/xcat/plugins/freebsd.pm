@@ -341,16 +341,23 @@ sub _provision_ipv6_network {
     my @matching;
     for my $network (@networks) {
         next unless ref($network) eq 'HASH' && defined($network->{net}) && $network->{net} =~ /:/x;
-        my $prefix = $network->{mask};
-        die "Invalid IPv6 provisioning network\n" unless xCAT::NetworkUtils->isIpv6addr($network->{net}) &&
-            defined($prefix) && !ref($prefix) && $prefix =~ m{\A/?(?:[1-9]|[1-9][0-9]|1[01][0-9]|12[0-8])\z}x;
-        push @matching, $network if xCAT::NetworkUtils::isInSameSubnet($network->{net}, $ip, $prefix, 1);
+        my $net = $network->{net};
+        my $mask = $network->{mask};
+        my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($net, $mask);
+        $net =~ s{/[^/]+\z}{}x;
+        $mask =~ s{\A/}{}x if defined($mask) && !ref($mask);
+        die "Invalid IPv6 provisioning network\n" unless xCAT::NetworkUtils->isIpv6addr($net) &&
+            defined($prefix) && $prefix =~ /\A(?:[1-9]|[1-9][0-9]|1[01][0-9]|12[0-8])\z/x &&
+            (!defined($mask) || $mask eq '' || (!ref($mask) && $mask =~ /\A[0-9]+\z/x && $mask eq $prefix));
+        push @matching, {%$network, net => $net, mask => $prefix}
+            if xCAT::NetworkUtils::isInSameSubnet($net, $ip, $prefix, 1);
     }
     die "FreeBSD installation requires exactly one matching IPv6 networks entry\n" unless @matching == 1;
     my $network = $matching[0];
     (my $prefix = $network->{mask}) =~ s{\A/}{}x;
     my $gateway = $network->{gateway} || '';
-    $gateway = xCAT::NetworkUtils->ip_forwarding_enabled() ? $master : '' if $gateway eq '<xcatmaster>';
+    die "IPv6 FreeBSD installation requires an explicit gateway instead of <xcatmaster>\n"
+        if $gateway eq '<xcatmaster>';
     $gateway = _ipv6($node, $gateway, 'gateway') if length($gateway);
     die "The FreeBSD IPv6 gateway must be another address in the node subnet\n" if length($gateway) &&
         ($gateway eq $ip || !xCAT::NetworkUtils::isInSameSubnet($gateway, $ip, $prefix, 1));
