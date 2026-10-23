@@ -554,7 +554,9 @@ sub _freebsd_owner_scope {
         my $resource = $resources->{$native_node}->[0] || {};
         my $error = xCAT::Utils->freebsd_image_error($selected{$native_node}, $resource->{netboot});
         die "$native_node: $error\n" if defined($error) && length($error);
+        my $ipv6 = xCAT::NetworkUtils->node_is_ipv6_only($native_node);
         my $pool = xCAT::FreeBSDPool::topology($resource);
+        die "$native_node: IPv6 FreeBSD installation does not support a service-node pool\n" if $ipv6 && $pool;
         if ($pool) {
             my @servers = grep { !$inittime || !xCAT::NetworkUtils->thishostisnot($_) } @{$pool->{servers}};
             next unless @servers;
@@ -565,20 +567,35 @@ sub _freebsd_owner_scope {
             next;
         }
         my $owner = $resource->{xcatmaster};
-        unless (defined($owner) && length($owner)) {
-            ($owner) = xCAT::TableUtils->get_site_attribute('master');
-            unless ($owner) {
-                die "$native_node: Cannot determine the FreeBSD management-node owner\n" unless xCAT::Utils->isMN();
-                my ($rc, @addresses) = xCAT::NetworkUtils->my_ip_facing($native_node);
-                die "$native_node: Cannot determine one FreeBSD management-node address\n" if $rc || @addresses != 1;
-                $owner = $addresses[0];
+        my $address;
+        if ($ipv6) {
+            ($owner) = xCAT::TableUtils->get_site_attribute('master') unless defined($owner) && length($owner);
+            $owner = undef unless length($owner || '');
+            die "$native_node: Cannot determine the FreeBSD management-node owner\n" unless
+                length($owner || '') || xCAT::Utils->isMN();
+            die "$native_node: FreeBSD xcatmaster must name one hostname or IPv6 address\n" if defined($owner) &&
+                (ref($owner) || ($owner !~ /\A[A-Za-z0-9][A-Za-z0-9_.:-]{0,254}\z/x &&
+                $owner ne '!myipfn!' && $owner ne '<xcatmaster>'));
+            require xCAT::FreeBSDNetwork;
+            $address = xCAT::FreeBSDNetwork::ipv6_address(
+                xCAT::NetworkUtils->ipv6_server_for_node($native_node, $owner));
+            die "$native_node: Cannot resolve FreeBSD xcatmaster to unscoped unicast IPv6\n" unless defined($address);
+        } else {
+            unless (defined($owner) && length($owner)) {
+                ($owner) = xCAT::TableUtils->get_site_attribute('master');
+                unless ($owner) {
+                    die "$native_node: Cannot determine the FreeBSD management-node owner\n" unless xCAT::Utils->isMN();
+                    my ($rc, @addresses) = xCAT::NetworkUtils->my_ip_facing($native_node);
+                    die "$native_node: Cannot determine one FreeBSD management-node address\n" if $rc || @addresses != 1;
+                    $owner = $addresses[0];
+                }
             }
+            die "$native_node: FreeBSD xcatmaster must name one hostname or IPv4 address\n"
+              unless defined($owner) && !ref($owner) && $owner =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,254}\z/;
+            $address = xCAT::NetworkUtils->getipaddr($owner, OnlyV4 => 1);
+            die "$native_node: Cannot resolve FreeBSD xcatmaster to IPv4\n"
+              unless defined($address) && $address =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/;
         }
-        die "$native_node: FreeBSD xcatmaster must name one hostname or IPv4 address\n"
-          unless defined($owner) && !ref($owner) && $owner =~ /\A[A-Za-z0-9][A-Za-z0-9_.-]{0,254}\z/;
-        my $address = xCAT::NetworkUtils->getipaddr($owner, OnlyV4 => 1);
-        die "$native_node: Cannot resolve FreeBSD xcatmaster to IPv4\n"
-          unless defined($address) && $address =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/;
         next if $inittime && xCAT::NetworkUtils->thishostisnot($address);
         push @{ $owners{$address} }, $native_node;
     }
@@ -860,7 +877,7 @@ sub process_request {
     if ($native_owner) {
         unless (ref($native_owner) eq 'ARRAY' && @$native_owner == 1 &&
             defined($native_owner->[0]) && !ref($native_owner->[0]) &&
-            $native_owner->[0] =~ /\A(?:[0-9]{1,3}\.){3}[0-9]{1,3}\z/ &&
+            xCAT::NetworkUtils->isValidIp($native_owner->[0]) &&
             !xCAT::NetworkUtils->thishostisnot($native_owner->[0])) {
             $::XNBA_callback->({error => ['FreeBSD request must run on its selected owner'], errorcode => [1]});
             return;
