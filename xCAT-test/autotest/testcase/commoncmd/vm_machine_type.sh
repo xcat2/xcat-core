@@ -33,11 +33,19 @@ vm_machine_type_private_dir()
     fi
 }
 
+# vm_machine_type_for_arch <arch> [<vmothersetting>] -- the machine type to apply.
+# An x86_64 node that asks for a UEFI firmware takes q35: every x86_64 OVMF descriptor targets
+# pc-q35-*, and libvirt refuses firmware efi on i440fx.
 vm_machine_type_for_arch()
 {
     case "$1" in
         ppc64*)  echo 'machine:pseries-rhel7.6.0' ;;
-        x86_64)  echo 'machine:pc' ;;
+        x86_64)
+            case ";$2" in
+                *';firmware:efi'*) echo 'machine:q35' ;;
+                *)                 echo 'machine:pc' ;;
+            esac
+            ;;
         riscv64) echo 'machine:virt' ;;
         aarch64) echo 'machine:virt' ;;
         *)       return 1 ;;
@@ -109,7 +117,7 @@ vm_machine_type_apply()
         chdef "$node" "vmothersetting=$original"
         return
     fi
-    if ! machine="$(vm_machine_type_for_arch "$arch")"; then
+    if ! machine="$(vm_machine_type_for_arch "$arch" "$original")"; then
         echo "vm_machine_type.sh: no machine type for arch '$arch'" >&2
         return 1
     fi

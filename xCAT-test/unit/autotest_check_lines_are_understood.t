@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use File::Copy qw(copy);
+use File::Basename qw(basename);
 use File::Find qw(find);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -57,8 +58,12 @@ my $root = tempdir(CLEANUP => 1);
 make_path("$root/bin", "$root/cases", "$root/lib/perl/xCAT/Test");
 copy($program, "$root/bin/xcattest") or die("copy xcattest: $!");
 chmod 0755, "$root/bin/xcattest";
-copy("$FindBin::Bin/../lib/xCAT/Test/OS.pm", "$root/lib/perl/xCAT/Test/OS.pm")
-    or die("copy xCAT/Test/OS.pm: $!");
+# Every module under xCAT-test/lib/xCAT, because xcattest loads them from lib/perl beside its
+# own directory and a missing one stops it before the first case.
+foreach my $module (glob("$FindBin::Bin/../lib/xCAT/Test/*.pm")) {
+    my $name = basename($module);
+    copy($module, "$root/lib/perl/xCAT/Test/$name") or die("copy xCAT/Test/$name: $!");
+}
 open(my $fixture_fh, '>', "$root/cases/fixture") or die("write the fixture case: $!");
 print $fixture_fh $fixture;
 close($fixture_fh) or die("close the fixture case: $!");

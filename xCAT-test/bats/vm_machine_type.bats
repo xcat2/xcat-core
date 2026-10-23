@@ -79,6 +79,23 @@ assert_arch()
     assert_arch x86_64 pc 'cpumode:host-passthrough'
 }
 
+# An x86_64 node that asks for UEFI needs q35: every x86_64 OVMF descriptor targets pc-q35-*,
+# and libvirt refuses a domain that asks for firmware efi on i440fx with "Unable to find 'efi'
+# firmware that is compatible with the current configuration".
+@test "x86_64 with firmware:efi: the case sets and clears q35" {
+    assert_arch x86_64 q35 'firmware:efi'
+    assert_arch x86_64 q35 'cpumode:host-passthrough;firmware:efi'
+}
+
+@test "x86_64 with firmware:efi-secureboot: the case sets and clears q35" {
+    assert_arch x86_64 q35 'firmware:efi-secureboot'
+    assert_arch x86_64 q35 'cpumode:host-passthrough;firmware:efi-secureboot'
+}
+
+@test "round trip: x86_64 with firmware:efi-secureboot" {
+    assert_round_trip x86_64 'cpumode:host-passthrough;firmware:efi-secureboot' q35
+}
+
 @test "riscv64: the case sets and clears virt" {
     assert_arch riscv64 virt ''
     assert_arch riscv64 virt 'cpumode:host-passthrough'
@@ -89,10 +106,11 @@ assert_arch()
     assert_arch aarch64 virt 'cpumode:host-passthrough'
 }
 
-# assert_round_trip <arch> <original> -- the case ends with the exact value it started with.
+# assert_round_trip <arch> <original> [<machine>] -- the case ends with the exact value it
+# started with. <machine> is the machine type apply is to have written, when the caller knows it.
 assert_round_trip()
 {
-    local arch="$1" original="$2" machine
+    local arch="$1" original="$2" expected="$3" machine
 
     set_vmother "$original"
     vm_machine_type_main invalid cn1
@@ -101,6 +119,10 @@ assert_round_trip()
     [ "$machine" = "machine:invalid" ]
 
     vm_machine_type_main apply cn1 "$arch"
+    if [ -n "$expected" ]; then
+        machine="$(vmother | tr ';' '\n' | grep '^machine:' | tail -n 1)"
+        [ "$machine" = "machine:$expected" ]
+    fi
     vm_machine_type_main restore cn1 "$arch"
     [ "$(vmother)" = "$original" ]
     [ -z "$(ls -A "$VM_MACHINE_TYPE_STATE_DIR")" ]
@@ -115,7 +137,7 @@ assert_round_trip()
 }
 
 @test "round trip: cpumode:host-passthrough" {
-    assert_round_trip x86_64 'cpumode:host-passthrough'
+    assert_round_trip x86_64 'cpumode:host-passthrough' pc
 }
 
 @test "round trip: x86_64 with a versioned machine type" {
