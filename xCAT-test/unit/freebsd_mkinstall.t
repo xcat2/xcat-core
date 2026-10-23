@@ -455,6 +455,33 @@ subtest 'pkgbase installation publishes a native source-bound package plan' => s
             'initial configuration retrieval remains available over IPv4');
         like($text, qr/\Q@{[sha256_hex($content)]}\E/x, 'the loader pins the IPv6 configuration before it is applied');
     };
+    subtest 'IPv6 preparation accepts CIDR networks and rejects conflicting policy' => sub {
+        for my $case ('cidr', 'conflicting prefix', 'invalid prefix', 'gateway token', 'older pkgbase media') {
+            $fresh->('xcat-freebsd-install-6', undef, 'xcat-freebsd-bootstrap-1', undef, undef,
+                $case eq 'older pkgbase media' ? undef : 'xcat-freebsd-ipv6-1');
+            ipv6_network_fixture();
+            $xCAT::Table::networks[0]{net} = '2001:db8:1::/64';
+            push @xCAT::Table::networks, {net => '2001:db8:2::/64', mask => '/64'};
+            $xCAT::Table::networks[0]{mask} = '/48' if $case eq 'conflicting prefix';
+            $xCAT::Table::networks[0]{net} = '2001:db8:1::/129' if $case eq 'invalid prefix';
+            if ($case eq 'gateway token') {
+                $_->{net} =~ s{/64\z}{}x for @xCAT::Table::networks;
+                $xCAT::Table::networks[0]{gateway} = '<xcatmaster>';
+            }
+            my ($boot, $errors) = install();
+            if ($case eq 'cidr') {
+                is_deeply($errors, [], 'matching and unrelated CIDR rows are accepted') or do { diag(explain($errors)); next; };
+                my (undef, $content) = $published->();
+                like($content, qr/^ipv6_prefix=64$/mx, 'the CIDR row supplies the normalized installed prefix');
+            } else {
+                my $expected = $case eq 'older pkgbase media' ? qr/xcat-freebsd-ipv6-1/x
+                    : $case eq 'gateway token' ? qr/explicit[ ]gateway/x : qr/Invalid[ ]IPv6[ ]provisioning[ ]network/x;
+                like($errors->[0]{node}[0]{error}[0], $expected, "$case fails with its policy diagnostic");
+                is($prepare_count, 0, "$case is rejected before lifecycle preparation");
+                ok(!exists($boot->{node1}), "$case publishes no boot entry");
+            }
+        }
+    };
     subtest 'public preparation reuses the retained OS identities' => sub {
         $fresh->('xcat-freebsd-install-3', undef, undef, 'xcat-freebsd-os-disks-1');
         write_file("$root/node1.disk", "filesystem=ufs\ntarget_disk=auto\nswap_size=0\n");
