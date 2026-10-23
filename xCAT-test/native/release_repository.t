@@ -43,6 +43,7 @@ for my $repo (qw(xcat-core xcat-dep xcat-dep-common)) {
     like($files, qr{^/etc/yum\.repos\.d/\Q$repo\E\.repo\t17$}m, "$repo remains config(noreplace)");
 }
 for my $relative (qw(buildrpms.pl build-utils/lib/XCAT/BuildUtils.pm
+    build-utils/lib/XCAT/NFSLock.pm
     build-utils/sync-fips-policy build-utils/fips-policy.sh
     xCAT-genesis-scripts/usr/lib/xcat/fips.sh xCAT/postscripts/xcatlib.sh)) {
     make_path(dirname("$root/work/$relative"));

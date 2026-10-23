@@ -61,8 +61,8 @@ use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildi
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir
                         package_skip_reason
-                        mock_config_text);
-use POSIX ();                   # EEXIST, for the directory build lock (see main())
+                        mock_config_text acquire_lock_dir);
+use POSIX ();                   # WNOHANG, for the non-blocking waitpid in abort_builds()
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
 use Parallel::ForkManager;
@@ -893,16 +893,12 @@ sub merge_core_repos {
 # file and the cached chroot dirs left behind are normal mock state, not leaks.)
 my %MOCK_INFLIGHT;      # ForkManager child pid => mock chroot (-r) name it is building
 my $ABORTING = 0;
-my $BUILD_LOCK_DIR;     # per-target build lock, an atomic mkdir rather than an flock. The build
-                        # tree can live on an NFS re-export, where the kernel refuses locks
-                        # outright ("Clients are not allowed to get file locks or delegations from
-                        # a reexport server"), so every flock there fails with errno 524. mkdir(2)
-                        # is arbitrated by the server and needs no lock daemon. File-scoped so the
-                        # release runs once, from END, for the whole process.
-my $BUILD_LOCK_PID;     # the pid that took it. ForkManager children inherit $BUILD_LOCK_DIR, and
-                        # their END would release the PARENT's lock -- the flock this replaces
-                        # could not be released by a child, and neither may this.
-END { rmdir $BUILD_LOCK_DIR if defined $BUILD_LOCK_DIR and defined $BUILD_LOCK_PID and $$ == $BUILD_LOCK_PID }
+my $BUILD_LOCK;         # per-target build lock, an XCAT::NFSLock through
+                        # XCAT::BuildUtils::acquire_lock_dir. Held in a file-scoped variable
+                        # because the guard releases on DESTROY: discarding it would free the
+                        # lock at the end of the statement that took it. release checks the pid,
+                        # so a ForkManager child cannot free the PARENT's lock.
+END { $BUILD_LOCK->release if defined $BUILD_LOCK }
 
 my @CHILD_FAILURES;     # idents (chroot names) of ForkManager children that exited non-zero
 
@@ -974,7 +970,7 @@ sub abort_builds {
     warn "[buildrpms] abort cleanup done\n";
     # The re-raise below kills this process by signal, and END blocks do not run then. Release the
     # build lock here or a killed build strands it for every later run.
-    rmdir $BUILD_LOCK_DIR if defined $BUILD_LOCK_DIR and defined $BUILD_LOCK_PID and $$ == $BUILD_LOCK_PID;
+    $BUILD_LOCK->release if defined $BUILD_LOCK;
     $SIG{$sig} = 'DEFAULT';
     kill $sig, $$;                                  # re-raise for the correct exit status
 }
@@ -1007,24 +1003,27 @@ sub main {
     # and race the shared chroot -- and abort_builds' fallback lazy-unmounts this build's own chroot
     # binds, which for the SAME target(+ext) are the very dirs a peer uses. So refuse to run a second
     # build of the same target(+ext) concurrently. Distinct targets / --mock-uniqueext are independent
-    # and never conflict. (Held for the process lifetime via $BUILD_LOCK_FH, a file-scoped handle.)
+    # and never conflict. (Held for the process lifetime via $BUILD_LOCK, a file-scoped guard.)
     {
         my $key = join('-', $opts{targets}->@*)
                 . ($opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "");
         $key =~ s/[^A-Za-z0-9._-]/-/g;
         my $lock = "/var/lock/buildrpms.$key.lock.d";
-        {
-            unless (mkdir $lock) {
-                die "FATAL: cannot take the build lock $lock: $!\n" unless $! == POSIX::EEXIST();
-                die "FATAL: another buildrpms.pl is already building target '@{$opts{targets}}'"
-                  . ($opts{mock_uniqueext} ? " (uniqueext=$opts{mock_uniqueext})" : "") . ".\n"
-                  . "       ($lock is held). Concurrent builds of the same target collide on the shared\n"
-                  . "       /etc/mock + /var/lib/mock chroot namespace (wrong NVR + a killed peer's\n"
-                  . "       cleanup unmounts this build's chroot). Serialize them, or pass a distinct\n"
-                  . "       --mock-uniqueext per build.\n";
-            }
-            $BUILD_LOCK_DIR = $lock; $BUILD_LOCK_PID = $$;
-        }
+        # /var/lock, not the checkout: what this lock guards is host-local, so a lock on the
+        # shared tree would serialise the per-arch builds of one checkout that run on two hosts.
+        #
+        # acquire_lock_dir, not a bare mkdir: NFSLock recovers a lock whose owner is provably
+        # dead. The copy that used to live here recorded no owner at all, and `use autodie`
+        # above turned its EEXIST branch into dead code, so a build killed with SIGKILL left the
+        # directory and failed every later build of the target with autodie's raw
+        # "Can't mkdir(...): File exists".
+        $BUILD_LOCK = acquire_lock_dir($lock,
+            "target '@{$opts{targets}}'"
+              . ($opts{mock_uniqueext} ? " (uniqueext=$opts{mock_uniqueext})" : ""),
+            "       Concurrent builds of the same target collide on the shared /etc/mock +\n"
+          . "       /var/lib/mock chroot namespace (wrong NVR + a killed peer's cleanup\n"
+          . "       unmounts this build's chroot). Serialize them, or pass a distinct\n"
+          . "       --mock-uniqueext per build.\n");
     }
 
     # A builder killed with SIGKILL together with this parent leaves its directory behind.

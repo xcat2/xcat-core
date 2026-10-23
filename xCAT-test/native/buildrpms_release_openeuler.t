@@ -118,6 +118,7 @@ sub run_builder {
     make_path(map {"$fixture/$_"} qw(build-utils/lib/XCAT bin mock locks tmp xCAT-release home/rpmbuild/SOURCES));
     copy($builder, "$fixture/buildrpms.pl") or die $!;
     copy(repo_path('build-utils/lib/XCAT/BuildUtils.pm'), "$fixture/build-utils/lib/XCAT/BuildUtils.pm") or die $!;
+    copy(repo_path('build-utils/lib/XCAT/NFSLock.pm'), "$fixture/build-utils/lib/XCAT/NFSLock.pm") or die $!;
     copy($spec, "$fixture/xCAT-release/xCAT-release.spec") or die $!;
     write_file("$fixture/xCAT-release/$_", $original{$_}) for @files;
     write_file("$fixture/Version", "2.19.0\n");
