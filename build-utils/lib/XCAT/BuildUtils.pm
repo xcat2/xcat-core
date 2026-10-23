@@ -43,7 +43,7 @@ our @EXPORT_OK = qw(
     rewrite_file write_script read_line
     buildinfo_text
     targetarch_from_target
-    openeuler_build_target openeuler_repo_subdir
+    openeuler_build_target openeuler_repo_subdir package_skip_reason
     mock_config_text mock_build_owner prepare_mock_resultdirs
     genesis_chroot_name genesis_target_arch genesis_build_plan
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
@@ -807,28 +807,56 @@ sub cancel_build {
     sub DESTROY { shift->release }
 }
 
-# The packages a target does not build, and why. Each rule names the package and
-# the target-name prefixes that do not build it.
+# The packages a target does not build, and why. A rule names either the target
+# prefixes that do NOT build the package, or, with `only`, the pattern of the
+# targets that DO.
 #
 # openSUSE ships no legacy Genesis. Operator decision, 2026-10-22. The payload manifest
 # verify-genesis-payload checks is written for EL: on opensuse-leap-15.6-x86_64 it reports 566
 # missing zoneinfo/posix paths, etc/redhat-release and 45 EL paths and tool names, so the package
 # cannot be built there and under that decision does not need to be.
+#
+# xCAT-selinux is EL only: its policy module is compiled against the selinux-policy
+# of the build target, and openEuler 20.03 and 22.03 carry selinux-policy 3.14.2,
+# which defines none of unconfined_server_stream_connectto(), files_map_etc_files()
+# or chronyd_manage_pid_files(). m4 leaves an undefined interface name in its output
+# and checkmodule stops on it. openEuler 24.03sp4 carries selinux-policy 40.7 and
+# does compile the module, and is excluded too, so no openEuler release ships a
+# package the other releases cannot build. openSUSE Leap ships no
+# selinux-policy-devel at all.
+#
+# It is named with `only` rather than by listing the families that are not EL,
+# because naming them means a family added later TRIES to build it. openSUSE was
+# added after the first version of this guard, matched neither arm of its
+# /\Aopeneuler-/ test, and xcat-core-build-opensuse #42 spent three attempts on
+# "No matching package to install: selinux-policy-devel" and failed the whole
+# openSUSE family.
+
+# The EL build targets, named positively: alma+epel-<N>-<arch> for the three EL
+# releases, and the suffixed rocky target mock cross-builds riscv64 through.
+my $EL_TARGET = qr/\A(?:alma|rocky|centos|rhel)(?:\+epel)?-/;
+
 my @PACKAGE_SKIPS = (
     {   package  => 'xCAT-genesis-base',
         prefixes => ['opensuse-'],
         reason   => 'openSUSE ships no legacy Genesis',
+    },
+    {   package  => 'xCAT-selinux',
+        only     => $EL_TARGET,
+        reason   => 'SELinux support is EL only',
     },
 );
 
 # Why $pkg is not built for $target, or undef when the pair is built.
 sub package_skip_reason {
     my ($pkg, $target) = @_;
-    return undef unless defined($pkg) && defined($target);
+    return undef unless defined($pkg) && defined($target) && length($target);
     for my $skip (@PACKAGE_SKIPS) {
         next unless $pkg eq $skip->{package};
+        return $skip->{reason} if $skip->{only} && $target !~ $skip->{only};
         return $skip->{reason}
-            if grep { index($target, $_) == 0 } @{ $skip->{prefixes} };
+            if $skip->{prefixes}
+            && grep { index($target, $_) == 0 } @{ $skip->{prefixes} };
     }
     return undef;
 }
