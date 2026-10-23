@@ -59,7 +59,14 @@ sub object_attr {
 sub table_attr {
     my ($line) = @_;
     return () unless defined $line;
-    return ($1, $2) if $line =~ /(\w+)\s*=\s*([\w\.\-]+)/;
+    # The same value class as object_attr. A table value holds the same kinds of thing an object
+    # value does: an IPv6 prefix (2001:db8::/64), a path (/install), a comma-separated list of
+    # name servers. The narrower ([\w\.\-]+) this replaces stopped at the first colon or slash and
+    # wrote the truncated value, so `net=2001:db8:176::/64` reached chtab as `net=2001` and
+    # xcattest re-applied that row on every run. Nothing warned.
+    #
+    # The class holds no whitespace and no '#', so a trailing inline comment is still excluded.
+    return ($1, $2) if $line =~ /(\w+)\s*=\s*([:,;\w\.\-\/]+)/;
     return ();
 }
 
