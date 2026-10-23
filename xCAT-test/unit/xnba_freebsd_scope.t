@@ -67,7 +67,7 @@ use xCAT::NetworkUtils;
     sub thishostisnot { return $_[1] ne $local; }
     sub my_ip_facing { return (0, @facing); }
     sub determinehostname { return 'manager'; }
-    sub checkNodeIPaddress { return {ip => $_[1] eq 'node1' ? '198.51.100.10' : '192.0.2.10'}; }
+    sub checkNodeIPaddress { return {ip => $addresses{$_[1]}}; }
     sub nodeonmynet { return !$off_subnet{$_[1]}; }
     package xCAT::Scope;
     our @calls;
@@ -334,6 +334,71 @@ subtest 'wrong host rejects a forwarded native request before processing nodes' 
     like(join('', map { @{ $_->{error} || [] } } @$responses), qr/FreeBSD.*owner/, 'misdirected native request reports an ownership error');
     is_deeply($commands, [], 'wrong owner invokes no prescripts, installer or DHCP update');
     ok(!-e "$tftp/xcat/xnba/nodes/node1", 'wrong owner publishes no script');
+};
+
+subtest 'IPv6 owners carry native provisioning through both request handlers' => sub {
+    for my $owner ('2001:DB8:0:0:0:0:0:1', 'manager6') {
+        fixture();
+        $xCAT::NetworkUtils::addresses{node1} = '2001:db8::10';
+        $xCAT::NetworkUtils::addresses6{manager6} = '2001:db8::1';
+        $xCAT::Table::rows{noderes}{node1}{xcatmaster} = $owner;
+        my ($requests, $errors) = scope('osimage=freebsd', 'node1');
+        is_deeply($errors, [], 'an IPv6-only node resolves its IPv6 owner') or next;
+        is(scalar(@$requests), 1, 'one owner receives the request');
+        is($requests->[0]{_xcatdest}, '2001:db8::1', 'IPv6 owner identity is canonical');
+        my ($rejected, $invoked) = process_scoped($requests->[0]);
+        like(join('', map { @{ $_->{error} || [] } } @$rejected), qr/FreeBSD.*owner/x,
+            'another host cannot execute an IPv6 owner request');
+        is_deeply($invoked, [], 'a wrong owner does not run provisioning stages');
+        $xCAT::NetworkUtils::local = '2001:db8::1';
+        my ($responses, $commands, $tftp) = process_scoped($requests->[0]);
+        is_deeply($responses, [], 'the selected IPv6 owner accepts the forwarded request');
+        is_deeply([map { $_->{command}[0] } @$commands], [qw(runbeginpre setdestiny makedhcp runendpre)],
+            'IPv6 ownership retains normal provisioning and DHCP stages');
+        like(read_file("$tftp/xcat/xnba/nodes/node1.uefi"),
+            qr{chain tftp://\$\{next-server\}/xcat/freebsd/node1/boot/loader.efi},
+            'IPv6 management retains the native loader bootstrap');
+    }
+};
+
+subtest 'IPv6 owner defaults and unsupported topologies fail explicitly' => sub {
+    fixture();
+    $xCAT::NetworkUtils::addresses{node1} = '2001:db8::10';
+    delete $xCAT::Table::rows{noderes}{node1}{$_} for qw(xcatmaster servicenode);
+    $xCAT::NetworkUtils::addresses6{manager} = '2001:db8::1';
+    my ($requests, $errors) = scope('osimage=freebsd', 'node1');
+    is_deeply($errors, [], 'the site owner resolves in the node address family');
+    is($requests->[0]{_xcatdest}, '2001:db8::1', 'the IPv4 site hostname does not force IPv4 transport');
+    $xCAT::TableUtils::site{master} = '';
+    {
+        no warnings 'redefine';
+        local *xCAT::NetworkUtils::_local_ip_prefixes = sub { return (['2001:db8::1', 64]); };
+        ($requests, $errors) = scope('osimage=freebsd', 'node1');
+        is_deeply($errors, [], 'the MN uses its IPv6 address facing the node');
+        is($requests->[0]{_xcatdest}, '2001:db8::1', 'the shared family-aware helper selects the owner');
+    }
+    $is_mn = 0;
+    ($requests, $errors) = scope('osimage=freebsd', 'node1');
+    like(join('', @$errors), qr/management-node[ ]owner/x, 'an SN cannot become the default IPv6 owner');
+    for my $owner ('192.0.2.1', 'fe80::1', 'ff02::1', '2001:db8::1%vtnet0', 'sn1,sn2') {
+        $xCAT::Table::rows{noderes}{node1}{xcatmaster} = $owner;
+        ($requests, $errors) = scope('osimage=freebsd', 'node1');
+        ok(@$errors && !@$requests, 'an unsupported owner produces no dispatch');
+    }
+    $xCAT::TableUtils::site{master} = 'manager';
+    delete $xCAT::Table::rows{noderes}{node1}{xcatmaster};
+    $xCAT::Table::rows{noderes}{node1}{servicenode} = 'sn1,sn2';
+    ($requests, $errors) = scope('osimage=freebsd', 'node1');
+    like(join('', @$errors), qr/IPv6.*service-node[ ]pool/x, 'IPv6 pools are rejected before coordinator changes');
+};
+
+subtest 'dual-stack node identity retains IPv4-first owner routing' => sub {
+    fixture();
+    $xCAT::NetworkUtils::addresses6{node1} = '2001:db8::10';
+    $xCAT::NetworkUtils::addresses6{sn1} = '2001:db8::1';
+    my ($requests, $errors) = scope('osimage=freebsd', 'node1');
+    is_deeply($errors, [], 'the existing dual-stack policy remains valid');
+    is($requests->[0]{_xcatdest}, '192.0.2.2', 'an A record retains the IPv4 provisioning path');
 };
 
 subtest 'routed native nodes remain in a batch with directly connected nodes' => sub {
