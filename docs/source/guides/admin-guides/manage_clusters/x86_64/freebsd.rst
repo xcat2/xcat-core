@@ -1834,12 +1834,13 @@ Specify a local IPv4 ``tftpserver`` for bootstrap. For example::
     chdef node01 xcatmaster=2001:db8:1::1 nfsserver=2001:db8:1::1 \
         tftpserver=192.0.2.1 nameservers=2001:db8:1::53
 
-When ``net`` includes a prefix, a separate ``mask`` must agree with that prefix.
+Set ``mask`` to the prefix length, with or without a leading slash.
+If ``net`` includes a prefix, the values must match.
 The installer uses static IPv6 settings from the node identity and ``networks``.
 Installation endpoints and gateways must be unscoped unicast addresses.
 An off-subnet owner or HTTP server requires a gateway in the node's IPv6 subnet.
 The installer does not accept a link-local gateway or ``gateway=<xcatmaster>``.
-Set an explicit IPv6 gateway address or a hostname that resolves to one.
+Set an explicit IPv6 gateway address.
 
 Set ``bootstrap=dhcp`` in the protected image settings file. Provide an IPv4
 reservation for the selected physical MAC through a separate bootstrap name.
