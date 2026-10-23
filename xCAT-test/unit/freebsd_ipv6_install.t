@@ -82,7 +82,7 @@ subtest 'the shipped shell reader and network initializer consume the IPv6 confi
     ok(defined($configuration), 'the producer supplied the fixture') or return;
     my $root = tempdir(CLEANUP => 1);
     make_path(map { "$root/$_" } qw(bin usr/bin usr/local/libexec fixture dev));
-    for my $binary (qw(/bin/sh /bin/cat /usr/bin/awk /usr/bin/wc /usr/bin/base64 /usr/bin/tr)) { stage_binary($root, $binary); }
+    for my $binary (qw(/bin/sh /bin/cat /bin/cp /usr/bin/awk /usr/bin/wc /usr/bin/base64 /usr/bin/tr)) { stage_binary($root, $binary); }
     copy("$source/xcat-install-lib.sh", "$root/usr/local/libexec/xcat-install-lib.sh") or croak $!;
     copy("$source/xcat-network.sh", "$root/usr/local/libexec/xcat-network.sh") or croak $!;
     copy($planner, "$root/usr/local/libexec/confignetwork-freebsd.awk") or croak $!;
@@ -142,6 +142,55 @@ subtest 'the shipped shell reader and network initializer consume the IPv6 confi
     my $ownership = do { local $/ = undef; <$saved> };
     close($saved) or croak $!;
     is($ownership, $normal->{stdout}, 'installer ownership matches later network management byte for byte');
+    my $observed = <<'IFCONFIG';
+vtnet0: flags=1008843<UP,BROADCAST,RUNNING,MULTICAST,LOWER_UP> metric 0 mtu 1500
+    ether 52:54:00:12:34:56
+    nd6 options=29<PERFORMNUD,IFDISABLED,AUTO_LINKLOCAL>
+vtnet1: flags=1008843<UP,BROADCAST,RUNNING,MULTICAST,LOWER_UP> metric 0 mtu 1500
+    ether 52:54:00:12:34:57
+    nd6 options=29<PERFORMNUD,IFDISABLED,AUTO_LINKLOCAL>
+lagg0: flags=1008843<UP,BROADCAST,RUNNING,MULTICAST,LOWER_UP> metric 0 mtu 1500
+    ether 52:54:00:12:34:56
+    laggproto failover lagghash l2,l3,l4
+    laggport: vtnet0 flags=5<MASTER,ACTIVE>
+    laggport: vtnet1 flags=0<>
+    nd6 options=29<PERFORMNUD,IFDISABLED,AUTO_LINKLOCAL>
+vlan100: flags=1008843<UP,BROADCAST,RUNNING,MULTICAST,LOWER_UP> metric 0 mtu 1500
+    ether 52:54:00:12:34:56
+    vlan: 100 vlanpcp: 0 parent interface: lagg0
+    nd6 options=29<PERFORMNUD,IFDISABLED,AUTO_LINKLOCAL>
+bridge0: flags=1008843<UP,BROADCAST,RUNNING,MULTICAST,LOWER_UP> metric 0 mtu 1500
+    ether 52:54:00:12:34:56
+    member: vlan100 flags=143<LEARNING,DISCOVER,AUTOEDGE,AUTOPTP>
+    inet 192.0.2.200 netmask 0xffffff00 broadcast 192.0.2.255
+    nd6 options=29<PERFORMNUD,IFDISABLED,AUTO_LINKLOCAL>
+IFCONFIG
+    write_file("$root/bin/ifconfig", "#!/bin/sh\n[ \"\$*\" = -a ] || exit 1\ncat /fixture/observed\n");
+    my $readback = sub {
+        write_file("$root/fixture/observed", shift);
+        return xCAT::FreeBSDPkg::run_command(['/usr/sbin/chroot', $root, '/bin/sh', '-eu', '-c',
+            '. /usr/local/libexec/xcat-install-lib.sh; xcat_read_config /fixture/config; '
+            . 'XCAT_WORK=/fixture; XCAT_PROVISIONING_IF=bridge0; XCAT_BOOTSTRAP_MODE=dhcp; '
+            . 'XCAT_BOOT_NETWORK_PLAN=/fixture/target-bootstrap.plan; '
+            . 'XCAT_BOOT_NETWORK_BASE64=$XCAT_BOOTSTRAP_NETWORK_BASE64; xcat_check_bootstrap'],
+            environment => {PATH => '/bin:/usr/bin', LC_ALL => 'C'}, timeout => 10);
+    };
+    my $checked = $readback->($observed);
+    is($checked->{exitcode}, 0, 'the IPv6 bootstrap readback accepts one DHCPv4 lease on the bridge') or diag($checked->{stderr});
+    my $strict = xCAT::FreeBSDPkg::run_command(['/usr/sbin/chroot', $root, '/usr/bin/awk', '-v', 'mode=verify',
+        '-f', '/usr/local/libexec/confignetwork-freebsd.awk', '/fixture/bootstrap.expected', '/fixture/observed'], timeout => 10);
+    isnt($strict->{exitcode}, 0, 'ordinary network readback still rejects that undeclared address');
+    for my $case ('missing lease', 'second lease', 'member address', 'missing member', 'wrong MAC', 'wrong MTU') {
+        my $bad = $observed;
+        $bad =~ s/^[ ]{4}inet[ ].*\n//mx if $case eq 'missing lease';
+        $bad .= "    inet 192.0.2.201 netmask 0xffffff00\n" if $case eq 'second lease';
+        $bad =~ s/(vtnet1:[^\n]*\n)/$1    inet 192.0.2.201 netmask 0xffffff00\n/x if $case eq 'member address';
+        $bad =~ s/^[ ]{4}laggport:[ ]vtnet1[^\n]*\n//mx if $case eq 'missing member';
+        $bad =~ s/(bridge0:[^\n]*\n[ ]{4}ether[ ])52:54:00:12:34:56/${1}52:54:00:12:34:58/x if $case eq 'wrong MAC';
+        $bad =~ s/mtu[ ]1500/mtu 1400/x if $case eq 'wrong MTU';
+        my $rejected = $readback->($bad);
+        isnt($rejected->{exitcode}, 0, "$case is rejected by bootstrap readback");
+    }
 };
 
 subtest 'IPv6 status reporting verifies the resolved node identity' => sub {
