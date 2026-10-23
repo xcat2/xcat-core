@@ -187,13 +187,16 @@ printf '192.0.2.1 logger.example.test\n'
 GETENT
     write_file("$root/usr/bin/sysrc", <<'SYSRC', oct('0555'));
 #!/bin/sh
-if [ "$1" = -n ]; then printf '%s\n' -s; else printf '%s\n' "$*" >> /fixture/sysrc; fi
+if [ "$1" = -n ]; then
+    if [ -f /fixture/flags ]; then cat /fixture/flags; else printf '%s\n' -s; fi
+else printf '%s\n' "$*" >> /fixture/sysrc; fi
 SYSRC
     write_file("$root/usr/bin/service", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> /fixture/services\n", oct('0555'));
     write_file("$root/fixture/os", "FreeBSD\n", oct('0444'));
     write_file("$root/etc/syslog.conf", "include /etc/syslog.d\n", oct('0644'));
     copy("$sources/syslog.freebsd", "$root/scripts/syslog.freebsd") or croak $!;
     chmod(oct('0555'), "$root/scripts/syslog.freebsd") == 1 or croak $!;
+    copy("$sources/confignetwork-freebsd.awk", "$root/scripts/confignetwork-freebsd.awk") or croak $!;
     my $configure = sub {
         return xCAT::FreeBSDPkg::run_command(['/usr/sbin/chroot', $root, '/scripts/syslog'],
             cwd => $root, environment => {PATH => '/bin:/usr/bin', LC_ALL => 'C', MASTER => $_[0]}, timeout => 10);
@@ -205,11 +208,25 @@ SYSRC
         'published forwarding configuration retains the numeric server');
     ok(!-e "$root/fixture/lookups", 'a numeric server requires no resolver query');
     like(read_file("$root/fixture/services"), qr/^syslogd[ ]reload$/mx, 'successful configuration reloads syslogd');
+    $result = $configure->('2001:DB8::1');
+    is($result->{exitcode}, 0, 'public script configures an IPv6 literal without a PTR record');
+    like(read_file("$root/etc/syslog.d/90-xcat.conf"),
+        qr/\@\[2001:0db8:0000:0000:0000:0000:0000:0001\]\n\z/x,
+        'IPv6 forwarding uses the native bracket syntax');
+    ok(!-e "$root/fixture/lookups", 'IPv6 literals require no resolver query');
+    my $ipv6_configured = read_file("$root/etc/syslog.d/90-xcat.conf");
+    write_file("$root/fixture/flags", "-4 -s\n", oct('0444'));
+    $result = $configure->('2001:db8::2');
+    isnt($result->{exitcode}, 0, 'an IPv4-only daemon rejects an IPv6 destination');
+    is(read_file("$root/etc/syslog.d/90-xcat.conf"), $ipv6_configured,
+        'a daemon family conflict preserves the previous policy');
+    unlink("$root/fixture/flags") or croak $!;
     $result = $configure->('logger.example.test');
     is($result->{exitcode}, 0, 'resolvable hostname remains supported');
     is(read_file("$root/fixture/lookups"), "logger.example.test\n", 'hostname uses the resolver');
     my $configured = read_file("$root/etc/syslog.d/90-xcat.conf");
-    for my $bad ('missing.example.test', '999.0.2.1') {
+    for my $bad ('missing.example.test', '999.0.2.1', '2001:db8:::1', 'fe80::1',
+        'fe80::1%vtnet0', 'ff02::1', '[2001:db8::1]', "2001:db8::1\n*.* /tmp/injected") {
         $result = $configure->($bad);
         isnt($result->{exitcode}, 0, 'unresolvable hostname or invalid numeric address is rejected');
         is(read_file("$root/etc/syslog.d/90-xcat.conf"), $configured, 'rejection preserves the previous forwarding policy');

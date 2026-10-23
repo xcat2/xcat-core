@@ -115,6 +115,19 @@ subtest 'native classification covers image identity and unsupported FreeBSD ver
     done_testing();
 };
 
+subtest 'a direct IPv6 owner retains native update routing' => sub {
+    reset_fixture();
+    $xCAT::Table::rows{noderes}[0]{xcatmaster} = '2001:db8::1';
+    my $original = request(['node1'], '-P', 'syslog');
+    my $before = dclone($original);
+    my $routed = preprocess($original);
+    is_deeply(errors(), [], 'the direct IPv6 owner is accepted');
+    is_deeply($routed->[0]{node}, ['node1'], 'the native node keeps its owner');
+    is($routed->[0]{_xcatdest}, '2001:db8::1', 'dispatch retains the IPv6 destination');
+    is_deeply($original, $before, 'routing does not mutate the request');
+    is_deeply(\@legacy, [], 'native IPv6 routing does not invoke Linux or AIX handling');
+};
+
 subtest 'invalid native requests cause no legacy or remote operation' => sub {
     for my $arguments (['--freebsd-run', 'a' x 32, '-P', 'custom'],
         ['--freebsd-run', 'a' x 32, '-F'],

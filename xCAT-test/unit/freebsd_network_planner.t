@@ -264,6 +264,43 @@ subtest 'management migration requires the existing IPv4 identity' => sub {
     done_testing();
 };
 
+subtest 'management migration retains the IPv6 identity across equivalent spellings' => sub {
+    my $environment = chain();
+    $environment->{NICTYPES} =~ s/vtnet1/vtnet0/gx;
+    $environment->{NICDEVICES} =~ s/vtnet1/vtnet0/gx;
+    $environment->{IPADDR} = '2001:DB8:1::10';
+    my ($denied, undef, $error) = compile_plan($environment);
+    isnt($denied, 0, 'default invocation cannot move the IPv6 management address');
+    like($error, qr/confignetwork[ ]-s/x, 'the explicit management option is required');
+    my ($status, $plan, $diagnostic) = compile_plan($environment, 1);
+    is($status, 0, 'the declared topology retains the IPv6 management address') or diag($diagnostic);
+    ok(grep({ $_->[0] eq 'A' && $_->[1] eq 'bridge0' && $_->[2] eq 'inet6' &&
+            $_->[3] eq '2001:0db8:0001:0000:0000:0000:0000:0010' } @{rows($plan, 'A')}),
+        'the IPv6 identity moves to the bridge');
+    $environment->{IPADDR} = '2001:db8:1::11';
+    my ($missing) = compile_plan($environment, 1);
+    isnt($missing, 0, 'the management option cannot discard the IPv6 node address');
+};
+
+subtest 'management endpoints use the shared unicast address validation' => sub {
+    for my $case (
+        ['192.0.2.10', '192.0.2.10'],
+        ['2001:DB8::10', '2001:0db8:0000:0000:0000:0000:0000:0010'],
+        ['fd23:1::a', 'fd23:0001:0000:0000:0000:0000:0000:000a'],
+    ) {
+        my ($status, $output, $error) = invoke({XCAT_ADDRESS => $case->[0]}, '-v', 'mode=endpoint');
+        is($status, 0, 'a unicast endpoint is accepted') or diag($error);
+        is($output, "$case->[1]\n", 'the endpoint has one normalized representation');
+    }
+    for my $bad ('', '192.0.02.10', '999.0.2.1', '127.0.0.1', '224.0.0.1',
+        '::', '::1', 'fe80::1', 'fe80::1%vtnet0', 'ff02::1', '::ffff:192.0.2.1',
+        '[2001:db8::1]', '2001:db8:::1', "2001:db8::1\n2001:db8::2") {
+        my ($status, $output) = invoke({XCAT_ADDRESS => $bad}, '-v', 'mode=endpoint');
+        isnt($status, 0, 'an invalid or unsupported management endpoint is rejected');
+        is($output, '', 'rejection emits no usable endpoint');
+    }
+};
+
 my @invalid = (
     ['duplicate interface', sub { $_[0]{NICTYPES} .= ',vtnet1!ethernet'; }, qr/Duplicate[ ]NICTYPES/x],
     ['missing type', sub { $_[0]{NICTYPES} = ''; }, qr/nictypes/x],
