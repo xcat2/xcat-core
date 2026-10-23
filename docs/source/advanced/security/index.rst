@@ -7,6 +7,7 @@ The security of a system covers a wide range of elements, from the security of s
    :maxdepth: 2
 
    fips.rst
+   selinux.rst
    ssl_config.rst
    security.rst
    apache_hardening.rst

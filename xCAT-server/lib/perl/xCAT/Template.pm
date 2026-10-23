@@ -19,6 +19,7 @@ use xCAT::NetworkUtils;
 use xCAT::SvrUtils;
 use xCAT::PasswordUtils;
 use xCAT::MsgUtils;
+use xCAT::SELinux;
 use XML::Simple;
 
 BEGIN
@@ -459,6 +460,12 @@ sub subvars {
         $inc =~ s/#CRYPTORLOCKED:([^:]+):([^:]+):([^#]+)#/crydb_or_locked($1,$2,$3)/eg;
         $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
         $inc =~ s/#KICKSTARTNET#/kickstartnetwork($platform)/eg;
+        if ($inc =~ /#SELINUX(?:MODE|RELABEL)#/) {
+            my $selinux = xCAT::SELinux->node_modes([$node])->{$node};
+            $inc =~ s/#SELINUXMODE#/$selinux/g;
+            my $relabel = xCAT::SELinux->kickstart_relabel($selinux);
+            $inc =~ s/#SELINUXRELABEL#/$relabel/g;
+        }
         $inc =~ s/#MIRRORSPEC#/mirrorspec()/eg;
         $inc =~ s/#YAST2NET#/yast2network()/eg;
         $inc =~ s/#KICKSTARTBOOTLOADER#/kickstartbootloader()/eg;
