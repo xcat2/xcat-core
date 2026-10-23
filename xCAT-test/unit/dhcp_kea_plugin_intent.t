@@ -2472,9 +2472,7 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 
     my %by_hostname = map { $_->{hostname} => $_ } @$reservations;
     my $grub2 = $by_hostname{nodev6};
-    # The first three UUID fields are reversed, because that is what a UEFI client sends --
-    # see kea_duid_from_uuid. This expectation held the canonical spelling and so agreed with a
-    # DUID no firmware ever presents.
+    # Without mac.duid the first three UUID fields are reversed, as EDK2 firmware sends them.
     is( $grub2->{duid}, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation matches the DUID-UUID a UEFI client sends' );
     is( $grub2->{'option-data'}[0]{name}, 'bootfile-url', 'grub2 reservation carries RFC 5970 bootfile-url' );
     is( $grub2->{'option-data'}[0]{data}, 'tftp://[2001:db8::1]/boot/grub2/grub2-nodev6', 'grub2 bootfile URL uses the IPv6-facing xCAT server and bracketed authority' );
