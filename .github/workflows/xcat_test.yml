@@ -49,6 +49,7 @@ jobs:
           sudo cp -R xCAT-test xCAT-server perl-xCAT xCAT "$workdir/"
           status=0
           sudo sh -c 'cd "$1" && bats xCAT-test/native/getinstdisk_selection.bats' sh "$workdir" || status=1
+          sudo sh -c 'cd "$1" && bats xCAT-test/native/syslog_log_directory.bats' sh "$workdir" || status=1
           sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_installer.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t xCAT-test/native/remoteshell_credentials.t' sh "$workdir" || status=1
           exit "$status"
       - name: Prepare xCAT syslog directory
