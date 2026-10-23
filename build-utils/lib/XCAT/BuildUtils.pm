@@ -49,6 +49,7 @@ our @EXPORT_OK = qw(
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
     fips_policy_artifacts fips_policy_plan sync_fips_policy
+    package_skip_reason
 );
 
 # Both builders echo the commands they run under --verbose.  Set once, after
@@ -804,6 +805,32 @@ sub cancel_build {
         return;
     }
     sub DESTROY { shift->release }
+}
+
+# The packages a target does not build, and why. Each rule names the package and
+# the target-name prefixes that do not build it.
+#
+# openSUSE ships no legacy Genesis. Operator decision, 2026-10-22. The payload manifest
+# verify-genesis-payload checks is written for EL: on opensuse-leap-15.6-x86_64 it reports 566
+# missing zoneinfo/posix paths, etc/redhat-release and 45 EL paths and tool names, so the package
+# cannot be built there and under that decision does not need to be.
+my @PACKAGE_SKIPS = (
+    {   package  => 'xCAT-genesis-base',
+        prefixes => ['opensuse-'],
+        reason   => 'openSUSE ships no legacy Genesis',
+    },
+);
+
+# Why $pkg is not built for $target, or undef when the pair is built.
+sub package_skip_reason {
+    my ($pkg, $target) = @_;
+    return undef unless defined($pkg) && defined($target);
+    for my $skip (@PACKAGE_SKIPS) {
+        next unless $pkg eq $skip->{package};
+        return $skip->{reason}
+            if grep { index($target, $_) == 0 } @{ $skip->{prefixes} };
+    }
+    return undef;
 }
 
 sub openeuler_build_target {
