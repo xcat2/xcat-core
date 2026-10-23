@@ -64,6 +64,20 @@ foreach my $guest (qw(rootimg rootimg-statelite)) {
     like($text{$repair}, qr/\Q$guest\E/, "$repair names the $guest tree");
 }
 
+# The order of the repair is what makes it work. A relabel before the guest
+# exclusions writes a generic type over the guest labels, and an artifact
+# mapping read before them loses to them.
+my $exclusion = index($text{$repair}, "-t '<<none>>'");
+my $artifact  = index($text{$repair}, '-f f');
+my $relabel   = index($text{$repair}, 'restorecon -R');
+my $last_map  = rindex($text{$repair}, 'semanage fcontext -a');
+cmp_ok($exclusion, '>', 0, "$repair excludes the guest trees with <<none>>");
+cmp_ok($artifact, '>', $exclusion,
+    "$repair maps a published artifact after the guest exclusions");
+cmp_ok($relabel, '>', $last_map, "$repair relabels after the last mapping");
+my $relabels = () = $text{$repair} =~ /restorecon -R/g;
+is($relabels, 1, "$repair relabels once, and it relabels $relabels time(s)");
+
 my $fc = read_text("$root/xCAT-selinux/xcat.fc");
 unlike($fc, qr/chcon/, 'xcat.fc advises no chcon');
 like($fc, qr/semanage fcontext/, 'xcat.fc names the command that maps a path');

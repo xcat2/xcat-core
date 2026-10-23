@@ -242,7 +242,21 @@ sub scenario {
     my %before = map { (my $p = $_) =~ s{/$}{}; ($p => $labels{$_}) } keys %labels;
     my @artifacts = map { "$imgroot/$_" } @published;
 
-    $repair->();
+    # The documented sequence runs restorecon itself, and where it runs decides
+    # what the operator gets. Give the procedure the relabel, so the order of
+    # the mappings and the relabel is what this measures.
+    my $relabel = sub {
+        my ($target) = @_;
+        run('setfiles', '-F', '-r', $root, merged_contexts(), "$root$target");
+    };
+    $repair->($relabel);
+
+    # A guest label the procedure overwrote cannot be recovered by a mapping
+    # added afterwards, so read the guest trees before anything else.
+    foreach my $path (@guest) {
+        is(label_of($root, $path), $before{$path},
+            "$name: after the repair $path keeps $before{$path}");
+    }
 
     # The repair is applied with restorecon, which reads the store. setfiles
     # reads a file, so assert the two answer the same before relying on it.
@@ -252,22 +266,19 @@ sub scenario {
             "$name: the merged contexts answer for $path what the store answers");
     }
 
-    foreach my $path (@artifacts) {
-        is(lookup($path), 'public_content_t', "$name: the repair maps $path");
-    }
-    foreach my $path (@guest) {
-        is(lookup($path), '<<none>>', "$name: the repair leaves $path out");
-    }
-
     foreach my $step ('repair', 'host relabel', 'policy upgrade') {
-        install_module() if $step eq 'policy upgrade';
-        $fc = merged_contexts();
-        run('setfiles', '-F', '-r', $root, $fc, "$root$installdir");
+        if ($step ne 'repair') {
+            install_module() if $step eq 'policy upgrade';
+            $relabel->($installdir);
+        }
         foreach my $path (@artifacts) {
+            is(lookup($path), 'public_content_t',
+                "$name: after the $step the mapping of $path is public_content_t");
             is(label_of($root, $path), 'public_content_t',
                 "$name: after the $step $path is public_content_t");
         }
         foreach my $path (@guest) {
+            is(lookup($path), '<<none>>', "$name: after the $step $path is left out");
             is(label_of($root, $path), $before{$path},
                 "$name: after the $step $path keeps $before{$path}");
         }
@@ -282,9 +293,11 @@ scenario(
     '/install',
     '/install/netboot/rootimg/rhels9/x86_64/compute',
     sub {
+        my ($relabel) = @_;
         add_mapping('public_content_t',
             "/install/netboot/rootimg/rhels9/x86_64/compute/$_", 'f')
             foreach @expressions;
+        $relabel->('/install/netboot/rootimg/rhels9/x86_64/compute');
     });
 
 # site.installdir selects the publication directory, and the packaged mappings
@@ -295,9 +308,31 @@ scenario(
     '/srv/xcat-install',
     '/srv/xcat-install/netboot/custom-image',
     sub {
+        my ($relabel) = @_;
         add_mapping('public_content_t', '/srv/xcat-install(/.*)?');
         add_mapping('<<none>>', '/srv/xcat-install(/.*)?/rootimg(/.*)?');
         add_mapping('<<none>>', '/srv/xcat-install(/.*)?/rootimg-statelite(/.*)?');
+        $relabel->('/srv/xcat-install');
     });
+
+# The whole documented sequence, on the layout that needs every step of it: the
+# publication directory is moved, so no mapping covers the tree until the
+# procedure adds one, and the image root carries a rootimg component in the
+# middle, so the guest exclusion matches the published artifacts as well.
+#
+# Order decides both answers. A relabel before the exclusions exist writes a
+# generic type over the guest labels, and a mapping added afterwards only stops
+# a later relabel from changing what is already wrong. An artifact mapping
+# added before the exclusions loses to them, because the later expression wins.
+my $moved   = '/srv/xcat-images';
+my $midpath = "$moved/netboot/rootimg/rhels9/x86_64/compute";
+scenario('full sequence', $moved, $midpath, sub {
+    my ($relabel) = @_;
+    add_mapping('public_content_t', "$moved(/.*)?");
+    add_mapping('<<none>>',         "$moved(/.*)?/rootimg(/.*)?");
+    add_mapping('<<none>>',         "$moved(/.*)?/rootimg-statelite(/.*)?");
+    add_mapping('public_content_t', "$midpath/$_", 'f') foreach @expressions;
+    $relabel->($moved);
+});
 
 done_testing();
