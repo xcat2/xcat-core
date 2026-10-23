@@ -12,12 +12,13 @@ use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 
 BEGIN {
-    for my $module (qw(Scope MsgUtils BootUtils TableUtils ServiceNodeUtils Usage Table NetworkUtils)) {
+    for my $module (qw(Scope MsgUtils BootUtils TableUtils ServiceNodeUtils Usage Table)) {
         $INC{"xCAT/$module.pm"} = 1;
     }
 }
 
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 
 {
     package xCAT::Table;
@@ -51,11 +52,17 @@ use xCAT::Utils;
     sub getSNandCPnodes { push @{ $_[3] }, @{ $_[1] }; return; }
     sub getSNformattedhash { return {manager => $_[1]}; }
     package xCAT::NetworkUtils;
-    our ($local, %addresses, @lookups, @facing, %off_subnet);
+    no warnings 'redefine';
+    our ($local, %addresses, %addresses6, @lookups, @facing, %off_subnet);
     sub getipaddr {
         my ($class, $name, %options) = @_;
-        push @lookups, [$name, $options{OnlyV4}];
-        return $addresses{$name};
+        push @lookups, [$name, $options{OnlyV4}, $options{OnlyV6}];
+        my $address = $name =~ /\A[0-9a-f:.]+\z/ix ? $name : $addresses{$name};
+        $address = $addresses6{$name} if $options{OnlyV6} && exists($addresses6{$name});
+        return unless defined($address);
+        return if $options{OnlyV4} && $address =~ /:/x;
+        return if $options{OnlyV6} && $address !~ /:/x;
+        return $address;
     }
     sub thishostisnot { return $_[1] ne $local; }
     sub my_ip_facing { return (0, @facing); }
@@ -101,8 +108,10 @@ sub fixture {
     %xCAT::TableUtils::site = (master => 'manager', sharedtftp => 'no', disjointdhcps => 0);
     %xCAT::NetworkUtils::addresses = (
         manager => '192.0.2.1', sn1 => '192.0.2.2', alias1 => '192.0.2.2', sn2 => '192.0.2.3',
+        node1 => '198.51.100.10', node2 => '192.0.2.10',
         '192.0.2.1' => '192.0.2.1', '192.0.2.2' => '192.0.2.2', '192.0.2.3' => '192.0.2.3',
     );
+    %xCAT::NetworkUtils::addresses6 = ();
     $xCAT::NetworkUtils::local = '192.0.2.1';
     @xCAT::NetworkUtils::facing = ('192.0.2.1');
     %xCAT::NetworkUtils::off_subnet = ();
