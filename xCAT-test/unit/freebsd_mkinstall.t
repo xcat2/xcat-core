@@ -84,13 +84,14 @@ use xCAT::NetworkUtils;
     no warnings 'redefine';
     our (%addresses, @facing, $forwarding);
     sub getipaddr {
-        my ($class, $name) = @_;
-        return $addresses{$name} if exists($addresses{$name});
-        return $name if $name =~ /\A(?:\d+\.){3}\d+\z/;
-        return $name if $name =~ /\A[0-9a-f]*:[0-9a-f:]+\z/;
-        return;
+        my ($class, $name, %options) = @_;
+        my $address = exists($addresses{$name}) ? $addresses{$name} :
+            $name =~ /\A(?:\d+\.){3}\d+\z|\A[0-9a-f]*:[0-9a-f:]+\z/x ? $name : undef;
+        return unless defined($address);
+        return if ($options{OnlyV4} && $address =~ /:/x) || ($options{OnlyV6} && $address !~ /:/x);
+        return $address;
     }
-    sub thishostisnot { return $_[1] ne '192.0.2.1' && $_[1] ne '198.51.100.1'; }
+    sub thishostisnot { return $_[1] ne '192.0.2.1' && $_[1] ne '198.51.100.1' && $_[1] ne '2001:db8:1::1'; }
     sub my_ip_facing { return @facing; }
     sub ip_forwarding_enabled { return $forwarding; }
     sub gethostnameandip () { return ('mn', '192.0.2.1'); }
@@ -131,6 +132,7 @@ sub fixture {
     my $network_contract = shift;
     my $disk_record_contract = shift;
     my $disk_selection_contract = shift;
+    my $ipv6_contract = shift;
     $root = "$temporary/case-" . ++$sequence;
     $xCAT::TableUtils::installroot = "$root/install-files";
     $xCAT::TableUtils::tftpdir = "$root/tftp";
@@ -186,6 +188,7 @@ sub fixture {
         (defined($install_contract) ? (install_contract => $install_contract) : ()),
         (defined($postscript_contract) ? (postscript_contract => $postscript_contract) : ()),
         (defined($network_contract) ? (network_contract => $network_contract) : ()),
+        (defined($ipv6_contract) ? (ipv6_contract => $ipv6_contract) : ()),
         (defined($disk_record_contract) ? (disk_record_contract => $disk_record_contract) : ()),
         (defined($disk_record_contract) || defined($disk_selection_contract)
             ? (disk_selection_contract => 'xcat-freebsd-disk-selection-1') : ()),
@@ -357,6 +360,23 @@ sub boot_only_rejection {
 
 subtest 'boot-only media cannot arm a legacy installation' => \&boot_only_rejection;
 
+sub ipv6_network_fixture {
+    $xCAT::NetworkUtils::addresses{node1} = '2001:db8:1::10';
+    $xCAT::Table::rows{noderes}{node1}{xcatmaster} = '2001:db8:1::1';
+    $xCAT::Table::rows{noderes}{node1}{tftpserver} = '192.0.2.1';
+    @xCAT::Table::networks = ({net => '2001:db8:1::', mask => '/64', mtu => '1500', domain => 'example.test'});
+    $xCAT::TableUtils::site{nameservers} = '2001:db8:1::1';
+}
+
+subtest 'older media rejects an IPv6-only node before arming' => sub {
+    fixture();
+    ipv6_network_fixture();
+    my ($boot, $errors) = install();
+    like($errors->[0]{node}[0]{error}[0], qr/xcat-freebsd-ipv6-1/x, 'the public command names the missing media capability');
+    is($prepare_count, 0, 'unsupported media cannot prepare a destructive install');
+    ok(!exists($boot->{node1}) && !-e "$root/tftp/xcat/freebsd/node1", 'rejection leaves no boot entry');
+};
+
 subtest 'pkgbase installation publishes a native source-bound package plan' => sub {
     plan(skip_all => 'Native pkg, solver and Linux container root are required')
       unless $^O eq 'linux' && $> == 0 && defined($ENV{XCAT_FREEBSD_NATIVE_PKG})
@@ -418,6 +438,22 @@ subtest 'pkgbase installation publishes a native source-bound package plan' => s
     my $published = sub {
         my $current = xCAT::FreeBSDInstall::state('node1', directory => $state_directory);
         return ($current, read_file("$root/install-files/autoinst/freebsd/node1/$current->{generation}.conf"));
+    };
+    subtest 'IPv4 bootstrap publishes an IPv6 installer and controller' => sub {
+        $fresh->('xcat-freebsd-install-6', undef, 'xcat-freebsd-bootstrap-1', undef, undef, 'xcat-freebsd-ipv6-1');
+        ipv6_network_fixture();
+        my ($boot, $errors) = install();
+        is_deeply($errors, [], 'the public command prepares IPv6 pkgbase installation') or diag(explain($errors));
+        return if @$errors;
+        my ($current, $content) = $published->();
+        like($content, qr/^master=2001:db8:1::1$/mx, 'status reports select the IPv6 controller');
+        like($content, qr{^install_url=http://\[2001:db8:1::1\]:80/install$}mx, 'package URLs bracket the IPv6 endpoint');
+        like($content, qr/^ipv6=2001:db8:1::10\nipv6_prefix=64$/mx, 'the resolved address uses its matching network prefix');
+        like($content, qr/^ipv4=\nnetmask=\ngateway=$/mx, 'the installed OS does not inherit a DHCPv4 lease');
+        my $text = read_file("$root/tftp/xcat/freebsd/node1/boot/loader.conf");
+        like($text, qr{\Qhttp://192.0.2.1:80/install/autoinst/freebsd/node1/$current->{generation}.conf\E}x,
+            'initial configuration retrieval remains available over IPv4');
+        like($text, qr/\Q@{[sha256_hex($content)]}\E/x, 'the loader pins the IPv6 configuration before it is applied');
     };
     subtest 'public preparation reuses the retained OS identities' => sub {
         $fresh->('xcat-freebsd-install-3', undef, undef, 'xcat-freebsd-os-disks-1');

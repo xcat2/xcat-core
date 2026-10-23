@@ -168,6 +168,21 @@ subtest 'early networking requires its helpers and native kernel modules' => sub
     my $boot_media = eval { xCAT::FreeBSDImage::inspect_media($boot_source); };
     is($@, '', 'the complete early network runtime is accepted');
     is($boot_media && $boot_media->{network_contract}, 'xcat-freebsd-bootstrap-1', 'verified capability reaches the caller');
+    $boot_manifest->{ipv6_contract} = 'xcat-freebsd-ipv6-1';
+    write_manifest($boot_source, $boot_manifest);
+    $boot_media = eval { xCAT::FreeBSDImage::inspect_media($boot_source); };
+    is($@, '', 'the complete runtime admits IPv6 installation');
+    is($boot_media && $boot_media->{ipv6_contract}, 'xcat-freebsd-ipv6-1', 'the verified IPv6 contract reaches provisioning');
+    for my $unsupported ('unknown', '', undef, []) {
+        $boot_manifest->{ipv6_contract} = $unsupported;
+        write_manifest($boot_source, $boot_manifest);
+        ok(!eval { xCAT::FreeBSDImage::inspect_media($boot_source); 1 }, 'unknown IPv6 media capabilities are rejected');
+    }
+    $boot_manifest->{ipv6_contract} = 'xcat-freebsd-ipv6-1';
+    delete $boot_manifest->{network_contract};
+    write_manifest($boot_source, $boot_manifest);
+    ok(!eval { xCAT::FreeBSDImage::inspect_media($boot_source); 1 }, 'IPv6 cannot omit its network runtime contract');
+    $boot_manifest->{network_contract} = 'xcat-freebsd-bootstrap-1';
     for my $missing (@network) {
         replace_runtime($boot_source, $boot_manifest, runtime_descriptor(grep { $_ ne $missing } @network));
         my $incomplete = eval { xCAT::FreeBSDImage::inspect_media($boot_source); };
