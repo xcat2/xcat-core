@@ -30,7 +30,9 @@ Scope and requirements
   ``/boot``, GELI encryption, GEOM/UFS mirrors and Linux ZFS provisioning are
   outside this implementation. See :ref:`freebsd-future-root-encryption` for
   the deferred encrypted-root work.
-* Use IPv4 and one provisioning address anchored to the selected physical MAC.
+* Use IPv4 for firmware, loader and initial configuration retrieval.
+  The installer and installed node can use an IPv4 or IPv6 management address;
+  see :ref:`freebsd-ipv6-provisioning`.
   The installer can use a VLAN, LAGG or bridge; see :ref:`freebsd-early-network`.
   After disk boot, ``confignetwork`` can configure additional interfaces, static addresses
   and reserved DHCPv4/DHCPv6 leases. Native IPoIB data interfaces are described
@@ -40,6 +42,7 @@ Scope and requirements
   same xCAT node. Status callbacks must retain that source address without NAT.
 * Use a fixed ``xcatmaster`` or a service-node pool. A pool selects one owner
   when the installer begins; see :ref:`service-node pools <freebsd-service-pools>`.
+  Service-node pools require IPv4.
 * Each eligible owner must serve DHCP, TFTP and HTTP. Remote file-service
   offload and management-node high availability are outside this path.
   Service-node pools require ``site.sharedtftp=0`` and independent TFTP directories.
@@ -528,6 +531,7 @@ For early installer VLAN, LAGG or bridge configuration, also supply
 ``--network-planner PATH`` before the five positional arguments. Copy the
 matching ``xCAT/postscripts/confignetwork-freebsd.awk`` to that path on the
 FreeBSD build host. The image then advertises ``xcat-freebsd-bootstrap-1``
+and ``xcat-freebsd-ipv6-1``
 and binds the shared planner, bootstrap helper and required kernel modules
 into its runtime manifest.
 
@@ -1329,10 +1333,11 @@ InfiniBand interfaces, VLANs, native LAGG failover or LACP, and Ethernet bridges
 Ethernet interfaces can carry static IPv4 and IPv6 addresses or reserved DHCP
 leases. InfiniBand uses the native IPoIB stack; see :ref:`freebsd-infiniband`.
 
-Provisioning uses IPv4. The mfsBSD installer can create a VLAN, LAGG or bridge
+Provisioning starts over IPv4. The mfsBSD installer can create a VLAN, LAGG or bridge
 before downloading its configuration; see :ref:`freebsd-early-network`.
 The firmware must first load the boot payload through its supported network.
-IPv6-only provisioning remains outside this path.
+After initial configuration retrieval, the installer can use IPv6;
+see :ref:`freebsd-ipv6-provisioning`.
 SLAAC address assignment, tunnels and switch configuration are outside this
 adapter. IPv6 router advertisements can supply routes for a DHCPv6 interface.
 
@@ -1497,7 +1502,7 @@ By default, the postscript preserves the installation interface. Use
 
     updatenode node01 -P 'confignetwork -s'
 
-The topology must retain the node's existing IPv4 address on the installation
+The topology must retain the node's existing management address on the installation
 interface or one of its descendants. Configure the corresponding switch ports
 before migrating management traffic. Retain console access during the change.
 Continue using ``-s`` for subsequent updates after adopting that interface.
@@ -1506,7 +1511,8 @@ The existing ``site.setinstallnic=1`` or ``yes`` setting also enables this mode.
 The adapter validates the full plan before changing interfaces. It rejects
 overlapping subnets, conflicting membership, unmanaged dependencies and missing
 devices. It applies the plan in dependency order, reads back addresses and
-routes, and checks the controller connection from the node's IPv4 address.
+routes, and checks the controller connection from the node's management address.
+The controller and node endpoints must use the same address family.
 Only then does it save the managed block in ``/etc/rc.conf``. Verify traffic
 on each data network separately.
 
@@ -1790,7 +1796,7 @@ The loader carries a bounded data description. The installer validates the
 complete graph and physical MACs before creating interfaces, then applies
 ``bootstrap=dhcp`` or ``bootstrap=static`` to the selected interface. The
 downloaded configuration must match the loader description. Native interface
-and IPv4 readback must pass before disk installation starts. The installed
+and address readback must pass before disk installation starts. The installed
 system retains this topology with the node's static management address and
 records it as xCAT-managed configuration. Use ``confignetwork -s`` to update
 this management topology, its addresses, DHCP policy and routes.
@@ -1802,18 +1808,69 @@ require ``MACADDR``.
 The firmware and loader still need a working path to fetch the boot payload.
 This setting configures the FreeBSD kernel stage; it does not configure PXE
 firmware, switch VLANs, LACP fallback or switch port channels. Configure those
-prerequisites separately. IPv6-only provisioning and Linux-specific bond
+prerequisites separately. IPv6-only firmware bootstrap and Linux-specific bond
 modes or initramfs command-line syntax are outside this adapter.
+
+.. _freebsd-ipv6-provisioning:
+
+IPv6 installation and management
+--------------------------------
+
+An IPv6 management identity can use IPv6 for package downloads, installation
+status, first-boot reports, postscripts and ``updatenode``. The firmware,
+FreeBSD loader and initial configuration download still use IPv4.
+This path requires a fixed owner and an image with ``xcat-freebsd-ipv6-1``.
+Build the pkgbase image with ``--network-planner`` and import it with ``copycds``.
+``nodeset`` rejects older media before preparing the installation.
+
+xCAT selects IPv4 when the node name has an A record. To select IPv6, give
+the management name only an AAAA record and a matching reverse record.
+Define exactly one matching IPv6 ``networks`` entry with a prefix from 1 through
+128 and an MTU from 1280 through 9216. Select IPv6 addresses for ``xcatmaster``,
+``nfsserver`` and DNS servers. The owner must serve the HTTP package repository.
+Specify a local IPv4 ``tftpserver`` for bootstrap. For example::
+
+    chdef node01 xcatmaster=2001:db8:1::1 nfsserver=2001:db8:1::1 \
+        tftpserver=192.0.2.1 nameservers=2001:db8:1::53
+
+The installer uses static IPv6 settings from the node identity and ``networks``.
+Installation endpoints and gateways must be unscoped unicast addresses.
+An off-subnet owner or HTTP server requires a gateway in the node's IPv6 subnet.
+The installer does not accept a link-local gateway.
+
+Set ``bootstrap=dhcp`` in the protected image settings file. Provide an IPv4
+reservation for the selected physical MAC through a separate bootstrap name.
+The existing ``mac`` alias syntax can supply this reservation without adding
+an A record to the management name. If ``node01-boot`` resolves to the reserved
+IPv4 address, configure both identities with::
+
+    chdef node01 'mac=52:54:00:00:00:01|52:54:00:00:00:01!node01-boot'
+    makedhcp node01
+
+Keep the bootstrap name in DNS or the controller's hosts file. The reservation
+uses the real node's native FreeBSD boot policy. The installer discards this
+temporary IPv4 configuration when it writes the installed system.
+``bootstrap_interface`` can select the same VLAN, LAGG or bridge described above.
+
+Enable IPv6 on the Linux controller and install its IPv6 socket dependencies.
+On Debian and Ubuntu, install ``libio-socket-inet6-perl`` and ``libsocket6-perl``,
+then restart ``xcatd``. Verify IPv6 access to HTTP, SSH and ``site.xcatiport``.
+When xCAT manages IPv6 DHCP subnets, install the selected backend's DHCPv6 daemon
+and regenerate its configuration with ``makedhcp -n``.
+
+IPv6 service-node pools, IPv6-only firmware bootstrap and a different dual-stack
+address preference are outside this path. Installed-node DHCPv6 settings remain
+separate from the installer's static IPv6 configuration.
 
 Bootstrap, console and boot options
 -----------------------------------
 
 The settings file accepts ``bootstrap=dhcp`` or ``bootstrap=static``. DHCP is
-the default. Static mode passes the node's address, netmask and gateway through
+the default. Static mode passes the node's IPv4 address, netmask and gateway through
 the loader handoff, so the installer can fetch its configuration without DHCP.
 The preceding PXE/xNBA boot still needs the normal network-boot services.
 Both modes configure the installed target with static network settings from
-the xCAT database.
+the xCAT database. IPv6 installation requires DHCPv4 bootstrap.
 
 Set the serial console through the node's ``nodehm`` attributes::
 
