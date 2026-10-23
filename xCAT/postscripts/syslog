@@ -36,11 +36,15 @@ master=$MASTER
 # The legacy rsyslog forwarding syntax treats a colon after the target as the
 # port separator.  Bracket IPv6 literals so the complete address is passed to
 # the resolver, while preserving the existing output for hostnames and IPv4.
+# A COLON DOES NOT MEAN IPv6. site.master may carry a port, and an IPv4 address
+# or a hostname with one has exactly one colon, while an IPv6 literal has at
+# least two. Bracketing on any colon rendered @[127.0.0.1:1515], which rsyslog
+# does not accept.
 format_syslog_forward_target()
 {
   case "$1" in
-    \[*\]) printf '%s\n' "$1" ;;
-    *:*)   printf '[%s]\n' "$1" ;;
+    \[*)   printf '%s\n' "$1" ;;
+    *:*:*) printf '[%s]\n' "$1" ;;
     *)     printf '%s\n' "$1" ;;
   esac
 }
@@ -50,8 +54,9 @@ format_syslog_forward_target()
 syslog_ng_udp_driver()
 {
   case "$1" in
-    *:*) printf '%s\n' 'udp6' ;;
-    *)   printf '%s\n' 'udp' ;;
+    \[*:*:*\]*) printf '%s\n' 'udp6' ;;
+    *:*:*)      printf '%s\n' 'udp6' ;;
+    *)          printf '%s\n' 'udp' ;;
   esac
 }
 
