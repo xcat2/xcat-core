@@ -1,0 +1,42 @@
+#!/bin/sh
+set -e
+
+state_dir=/var/lib/xcat/configure-state
+
+case "$1" in
+    install) context=fresh ;;
+    upgrade) context=upgrade ;;
+    abort-upgrade) context= ;;
+    *) echo "preinst called with unknown argument: $1" >&2; exit 1 ;;
+esac
+
+if [ -n "$context" ]; then
+    if [ -L "$state_dir" ] || [ -L "$state_dir/context" ] ||
+       { [ -e "$state_dir" ] && [ ! -d "$state_dir" ]; }; then
+        echo "Invalid xCAT configuration state directory: $state_dir" >&2
+        exit 1
+    fi
+    # dpkg skips prerm when the previous package was only unpacked.
+    if [ "$context" = upgrade ] && [ ! -f /tmp/xCAT_upgrade.tmp ]; then
+        if [ -f "$state_dir/context" ]; then
+            context=$(cat "$state_dir/context")
+            case "$context" in
+                fresh|upgrade) ;;
+                *) echo "Invalid xCAT configuration context in $state_dir/context: $context" >&2; exit 1 ;;
+            esac
+        else
+            context=fresh
+        fi
+    fi
+    mkdir -p -m 700 "$state_dir"
+    chmod 700 "$state_dir"
+    temporary=$(mktemp "$state_dir/context.XXXXXX")
+    trap 'rm -f "$temporary"' EXIT
+    trap 'exit 1' HUP INT TERM
+    printf '%s\n' "$context" > "$temporary"
+    mv -f "$temporary" "$state_dir/context"
+fi
+
+#DEBHELPER#
+
+exit 0

@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|purge|abort-install|disappear)
+        state_dir=/var/lib/xcat/configure-state
+        if [ -L "$state_dir" ]; then
+            echo "Invalid xCAT configuration state directory: $state_dir" >&2
+            exit 1
+        fi
+        rm -f "$state_dir/context" "$state_dir"/context.* /tmp/xCAT_upgrade.tmp
+        rmdir "$state_dir" 2>/dev/null || :
+        ;;
+    upgrade|failed-upgrade|abort-upgrade) ;;
+    *) echo "postrm called with unknown argument: $1" >&2; exit 1 ;;
+esac
+
+#DEBHELPER#
+
+exit 0
