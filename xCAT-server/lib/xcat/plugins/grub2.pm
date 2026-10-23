@@ -5,6 +5,7 @@ use Sys::Syslog;
 use xCAT::Scope;
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::DHCP::BootPolicy;
 use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
@@ -363,9 +364,14 @@ sub setstate {
         return (1, "Stop grub2 configuration for this node, \"$grub2bin\" does not exits.");
     }
 
+    # grub2-<node> stays for DHCP configurations that makedhcp did not write.
+    my @loaders = ("grub2-$node");
+    my $dhcp_loader = xCAT::DHCP::BootPolicy->grub2_node_loader(node => $node, arch => $nodearch);
+    push @loaders, $dhcp_loader if ($dhcp_loader ne $loaders[0]);
+
     chdir("$bootloader_root");
     if ($cref->{currstate} eq "offline" or $cref->{currstate} eq "boot") {
-        unlink("grub2-$node");
+        unlink(@loaders);
     } elsif ($cref->{currstate} eq "standby" and $nodeos =~ /^sle/i) {
         my $os_version = $nodeos;
         $os_version =~ s/sles//i; # Strip sles if there
@@ -373,10 +379,12 @@ sub setstate {
         if ($os_version >= "15") {
             # Make sure for SLES15 or higher can still boot 
             # from disk in "standby" state
-            unlink("grub2-$node");
+            unlink(@loaders);
         }
-    } elsif (! -e "grub2-$node") {
-        symlink("grub2." . $nodearch, "grub2-$node");
+    } else {
+        foreach my $loader (grep { !-e $_ } @loaders) {
+            symlink("grub2." . $nodearch, $loader);
+        }
     }
 
     my $ip = xCAT::NetworkUtils->getipaddr($node, OnlyV4 => 1);

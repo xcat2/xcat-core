@@ -112,6 +112,14 @@ is_lsb_ubuntu ()
     #         failure (not Ubuntu), which is the correct outcome.
 }
 
+set_log_directory_owner()
+{
+  local mode=$1
+  shift
+  mkdir -p -m "$mode" /var/log/xcat || exit $?
+  chown "$@" /var/log/xcat
+}
+
 config_Rsyslog_C3()
 {
   isReceiving=0
@@ -156,7 +164,7 @@ config_Rsyslog_C3()
         touch /var/log/messages
         chown syslog:adm /var/log/messages
         sed -i 's/\$PrivDropToGroup syslog/\$PrivDropToGroup adm/' $2
-        chown syslog:adm /var/log/xcat
+        set_log_directory_owner 0750 syslog:adm
       fi
   else
       sed -i 's/^\(\*\..*\)/\#\1/;
@@ -315,7 +323,7 @@ config_rsyslog_V8()
     if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
       chown syslog:adm /var/log/messages
       sed -i 's/\$PrivDropToGroup syslog/\$PrivDropToGroup adm/' $conf_file
-      chown syslog:adm /var/log/xcat
+      set_log_directory_owner 0750 syslog:adm
     fi
 
     # Mark the start of xCAT section
@@ -552,7 +560,7 @@ else
     touch  /var/log/messages
     if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
       chown --reference=/var/log /var/log/messages
-      chown --reference=/var/log /var/log/xcat
+      set_log_directory_owner "$(stat -c %a /var/log)" --reference=/var/log
     fi
     if [ $ng -eq 0 ]; then
       if [ ! -f $conf_file.XCATORIG ]; then
