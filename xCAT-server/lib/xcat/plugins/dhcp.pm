@@ -3821,10 +3821,12 @@ sub kea_build_node_reservations6
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
     my $vpdtab = xCAT::Table->new('vpd', -create => 0);
+    my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
 
-    $nrhash = $nrtab ? $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'xcatmaster', 'servicenode' ]) : undef;
+    $nrhash = $nrtab ? $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'xcatmaster', 'servicenode', 'tftpdir' ]) : undef;
     $machash = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
     $vpdhash = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
+    $nodetypeents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, ['arch']) : undef;
 
     my @reservations;
     foreach my $node (@$nodes) {
@@ -4365,6 +4367,7 @@ sub kea_node_reservations6
     my $nrent = $nrhash && $nrhash->{$node} ? $nrhash->{$node}->[0] : undef;
     my $macent = $machash && $machash->{$node} ? $machash->{$node}->[0] : undef;
     my $vpdent = $vpdhash && $vpdhash->{$node} ? $vpdhash->{$node}->[0] : undef;
+    my $ntent = $nodetypeents && $nodetypeents->{$node} ? $nodetypeents->{$node}->[0] : undef;
 
     unless ($macent and $macent->{mac}) {
         $callback->({ warning => ["Unable to find mac address for $node"] });
@@ -4413,7 +4416,7 @@ sub kea_node_reservations6
         } else {
             $reservation{'hw-address'} = $mac;
         }
-        my $bootfile_url = kea_bootfile_url6_for_node($node, $hname, $nrent);
+        my $bootfile_url = kea_bootfile_url6_for_node($node, $hname, $nrent, $ntent);
         if ($bootfile_url) {
             $reservation{'option-data'} = [
                 {
@@ -4432,7 +4435,7 @@ sub kea_node_reservations6
 
 sub kea_bootfile_url6_for_node
 {
-    my ( $node, $peer, $nrent ) = @_;
+    my ( $node, $peer, $nrent, $ntent ) = @_;
 
     my $netboot = $nrent ? $nrent->{netboot} : undef;
     return unless $netboot
@@ -4445,7 +4448,15 @@ sub kea_bootfile_url6_for_node
 
     my $uri_host = xCAT::NetworkUtils->format_uri_host($server);
     return unless $uri_host;
-    return "tftp://$uri_host/boot/grub2/grub2-$node";
+
+    # grub2_node_loader is the one place the boot file name of a grub2 node is chosen, so
+    # an aarch64 node gets the .efi name its firmware requests over IPv6 as well as IPv4.
+    my $loader = xCAT::DHCP::BootPolicy->grub2_node_loader(
+        node    => $node,
+        arch    => $ntent && $ntent->{arch},
+        tftpdir => ( ( $nrent && $nrent->{tftpdir} ) || $tftpdir ),
+    );
+    return "tftp://$uri_host/boot/grub2/$loader";
 }
 
 sub kea_boot_server6_for_node

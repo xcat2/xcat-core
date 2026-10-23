@@ -108,6 +108,21 @@ sub kea_boot_file {
     return [ map { $_->{'boot-file-name'} } @$reservations ];
 }
 
+# The RFC 5970 bootfile-url of the DHCPv6 reservation the Kea backend builds for cn1.
+sub kea_boot_url6 {
+    my ( $arch, $netboot, $tftpdir ) = @_;
+    local %GrubLoaderTable::rows = node_rows( $arch, $netboot, $tftpdir );
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::getipaddr = sub {
+        my ( $host, %opt ) = @_;
+        return $opt{OnlyV6} ? '2001:db8::11' : undef;
+    };
+    local *xCAT::NetworkUtils::ipv6_server_for_node = sub { return '2001:db8::1'; };
+    use warnings 'redefine';
+    my $reservations = xCAT_plugin::dhcp::kea_build_node_reservations6( bless( {}, 'GrubLoaderKeaBackend' ), {}, ['cn1'] );
+    return [ map { map { $_->{data} } grep { $_->{name} eq 'bootfile-url' } @{ $_->{'option-data'} || [] } } @$reservations ];
+}
+
 my $dir = tempdir( CLEANUP => 1 );
 my $conf = "$dir/dhcpd.conf";
 open( my $fh, '>', $conf ) or die "Cannot create $conf: $!";
@@ -195,6 +210,13 @@ for my $case (@cases) {
     }
     @errors = ();
     is_deeply( isc_boot_files( $arch, 'grub2', $tftpdir ), [$expected], "ISC: grub2 node with $label" )
+      or diag("errors: @errors");
+
+    # DHCPv6 names the same loader. The URL is the only place the name appears, so an
+    # aarch64 node over IPv6 boots nothing when it is built without the suffix.
+    @errors = ();
+    is_deeply( kea_boot_url6( $arch, 'grub2', $tftpdir ), ["tftp://[2001:db8::1]$expected"],
+        "Kea DHCPv6: grub2 node with $label" )
       or diag("errors: @errors");
 }
 
