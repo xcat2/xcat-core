@@ -27,8 +27,8 @@ against it.
 Note the `-I` flags: unlike the unit tests these run from the installed location, so
 they pick up xCAT modules from `/opt/xcat/lib/perl` rather than from a source tree.
 
-The case checks `rc==0` and `output=~Files=10,`. The file count checks that `prove`
-found all ten files, which catches a packaging regression or a test renamed away from
+The case checks `rc==0` and `output=~Files=11,`. The file count checks that `prove`
+found all eleven files, which catches a packaging regression or a test renamed away from
 `.t` without updating the count. It does not prove that environment-gated cases ran;
 inspect the TAP output for skips. **Add to that number when you add a test.** A missing
 directory is already caught by `rc==0` -- `prove -r` on a path that does not exist exits
@@ -55,6 +55,7 @@ A test belongs in `integration/` when it needs something the checkout cannot pro
 | `html_form_runtime_dependency.t` | the installed `HTML::Form` module |
 | `openeuler_package_postscripts.t` | Linux root, private mount namespaces and DNF; tests complete package postscripts with command doubles and an isolated repository directory |
 | `openeuler_postscript_repositories.t` | Linux root, private mount namespaces, DNF and RPM signing tools; tests actual signed repository transactions in isolated install roots |
+| `syncfiles_delivery.t` | a disposable management node, service node and compute node, certificate policies and SSH copy access; opt-in |
 | `wsapi_apache_access.t` | an Apache binary and its modules; reads `xcat-ws.conf` from the source tree, so `github_action_xcat_test.pl` runs it from the checkout and the installed copy skips |
 | `xcatd_dispatch_redaction.sh` | a live `xcatd`, syslog delivery to `/var/log/xcat/cluster.log`, and root |
 
@@ -95,6 +96,80 @@ plan skip_all => 'set XCAT_KEA_LIVE_SMOKE=1 to run live Kea daemon smoke test'
 
 It starts real Kea daemons, so it stays off unless asked for. Do not enable it on a
 node whose DHCP service is in use.
+
+## Syncfiles delivery lab
+
+Run `syncfiles_delivery.t` only in a disposable three-node lab. It sends real
+`syncfiles` and `updatenode -F` requests, and runs real SSH/rsync copies. Do not
+point it at a shared or production cluster.
+
+Prepare the lab before enabling the test:
+
+- Install xCAT on the management and service nodes, and the xCAT Perl client
+  modules on the compute node. Install Perl `File::Slurper`, `Capture::Tiny`,
+  `JSON::PP`, `timeout`, SSH/SFTP and rsync. The management and service nodes
+  must have the normal `updatenode` postscript files and reachability tools.
+- Configure name resolution and route the compute node through the service node
+  in `noderes.servicenode` and `noderes.xcatmaster`. Give the compute node a
+  dedicated osimage with exactly one synclist: `<work>/synclist`.
+- Configure the service-node cache prefix in the test to match
+  `site.SNsyncfiledir` (default `/var/xcat/syncfiles`). Keep the daemon environment
+  free of `DSH_*`, `DCP_*` and `RSYNC*` overrides.
+- Use a lab CA and valid client certificates for `operator` and `denied`.
+  Allow `operator` to run `syncfiles`, `updatenode` and `xdcp`. Leave `denied`
+  unauthorized. On both the management and service nodes, remove the default
+  unnamed `syncfiles` allow rule and any other rule that allows `denied`.
+  This certificate-only fixture intentionally differs from the default policy,
+  which allows the certificate-free `startsyncfiles` postscript request.
+  Configure the normal trusted MN/SN certificate relationship.
+  Store the client credentials and CA on the compute node; the test does not
+  create certificates or change policy.
+- Create the `operator`, `sender` and `receiver` Unix accounts. Give the
+  management node root SSH access to the service and compute nodes, and give
+  the service node SSH copy access to the compute node as `root`, `operator`
+  and `sender`. Use lab-only keys and pinned host keys. Do not enable password
+  authentication for this test.
+
+Create a JSON configuration on the management node. For example:
+
+```json
+{
+  "management": "mn",
+  "service": "sn",
+  "node": "cn",
+  "work": "/tmp/xcat-syncfiles-fixture1",
+  "cache": "/var/xcat/syncfiles",
+  "operator": "/root/lab-certs/operator.pem",
+  "denied": "/root/lab-certs/denied.pem",
+  "ca": "/root/lab-certs/ca.pem"
+}
+```
+
+Each client PEM contains its certificate and private key. Keep the credentials
+private. The three host names must be distinct. The work path must be a new
+directory directly under `/tmp`, named `xcat-syncfiles-` followed by letters or
+digits. The test refuses existing work and cache paths, removes its request and
+payload directories on exit, and fails if that cleanup fails. xCAT can retain
+cache parent directories and generated `/tmp/rsync_*` command files outside
+those directories. Remove the disposable nodes and credentials after testing.
+
+Run as root on the management node:
+
+```sh
+XCAT_SYNCFILES_LIVE_CONFIG=/root/syncfiles-lab.json \
+    prove -v xCAT-test/integration/syncfiles_delivery.t
+```
+
+The certificate cases check authorization under that restricted policy, MN/SN
+staging, delivered bytes and file ownership. `syncfiles` requests root copies
+regardless of the authenticated user; `updatenode` retains the authenticated
+user unless its environment overrides the sender. The inherited-environment
+cases call the real copy consumer on the service node without TLS; they test
+copy identity precedence, not authentication. The unit test
+`syncfiles_consumer_identity.t` checks both parsed identity variables and rejects
+changes that overwrite nonempty inherited values.
+
+This fixture does not cover the default certificate-free `startsyncfiles` path.
 
 ## What does not belong here
 

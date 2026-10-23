@@ -183,8 +183,24 @@ push @cases,
         args     => [],
         synclist => { node1 => '/install/custom/sync-a' },
         expected => [],
-        messages => [ qr/couldn't be correlated to a node/ ],
+        messages => [ qr/\AReceived syncfiles from unknown\.example\.test, which couldn't be correlated to a node \(domain mismatch\?\)\z/ ],
     };
+
+for my $client ( 'other.example.test', '', undef ) {
+    my $name = defined($client) ? $client : '';
+    my $label = !defined($client) ? 'missing' : length($client) ? $client : 'blank';
+    push @cases, {
+        name     => "unresolved client '$label' retains its diagnostic and sends no request",
+        request  => {
+            command => ['syncfiles'],
+            arg => [],
+            ( defined($client) ? ( _xcat_clienthost => [$client] ) : () ),
+        },
+        synclist => { node1 => '/install/custom/sync-a' },
+        expected => [],
+        messages => [ qr/\AReceived syncfiles from \Q$name\E, which couldn't be correlated to a node \(domain mismatch\?\)\z/ ],
+    };
+}
 
 for my $case (@cases) {
     subtest $case->{name} => sub {

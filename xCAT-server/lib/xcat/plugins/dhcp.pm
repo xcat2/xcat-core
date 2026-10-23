@@ -1251,7 +1251,9 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'yaboot') {
             $lstatements = 'filename = \"/yb/node/yaboot-' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} =~ /^grub2[-]?.*$/) {
-            $lstatements = 'filename = \"/boot/grub2/grub2-' . $node . '\";' . $lstatements;
+            my $loader = xCAT::DHCP::BootPolicy->grub2_node_loader(node => $node, arch => $ntent && $ntent->{arch},
+                tftpdir => ($nrent->{tftpdir} || $tftpdir));
+            $lstatements = 'filename = \"/boot/grub2/' . $loader . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://' . $nxtsrv . $portsuffix . '/tftpboot/petitboot/' . $node . '\";' . $lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'onie') {
@@ -2621,11 +2623,11 @@ sub process_request
         } else {
             $chainents = undef;
         }
-        $nrhash = $nrtab->getNodesAttribs($req->{node}, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode']);
+        $nrhash = $nrtab->getNodesAttribs($req->{node}, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode', 'tftpdir']);
         my $nodetypetab;
         $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
         if ($nodetypetab) {
-            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os provmethod)]);
+            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node}, [qw(os provmethod arch)]);
         }
         my $iscsitab = xCAT::Table->new('iscsi', -create => 0);
         if ($iscsitab) {
@@ -3708,7 +3710,7 @@ sub kea_build_node_reservations
     my $mactab = xCAT::Table->new('mac');
 
     $chainents = $chaintab ? $chaintab->getNodesAttribs($nodes, ['currstate']) : undef;
-    $nrhash = $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode' ]);
+    $nrhash = $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'proxydhcp', 'xcatmaster', 'servicenode', 'tftpdir' ]);
     $nodetypeents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, [qw(os provmethod arch)]) : undef;
     $iscsients = $iscsitab ? $iscsitab->getNodesAttribs($nodes, [qw(server target lun iname)]) : undef;
     $machash = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
@@ -4408,7 +4410,9 @@ sub kea_boot_for_node
     } elsif ($netboot and $netboot eq 'yaboot') {
         $boot{'boot-file-name'} = "/yb/node/yaboot-$node";
     } elsif ($netboot and $netboot =~ /^grub2[-]?.*$/) {
-        $boot{'boot-file-name'} = "/boot/grub2/grub2-$node";
+        $boot{'boot-file-name'} = '/boot/grub2/'
+          . xCAT::DHCP::BootPolicy->grub2_node_loader( node => $node, arch => $ntent && $ntent->{arch},
+            tftpdir => ( $nrent->{tftpdir} || $tftpdir ) );
     } elsif ($netboot and $netboot eq 'nimol') {
         $boot{'boot-file-name'} = "/vios/nodes/$node";
     } elsif ($netboot and $netboot eq 'petitboot') {
