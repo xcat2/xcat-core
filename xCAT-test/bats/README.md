@@ -28,6 +28,11 @@ fixtures. They require Bubblewrap, Bash, GNU core utilities, grep, sed, and
 permission to create user namespaces. The CI workflow installs Bubblewrap and
 enables those namespaces.
 
+`routeop_linklocal.bats` also needs iproute2 and kernel support for dummy
+network interfaces. It maps root and grants `CAP_NET_ADMIN` only inside a
+new user and network namespace. It runs as an ordinary user and changes
+real kernel routes only in that private network namespace.
+
 Missing prerequisites fail these tests without stopping unrelated test files.
 Non-Linux hosts report a skip. Set `TMPDIR` to a writable, executable filesystem
 if the default temporary directory is mounted with `noexec`.

@@ -1,4 +1,115 @@
 #!/bin/bash
+
+xcat_endpoint_host() {
+    local endpoint="$1"
+    local host
+    local remainder
+
+    case "$endpoint" in
+        \[*\]:*)
+            host=${endpoint#\[}
+            host=${host%%\]*}
+            ;;
+        \[*\])
+            host=${endpoint#\[}
+            host=${host%\]}
+            ;;
+        *:*)
+            remainder=${endpoint#*:}
+            if [[ "$remainder" == *:* ]]; then
+                # An unbracketed IPv6 literal has no unambiguous port suffix.
+                host=$endpoint
+            else
+                host=${endpoint%%:*}
+            fi
+            ;;
+        *)
+            host=$endpoint
+            ;;
+    esac
+
+    [ -n "$host" ] || return 1
+    printf '%s\n' "$host"
+}
+
+xcat_is_ipv6_boot() {
+    local iparg="$1"
+    local netif="$2"
+
+    case "$iparg" in
+        dhcp6|*:dhcp6|*:dhcp6:*)
+            return 0
+            ;;
+    esac
+
+    [ -n "$netif" ] || return 1
+    ip -6 -o addr show dev "$netif" scope global 2>/dev/null | grep -q . || return 1
+    ! ip -4 -o addr show dev "$netif" scope global 2>/dev/null | grep -q .
+}
+
+persist_ipv6_nm_connection() {
+    local newroot="$1"
+    local netif="$2"
+    local mac="$3"
+    shift 3
+
+    local destination="$newroot/etc/NetworkManager/system-connections"
+    local source
+    local profile
+    local copied=0
+    local address_cidr
+    local gateway
+    local sources=("$@")
+
+    if [ ${#sources[@]} -eq 0 ]; then
+        sources=(
+            /run/NetworkManager/system-connections
+            /etc/NetworkManager/system-connections
+        )
+    fi
+
+    mkdir -p "$destination"
+    for source in "${sources[@]}"; do
+        [ -d "$source" ] || continue
+        for profile in "$source"/*.nmconnection; do
+            [ -f "$profile" ] || continue
+            cp -p "$profile" "$destination/"
+            chmod 600 "$destination/${profile##*/}"
+            copied=1
+        done
+    done
+
+    if [ "$copied" -eq 0 ]; then
+        address_cidr=$(ip -6 -o addr show dev "$netif" scope global 2>/dev/null |
+            awk '$3 == "inet6" { print $4; exit }')
+        [ -n "$address_cidr" ] || return 1
+        gateway=$(ip -6 route show default dev "$netif" 2>/dev/null |
+            awk '$1 == "default" && $2 == "via" { print $3; exit }')
+
+        profile="$destination/xcat-$netif.nmconnection"
+        cat > "$profile" <<EOF
+[connection]
+id=xcat-$netif
+type=ethernet
+interface-name=$netif
+autoconnect=true
+
+[ethernet]
+mac-address=$mac
+
+[ipv4]
+method=disabled
+
+[ipv6]
+method=manual
+address1=$address_cidr
+gateway=$gateway
+addr-gen-mode=default
+EOF
+        chmod 600 "$profile"
+    fi
+}
+
 log_label="xcat.deployment"
 
 NEWROOT=$3
@@ -14,20 +125,20 @@ rflags="$(getarg rootflags=)"
 getarg nonodestatus
 NODESTATUS=$?
 
-MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
+MASTER="$(xcat_endpoint_host "$XCATMASTER")"
 XCATIPORT="$(getarg XCATIPORT=)"
 if [ $? -ne 0 ]; then
     XCATIPORT="3002"
 fi
 
-[ "$xcatdebugmode" = "1" -o "$xcatdebugmode" = "2" ] && SYSLOGHOST="" || SYSLOGHOST="-n $MASTER"
-logger $SYSLOGHOST -t $log_label -p local4.info "=============deployment starting===================="
-logger $SYSLOGHOST -t $log_label -p local4.info "Executing xcatroot to prepare for netbooting (dracut_33)..."
+[ "$xcatdebugmode" = "1" -o "$xcatdebugmode" = "2" ] && SYSLOGHOST=() || SYSLOGHOST=(-n "$MASTER")
+logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "=============deployment starting===================="
+logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Executing xcatroot to prepare for netbooting (dracut_33)..."
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "MASTER=$MASTER XCATIPORT=$XCATIPORT NODESTATUS=$NODESTATUS"
 
 if [ "$NODESTATUS" != "0" ]; then
-    logger $SYSLOGHOST -t $log_label -p local4.info "Sending request to $MASTER:$XCATIPORT for changing status to netbooting..."
-    /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+    logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Sending request to $MASTER:$XCATIPORT for changing status to netbooting..."
+    /tmp/updateflag "$MASTER" "$XCATIPORT" "installstatus netbooting"
 fi
 
 
@@ -63,7 +174,7 @@ rootimg_download() {
             xcat_uftp_rootimg "$1" "$2" /tmp/rootimg.sha256.before "$rootimg_uftp_port" "$(getarg xcat.uftpfp=)"; then
             return 0
         fi
-        logger $SYSLOGHOST -t $log_label -p local4.warning "Cannot receive $1 over UFTP, downloading it over HTTP..."
+        logger "${SYSLOGHOST[@]}" -t $log_label -p local4.warning "Cannot receive $1 over UFTP, downloading it over HTTP..."
     fi
     curl --fail "$1" -o "$2"
 }
@@ -74,25 +185,25 @@ rootimg_uftp="$(getarg xcat.uftp=)"
 imgurl="$(getarg imgurl=)";
 if [ ! -z "$imgurl" ]; then
     if [ xhttp = x${imgurl%%:*} ] || [ xhttps = x${imgurl%%:*} ]; then
-        logger $SYSLOGHOST -t $log_label -p local4.info "Downloading rootfs image from $imgurl..."
+        logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Downloading rootfs image from $imgurl..."
         NFS=0
         FILENAME=${imgurl##*/}
-        [ "$rootimgchecksum" = yes ] || logger $SYSLOGHOST -t $log_label -p local4.info "nodeset did not ask for a check of $FILENAME, so it is not checked."
+        [ "$rootimgchecksum" = yes ] || logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "nodeset did not ask for a check of $FILENAME, so it is not checked."
         # A file that an earlier attempt left is checked like a new download.
         if [ -r "$FILENAME" ] && [ "$rootimgchecksum" = yes ] && ! rootimg_matches_checksum "$imgurl" "$FILENAME" >/dev/null; then
             rm -f $FILENAME
         fi
         while [ ! -r "$FILENAME" ]; do
             [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Downloading $imgurl..."
-            echo Getting $imgurl...
+            echo "Getting $imgurl..."
             [ "$rootimgchecksum" != yes ] || rootimg_fetch_checksum "$imgurl" /tmp/rootimg.sha256.before || rm -f /tmp/rootimg.sha256.before
             if ! rootimg_download "$imgurl" "$FILENAME"; then
-                logger $SYSLOGHOST -t $log_label -p local4.error "Downloading $imgurl FAILED, retrying..."
-                rm -f $FILENAME
+                logger "${SYSLOGHOST[@]}" -t $log_label -p local4.error "Downloading $imgurl FAILED, retrying..."
+                rm -f "$FILENAME"
                 echo Failed to get the image, waiting for next retrying...
                 sleep 27
             elif [ "$rootimgchecksum" = yes ] && ! rootimg_check=$(rootimg_matches_checksum "$imgurl" "$FILENAME"); then
-                logger $SYSLOGHOST -t $log_label -p local4.error "$rootimg_check, retrying..."
+                logger "${SYSLOGHOST[@]}" -t $log_label -p local4.error "$rootimg_check, retrying..."
                 rm -f $FILENAME
                 echo "$rootimg_check, waiting for next retrying..."
                 sleep 27
@@ -135,7 +246,7 @@ if [ -r /rootimg.sfs ]; then
         mount --move /rw $NEWROOT/rw
     fi
 elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
-    logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
+    logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.cpio.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
     rootopts="mode=755"
     if [ -n "$rflags" ]; then
@@ -169,7 +280,7 @@ elif [ -r /rootimg.cpio.gz ] || [ -r /rootimg.cpio.xz ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Done extracting the root filesystem..."
     echo "Done extracting the root filesystem..."
 elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
-    logger $SYSLOGHOST -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.tar.[gz/xz]..."
+    logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Setting up RAM-root tmpfs on downloaded rootimg.tar.[gz/xz]..."
     echo Setting up RAM-root tmpfs.
     if [ -z $rootlimit ];then
         mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -199,7 +310,7 @@ elif [ -r /rootimg.tar.gz ] || [ -r /rootimg.tar.xz ]; then
     echo "$msg"
 elif [ -r /rootimg-statelite.gz ]; then
     msg="Setting up RAM-root tmpfs for statelite mode."
-    logger $SYSLOGHOST -t $log_label -p local4.info "$msg"
+    logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "$msg"
     echo "$msg"
 
     if [ -z $rootlimit];then
@@ -232,7 +343,7 @@ elif [ -r /rootimg-statelite.gz ]; then
         echo ""
         echo "The /$RWDIR directory doesn't exist in the rootimg... "
         echo ""
-        logger $SYSLOGHOST -t $log_label -p local4.err "The /$RWDIR directory doesn't exist in the rootimg..."
+        logger "${SYSLOGHOST[@]}" -t $log_label -p local4.err "The /$RWDIR directory doesn't exist in the rootimg..."
         /bin/sh
     fi
 
@@ -240,7 +351,7 @@ elif [ -r /rootimg-statelite.gz ]; then
         echo ""
         echo "$NEWROOT/etc/init.d/statelite doesn't exist... "
         echo ""
-        logger $SYSLOGHOST -t $log_label -p local4.err "$NEWROOT/etc/init.d/statelite doesn't exist... " 
+        logger "${SYSLOGHOST[@]}" -t $log_label -p local4.err "$NEWROOT/etc/init.d/statelite doesn't exist... "
         /bin/sh
     fi
 
@@ -279,7 +390,7 @@ elif [ -r /rootimg-statelite.gz ]; then
     1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
     2.  Is DNS set up? Maybe that's why I can't mount $SNAPSHOTSERVER."
                 echo "$msg"
-                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
+                logger "${SYSLOGHOST[@]}" -t $log_label -p local4.err "$msg"
                 /bin/sh
                 exit
             fi
@@ -298,7 +409,7 @@ elif [ -r /rootimg-statelite.gz ]; then
                 msg="Your are dead, rpower $ME boot to play again.
                      Cannot umount $NEWROOT/$RWDIR/persistent."
                 echo "$msg"
-                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
+                logger "${SYSLOGHOST[@]}" -t $log_label -p local4.err "$msg"
                 /bin/sh
                 exit
             fi
@@ -315,7 +426,7 @@ elif [ -r /rootimg-statelite.gz ]; then
                 msg="Your are dead, rpower $ME boot to play again.
                      Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
                 echo "$msg"
-                logger $SYSLOGHOST -t $log_label -p local4.err "$msg"
+                logger "${SYSLOGHOST[@]}" -t $log_label -p local4.err "$msg"
                 /bin/sh
                 exit
             fi
@@ -325,9 +436,9 @@ elif [ -r /rootimg-statelite.gz ]; then
         done
     fi
 
-    logger $SYSLOGHOST -t $log_label -p local4.info "Enabling localdisk ..."
+    logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Enabling localdisk ..."
     $NEWROOT/etc/init.d/localdisk
-    logger $SYSLOGHOST -t $log_label -p local4.info "Preparing mount points ..."
+    logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Preparing mount points ..."
     $NEWROOT/etc/init.d/statelite
     fastboot=yes
     export fastboot
@@ -340,7 +451,7 @@ elif [ -r /rootimg-statelite.gz ]; then
 
 else
     msg="Failed to download image, panic in 5..."
-    logger $SYSLOGHOST -t $log_label -p local4.error "$msg"
+    logger "${SYSLOGHOST[@]}" -t $log_label -p local4.error "$msg"
     echo -n "$msg"
     for i in 4 3 2 1 0; do
         /bin/sleep 1
@@ -387,7 +498,7 @@ function getdevfrommac() {
 }
 
 
-if [ -z $STATEMNT ]; then
+if [ -z "$STATEMNT" ]; then
     for lf in /tmp/dhclient.*.lease; do
         netif=${lf#*.}
         netif=${netif%.*}
@@ -412,16 +523,34 @@ if [ -z $STATEMNT ]; then
     fi
 
 
-    if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
-        if [ ! -e $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
-            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-            touch $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    if [ -n "$MACX" ] && [ -n "$ETHX" ]; then
+        BOOT_IP="$(getarg ip=)"
+        IPV6_BOOT=0
+        if xcat_is_ipv6_boot "$BOOT_IP" "$ETHX"; then
+            IPV6_BOOT=1
+            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Persisting the NetworkManager connection for IPv6 interface $ETHX"
+            if ! persist_ipv6_nm_connection "$NEWROOT" "$ETHX" "$MACX"; then
+                logger -t $log_label -p local4.error "Unable to persist the static IPv6 configuration for $ETHX"
+                exit 1
+            fi
         fi
-        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
-        echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-        echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-        echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-        echo "ONBOOT=yes" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+
+        if [ "$IPV6_BOOT" -eq 1 ]; then
+            # EL10 uses NetworkManager keyfiles.  Do not leave a competing
+            # legacy ifcfg profile that would start a new DHCPv6 identity.
+            rm -f "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+        else
+            if [ ! -e "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX" ]; then
+                [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+                mkdir -p "$NEWROOT/etc/sysconfig/network-scripts"
+                touch "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+            fi
+            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
+            echo "DEVICE=$ETHX" > "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+            echo "BOOTPROTO=dhcp" >> "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+            echo "HWADDR=$MACX" >> "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+            echo "ONBOOT=yes" >> "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
+        fi
     fi
 fi
 
@@ -433,7 +562,7 @@ if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; the
     echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
 fi
 
-logger $SYSLOGHOST -t $log_label -p local4.info "Exiting xcatroot..."
+logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Exiting xcatroot..."
 # inject new exit_if_exists
 echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
 # force udevsettle to break

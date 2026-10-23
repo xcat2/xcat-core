@@ -2244,6 +2244,33 @@ sub parseosver
 
 #-------------------------------------------------------------------------------
 
+=head3   is_el10_os
+
+    Returns 1 when the xCAT OS version names an Enterprise Linux 10 family
+    distribution, otherwise 0.
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub is_el10_os
+{
+    my $osver = shift;
+    if (defined($osver) && $osver eq __PACKAGE__)
+    {
+        $osver = shift;
+    }
+
+    return 0 unless defined($osver);
+    my ($basename, $majorversion) = xCAT::SvrUtils::parseosver($osver);
+    return defined($basename)
+      && defined($majorversion)
+      && $majorversion eq '10'
+      && $basename =~ /^(?:rh\w*|centos|alma|rocky|ol)$/i ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 update_osdistro_table
        This function is called after copycds. It will update the osdistro table with
        given osver and arch

@@ -1,0 +1,7 @@
+start:genesis_kernel_selinux_context
+label:others,genesis
+description:verify the Genesis kernel in the TFTP root carries the SELinux context of that path
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/genesis/selinux_context.sh __GETNODEATTR($$CN,arch)__
+check:rc==0
+check:output=~GENESIS_SELINUX_(OK|SKIPPED)
+end

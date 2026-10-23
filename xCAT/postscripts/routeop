@@ -143,7 +143,7 @@ route_exists()
     # ipv6
     if is_ipv6_route "$route_net"
     then
-        result=`ip -6 route show $route_net/$route_mask`
+        result=`ip -6 route show $route_net/$route_mask ${gateway_device:+via $route_gw dev $gateway_device}`
         if [ $? -ne 0 ] || [ -z "$result" ]
         then
             ret=0
@@ -449,6 +449,15 @@ nmcli_persistent_route()
     fi
 }
 
+remove_route_record()
+{
+    local filename=$1
+    local pattern
+    [ -f "$filename" ] || return 0
+    pattern=$(printf '%s\n' "$2" | sed 's/[][\\.^$*#]/\\&/g')
+    sed -i "\#^[[:space:]]*${pattern}[[:space:]]*\$#d" "$filename"
+}
+
 # handle the route replace operation that adding the setting to configuration file
 replace_persistent_route()
 {
@@ -491,8 +500,8 @@ replace_persistent_route()
                     route="$net/$mask :: - $ifname"
                     route1="$net\/$mask :: - $ifname";
                 else
-                    route="$net/$mask $gw - -"
-                    route1="$net\/$mask $gw - -";
+                    route="$net/$mask $gw - ${gateway_device:--}"
+                    route1="$net\/$mask $gw - ${gateway_device:--}";
                 fi
             else
                 # for ipv4
@@ -549,8 +558,8 @@ replace_persistent_route()
                     route="$net/$mask dev $ifname"
                     route1="$net\/$mask dev $ifname"
                 else
-                    route="$net/$mask via $gw"
-                    route1="$net\/$mask via $gw"
+                    route="$net/$mask via $gw${gateway_device:+ dev $gateway_device}"
+                    route1="$net\/$mask via $gw${gateway_device:+ dev $gateway_device}"
                 fi
             else
                 # ipv4
@@ -696,8 +705,8 @@ add_persistent_route()
                 route="$net/$mask :: - $ifname"
                 route1="$net\/$mask :: - $ifname";
             else
-                route="$net/$mask $gw - -"
-                route1="$net\/$mask $gw - -";
+                route="$net/$mask $gw - ${gateway_device:--}"
+                route1="$net\/$mask $gw - ${gateway_device:--}";
             fi
         else
             if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
@@ -728,8 +737,13 @@ add_persistent_route()
                 fi
             fi
         fi
+        local match_flags=
+        if is_ipv6_route "$net" && [ -n "$gateway_device" ]; then
+            remove_route_record "$filename" "$net/$mask $gw - -" || return $?
+            match_flags=-Fx
+        fi
         if [ -f $filename ]; then
-            grep "$route" $filename 2>&1 1>/dev/null
+            grep $match_flags "$route" $filename 2>&1 1>/dev/null
             if [ $? -ne 0 ]; then #route does not exist
                 grep "$xcat_config_start" $filename 2>&1 1>/dev/null
                 if [ $? -ne 0 ]; then #no xCAT section
@@ -782,6 +796,11 @@ add_persistent_route()
         fi
             fi
 
+            if [ -n "$gateway_device" ] && [ "$v6flag" -eq 1 ]; then
+                remove_route_record "$filename" "up route -A inet6 add $net/$mask gw $gw" || return $?
+                remove_route_record "$filename" "down route -A inet6 del $net/$mask gw $gw" || return $?
+                remove_route_record "$filename" "post-up ip -6 route replace $net/$mask via $gw" || return $?
+            fi
             grep "$matchstr" $filename 2>&1 1>/dev/null
             if [ $? -ne 0 ];then
                 foundflag=0
@@ -796,8 +815,8 @@ add_persistent_route()
                                 echo "  up route -A inet6 add $net/$mask dev $ifname" >> $tempfile
                                 echo "  down route -A inet6 del $net/$mask dev $ifname" >> $tempfile
                 else
-                                echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
-                                echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+                                echo "  up route -A inet6 add $net/$mask gw $gw${gateway_device:+ dev $gateway_device}" >> $tempfile
+                                echo "  down route -A inet6 del $net/$mask gw $gw${gateway_device:+ dev $gateway_device}" >> $tempfile
                     fi
                         else
                     if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
@@ -824,8 +843,8 @@ add_persistent_route()
                             echo "  up route -A inet6 add $net/$mask dev $ifname" >> $tempfile
                             echo "  down route -A inet6 del $net/$mask dev $ifname" >> $tempfile
             else
-                            echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
-                            echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+                            echo "  up route -A inet6 add $net/$mask gw $gw${gateway_device:+ dev $gateway_device}" >> $tempfile
+                            echo "  down route -A inet6 del $net/$mask gw $gw${gateway_device:+ dev $gateway_device}" >> $tempfile
             fi
                     else
                 if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
@@ -924,6 +943,11 @@ rm_persistent_route()
         sles)
         #echo "sles"
         filename="/etc/sysconfig/network/routes";
+        if is_ipv6_route "$net" && [ -n "$gateway_device" ]; then
+            remove_route_record "$filename" "$net/$mask $gw - $gateway_device" || return $?
+            remove_route_record "$filename" "$net/$mask $gw - -"
+            return $?
+        fi
         # ipv6 net
         if is_ipv6_route "$net"
         then
@@ -984,6 +1008,15 @@ rm_persistent_route()
         fi
             fi
 
+            if [ -n "$gateway_device" ] && [ "$v6flag" -eq 1 ]; then
+                local device_suffix
+                for device_suffix in " dev $gateway_device" ""; do
+                    remove_route_record "$filename" "up route -A inet6 add $net/$mask gw $gw$device_suffix" || return $?
+                    remove_route_record "$filename" "down route -A inet6 del $net/$mask gw $gw$device_suffix" || return $?
+                    remove_route_record "$filename" "post-up ip -6 route replace $net/$mask via $gw$device_suffix" || return $?
+                done
+                return 0
+            fi
             grep "$matchstr" $filename
             if [ $? -eq 0 ];then
                 sed -i -e "/$matchstr/d" $filename
@@ -996,6 +1029,13 @@ rm_persistent_route()
         #echo "rh/fedora/centos"
         if redhat_uses_nmcli_routes; then
             nmcli_persistent_route delete "$net" "$mask" "$gw" "$ifname"
+            return $?
+        fi
+        if is_ipv6_route "$net" && [ -n "$gateway_device" ]; then
+            filename="/etc/sysconfig/network-scripts/route6-$ifname"
+            remove_route_record "$filename" "$net/$mask via $gw dev $gateway_device" || return $?
+            remove_route_record "$filename" "$net/$mask via $gw" || return $?
+            remove_route_record /etc/sysconfig/static-routes-ipv6 "$ifname $net/$mask $gw"
             return $?
         fi
         #ipv6
@@ -1048,6 +1088,13 @@ rm_persistent_route()
 
 
 
+gateway_device=
+if [ "$(uname -s)" = "Linux" ]; then
+    case "$gw" in
+        [fF][eE][89aAbB][[:xdigit:]]:*) gateway_device=$ifname ;;
+    esac
+fi
+
 if command -v xcat_is_openeuler >/dev/null 2>&1 && xcat_is_openeuler "$OSVER"; then
     case "$op" in
         add|delete|replace)
@@ -1071,7 +1118,7 @@ if [ "$op" = "add" ]; then
             if [ "$gw" = "" -o "$gw" = "::" ] ; then
                     cmd="ip -6 route add $net/$mask dev $ifname"
         else
-                    cmd="ip -6 route add $net/$mask via $gw"
+                    cmd="ip -6 route add $net/$mask via $gw${gateway_device:+ dev $gateway_device}"
         fi
             else
                 # AIX TODO
@@ -1127,7 +1174,7 @@ elif [ "$op" = "delete" ]; then
             if [ "$gw" = "" -o "$gw" = "::" ] ; then
                     cmd="ip -6 route delete $net/$mask dev $ifname"
         else
-                    cmd="ip -6 route delete $net/$mask via $gw"
+                    cmd="ip -6 route delete $net/$mask via $gw${gateway_device:+ dev $gateway_device}"
         fi
             else
                 # AIX TODO
@@ -1183,7 +1230,7 @@ elif [ "$op" = "replace" ]; then
                 if [ "$net" = "default" ]; then
                     cmd="ip -6 route replace default via $gw"
                 else
-                    cmd="ip -6 route replace $net/$mask via $gw"
+                    cmd="ip -6 route replace $net/$mask via $gw${gateway_device:+ dev $gateway_device}"
                 fi
             fi
         fi

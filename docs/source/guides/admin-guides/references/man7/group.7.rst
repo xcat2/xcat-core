@@ -390,7 +390,7 @@ group Attributes:
 
 \ **ip**\  (hosts.ip)
  
- The IP address of the node. This is only used in makehosts.  The rest of xCAT uses system name resolution to resolve node names to IP addresses.
+ The IPv4 or IPv6 address literal of the node. makehosts and makedns use this value; the rest of xCAT uses system name resolution to resolve node names to IP addresses.
  
 
 
@@ -704,7 +704,7 @@ group Attributes:
 
 \ **otherinterfaces**\  (hosts.otherinterfaces)
  
- Other IP addresses to add for this node.  Format: -<ext>:<ip>,<intfhostname>:<ip>,...
+ Other IP addresses to add for this node. Format: -<ext>:<IPv4>, <intfhostname>:<IPv4>, -<ext>!<IPv6>, or <intfhostname>!<IPv6>. A leading - derives the interface hostname from the node name; ! is required as the delimiter for IPv6 addresses.
  
 
 

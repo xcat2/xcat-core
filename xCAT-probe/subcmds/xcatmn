@@ -92,8 +92,8 @@ sub do_main_job {
     $rst = 0 if ($flag eq "w");
     $rc |= $rst;
 
-    #check if SElinux is disabled
-    ($rst, $flag) = check_selinux(\$checkpoint, \@error);
+    #check the SELinux mode and the xcat policy
+    ($rst, $flag) = check_selinux(\%sitetable, \$checkpoint, \@error);
     print_check_result($checkpoint, $flag, $rst, \@error);
     $rst = 0 if ($flag eq "w");
     $rc |= $rst;
@@ -683,29 +683,36 @@ sub check_disk {
 }
 
 sub check_selinux {
-    my $checkpoint_ref =  shift;
-    my $error_ref = shift;
-    my $rst       = 0;
-    my $flag      = "w";
-    my $msg       = "";
+    my $sitetable_ref  = shift;
+    my $checkpoint_ref = shift;
+    my $error_ref      = shift;
 
-    $$checkpoint_ref = "Checking SELinux is disabled...";
+    $$checkpoint_ref = "Checking SELinux policy for xCAT...";
     @$error_ref = ();
 
+    my $mode = "disabled";
     if (probe_utils->is_selinux_enable()) {
-        $msg = "SELinux is enabled on current server";
-        $rst = 1;
-        $flag = "w";
+        $mode = probe_utils->is_selinux_enforcing() ? "enforcing" : "permissive";
     }
-    if (probe_utils->is_selinux_enforcing()) {
-        $msg = "SELinux is enforcing on current server";
-        $rst = 1;
-        $flag = "f";
+
+    my $modules = "";
+    my @labels;
+    if ($mode ne "disabled") {
+        $modules = `semodule -l 2>/dev/null`;
+        my $installdir = $sitetable_ref->{installdir} || "/install";
+        my $tftpdir    = $sitetable_ref->{tftpdir}    || "/tftpboot";
+        foreach my $dir ([ $installdir, "public_content_t" ], [ $tftpdir, "tftpdir_t" ]) {
+            my $context = `stat -c %C $dir->[0] 2>/dev/null`;
+            chomp($context);
+            push @labels, [ @$dir, ($? == 0 ? $context : undef) ];
+        }
     }
-    if ($rst) { 
-        push @error_ref, "$msg";
-    }
-    return ($rst, $flag);
+
+    my ($flag, $msg) = probe_utils::selinux_policy_verdict($mode, $modules, \@labels);
+    return (0, $flag) if ($flag eq "o");
+
+    push @$error_ref, split(/\n/, $msg);
+    return (1, $flag);
 }
 
 sub check_firewall {

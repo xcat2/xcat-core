@@ -1,14 +1,16 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat'; }
+
+use lib "$::XCATROOT/probe/lib/perl";
+use probe_format;
 use File::Basename;
 use Data::Dumper;
 use File::Path;
 use POSIX qw(WNOHANG setsid :errno_h);
 use Term::ANSIColor qw(:constants);
 $Term::ANSIColor::AUTORESET = 1;
-
-$::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 
 my $program_name = basename($0);
 
@@ -78,6 +80,20 @@ sub loadsubcmds {
 
 =head3
     Description:
+    Ask the terminal how wide it is. 'tput cols' writes nothing when TERM
+    names a terminal terminfo does not carry, so probe_format decides what an
+    unusable answer means.
+=cut
+
+#-----------------------------------
+sub terminal_width {
+    return probe_format::screen_width($ENV{'TERM'} ? `tput cols 2>/dev/null` : undef);
+}
+
+#-----------------------------------
+
+=head3
+    Description:
     Format the output of sub command, make them colorfully.
 =cut
 
@@ -87,96 +103,29 @@ sub format_cmd_output {
     my $color   = shift;
     my $fullmsg = shift;
 
-    my $msg;
-    my $flag;
+    my ($lines, $mark) = probe_format::render($line, $fullmsg, terminal_width());
 
-    if ($line =~ /\[(\w+)\]\s*:(.+)/) {
-        $flag = $1;
-        $msg  = $2;
+    my $last = pop @$lines;
+    print "$_\n" foreach (@$lines);
+
+    unless (defined($mark)) {
+        print "$last\n";
+        return 0;
+    }
+
+    print $last;
+    return 0 unless (length($mark));
+
+    if (!$color) {
+        print $mark;
+    } elsif ($mark =~ /FAIL/) {
+        print BOLD RED $mark;
+    } elsif ($mark =~ /WARN/) {
+        print BOLD BLUE $mark;
+    } elsif ($mark =~ /OK/) {
+        print BOLD GREEN $mark;
     } else {
-        $msg = $line;
-    }
-
-    $msg =~ s/\t/        /g;
-    my $flaglen      = 6;
-    my $desiredwidth = 120;
-    my $screenwidth = 80;
-    if ($ENV{'TERM'}) {
-        $screenwidth  = (`tput cols` + 0);
-    }
-    my $maxlen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
-
-    my @finalmsg = ();
-    my $msglen   = length($msg);
-    if ($msglen <= $maxlen) {
-        if (!$fullmsg && $flag) {
-            my $leftspace = $maxlen - length($msg);
-            if ($leftspace < $flaglen) {
-                $msg = substr($msg, 0, $maxlen - $flaglen);
-                $msg =~ s/(.*).../$1\.\.\./g;
-            }
-        }
-        push @finalmsg, $msg;
-    } else {
-        my @tmpmsg = split("", $msg);
-        my $head   = 0;
-        my $tail   = $maxlen;
-        while ($head < $msglen) {
-            push @finalmsg, substr($msg, $head, ($tail - $head));
-            if (!$fullmsg) {
-                if ($flag) {
-                    $finalmsg[0] =~ s/(.*).........$/$1\.\.\./g;
-                } else {
-                    $finalmsg[0] =~ s/(.*)...$/$1\.\.\./g;
-                }
-                last;
-            }
-            $head = $tail;
-            $tail = $head + ($maxlen <= ($msglen - $tail) ? $maxlen : ($msglen - $tail));
-        }
-    }
-
-    for (my $i = 0 ; $i < $#finalmsg + 1 ; ++$i) {
-        if ($i ne $#finalmsg) {
-            print "$finalmsg[$i]\n";
-            next;
-        }
-
-        if ($flag) {
-            my $leftspace = $maxlen - length($finalmsg[$i]);
-            my $spacenum = 0;
-            if($flag !~ /debug/i) {
-                $spacenum = (($leftspace >= $flaglen) ? ($leftspace - $flaglen) : ($screenwidth - length($finalmsg[$i]) + $maxlen - $flaglen));
-            }
-            my $spacestr = " " x $spacenum;
-            print "$finalmsg[$i]$spacestr";
-
-            if ($flag =~ /failed/i) {
-                if ($color) {
-                    print BOLD RED "[FAIL]\n";
-                } else {
-                    print "[FAIL]\n";
-                }
-            } elsif ($flag =~ /warning/i) {
-                if ($color) {
-                    print BOLD BLUE "[WARN]\n";
-                } else {
-                    print "[WARN]\n";
-                }
-            } elsif ($flag =~ /ok/i) {
-                if ($color) {
-                    print BOLD GREEN "[ OK ]\n";
-                } else {
-                    print "[ OK ]\n";
-                }
-            } elsif ($flag =~ /debug/i) {
-                print "\n";
-            } elsif ($flag =~ /info/i) {
-                print "[INFO]\n";
-            }
-        } else {
-            print "$finalmsg[$i]\n";
-        }
+        print $mark;
     }
     return 0;
 }
@@ -197,10 +146,7 @@ sub listvalidsubcmd {
     $maxlen += 4;
 
     my $desiredwidth = 120;
-    my $screenwidth = 80;
-    if ($ENV{'TERM'}) {
-        $screenwidth  = (`tput cols` + 0);
-    }
+    my $screenwidth  = terminal_width();
     my $finallen = ($screenwidth > $desiredwidth ? $desiredwidth : $screenwidth);
 
     print "Supported sub commands are:\n";

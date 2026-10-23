@@ -4,6 +4,7 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 
+use File::Path qw/make_path/;
 use File::Temp qw/tempdir/;
 use JSON;
 use Test::More;
@@ -484,6 +485,13 @@ my $dhcp6_json = $backend->render_dhcp6_config(
                         duid           => '00:04:52:54:00:12:34:56',
                         'ip-addresses' => ['2001:db8:1::50'],
                         hostname       => 'nodev6',
+                        'option-data'  => [
+                            {
+                                name          => 'bootfile-url',
+                                data          => 'tftp://[2001:db8:1::1]/boot/grub2/grub2-nodev6',
+                                'always-send' => JSON::true,
+                            },
+                        ],
                     },
                 ],
             },
@@ -497,6 +505,58 @@ is( $dhcp6_config->{Dhcp6}{'valid-lifetime'}, 700, 'DHCPv6 valid lifetime is num
 is( $dhcp6_config->{Dhcp6}{'preferred-lifetime'}, 500, 'DHCPv6 preferred lifetime is numeric' );
 is( $dhcp6_config->{Dhcp6}{subnet6}[0]{id}, 11, 'DHCPv6 subnet id is numeric' );
 is( $dhcp6_config->{Dhcp6}{subnet6}[0]{reservations}[0]{duid}, '00:04:52:54:00:12:34:56', 'DHCPv6 DUID reservation is rendered' );
+my $dhcp6_bootfile = $dhcp6_config->{Dhcp6}{subnet6}[0]{reservations}[0]{'option-data'}[0];
+is( $dhcp6_bootfile->{name}, 'bootfile-url', 'DHCPv6 reservation bootfile option is rendered' );
+is( $dhcp6_bootfile->{data}, 'tftp://[2001:db8:1::1]/boot/grub2/grub2-nodev6', 'DHCPv6 reservation bootfile URL is preserved' );
+ok( $dhcp6_bootfile->{'always-send'}, 'DHCPv6 reservation bootfile option preserves always-send' );
+
+my $multi_subnet_duid = '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff';
+my $multi_subnet_config = decode_json(
+    $backend->render_dhcp6_config(
+        {
+            subnets => [
+                { id => 21, subnet => '2001:db8:21::/64' },
+                { id => 22, subnet => '2001:db8:22::/64' },
+                {
+                    id           => 23,
+                    subnet       => '2001:db8:23::/64',
+                    reservations => [
+                        {
+                            duid           => $multi_subnet_duid,
+                            'ip-addresses' => ['2001:db8:23::50'],
+                            hostname       => 'stale-interface',
+                        },
+                    ],
+                },
+            ],
+        }
+    )
+);
+my $multi_subnet_reservations = [
+    {
+        'subnet-id'    => 21,
+        duid           => $multi_subnet_duid,
+        'ip-addresses' => ['2001:db8:21::50'],
+        hostname       => 'node-interface-1',
+    },
+    {
+        'subnet-id'    => 22,
+        duid           => $multi_subnet_duid,
+        'ip-addresses' => ['2001:db8:22::50'],
+        hostname       => 'node-interface-2',
+    },
+];
+my @multi_subnet_stale;
+$backend->upsert_reservations(
+    $multi_subnet_config,
+    $multi_subnet_reservations,
+    \@multi_subnet_stale,
+);
+is( scalar(@{ $multi_subnet_config->{Dhcp6}{subnet6}[0]{reservations} }), 1, 'first DHCPv6 subnet retains its shared-DUID reservation' );
+is( scalar(@{ $multi_subnet_config->{Dhcp6}{subnet6}[1]{reservations} }), 1, 'second DHCPv6 subnet retains its shared-DUID reservation' );
+is( scalar(@{ $multi_subnet_config->{Dhcp6}{subnet6}[2]{reservations} }), 0, 'shared-DUID upsert removes a stale reservation from the old subnet' );
+is( scalar(@multi_subnet_stale), 1, 'shared-DUID upsert reports the stale reservation for live cleanup' );
+is( $multi_subnet_stale[0]{'subnet-id'}, 23, 'reported stale reservation retains its old subnet id' );
 
 my $ddns_json = $backend->render_ddns_config(
     {
@@ -530,16 +590,32 @@ is( $ddns_config->{DhcpDdns}{'forward-ddns'}{'ddns-domains'}[0]{name}, 'cluster.
 my $ctrl_agent_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [] );
 my $ctrl_agent_config = decode_json($ctrl_agent_backend->render_ctrl_agent_config({ 'http-port' => '8000' }));
 is( $ctrl_agent_config->{'Control-agent'}{'http-port'}, 8000, 'Control Agent HTTP port is numeric' );
+is( $backend->control_agent_url(), 'http://127.0.0.1:8000/', 'Control Agent keeps the default IPv4 authority' );
+SKIP: {
+    skip 'No IPv6 literal parser is available', 1
+      unless xCAT::NetworkUtils->isValidIp('2001:db8::1');
+    is(
+        $backend->control_agent_url( host => '2001:db8::1', port => 8001 ),
+        'http://[2001:db8::1]:8001/',
+        'Control Agent brackets an IPv6 literal before appending the port'
+    );
+}
 
 my $runtime_socket_dir = "$unit_dir/run/kea";
-mkdir "$unit_dir/run" or die "Unable to create $unit_dir/run: $!";
-mkdir $runtime_socket_dir or die "Unable to create $runtime_socket_dir: $!";
+my $legacy_runtime_socket_dir = "$unit_dir/var/run/kea";
+make_path($runtime_socket_dir, $legacy_runtime_socket_dir);
 
-my $runtime_socket_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [ $runtime_socket_dir, "$unit_dir/var/run/kea" ] );
+my $runtime_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_version     => '2.4.1',
+    kea_socket_dirs => [ $runtime_socket_dir, $legacy_runtime_socket_dir ],
+);
 my $runtime_socket_config = decode_json($runtime_socket_backend->render_ctrl_agent_config({}));
-is( $runtime_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, "$runtime_socket_dir/kea4-ctrl-socket", 'Control Agent socket uses the detected runtime directory' );
+is( $runtime_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, "$runtime_socket_dir/kea4-ctrl-socket", 'Control Agent prefers the canonical runtime directory when both paths exist' );
 
-my $legacy_socket_backend = xCAT::DHCP::Backend::Kea->new( kea_socket_dirs => [] );
+my $legacy_socket_backend = xCAT::DHCP::Backend::Kea->new(
+    kea_version     => '2.4.1',
+    kea_socket_dirs => [],
+);
 my $legacy_socket_config = decode_json($legacy_socket_backend->render_ctrl_agent_config({}));
 is( $legacy_socket_config->{'Control-agent'}{'control-sockets'}{dhcp4}{'socket-name'}, '/var/run/kea/kea4-ctrl-socket', 'Control Agent socket falls back to the legacy runtime path when no runtime directory exists' );
 
@@ -668,5 +744,26 @@ is( $commands[0]{arguments}{'operation-target'}, 'memory', 'live delete targets 
 is( $commands[1]{command}, 'reservation-add', 'live upsert adds reservation through host-commands' );
 is( $commands[1]{arguments}{reservation}{'subnet-id'}, 10, 'live add includes subnet id in reservation body' );
 is_deeply( $commands[1]{service}, ['dhcp4'], 'live add targets dhcp4 service by default' );
+
+@commands = ();
+$live_result = $ca_backend->live_upsert_reservations(
+    $multi_subnet_reservations,
+    service            => ['dhcp6'],
+    stale_reservations => \@multi_subnet_stale,
+);
+ok( !$live_result->{error}, 'live multi-subnet DUID upsert succeeds through the Control Agent' );
+my @live_deletes = grep { $_->{command} eq 'reservation-del' } @commands;
+my @live_adds = grep { $_->{command} eq 'reservation-add' } @commands;
+is_deeply(
+    [ sort { $a <=> $b } map { $_->{arguments}{'subnet-id'} } @live_deletes ],
+    [ 21, 22, 23 ],
+    'live multi-subnet DUID upsert deletes the stale and target subnet reservations'
+);
+is_deeply(
+    [ sort { $a <=> $b } map { $_->{arguments}{reservation}{'subnet-id'} } @live_adds ],
+    [ 21, 22 ],
+    'live multi-subnet DUID upsert adds the complete requested reservation set'
+);
+is_deeply( $live_adds[0]{service}, ['dhcp6'], 'live multi-subnet DUID upsert targets DHCPv6' );
 
 done_testing();

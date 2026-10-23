@@ -1,0 +1,322 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use FindBin;
+use File::Slurper qw(read_lines);
+use List::Util ();
+use Test::More;
+
+# The spec files and the file context list are the artifacts: rpmbuild and
+# semodule read them as written.
+my $root = "$FindBin::Bin/../..";
+
+# Returns the lines of a file, or an empty list when the file is not there.
+sub lines_of {
+    my ($path) = @_;
+    return -f $path ? read_lines($path) : ();
+}
+
+# Splits a spec into its preamble and its %sections, keyed by section name.
+sub spec_sections {
+    my (@lines) = @_;
+
+    my %sections = (preamble => []);
+    my $current = 'preamble';
+    foreach my $line (@lines) {
+        if ($line =~ /^%(prep|build|install|check|clean|files|changelog|description|package|pre|post|preun|postun|pretrans|posttrans)\b/) {
+            $current = $1;
+            $sections{$current} ||= [];
+            next;
+        }
+        push @{ $sections{$current} }, $line;
+    }
+
+    return \%sections;
+}
+
+# The %if line that encloses line $index, or undef at the top level.
+sub enclosing_if {
+    my ($lines, $index) = @_;
+
+    my $depth = 0;
+    for (my $i = $index - 1 ; $i >= 0 ; $i--) {
+        my $line = $lines->[$i];
+        if ($line =~ /^%endif\b/) {
+            $depth++;
+        } elsif ($line =~ /^%if(?:os|arch|narch|nos)?\b/) {
+            return $line if $depth == 0;
+            $depth--;
+        }
+    }
+
+    return undef;
+}
+
+my $spec_path = "$root/xCAT-selinux/xCAT-selinux.spec";
+ok(-f $spec_path, 'xCAT-selinux has a spec');
+my $spec = spec_sections(lines_of($spec_path));
+my $preamble = join("\n", @{ $spec->{preamble} });
+
+like($preamble, qr/^Name:\s*xCAT-selinux\s*$/m, 'the package is named xCAT-selinux');
+like($preamble, qr/^BuildArch:\s*noarch\s*$/m, '... and is noarch');
+like($preamble, qr/^Source:\s*xCAT-selinux-%\{version\}\.tar\.gz\s*$/m,
+    '... and builds from the tarball that buildrpms.pl makes of the package directory');
+like($preamble, qr/^BuildRequires:.*\bselinux-policy-devel\b/m,
+    '... and needs selinux-policy-devel to build the module');
+like($preamble, qr/^Requires:.*\bselinux-policy-targeted\b/m,
+    '... and needs the targeted policy');
+like($preamble, qr/^Requires\(post\):.*\bpolicycoreutils\b/m,
+    '... and needs semodule in %post');
+unlike($preamble, qr/selinux_requires/,
+    '... and does not pin selinux-policy to the version of the build host');
+
+my $build = join("\n", @{ $spec->{build} || [] });
+like($build, qr{make -f %\{_datadir\}/selinux/devel/Makefile\b.*\bxcat\.pp\b},
+    '%build compiles xcat.pp with the selinux-policy-devel Makefile');
+like($build, qr{checkmodule -M -c 19\b},
+    '... at module version 19, which the EL8 policy tools read');
+
+my $install = join("\n", @{ $spec->{install} || [] });
+like($install, qr{%\{_datadir\}/selinux/packages/targeted\b},
+    '%install puts the module in the targeted package directory');
+
+my $files = join("\n", @{ $spec->{files} || [] });
+like($files, qr{^%\{_datadir\}/selinux/packages/targeted/xcat\.pp\.bz2$}m,
+    '%files ships xcat.pp.bz2');
+
+like(join("\n", @{ $spec->{pre} || [] }), qr/^%selinux_relabel_pre -s targeted$/m,
+    '%pre saves the file contexts before the module changes them');
+like(join("\n", @{ $spec->{post} || [] }),
+    qr{^%selinux_modules_install -s targeted %\{_datadir\}/selinux/packages/targeted/xcat\.pp\.bz2$}m,
+    '%post installs the module');
+like(join("\n", @{ $spec->{postun} || [] }), qr/^%selinux_modules_uninstall -s targeted xcat$/m,
+    '%postun removes the module');
+# On an erase the module leaves the policy, so each file labelled with one of
+# its types becomes unlabeled_t. %preun takes the snapshot that %postun needs
+# to relabel them, because %pre does not run on an erase.
+like(join("\n", @{ $spec->{preun} || [] }), qr/^%selinux_relabel_pre -s targeted$/m,
+    '%preun saves the file contexts before the module leaves the policy');
+my $postun = join("\n", @{ $spec->{postun} || [] });
+like($postun, qr/^%selinux_relabel_post -s targeted$/m,
+    '%postun relabels the files the removed module had labelled');
+like($postun, qr/\[ \$1 -eq 0 \]/,
+    '... on an erase only, so an upgrade keeps the labels');
+
+my $posttrans = join("\n", @{ $spec->{posttrans} || [] });
+like($posttrans, qr/^%selinux_relabel_post -s targeted$/m,
+    '%posttrans relabels the files whose context changed');
+like($posttrans, qr{\brestorecon -R /install\b}, '... and relabels /install');
+# An upgrade does not relabel a directory that already exists, so a path whose
+# label was wrong before the fix stays wrong. /opt/xcat/probe/subcmds/bin was
+# that path on every management node. Relabelling the product tree here repairs
+# it, and any later drift, without a separate step.
+like($posttrans, qr{\brestorecon -R /opt/xcat\b}, '... and the product tree too');
+foreach my $section (qw(pre preun post postun posttrans)) {
+    unlike(join("\n", @{ $spec->{$section} || [] }), qr/\bsetenforce\b|\/etc\/selinux\/config/,
+        "%$section does not change the SELinux mode");
+}
+
+my @fc = grep { !/^\s*(?:#|$)/ } lines_of("$root/xCAT-selinux/xcat.fc");
+my %fc = map { (split /\s+/, $_, 2) } @fc;
+# The labels of /install and of the image trees are looked up in the compiled
+# policy by xCAT-test/native/selinux_file_contexts.t.
+ok(!(grep { m{^/tftpboot} } keys %fc), '/tftpboot keeps the stock tftpdir_t');
+
+# The type of an fc entry, dropping the file-type flag that executables carry.
+sub fc_type {
+    my ($path) = @_;
+    my $spec = $fc{$path} // return undef;
+    return $spec =~ /gen_context\(system_u:object_r:(\w+),s0\)/ ? $1 : $spec;
+}
+
+# restorecon labels the file that execve resolves to. /usr/sbin/xcatd is a
+# symlink, and a symlink is never an entrypoint.
+is(fc_type('/opt/xcat/sbin/xcatd'), 'xcatd_exec_t', 'xcatd is the entrypoint of the daemon');
+ok(!exists $fc{'/usr/sbin/xcatd'}, '... and the symlink to it carries no context');
+foreach my $client (qw(xcatclient xcatclientnnr)) {
+    is(fc_type("/opt/xcat/bin/$client"), 'xcat_client_exec_t',
+        "$client is the entrypoint of the client commands");
+}
+
+# The module source is the artifact: checkmodule compiles this text as written.
+# Each rule here is justified by a measured denial; see
+# docs/source/advanced/selinux/index.rst and the policy campaign REASONING.md.
+my @te = grep { !/^\s*(?:#|$)/ } lines_of("$root/xCAT-selinux/xcat.te");
+my $te = join("\n", @te);
+
+like($te, qr/^policy_module\(xcat,/m, 'xcat.te declares the xcat policy module');
+
+# Collects the permission set of each allow rule, keyed "source target:class".
+my %allow;
+foreach my $rule (split /;/, $te) {
+    next unless $rule =~ /\ballow\s+(\S+)\s+(\S+?):(\S+)\s+(.+)/s;
+    my ($source, $target, $class, $perms) = ($1, $2, $3, $4);
+    $perms =~ s/[{}]/ /g;
+    $allow{"$source $target:$class"}{$_} = 1 foreach split ' ', $perms;
+}
+
+# Taken before the lookups below, which autovivify the keys they miss.
+my @rules = sort keys %allow;
+
+# httpd mmaps the per-node xnba boot config it serves out of /tftpboot.
+# read_file_perms does not hold map, so httpd is denied on the map.
+ok($allow{'httpd_t tftpdir_t:file'}{mmap_read_file_perms}
+        || $allow{'httpd_t tftpdir_t:file'}{map},
+    'httpd may map a file it serves from /tftpboot');
+ok($allow{'httpd_t tftpdir_t:dir'} && $allow{'httpd_t tftpdir_t:lnk_file'},
+    '... and still reads the directory and the symlinks');
+
+# xcatws.cgi connects to xcatd, whose port the stock policy labels ntop_port_t.
+ok($allow{'httpd_sys_script_t ntop_port_t:tcp_socket'}{name_connect},
+    'the REST API connects to the xcatd port');
+
+# rsync copies /etc/shadow to the nodes and into a rootimg. The stock policy
+# holds that read behind rsync_export_all_ro, and rsync_full_access does not
+# grant it, because shadow_t is not in non_auth_file_type.
+foreach my $perm (qw(getattr open read)) {
+    ok($allow{'rsync_t shadow_t:file'}{$perm},
+        "rsync may $perm /etc/shadow when it runs confined");
+}
+
+# rsync preserves the mode of /etc/shadow, so it writes a target it created at
+# mode 0000. As root that needs CAP_DAC_OVERRIDE, which no boolean grants.
+ok($allow{'rsync_t self:capability'}{dac_override},
+    'rsync may write a target it created at mode 0000');
+
+# useradd and groupadd run from the %pre of a package genimage installs into a
+# rootimg, and look for their lock file through the rootimg /var/run symlink.
+# It carries public_content_t because the rootimg is under /install, and no
+# base rule reaches that type for lnk_file.
+foreach my $domain (qw(useradd_t groupadd_t)) {
+    ok($allow{"$domain public_content_t:lnk_file"}{read},
+        "$domain reads the rootimg /var/run symlink");
+}
+
+# Granting execute on an unlabelled file buys a boot by standing in for a
+# labelling step that has not run. See the EL10 note in the SELinux document.
+ok(scalar(@rules) >= 4, 'xcat.te carries the allow rules this test reads');
+is_deeply([ grep { /^kernel_t / } @rules ], [],
+    'no rule grants kernel_t anything');
+
+
+########################################
+#
+# The xcat_t domain
+#
+
+like($te, qr/^type xcat_t;$/m, 'xcat.te declares one domain for xcatd and the clients');
+like($te, qr/^permissive xcat_t;$/m,
+    '... which is permissive while the CI collects the accesses it needs');
+is_deeply([ sort($te =~ /^permissive (\w+);$/mg) ], [ 'xcat_image_t', 'xcat_t' ],
+    '... and the two xCAT domains are the only permissive ones');
+
+like($te, qr/^init_daemon_domain\(xcat_t, xcatd_exec_t\)$/m,
+    'systemd starts xcatd in xcat_t');
+like($te, qr/^application_domain\(xcat_t, xcat_client_exec_t\)$/m,
+    'a client command entered through xcatclient runs in xcat_t');
+
+# xcatd and xcatclient are Perl scripts. The kernel labels the new process from
+# the script, then the domain runs the interpreter named in the shebang.
+like($te, qr/^corecmd_exec_bin\(xcat_t\)$/m, 'xcat_t runs the interpreter of its own script');
+
+# Collects the source domains that xcat.te gives an automatic transition.
+my @domtrans = $te =~ /^\s*domtrans_pattern\((\w+), xcat_client_exec_t, xcat_t\)$/mg;
+is_deeply(\@domtrans, ['unconfined_t'],
+    'only the unconfined domain transitions into xcat_t');
+
+# The transition computes unconfined_u:unconfined_r:xcat_t. Without this
+# statement that context is invalid, and the kernel refuses the exec with
+# EACCES whether or not xcat_t is permissive. A permissive domain does not
+# help: an invalid context is not a permission check, and the record is
+# SELINUX_ERR, which no AVC query finds.
+like($te, qr/^\s*role unconfined_r types xcat_t;$/m,
+    'unconfined_r is authorized for xcat_t');
+
+# A confined user domain that entered a permissive xcat_t would leave its own
+# confinement, so the module gives it no transition.
+foreach my $domain (qw(user_t staff_t sysadm_t guest_t xguest_t)) {
+    unlike($te, qr/\b\Q$domain\E\b/, "$domain gets no rule in xcat.te");
+}
+
+########################################
+#
+# The image-build domain
+#
+
+like($te, qr/^type xcat_image_t;$/m, 'xcat.te declares a domain for the image build');
+like($te, qr/^permissive xcat_image_t;$/m, '... which is permissive too');
+like($te, qr/^application_domain\(xcat_image_t, xcat_image_exec_t\)$/m,
+    'genimage is the entrypoint of that domain');
+like($te, qr/^domtrans_pattern\(xcat_t, xcat_image_exec_t, xcat_image_t\)$/m,
+    'xcatd running genimage enters it');
+like($te, qr/^allow xcat_t xcat_image_t:process \{[^}]*\bnoatsecure\b/m,
+    '... and hands the child the three inherited process permissions');
+
+# The transition from a system service computes system_u:system_r:xcat_image_t.
+# application_domain does not authorize a role, and without the statement the
+# context is invalid: EACCES, reported as SELINUX_ERR and not as an AVC.
+like($te, qr/^role system_r types xcat_image_t;$/m, 'system_r is authorized for xcat_image_t');
+like($te, qr/^\s*role unconfined_r types xcat_image_t;$/m,
+    '... and so is unconfined_r, for an administrator who runs genimage');
+
+# The per-OS programs are the entrypoint, and the geninitrd name needs its own
+# pattern: most are symlinks to their sibling genimage, but
+# netboot/fedora12/geninitrd is a real program the genimage glob never matches.
+#
+# /opt/xcat/bin/genimage is NOT one of them. It writes a request to the socket,
+# and in --interactive mode it runs the per-OS program through a shell
+# (xCAT-client/bin/genimage:453), which transitions on its own. Labelling the
+# wrapper gave a dispatching client the authority of the image domain.
+is_deeply([ grep { fc_type($_) eq 'xcat_image_exec_t' } sort keys %fc ],
+    [ '/opt/xcat/share/xcat/netboot/[^/]+/genimage',
+      '/opt/xcat/share/xcat/netboot/[^/]+/geninitrd' ],
+    'only the per-OS build programs carry the image entrypoint');
+is(fc_type('/opt/xcat/bin/genimage'), 'xcat_client_exec_t',
+    'the genimage wrapper is a client, like every other dispatching command');
+
+# xcatDBcmds is the third dispatcher: 12 spec symlinks reach it, among them
+# lsdef, chdef, mkdef and rmdef, and it does nothing but submit_request.
+is(fc_type('/opt/xcat/bin/xcatDBcmds'), 'xcat_client_exec_t',
+    'the definition commands enter the domain too');
+
+# THE SECURITY PROPERTY OF THE SPLIT. The image build writes and relabels files
+# of every type, because it creates an operating system tree. The daemon that
+# listens on the network must not hold that authority.
+# The first form of this check matched only `allow X file_type:class perm;`
+# with a single unbraced permission, so every braced rule and every interface
+# call passed it. It is the whole security property of the split, so it now
+# reads both forms and names the interfaces that would grant the same thing.
+my @wide = $te =~ /^allow (\w+) file_type:\w+ [{\w]/mg;
+is_deeply([ sort(List::Util::uniq(@wide)) ], [ 'xcat_image_t' ],
+    'only the image domain may reach every file type directly');
+
+# The daemon domain may not relabel a security type, and may not manage one at
+# all. Those two are what keeps /etc/selinux, the keytabs and the audit
+# configuration of the management node out of reach of the network daemon.
+foreach my $iface (qw(files_manage_all_files files_relabel_all_files
+    auth_manage_shadow auth_relabel_shadow seutil_manage_file_contexts)) {
+    unlike($te, qr/^\Q$iface\E\(xcat_t\)$/m, "$iface is not given to xcat_t");
+    like($te, qr/^\Q$iface\E\(xcat_image_t\)$/m, "... and $iface is the image domain's")
+        if $te =~ /^\Q$iface\E\(/m;
+}
+
+# What xcat_t does keep, and why, so the next reader does not take the split for
+# more than it is: packimage and liteimg are symlinks to xcatclientnnr, so their
+# tree work runs in the daemon.
+like($te, qr/^files_manage_non_security_files\(xcat_t\)$/m,
+    'xcat_t still manages non-security files, for packimage');
+
+# A management node or a service node with the targeted policy installs the module.
+foreach my $pkg (qw(xCAT-server xCATsn)) {
+    my @lines = lines_of("$root/$pkg/$pkg.spec");
+    my ($index) = grep {
+        $lines[$_] =~ /^Requires:\s*\(xCAT-selinux = 4:%\{version\}-%\{release\} if selinux-policy-targeted\)\s*$/
+    } 0 .. $#lines;
+    ok(defined $index, "$pkg requires xCAT-selinux when selinux-policy-targeted is installed");
+    my $if = defined $index ? enclosing_if(\@lines, $index) : undef;
+    like($if // '', qr/\brhel\b/, "... only in a Red Hat family build");
+    unlike($if // '', qr/suse/, "... and not in a SUSE build, which has no xCAT-selinux");
+}
+
+done_testing();

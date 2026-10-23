@@ -1,4 +1,5 @@
 setup_vm
 #INCLUDE:rhels_x86_daily.bundle#
 xcatprobe_work
+xcatprobe_xcatmn_selinux
 clean_up_env

@@ -35,20 +35,24 @@ BEGIN {
     sub get_site_attribute { return; }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 
-    package xCAT::NetworkUtils;
-    sub import {
-        my $caller = caller;
-        no strict 'refs';
-        *{"${caller}::getipaddr"} = \&getipaddr;
-    }
-    sub getipaddr { return '192.0.2.20'; }
-    sub my_ip_facing { return (0, '192.0.2.1'); }
-    $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
-
     package xCAT::ServiceNodeUtils;
     $INC{'xCAT/ServiceNodeUtils.pm'} = __FILE__;
     package xCAT::NodeRange;
     $INC{'xCAT/NodeRange.pm'} = __FILE__;
+}
+
+use xCAT::NetworkUtils;
+{
+    package xCAT::NetworkUtils;
+    no warnings 'redefine';
+    sub getipaddr {
+        my ($name, @arguments) = @_;
+        $name = shift(@arguments) if $name eq __PACKAGE__;
+        my %options = @arguments;
+        return if $options{OnlyV6};
+        return '192.0.2.20';
+    }
+    sub my_ip_facing { return (0, '192.0.2.1'); }
 }
 
 my $temporary = tempdir(CLEANUP => 1);

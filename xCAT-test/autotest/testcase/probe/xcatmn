@@ -1,0 +1,7 @@
+start:xcatprobe_xcatmn_selinux
+description:To test if xcatprobe xcatmn reports the SELinux policy of the management node, and does not report it as a problem. The output is not filtered, so a failure of any checkpoint is in the log. -H runs the checks on this node, instead of dispatching them. This case must run in xcat mn
+label:mn_only,ci_test
+cmd:xcatprobe xcatmn -H 2>&1
+check:output=~Checking SELinux policy for xCAT\.\.\..*\[ OK \]
+check:output!~Checking SELinux policy for xCAT\.\.\..*\[FAIL\]
+end

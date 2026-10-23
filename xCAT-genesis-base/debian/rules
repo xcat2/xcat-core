@@ -11,3 +11,17 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	@true
+
+# dh_fixperms resets every *.so* in the package to 0644, which is right for a Debian shared
+# library and wrong for a netboot ROOT FILESYSTEM. The kernel execs the payload's dynamic loader,
+# and a loader with no execute bit makes open_exec() return EACCES, so every ELF in the Genesis
+# image fails to start and the node panics with "No working init found". mknb copies the tree
+# verbatim into genesis.fs.<arch>.lzma, so the mode travels into the image.
+#
+# The bit is restored AFTER dh_fixperms rather than excluding the tree with -X, which would also
+# skip its chown 0:0 pass and ship the payload owned by the build user.
+override_dh_fixperms:
+	dh_fixperms
+	find debian/*/opt/xcat/share/xcat/netboot/genesis -type f \
+	    \( -name 'ld-*.so' -o -name 'ld-*.so.*' -o -name 'ld64.so.*' \) \
+	    -exec chmod 0755 {} +

@@ -78,6 +78,14 @@ There are 3 methods to configure aliases:
 
         20.1.1.1 node1-hd
 
+    * For an IPv6 address, use ``!`` instead of ``:`` to separate the interface hostname and address: ::
+
+        chdef node1 otherinterfaces='node1-v6!2001:db8::101'
+
+      After executing ``makehosts -n``, the generated record is: ::
+
+        2001:db8::101 node1-v6
+
 **Note**: If suffixes or aliases for the same IP are configured in both ``hosts`` table and ``nics`` table, will cause conflicts. ``makehosts`` will use values from ``nics`` table. The values from ``nics`` table will over-write that from ``hosts`` table to create ``/etc/hosts`` records.
 
 Q: How to handle the same short hostname in different domains?

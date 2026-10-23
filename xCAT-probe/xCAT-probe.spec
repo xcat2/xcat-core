@@ -52,6 +52,10 @@ rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/probe/
+# xcatprobe drops a switchprobe symlink in here at run time. rpm must own the
+# directory, or it takes the context of its parent instead of the one the
+# policy gives /opt/.*/bin, and nothing relabels it afterwards.
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/probe/subcmds/bin
 
 cp xcatprobe $RPM_BUILD_ROOT/%{prefix}/bin
 cp -r subcmds  $RPM_BUILD_ROOT/%{prefix}/probe/
@@ -77,8 +81,6 @@ rm -rf $RPM_BUILD_ROOT
 %post
 if [ -e %{prefix}/probe/subcmds/bin/switchprobe ]; then
     rm -rf %{prefix}/probe/subcmds/bin/switchprobe
-else
-    mkdir -p %{prefix}/probe/subcmds/bin/
 fi
 
 %preun

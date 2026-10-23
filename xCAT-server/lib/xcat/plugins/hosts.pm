@@ -37,8 +37,19 @@ sub _host_line_index_values
     my ($ip) = $line =~ /^(\S+)\s/;
     return unless defined($ip);
 
+    # Every spelling of one address has to reach one key, or makehosts leaves
+    # a second entry when a node changes address. A host with no parser for
+    # the family gets the literal back, which is a match on the exact
+    # spelling and nothing wider.
+    my $canonical = xCAT::NetworkUtils->canonical_ip_address($ip);
+    my $key = defined($canonical) ? $canonical : $ip;
+
+    # The node index needs to know the first field is an address, which is a
+    # question about its shape. A dotted quad covers a legacy entry such as
+    # 010.1.1.1 that no parser accepts, and a colon covers an IPv6 literal on
+    # a host with no parser for one. A hostname in /etc/hosts has neither.
     my @nodes;
-    if ($ip =~ /^\d+\.\d+\.\d+\.\d+$/)
+    if (defined($canonical) || $ip =~ /^\d+\.\d+\.\d+\.\d+$/ || $ip =~ /:/)
     {
         my ($primary_name) = $line =~ /^\S+\s+(\S+)/;
         if (defined($primary_name))
@@ -54,7 +65,7 @@ sub _host_line_index_values
         }
     }
 
-    return ($ip, \@nodes);
+    return ($key, \@nodes);
 }
 
 sub _index_host_line
@@ -129,9 +140,11 @@ sub _matching_host_indexes
     my ($node, $ip) = @_;
     my %matches;
 
-    if (exists($host_indexes_by_ip{$ip}))
+    my $canonical = xCAT::NetworkUtils->canonical_ip_address($ip);
+    my $key = defined($canonical) ? $canonical : $ip;
+    if (defined($key) && exists($host_indexes_by_ip{$key}))
     {
-        $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$ip} };
+        $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$key} };
     }
     if (exists($host_indexes_by_node{$node}))
     {
@@ -297,7 +310,7 @@ sub addotherinterfaces
         } else {
             ($itf, $ip) = split(/:/, $_);
         }
-        if ($ip && xCAT::NetworkUtils->isIpv4addr($ip))
+        if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
             if ($itf =~ /^-/)
             {
@@ -330,7 +343,7 @@ sub delotherinterfaces
         } else {
             ($itf, $ip) = split(/:/, $_);
         }
-        if ($ip && xCAT::NetworkUtils->isIpv4addr($ip))
+        if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
             if ($itf =~ /^-/)
             {
@@ -393,7 +406,7 @@ sub add_hosts_content {
         }
         else
         {
-            if (xCAT::NetworkUtils->isIpv4addr($ip))
+            if (xCAT::NetworkUtils->isValidIp($ip))
             {
                 addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
             }
@@ -420,6 +433,68 @@ sub add_hosts_content {
     if ($args{hostsref}) {
         @{ $args{hostsref} } = @hosts;
     }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    add_all_hosts_content
+
+    Adds a host entry for every row of the hosts table.
+
+    Arguments:
+        hostents - reference to the list of hosts table rows
+        callback - the command callback
+        domain   - the domain to use when a row resolves to none
+    Returns:
+        the node name of every row, in order
+    Comments:
+        makehosts with no noderange takes this path, so an address the entry
+        test rejects reaches no host entry at all.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub add_all_hosts_content
+{
+    my %args     = @_;
+    my $hostents = $args{hostents};
+    my $callback = $args{callback};
+    my $domain   = $args{domain};
+
+    my @allnodes;
+    foreach my $hostent (@{$hostents})
+    {
+        push @allnodes, $hostent->{node};
+
+        my $netn;
+        ($domain, $netn) = &getIPdomain($hostent->{ip});
+        if (!$domain) {
+            $domain = $::sitedomain;
+        }
+        if (!$domain) {
+            $domain = $::XCATSITEVALS{domain};
+        }
+
+        if (xCAT::NetworkUtils->isValidIp($hostent->{ip}))
+        {
+            addnode $callback, $hostent->{node}, $hostent->{ip},
+              $hostent->{hostnames}, $domain;
+        }
+        else
+        {
+            my $rsp;
+            push @{ $rsp->{data} },
+              "Invalid IP Addr \'$hostent->{ip}\' for node \'$hostent->{node}\'.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+
+        if (defined($hostent->{otherinterfaces}))
+        {
+            addotherinterfaces $callback, $hostent->{node},
+              $hostent->{otherinterfaces}, $domain;
+        }
+    }
+    return @allnodes;
 }
 
 sub process_request
@@ -617,37 +692,11 @@ sub process_request
           $hoststab->getAllNodeAttribs(
             [ 'ip', 'node', 'hostnames', 'otherinterfaces' ]);
 
-        my @allnodes;
-        foreach (@hostents)
-        {
-
-            push @allnodes, $_->{node};
-
-            my $netn;
-            ($domain, $netn) = &getIPdomain($_->{ip});
-            if (!$domain) {
-                $domain = $::sitedomain;
-            }
-            if (!$domain) {
-                $domain = $::XCATSITEVALS{domain};
-            }
-
-            if (xCAT::NetworkUtils->isIpv4addr($_->{ip}))
-            {
-                addnode $callback, $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
-            }
-            else
-            {
-                my $rsp;
-                push @{ $rsp->{data} }, "Invalid IP Addr \'$_->{ip}\' for node \'$_->{node}\'.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-            }
-
-            if (defined($_->{otherinterfaces}))
-            {
-                addotherinterfaces $callback, $_->{node}, $_->{otherinterfaces}, $domain;
-            }
-        }
+        my @allnodes = add_all_hosts_content(
+            hostents => \@hostents,
+            callback => $callback,
+            domain   => $domain
+        );
 
         # also do nics table
         &donics(nodes => \@allnodes, callback => $callback, delnode => $DELNODE);

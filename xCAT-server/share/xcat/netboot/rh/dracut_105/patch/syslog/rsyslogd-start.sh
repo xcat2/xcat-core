@@ -6,8 +6,21 @@
 
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
+# A COLON DOES NOT MEAN IPv6. An IPv4 address or a hostname with a port has one
+# colon; an IPv6 literal has at least two. This is a second copy of the rule in
+# xCAT/postscripts/syslog, because this script runs inside the dracut initramfs
+# and cannot source the postscript.
+format_syslog_server() {
+    case "$1" in
+        \[*)   printf '%s\n' "$1" ;;
+        *:*:*) printf '[%s]\n' "$1" ;;
+        *)     printf '%s\n' "$1" ;;
+    esac
+}
+
 rsyslog_config() {
-    local server=$1
+    local server
+    server=$(format_syslog_server "$1")
     shift
     local syslog_template=$1
     shift

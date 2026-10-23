@@ -23,9 +23,26 @@ use Sys::Hostname;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
+my $core_socket_resolver = defined(&Socket::getaddrinfo)
+  && defined(&Socket::getnameinfo)
+  && defined(&Socket::inet_pton)
+  && eval {
+    my @required_constants = (
+        Socket::AF_INET6(),
+        Socket::AI_NUMERICHOST(),
+        Socket::NI_NUMERICHOST(),
+    );
+    scalar(@required_constants) == 3;
+  };
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(getipaddr);
+our @EXPORT_OK = qw(
+  format_host_port
+  format_uri_host
+  getipaddr
+  my_ip_facing_family
+  parse_host_port
+);
 
 my $utildata;    #data to persist locally
 
@@ -169,7 +186,7 @@ sub gethostname()
         $iporhost = @{$iporhost}[0];
         if (!$iporhost)
         {
-            return undef;
+            return;
         }
     }
 
@@ -287,6 +304,15 @@ sub getipaddr
 #print "\n";
 #print "============================\n";
 
+    # Keep family-specific lookups out of the legacy cache.  Otherwise an
+    # OnlyV6 lookup can make a later OnlyV4 lookup return an IPv6 address (and
+    # vice versa).
+    my $cache_suffix = $extraarguments{OnlyV6} ? '_v6'
+      : $extraarguments{OnlyV4}                ? '_v4'
+      :                                          '';
+    my $host_cache_key   = 'hostip' . $cache_suffix;
+    my $number_cache_key = 'Number' . $cache_suffix;
+
     #cache, do not lookup DNS each time
     #
     # An unrestricted lookup asks for AF_UNSPEC and caches whatever came back, which
@@ -305,13 +331,23 @@ sub getipaddr
     {
 
         if($extraarguments{GetNumber} ) {
-            if($::hostiphash{$iporhost}{Number}){
+            if(defined($::hostiphash{$iporhost}{$number_cache_key})){
         #print "YYYYYYYYYY GetNumber Cache Hit!!!YYYYYYYYY\n";
-                return $::hostiphash{$iporhost}{Number};
+                return $::hostiphash{$iporhost}{$number_cache_key};
             }
-        } elsif($::hostiphash{$iporhost}{hostip}) {
+        } elsif(defined($::hostiphash{$iporhost}{$host_cache_key})) {
         #print "YYYYYYYYYY dns  Cache Hit!!!YYYYYYYYY\n";
-            return $::hostiphash{$iporhost}{hostip};
+            return $::hostiphash{$iporhost}{$host_cache_key};
+        } elsif($cache_suffix && defined($::hostiphash{$iporhost}{hostip})) {
+            my $cached_ip = $::hostiphash{$iporhost}{hostip};
+            if (($extraarguments{OnlyV4} && xCAT::NetworkUtils->isIpaddr($cached_ip))
+                || ($extraarguments{OnlyV6}
+                    && $cached_ip =~ /:/
+                    && xCAT::NetworkUtils->isValidIp($cached_ip)))
+            {
+                $::hostiphash{$iporhost}{$host_cache_key} = $cached_ip;
+                return $cached_ip;
+            }
         }
     }
 
@@ -330,14 +366,17 @@ sub getipaddr
         }else{
             @addrinfo=Socket6::getaddrinfo($iporhost, 0, $reqfamily, SOCK_STREAM, 6);
         }
+        # The resolver lists every address of the host, link-local included,
+        # and the first one is what a caller that asked for no family gets.
+        @addrinfo = _socket6_addrinfo_routable_first(@addrinfo);
         my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
         unless($reqfamily == AF_INET6){
             if($isip){
                if($name){
-                   $::hostiphash{$iporhost}{hostip}=$name;
+                   $::hostiphash{$iporhost}{$host_cache_key}=$name;
                }
             }elsif($ip){
-                $::hostiphash{$iporhost}{hostip}=$ip;
+                $::hostiphash{$iporhost}{$host_cache_key}=$ip;
             }
         }
         while ($ip)
@@ -350,10 +389,23 @@ sub getipaddr
                     $bignumber->badd($_);
                 }
                 push(@returns, $bignumber);
-                $::hostiphash{$iporhost}{Number}=$returns[0];
+                $::hostiphash{$iporhost}{$number_cache_key}=$returns[0];
+                unless ($cache_suffix)
+                {
+                    my $family_key = $family == AF_INET6 ? 'Number_v6' : 'Number_v4';
+                    $::hostiphash{$iporhost}{$family_key} = $bignumber
+                      unless defined($::hostiphash{$iporhost}{$family_key});
+                }
             } else {
-                push @returns, (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
-                $::hostiphash{$iporhost}{hostip}=$returns[0];
+                my $numeric_ip = (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                push @returns, $numeric_ip;
+                $::hostiphash{$iporhost}{$host_cache_key}=$returns[0];
+                unless ($cache_suffix)
+                {
+                    my $family_key = $family == AF_INET6 ? 'hostip_v6' : 'hostip_v4';
+                    $::hostiphash{$iporhost}{$family_key} = $numeric_ip
+                      unless defined($::hostiphash{$iporhost}{$family_key});
+                }
             }
             if (scalar @addrinfo and $extraarguments{GetAllAddresses}) {
                 ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo, 0, 5);
@@ -366,11 +418,87 @@ sub getipaddr
         }
         return @returns;
     }
+    elsif ($core_socket_resolver)
+    {
+        my $reqfamily = Socket::AF_UNSPEC();
+        if ($extraarguments{OnlyV6}) {
+            $reqfamily = Socket::AF_INET6();
+        } elsif ($extraarguments{OnlyV4}) {
+            $reqfamily = Socket::AF_INET();
+        }
+
+        my %hints = (
+            family   => $reqfamily,
+            socktype => Socket::SOCK_STREAM(),
+            protocol => 6,
+        );
+        $hints{flags} = Socket::AI_NUMERICHOST() if $isip;
+
+        my ($error, @addrinfo) = Socket::getaddrinfo($iporhost, 0, \%hints);
+        if ($error)
+        {
+            return () if $extraarguments{GetAllAddresses};
+            return;
+        }
+
+        # getaddrinfo returns every address of the host, link-local included,
+        # and a caller that asked for no family takes the first one. Order the
+        # entries the way prefer_routable_addresses orders their literals.
+        @addrinfo = _addrinfo_routable_first(@addrinfo);
+
+        my @returns;
+        foreach my $address (@addrinfo)
+        {
+            my ($name_error, $numeric_ip) = Socket::getnameinfo(
+                $address->{addr}, Socket::NI_NUMERICHOST()
+            );
+            next if $name_error || !defined($numeric_ip);
+
+            if ($extraarguments{GetNumber})
+            {
+                my $packed = Socket::inet_pton($address->{family}, $numeric_ip);
+                next unless defined($packed);
+                my $bignumber = Math::BigInt->new(0);
+                foreach (unpack("N*", $packed))
+                {
+                    $bignumber->blsft(32);
+                    $bignumber->badd($_);
+                }
+                push @returns, $bignumber;
+                $::hostiphash{$iporhost}{$number_cache_key} = $returns[0];
+                unless ($cache_suffix)
+                {
+                    my $family_key = $address->{family} == Socket::AF_INET6()
+                      ? 'Number_v6' : 'Number_v4';
+                    $::hostiphash{$iporhost}{$family_key} = $bignumber
+                      unless defined($::hostiphash{$iporhost}{$family_key});
+                }
+            }
+            else
+            {
+                push @returns, $numeric_ip;
+                $::hostiphash{$iporhost}{$host_cache_key} = $returns[0];
+                unless ($cache_suffix)
+                {
+                    my $family_key = $address->{family} == Socket::AF_INET6()
+                      ? 'hostip_v6' : 'hostip_v4';
+                    $::hostiphash{$iporhost}{$family_key} = $numeric_ip
+                      unless defined($::hostiphash{$iporhost}{$family_key});
+                }
+            }
+            last unless $extraarguments{GetAllAddresses};
+        }
+
+        unless ($extraarguments{GetAllAddresses}) {
+            return $returns[0];
+        }
+        return @returns;
+    }
     else
     {
         #return inet_ntoa(inet_aton($iporhost))
         #TODO, what if no scoket6 support, but passing in a IPv6 hostname?
-        if ($iporhost =~ /:/) {    #ipv6
+        if ($extraarguments{OnlyV6} || $iporhost =~ /:/) {    #ipv6
             return undef;
 
             #die "Attempt to process IPv6 address, but system does not have requisite IPv6 perl support";
@@ -385,12 +513,22 @@ sub getipaddr
         my $myip=inet_ntoa($packed_ip);
 
         unless($isip) {
-            $::hostiphash{$iporhost}{hostip}=$myip;
+            $::hostiphash{$iporhost}{$host_cache_key}=$myip;
+            unless ($cache_suffix)
+            {
+                $::hostiphash{$iporhost}{hostip_v4}=$myip
+                  unless defined($::hostiphash{$iporhost}{hostip_v4});
+            }
         }
 
         if ($extraarguments{GetNumber}) { #only 32 bits, no for loop needed.
             my $number=Math::BigInt->new(unpack("N*", $packed_ip));
-            $::hostiphash{$iporhost}{Number}=$number;
+            $::hostiphash{$iporhost}{$number_cache_key}=$number;
+            unless ($cache_suffix)
+            {
+                $::hostiphash{$iporhost}{Number_v4}=$number
+                  unless defined($::hostiphash{$iporhost}{Number_v4});
+            }
             return $number;
         }
 
@@ -1303,6 +1441,397 @@ sub my_ip_facing
 
 #-------------------------------------------------------------------------------
 
+=head3   my_ip_facing_family
+
+         Returns local addresses in the same subnet as the specified peer,
+         restricted to the requested address family. Linux only.
+    Arguments:
+        peer hostname or address
+        address family (4 or 6)
+    Returns:
+        [0, ip1, ip2, ...] when matching local addresses are found
+        [1, error] when the peer cannot be resolved in the requested family
+        [2, error] when no local address shares the peer's subnet
+    Example:
+        my @ip = xCAT::NetworkUtils->my_ip_facing_family($peer, 6)
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub _local_ip_prefixes
+{
+    my $family = shift;
+    return unless defined($family) && ($family == 4 || $family == 6);
+    return if $^O eq 'aix';
+
+    my $ipcmd = -x '/sbin/ip' ? '/sbin/ip'
+      : -x '/usr/sbin/ip'     ? '/usr/sbin/ip'
+      :                         undef;
+    return unless $ipcmd;
+
+    my $address_type = $family == 6 ? 'inet6' : 'inet';
+    my @addresses;
+    if (open(my $ipout, '-|', $ipcmd, '-o', "-$family", 'addr', 'show', 'scope', 'global'))
+    {
+        while (my $line = <$ipout>)
+        {
+            if ($line =~ /\s\Q$address_type\E\s+([^\s\/]+)\/(\d+)/)
+            {
+                push @addresses, [ $1, $2 ];
+            }
+        }
+        close($ipout);
+    }
+    return @addresses;
+}
+
+sub _pack_ip_address
+{
+    my ($address, $family) = @_;
+    return unless defined($address);
+
+    if ($family == 4)
+    {
+        return inet_aton($address);
+    }
+
+    my $packed;
+    if (defined(&Socket::inet_pton))
+    {
+        $packed = eval { Socket::inet_pton(Socket::AF_INET6(), $address) };
+    }
+    if (!defined($packed) && $socket6support)
+    {
+        $packed = eval { Socket6::inet_pton(Socket6::AF_INET6(), $address) };
+    }
+    return $packed;
+}
+
+# Turns a packed address back into a literal. Core Socket has carried
+# inet_ntop since 5.14; Socket6 is the fallback for an older perl, and it is
+# optional, so a host can have neither.
+sub _unpack_ip_address
+{
+    my ($packed, $family) = @_;
+    return unless defined($packed);
+    return inet_ntoa($packed) if $family == 4;
+
+    my $address;
+    if (defined(&Socket::inet_ntop))
+    {
+        $address = eval { Socket::inet_ntop(Socket::AF_INET6(), $packed) };
+    }
+    if (!defined($address) && $socket6support)
+    {
+        $address = eval { Socket6::inet_ntop(Socket6::AF_INET6(), $packed) };
+    }
+    return $address;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    canonical_ip_address
+
+    Returns the one spelling of an address that every other spelling of it
+    shares, for use as a hash key.
+
+    Arguments:
+        IPv4 address or IPv6 address, with an optional zone identifier
+    Returns:
+        the canonical literal, or undef when the value is not an address or
+        this host has no parser for its family
+    Comments:
+        2001:db8::10 and 2001:0db8:0000:0000:0000:0000:0000:0010 are the same
+        address and have to reach the same key. A caller that keys on the
+        literal holds two entries for one host.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub canonical_ip_address
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    return unless defined($address) && length($address);
+
+    $address =~ s/%.*$//;
+    return unless length($address);
+    return unless xCAT::NetworkUtils->isValidIp($address);
+
+    my $family = $address =~ /:/ ? 6 : 4;
+    my $packed = _pack_ip_address($address, $family);
+    return unless defined($packed);
+    return _unpack_ip_address($packed, $family);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    getIPv6PrefixLength
+
+    Returns the numeric prefix length from an IPv6 network and optional mask.
+
+    Arguments:
+        IPv6 network, optionally with a CIDR suffix
+        Optional numeric prefix mask
+    Returns:
+        Prefix length from 0 through 128, or undef
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getIPv6PrefixLength
+{
+    my $network = shift;
+    if (defined($network) && $network eq __PACKAGE__)
+    {
+        $network = shift;
+    }
+    my $mask = shift;
+
+    return unless defined($network) && $network =~ /:/;
+
+    my $prefix;
+    if ($network =~ m{/([0-9]+)$})
+    {
+        $prefix = $1;
+    }
+    elsif (defined($mask) && $mask =~ m{^/?([0-9]+)$})
+    {
+        $prefix = $1;
+    }
+
+    return unless defined($prefix) && $prefix <= 128;
+    return $prefix;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    getIPv6ReverseZone
+
+    Formats the nibble-aligned ip6.arpa zone for an IPv6 network.
+
+    Arguments:
+        IPv6 network, optionally with a CIDR suffix
+        Optional numeric prefix mask
+    Returns:
+        Reverse zone name, or undef for invalid or non-nibble-aligned input
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getIPv6ReverseZone
+{
+    my $network = shift;
+    if (defined($network) && $network eq __PACKAGE__)
+    {
+        $network = shift;
+    }
+    my $mask = shift;
+
+    my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($network, $mask);
+    return unless defined($prefix) && $prefix % 4 == 0;
+
+    my $address = $network;
+    $address =~ s{/.*$}{};
+    my $packed = _pack_ip_address($address, 6);
+    return unless defined($packed);
+    return 'ip6.arpa.' if $prefix == 0;
+
+    my $hex = substr(unpack('H*', $packed), 0, $prefix / 4);
+    return join('.', reverse(split(//, $hex))) . '.ip6.arpa.';
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    getIPv6ReverseName
+
+    Formats the complete 32-nibble ip6.arpa owner name for an IPv6 literal.
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getIPv6ReverseName
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+
+    return xCAT::NetworkUtils->getIPv6ReverseZone($address, 128);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    isSameIPAddress
+
+    Compares two IPv4 or IPv6 literals by their packed address value.
+
+    Arguments:
+        Two IPv4 or IPv6 address literals
+    Returns:
+        1 - equivalent addresses
+        0 - different or invalid addresses
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub isSameIPAddress
+{
+    my $first = shift;
+    if (defined($first) && $first eq __PACKAGE__)
+    {
+        $first = shift;
+    }
+    my $second = shift;
+
+    return 0 unless xCAT::NetworkUtils->isValidIp($first)
+      && xCAT::NetworkUtils->isValidIp($second);
+    my $family = $first =~ /:/ ? 6 : 4;
+    return 0 if ($second =~ /:/ ? 6 : 4) != $family;
+
+    my $first_packed  = _pack_ip_address($first, $family);
+    my $second_packed = _pack_ip_address($second, $family);
+    return defined($first_packed)
+      && defined($second_packed)
+      && $first_packed eq $second_packed ? 1 : 0;
+}
+
+sub _addresses_share_prefix
+{
+    my ($first, $second, $prefix, $family) = @_;
+    my $max_prefix = $family == 6 ? 128 : 32;
+    return 0 unless defined($prefix)
+      && $prefix =~ /^\d+$/
+      && $prefix >= 0
+      && $prefix <= $max_prefix;
+
+    my $first_packed  = _pack_ip_address($first, $family);
+    my $second_packed = _pack_ip_address($second, $family);
+    return 0 unless defined($first_packed) && defined($second_packed);
+
+    my $whole_bytes = int($prefix / 8);
+    return 0
+      if substr($first_packed, 0, $whole_bytes)
+      ne substr($second_packed, 0, $whole_bytes);
+
+    my $remaining_bits = $prefix % 8;
+    if ($remaining_bits)
+    {
+        my $mask = (0xff << (8 - $remaining_bits)) & 0xff;
+        return 0
+          if (ord(substr($first_packed, $whole_bytes, 1)) & $mask)
+          != (ord(substr($second_packed, $whole_bytes, 1)) & $mask);
+    }
+    return 1;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    node_address_family
+
+    Returns the preferred address family for a node. IPv4 remains preferred
+    for dual-stack nodes to preserve existing xCAT behavior.
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub node_address_family
+{
+    my $node = shift;
+    if (defined($node) && $node eq __PACKAGE__)
+    {
+        $node = shift;
+    }
+
+    return 4 if xCAT::NetworkUtils->getipaddr($node, OnlyV4 => 1);
+    return 6 if xCAT::NetworkUtils->getipaddr($node, OnlyV6 => 1);
+    return;
+}
+
+sub node_is_ipv6_only
+{
+    my $node = shift;
+    if (defined($node) && $node eq __PACKAGE__)
+    {
+        $node = shift;
+    }
+
+    my $family = xCAT::NetworkUtils->node_address_family($node);
+    return defined($family) && $family == 6 ? 1 : 0;
+}
+
+sub my_ip_facing_family
+{
+    my $peer = shift;
+    if (defined($peer) && $peer eq __PACKAGE__)
+    {
+        $peer = shift;
+    }
+    my $family = shift;
+
+    unless (defined($family) && ($family == 4 || $family == 6))
+    {
+        return (1, 'Address family must be 4 or 6');
+    }
+
+    my $peerip = $family == 6
+      ? xCAT::NetworkUtils->getipaddr($peer, OnlyV6 => 1)
+      : xCAT::NetworkUtils->getipaddr($peer, OnlyV4 => 1);
+    unless ($peerip)
+    {
+        return (1, "The $peer can not be resolved as IPv$family");
+    }
+
+    my @ips;
+    foreach my $local (_local_ip_prefixes($family))
+    {
+        my ($address, $prefix) = @{$local};
+        if (_addresses_share_prefix($peerip, $address, $prefix, $family))
+        {
+            push @ips, $address;
+        }
+    }
+
+    if (@ips)
+    {
+        return (0, @ips);
+    }
+    return (2, "The IPv$family address of node $peer is in an undefined subnet");
+}
+
+sub ipv6_server_for_node
+{
+    my $node = shift;
+    if (defined($node) && $node eq __PACKAGE__)
+    {
+        $node = shift;
+    }
+    my $server = shift;
+
+    if (!defined($server) || $server eq '!myipfn!' || $server eq '<xcatmaster>')
+    {
+        my @facing = xCAT::NetworkUtils->my_ip_facing_family($node, 6);
+        return unless @facing && !$facing[0];
+        return $facing[1];
+    }
+
+    return $server
+      if $server =~ /:/ && xCAT::NetworkUtils->isValidIp($server);
+    return xCAT::NetworkUtils->getipaddr($server, OnlyV6 => 1);
+}
+
+#-------------------------------------------------------------------------------
+
 =head3   my_ip_facing_aix
          Returns my ip address
          AIX only
@@ -1518,18 +2047,8 @@ sub isInSameSubnet
         {
             return undef;
         }
-        my $netipmodule = eval { require Net::IP; };
-        if ($netipmodule) {
-            my $eip1 = Net::IP::ip_expand_address($ip1, 6);
-            my $eip2 = Net::IP::ip_expand_address($ip2, 6);
-            my $bmask = Net::IP::ip_get_mask($mask, 6);
-            my $bip1 = Net::IP::ip_iptobin($eip1, 6);
-            my $bip2 = Net::IP::ip_iptobin($eip2, 6);
-            if (($bip1 & $bmask) == ($bip2 & $bmask)) {
-                return 1;
-            }
-        }    # else, can not check without Net::IP module
-        return undef;
+        $mask =~ s{^/}{} if defined($mask);
+        return _addresses_share_prefix($ip1, $ip2, $mask, 6) ? 1 : undef;
     }
 }
 
@@ -2099,7 +2618,7 @@ sub toIP
 
 =head3    isIpv4addr
 
-    returns 1 if parameter is has a valid IP address form.
+    returns 1 if parameter has a valid IPv4 address form.
 
     Arguments:
         dot qulaified IP address: e.g. 1.2.3.4
@@ -2218,6 +2737,116 @@ sub isIpv6addr
 }
 
 #-------------------------------------------------------------------------------
+# A link-local address reaches one link only, so it cannot serve as a cluster
+# address: fe80::/10 for IPv6, 169.254.0.0/16 for IPv4.
+sub _is_link_local
+{
+    my $address = shift;
+    return 0 unless defined($address) && length($address);
+    return 1 if $address =~ /^fe[89ab][0-9a-f]:/i;
+    return 1 if $address =~ /^169\.254\./;
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+# Socket6::getaddrinfo answers a flat list of five-element records. Reorder the
+# records, not the elements, by the rule prefer_routable_addresses applies.
+sub _socket6_addrinfo_routable_first
+{
+    my @addrinfo = @_;
+    return @addrinfo if scalar(@addrinfo) % 5;
+
+    my (@routable, @linklocal, @unreadable);
+    while (my @record = splice(@addrinfo, 0, 5))
+    {
+        my $numeric_ip = (Socket6::getnameinfo($record[3], Socket6::NI_NUMERICHOST()))[0];
+        if (!defined($numeric_ip))
+        {
+            push @unreadable, @record;
+        }
+        elsif (_is_link_local($numeric_ip))
+        {
+            push @linklocal, @record;
+        }
+        else
+        {
+            push @routable, @record;
+        }
+    }
+    return (@routable, @linklocal, @unreadable);
+}
+
+#-------------------------------------------------------------------------------
+# Order getaddrinfo entries by the same rule prefer_routable_addresses applies
+# to literals. An entry whose address cannot be read keeps its place at the end.
+sub _addrinfo_routable_first
+{
+    my @addrinfo = @_;
+    my (@routable, @linklocal, @unreadable);
+    foreach my $address (@addrinfo)
+    {
+        my ($name_error, $numeric_ip) =
+          Socket::getnameinfo($address->{addr}, Socket::NI_NUMERICHOST());
+        if ($name_error || !defined($numeric_ip))
+        {
+            push @unreadable, $address;
+        }
+        elsif (_is_link_local($numeric_ip))
+        {
+            push @linklocal, $address;
+        }
+        else
+        {
+            push @routable, $address;
+        }
+    }
+    return (@routable, @linklocal, @unreadable);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    prefer_routable_addresses
+
+    Orders resolved addresses so a routable one comes before a link-local one,
+    and removes the IPv6 zone identifier.
+
+    Arguments:
+        list of address literals, in resolver order
+    Returns:
+        the same addresses, routable ones first, order kept inside each group
+    Comments:
+        A host resolves its own name to every address on it, and a link-local
+        address is often first. site.master takes that answer and reaches every
+        node, which cannot use fe80::/10 across a link or parse the %zone form.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub prefer_routable_addresses
+{
+    my @addresses = @_;
+    shift @addresses
+      if @addresses && defined($addresses[0]) && $addresses[0] eq __PACKAGE__;
+
+    my (@routable, @linklocal);
+    foreach my $address (@addresses)
+    {
+        next unless defined($address) && length($address);
+        $address =~ s/%.*$//;
+        next unless length($address);
+        if (_is_link_local($address))
+        {
+            push @linklocal, $address;
+        }
+        else
+        {
+            push @routable, $address;
+        }
+    }
+    return (@routable, @linklocal);
+}
+
+#-------------------------------------------------------------------------------
 
 =head3    isValidIp
 
@@ -2249,6 +2878,174 @@ sub isValidIp
     }
 
     return (isIpv4addr($value) or isIpv6addr($value)) ? 1 : 0;
+}
+
+
+
+#-------------------------------------------------------------------------------
+
+=head3    format_uri_host
+
+    Formats a host for use in a URI authority. IPv6 literals are enclosed in
+    square brackets; IPv4 literals and hostnames are returned unchanged.
+
+    Arguments:
+        IPv4 address, IPv6 address, or hostname
+    Returns:
+        Formatted host, or undef for malformed input
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub _endpoint_hostname_is_valid
+{
+    my $host = shift;
+    return 0 unless defined($host) && length($host);
+
+    # The endpoint grammar intentionally accepts uppercase and underscore
+    # labels used by xCAT; the legacy hostname validators do not accept both.
+    my $name = $host;
+    $name =~ s/\.$//;
+    return 0 unless length($name) && length($name) <= 253;
+    if ($name =~ /^(?:\d+\.){3}\d+$/)
+    {
+        return xCAT::NetworkUtils->isIpaddr($name);
+    }
+
+    foreach my $label (split(/\./, $name, -1))
+    {
+        return 0 unless length($label) <= 63
+          && $label =~ /^[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?$/;
+    }
+    return 1;
+}
+
+sub format_uri_host
+{
+    my $host = shift;
+    if (defined($host) && $host eq __PACKAGE__)
+    {
+        $host = shift;
+    }
+
+    return unless defined($host) && length($host);
+    if ($host =~ /^\[([^\]]+)\]$/)
+    {
+        my $address = $1;
+        return unless xCAT::NetworkUtils->isValidIp($address) && $address =~ /:/;
+        return $host;
+    }
+
+    if ($host =~ /:/)
+    {
+        return unless xCAT::NetworkUtils->isValidIp($host);
+        return "[$host]";
+    }
+
+    return _endpoint_hostname_is_valid($host) ? $host : undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    format_host_port
+
+    Formats a host and TCP/UDP port. IPv6 literals use the standard bracketed
+    form so the result can be used as either a URI authority or endpoint.
+
+    Arguments:
+        IPv4 address, IPv6 address, or hostname
+        Port number (1-65535)
+    Returns:
+        host:port, [IPv6-address]:port, or undef for malformed input
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub _endpoint_port_is_valid
+{
+    my $port = shift;
+    return defined($port)
+      && $port =~ /^\d+$/
+      && $port > 0
+      && $port <= 65535;
+}
+
+sub format_host_port
+{
+    my $host = shift;
+    if (defined($host) && $host eq __PACKAGE__)
+    {
+        $host = shift;
+    }
+    my $port = shift;
+
+    return unless _endpoint_port_is_valid($port);
+    my $formatted_host = xCAT::NetworkUtils->format_uri_host($host);
+    return unless defined($formatted_host);
+    return "$formatted_host:$port";
+}
+
+#-------------------------------------------------------------------------------
+
+=head3    parse_host_port
+
+    Parses a hostname or address with an optional port. An IPv6 address with
+    an explicit port must use [address]:port syntax; an unbracketed IPv6
+    literal is treated only as a host.
+
+    Arguments:
+        Host or endpoint
+        Optional default port (1-65535)
+    Returns:
+        (host, port), or an empty list for malformed input
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub parse_host_port
+{
+    my $endpoint = shift;
+    if (defined($endpoint) && $endpoint eq __PACKAGE__)
+    {
+        $endpoint = shift;
+    }
+    my $default_port = shift;
+
+    return unless defined($endpoint) && length($endpoint);
+    return if defined($default_port) && !_endpoint_port_is_valid($default_port);
+
+    my ($host, $port);
+    if ($endpoint =~ /^\[([^\]]+)\](?::(\d+))?$/)
+    {
+        $host = $1;
+        $port = defined($2) ? $2 : $default_port;
+        return unless xCAT::NetworkUtils->isValidIp($host) && $host =~ /:/;
+    }
+    elsif (xCAT::NetworkUtils->isValidIp($endpoint) && $endpoint =~ /:/)
+    {
+        $host = $endpoint;
+        $port = $default_port;
+    }
+    elsif ($endpoint =~ /^([^:]+):(\d+)$/)
+    {
+        ($host, $port) = ($1, $2);
+    }
+    elsif ($endpoint !~ /:/)
+    {
+        $host = $endpoint;
+        $port = $default_port;
+    }
+    else
+    {
+        return;
+    }
+
+    return unless defined(xCAT::NetworkUtils->format_uri_host($host));
+    return if defined($port) && !_endpoint_port_is_valid($port);
+    return ($host, $port);
 }
 
 
@@ -2359,6 +3156,62 @@ sub getNodeNetworkCfg
     }
 
     return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask, 0, 0));
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   getNodeNetworkCfg6
+    Description:
+        Get the configured IPv6 address, hostname, gateway, and prefix length
+        for a node.
+
+    Arguments:
+        node: the nodename
+    Returns:
+        An array containing (IPv6 address, hostname, gateway, prefix length).
+        The address is undefined when the node has no IPv6 address.  Gateway
+        and prefix are undefined when no matching networks row exists.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub getNodeNetworkCfg6
+{
+    my $node = shift;
+    if (defined($node) && $node =~ /xCAT::NetworkUtils/)
+    {
+        $node = shift;
+    }
+
+    my $ip = xCAT::NetworkUtils->getipaddr($node, OnlyV6 => 1);
+    return (undef, $node, undef, undef) unless $ip;
+
+    my ($gateway, $prefix);
+    my $nettab = xCAT::Table->new("networks");
+    if ($nettab) {
+        my @nets = $nettab->getAllAttribs('net', 'mask', 'gateway');
+        foreach my $net (@nets) {
+            my $network = $net->{'net'};
+            my $candidate_prefix = $net->{'mask'};
+            next unless defined($network);
+
+            if ($network =~ s{/([0-9]+)$}{}) {
+                $candidate_prefix = $1 unless defined($candidate_prefix) && length($candidate_prefix);
+            }
+            next unless defined($candidate_prefix);
+            $candidate_prefix =~ s{^/}{};
+            next unless $candidate_prefix =~ /^\d+$/ && $candidate_prefix <= 128;
+
+            if (xCAT::NetworkUtils::_addresses_share_prefix($network, $ip, $candidate_prefix, 6)) {
+                $gateway = $net->{'gateway'};
+                $prefix  = $candidate_prefix;
+                last;
+            }
+        }
+        $nettab->close();
+    }
+
+    return ($ip, $node, $gateway, $prefix);
 }
 
 #-------------------------------------------------------------------------------
@@ -2476,6 +3329,198 @@ sub get_hdwr_ip
 
 #--------------------------------------------------------------------------------
 
+=head3    match_ping_target
+
+      Maps a name or numeric address reported by a ping backend to the
+      original target supplied by xCAT.
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub match_ping_target
+{
+    my ($class, $candidate, $targets) = @_;
+    return unless defined($candidate) && ref($targets) eq 'ARRAY';
+
+    my @matches = $class->match_ping_targets([$candidate], $targets);
+    return $matches[0];
+}
+
+#--------------------------------------------------------------------------------
+
+=head3    match_ping_targets
+
+      Maps a batch of names or numeric addresses reported by a ping backend to
+      the original xCAT targets, reusing one address-resolution index.
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub match_ping_targets
+{
+    my ($class, $candidates, $targets) = @_;
+    return unless ref($candidates) eq 'ARRAY' && ref($targets) eq 'ARRAY';
+
+    my %state;
+    my @matches;
+    foreach my $candidate (@{$candidates})
+    {
+        my $target = _match_ping_target($candidate, $targets, \%state);
+        push @matches, $target if defined($target);
+    }
+    return @matches;
+}
+
+sub _ping_address_key
+{
+    my ($address) = @_;
+    return unless xCAT::NetworkUtils->isValidIp($address);
+
+    my $family = $address =~ /:/ ? 6 : 4;
+    my $packed = _pack_ip_address($address, $family);
+    return defined($packed) ? "$family:" . unpack('H*', $packed) : undef;
+}
+
+sub _ping_address_targets
+{
+    my ($targets) = @_;
+    my %addresses;
+
+    foreach my $target (@{$targets})
+    {
+        next unless defined($target);
+        my $literal_key = _ping_address_key($target);
+        if (defined($literal_key))
+        {
+            $addresses{$literal_key} = $target
+              unless exists($addresses{$literal_key});
+            next;
+        }
+
+        foreach my $family (qw(OnlyV4 OnlyV6))
+        {
+            my $address = xCAT::NetworkUtils->getipaddr(
+                $target, $family => 1
+            );
+            my $key = _ping_address_key($address);
+            next unless defined($key);
+            $addresses{$key} = $target unless exists($addresses{$key});
+        }
+    }
+
+    return \%addresses;
+}
+
+sub _match_ping_target
+{
+    my ($candidate, $targets, $state) = @_;
+    return unless defined($candidate);
+
+    $candidate =~ s/^\s+|\s+$//g;
+    foreach my $target (@{$targets})
+    {
+        return $target if lc($candidate) eq lc($target);
+        return $target if $candidate =~ /^\Q$target\E\./i;
+    }
+
+    my $key = _ping_address_key($candidate);
+    return unless defined($key);
+    $state->{addresses} = _ping_address_targets($targets)
+      unless exists($state->{addresses});
+    return $state->{addresses}{$key};
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3    nmap_alive_targets
+
+      Parses old and current nmap ping-scan output and returns the original
+      xCAT targets that nmap reported as reachable.
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub nmap_alive_targets
+{
+    my ($class, $targets, $output) = @_;
+    return unless ref($targets) eq 'ARRAY' && ref($output) eq 'ARRAY';
+
+    my %match_state;
+    my (%alive, @alive);
+    my $current_target;
+    foreach my $line (@{$output})
+    {
+        if ($line =~ /^Host\s+(.+?)(?:\s+\(([^)]*)\))?\s+appears to be up\b/)
+        {
+            my $target = _match_ping_target($1, $targets, \%match_state);
+            if (!defined($target) && defined($2))
+            {
+                $target = _match_ping_target($2, $targets, \%match_state);
+            }
+            if (defined($target) && !$alive{$target}++)
+            {
+                push @alive, $target;
+            }
+            next;
+        }
+
+        if ($line =~ /^Nmap scan report for\s+(.+?)\s*$/)
+        {
+            my $reported = $1;
+            my $reported_address;
+            if ($reported =~ s/\s+\(([^()]*)\)\s*$//)
+            {
+                $reported_address = $1;
+            }
+            $current_target = _match_ping_target(
+                $reported, $targets, \%match_state
+            );
+            if (!defined($current_target) && defined($reported_address))
+            {
+                $current_target = _match_ping_target(
+                    $reported_address, $targets, \%match_state
+                );
+            }
+            next;
+        }
+
+        if ($line =~ /^Host is up\b/ && defined($current_target))
+        {
+            if (!$alive{$current_target}++)
+            {
+                push @alive, $current_target;
+            }
+        }
+    }
+
+    return @alive;
+}
+
+
+sub _nmap_ping_available
+{
+    return -x '/usr/bin/nmap' || -x '/usr/local/bin/nmap';
+}
+
+sub _nmap_ping_output
+{
+    my ($class, $nodes, $more_options) = @_;
+    my $targets = join(' ', @{$nodes});
+    $more_options ||= '';
+    open(my $nmap, "nmap -PE --system-dns --send-ip -sP $more_options $targets 2> /dev/null|") ## no critic (InputOutput::ProhibitTwoArgOpen)
+      or die("Cannot open nmap pipe: $!");
+    my @output = <$nmap>;
+    close($nmap);
+    return @output;
+}
+
+
+#--------------------------------------------------------------------------------
+
 =head3    pingNodeStatus
       This function takes an array of nodes and returns their status using nmap or fping.
     Arguments:
@@ -2497,51 +3542,22 @@ sub pingNodeStatus {
 
         #get all the active nodes
         my $nodes = join(' ', @mon_nodes);
-        if (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap') {    #use nmap
+        if ($class->_nmap_ping_available()) {    #use nmap
                 #print "use nmap\n";
-            my %deadnodes;
-            foreach (@mon_nodes) {
-                $deadnodes{$_} = 1;
-            }
-
             # get additional options from site table
             my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions");
             my $more_options = $nmap_options[0];
 
-            #call namp
-            open(NMAP, "nmap -PE --system-dns --send-ip -sP $more_options " . $nodes . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
-            my $node;
-            while (<NMAP>) {
-                if (/Host (.*) \(.*\) appears to be up/) {
-                    $node = $1;
-                    unless ($deadnodes{$node}) {
-                        foreach (keys %deadnodes) {
-                            if ($node =~ /^$_\./) {
-                                $node = $_;
-                                last;
-                            }
-                        }
-                    }
-                    delete $deadnodes{$node};
-                    push(@active_nodes, $node);
-                } elsif (/Nmap scan report for ([^ ]*) /) {
-                    $node = $1;
-                } elsif (/Host is up./) {
-                    unless ($deadnodes{$node}) {
-                        foreach (keys %deadnodes) {
-                            if ($node =~ /^$_\./) {
-                                $node = $_;
-                                last;
-                            }
-                        }
-                    }
-                    delete $deadnodes{$node};
-                    push(@active_nodes, $node);
-                }
-            }
-            foreach (sort keys %deadnodes) {
-                push(@inactive_nodes, $_);
-            }
+            #call nmap
+            my @nmap_output = $class->_nmap_ping_output(
+                \@mon_nodes, $more_options
+            );
+
+            @active_nodes = xCAT::NetworkUtils->nmap_alive_targets(
+                \@mon_nodes, \@nmap_output
+            );
+            my %active_nodes = map { $_ => 1 } @active_nodes;
+            @inactive_nodes = sort grep { !$active_nodes{$_} } @mon_nodes;
         } else {    #use fping
                     #print "use fping\n";
 

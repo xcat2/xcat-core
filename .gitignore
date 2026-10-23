@@ -8,3 +8,15 @@ xCAT-client/share/doc
 
 # Build residue: buildrpms.pl rewrites this at every run.
 Gitinfo
+
+# Build residue: buildrpms.pl and builddebs.pl write these into the source
+# tree, so a "git add -A" after a build sweeps them into a commit.
+dist/
+perl-xCAT/pods
+perl-xCAT/share/doc
+perl-xCAT/share/man
+xCAT-client/pods/man1/xcat.1.pod
+xCAT-vlan/share
+xCAT-test/share/man
+xCAT-buildkit/share/man
+pod2htmd.tmp

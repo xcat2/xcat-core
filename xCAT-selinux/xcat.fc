@@ -1,0 +1,55 @@
+# The entrypoints of the xcat_t domain. /usr/sbin/xcatd is a symlink, and
+# execve resolves it, so the context belongs to the file it names.
+/opt/xcat/sbin/xcatd		--	gen_context(system_u:object_r:xcatd_exec_t,s0)
+/opt/xcat/bin/xcatclient		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/xcatclientnnr	--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/xcatDBcmds		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+/opt/xcat/bin/genimage		--	gen_context(system_u:object_r:xcat_client_exec_t,s0)
+
+# The entrypoints of the image build are the per-OS programs. The geninitrd
+# name needs its own line: most are symlinks to their sibling genimage, but
+# netboot/fedora12/geninitrd is a real program. packimage and liteimg are
+# symlinks to xcatclientnnr, so the work they ask for runs in xcat_t.
+/opt/xcat/share/xcat/netboot/[^/]+/genimage	--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+/opt/xcat/share/xcat/netboot/[^/]+/geninitrd	--	gen_context(system_u:object_r:xcat_image_exec_t,s0)
+
+/install(/.*)?		gen_context(system_u:object_r:public_content_t,s0)
+
+# A rootimg keeps the labels of its own OS, so restorecon must not change them.
+# genimage puts the tree at <rootimgdir>/rootimg, and rootimgdir can be at any
+# depth under /install.
+/install(/.*)?/rootimg(/.*)?		<<none>>
+/install(/.*)?/rootimg-statelite(/.*)?	<<none>>
+
+# A profile may be called rootimg or rootimg-statelite. The image root is then
+# itself called rootimg, the guest tree is <...>/rootimg/rootimg, and the files
+# genimage and packimage publish in the image root sit one component below a
+# name the two rules above match. Each published name is listed here, so the
+# published file keeps public_content_t while the tree beside it stays excluded.
+# A guest file matches none of these: the name must be the one directly below
+# the rootimg component.
+#
+# A rootimg component in the MIDDLE of an image root stays ambiguous, because
+# rootimgdir is any path: /install/netboot/rootimg/a/b/kernel is either a
+# published kernel of the image root /install/netboot/rootimg/a/b, or a file
+# inside a guest tree rooted at /install/netboot/rootimg.
+#
+# An entry of <<none>> keeps whatever label the path has. It does not clear one.
+# genimage creates such a kernel under an image root that restorecon already
+# made public_content_t, so the kernel inherits that type and httpd serves it.
+# A path that carries another type keeps it. The repair is one semanage fcontext
+# mapping for that one file, then restorecon. The SELinux page carries it.
+/install(/.*)?/rootimg(-statelite)?/kernel		--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/hypervisor		--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/initrd[^/]*		--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/rootimg\.[^/]*	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/rootimg-statelite\.[^/]*	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/rootimgtree\.[^/]*	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/litefile\.csv	--	gen_context(system_u:object_r:public_content_t,s0)
+/install(/.*)?/rootimg(-statelite)?/common\.filelist	--	gen_context(system_u:object_r:public_content_t,s0)
+
+# There is no rule for a common or an overlay directory below the rootimg
+# component. Such a rule must match a subtree, and a subtree under that name is
+# the same path as a guest tree that has a directory called common or overlay at
+# its own root, so the rule relabels the guest. Each entry above names one file
+# and cannot take a tree with it.

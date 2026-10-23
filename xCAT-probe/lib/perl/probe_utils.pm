@@ -483,6 +483,47 @@ sub is_selinux_enforcing {
 
 =head3
     Description:
+        Decide the xcatmn verdict on SELinux. xCAT runs with SELinux on when
+        the xcat policy module is loaded and the xCAT trees carry their types.
+    Arguments:
+        mode:    enforcing, permissive or disabled
+        modules: the output of semodule -l
+        labels:  a reference to a list of [path, expected type, context of the path]
+    Returns:
+        (level, message)
+        level is "o" for ok, "w" for warning and "f" for failed
+=cut
+
+#------------------------------------------
+sub selinux_policy_verdict {
+    my ($mode, $modules, $labels) = @_;
+    $mode = 'disabled' unless defined $mode;
+
+    return ("o", "SELinux is disabled on current server") if ($mode eq 'disabled');
+
+    my @problems;
+    $modules = '' unless defined $modules;
+    unless (grep { /^xcat(?:\s|$)/ } split(/\n/, $modules)) {
+        push @problems, "The xcat SELinux module is not loaded. Install xCAT-selinux.";
+    }
+    foreach my $label (@{ $labels || [] }) {
+        my ($path, $expected, $context) = @{$label};
+        my $type = (defined $context && $context =~ /^[^:]*:[^:]*:([^:]+)/) ? $1 : undef;
+        if (!defined $type) {
+            push @problems, "$path has no SELinux label, expected $expected. Run restorecon -R $path.";
+        } elsif ($type ne $expected) {
+            push @problems, "$path has type $type, expected $expected. Run restorecon -R $path.";
+        }
+    }
+
+    return ("o", "SELinux is $mode on current server, and the xcat policy is in place") unless (@problems);
+    return (($mode eq 'enforcing' ? "f" : "w"), join("\n", @problems));
+}
+
+#------------------------------------------
+
+=head3
+    Description:
         Test if firewall is opened in current operating system
     Arguments:
          None
