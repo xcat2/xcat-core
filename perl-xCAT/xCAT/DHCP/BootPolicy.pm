@@ -890,6 +890,21 @@ sub x86_san_loader_present {
     return ( -f "$tftpdir/undionly.kpxe" || -f "$tftpdir/$loader->{bios}" ) ? 1 : 0;
 }
 
+# Some aarch64 UEFI firmware ignores a boot file name without the .efi suffix and requests grubaa64.efi.
+my %GRUB2_NODE_LOADER_SUFFIX = ( aarch64 => '.efi' );
+
+# The file in boot/grub2 that DHCP names as the boot file of a grub2 node. With tftpdir, the name is
+# grub2-<node> until nodeset creates the suffixed link there: a node set by an older xCAT has only that.
+sub grub2_node_loader {
+    my ( $class, %opts ) = @_;
+
+    my $loader = "grub2-$opts{node}";
+    my $suffix = $GRUB2_NODE_LOADER_SUFFIX{ $opts{arch} // '' } // '';
+    return $loader if $suffix eq '';
+    return $loader if defined $opts{tftpdir} && !-e "$opts{tftpdir}/boot/grub2/$loader$suffix";
+    return "$loader$suffix";
+}
+
 # The ISC host statements that choose the boot file of a node with netboot ipxe, xnba or pxe. They
 # reach dhcpd through omshell, so their quotes are escaped.
 sub isc_node_boot_statements {

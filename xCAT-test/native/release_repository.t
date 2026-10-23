@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use Digest::SHA qw(sha256_hex);
 use File::Basename qw(dirname);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -56,13 +57,26 @@ copy("$root/RPMS/noarch/$rpm", "$root/input/$rpm") or die $!;
 copy("$root/SRPMS/$srpm", "$root/input/SRPMS/$srpm") or die $!;
 copy("$root/RPMS/noarch/$rpm", "$root/input/xCAT-release-latest.noarch.rpm") or die $!;
 
+my $rpmsign = command($root, 'sh', '-c', 'command -v rpmsign');
+chomp $rpmsign;
+make_path("$root/bin");
+copy(repo_path('xCAT-test/native/fixtures/rpmsign-preserve-mtime.sh'), "$root/bin/rpmsign") or die $!;
+chmod 0755, "$root/bin/rpmsign" or die $!;
+local $ENV{XCAT_TEST_RPMSIGN} = $rpmsign;
+local $ENV{PATH} = "$root/bin:$ENV{PATH}";
+
 for my $signed (0, 1) {
     for my $attempt (1, 2) {
+        my $before = $signed && $attempt == 1 ? package_stats("$root/input") : undef;
         command("$root/work", $^X, 'buildrpms.pl', '--merge-core-repos',
             '--target', 'alma+epel-10-x86_64', '--release', '1',
             '--output-dir', "$root/output", '--input-core-repos', "$root/input",
             $signed ? ('--gpg-sign', '--gpg-key-name', 'package@example.test') : ());
-        check_repository("$root/output", $signed, "merge signed=$signed run=$attempt");
+        check_repository("$root/output", $signed, "merge signed=$signed run=$attempt", $before);
+        if ($signed) {
+            copy("$root/output/$rpm", "$root/input/$rpm") or die $!;
+            copy("$root/output/SRPMS/$srpm", "$root/input/SRPMS/$srpm") or die $!;
+        }
     }
 }
 
@@ -75,12 +89,15 @@ command($root, 'cp', '-a', repo_path('xCAT-release'), "$root/work/xCAT-release")
 write_text("$root/mock/xCAT-release-$target.cfg", "# cached build\n");
 write_text("$root/os-release", "ID=almalinux\nVERSION_ID=10\n");
 local $ENV{BUILD_FIXTURE} = $root;
-command("$root/work", 'unshare', '--user', '--map-root-user', '--mount',
-    'bash', repo_path('xCAT-test/native/fixtures/buildrpms-namespace.sh'),
-    'sh', '-c', 'trap \'gpgconf --homedir "$GNUPGHOME" --kill gpg-agent\' EXIT; "$@"', 'sign-test',
-    $^X, 'buildrpms.pl', '--package', 'xCAT-release', '--target', $target,
-    '--release', '1', '--nproc', '1', '--gpg-sign', '--gpg-key-name', 'package@example.test');
-check_repository($cached, 1, 'cached build finalization');
+for my $attempt (1, 2) {
+    my $before = $attempt == 1 ? package_stats($cached) : undef;
+    command("$root/work", 'unshare', '--user', '--map-root-user', '--mount',
+        'bash', repo_path('xCAT-test/native/fixtures/buildrpms-namespace.sh'),
+        'sh', '-c', 'trap \'gpgconf --homedir "$GNUPGHOME" --kill gpg-agent\' EXIT; "$@"', 'sign-test',
+        $^X, 'buildrpms.pl', '--package', 'xCAT-release', '--target', $target,
+        '--release', '1', '--nproc', '1', '--gpg-sign', '--gpg-key-name', 'package@example.test');
+    check_repository($cached, 1, "cached build finalization run=$attempt", $before);
+}
 
 write_text("$root/work/schedule.pl", <<'PERL');
 BEGIN {
@@ -135,17 +152,31 @@ sub primary_packages {
     return XML::LibXML->load_xml(string => $xml)->findnodes('//*[local-name()="package"]');
 }
 
+sub package_stats {
+    my ($directory) = @_;
+    return {map { $_ => [(stat("$directory/$_"))[7, 9]] } ($rpm, "SRPMS/$srpm")};
+}
+
 sub check_repository {
-    my ($directory, $signed, $label) = @_;
+    my ($directory, $signed, $label, $before) = @_;
+    is_deeply(package_stats($directory), $before, "$label signing preserves package sizes and mtimes")
+        if $before;
     my $alias = "$directory/xCAT-release-latest.noarch.rpm";
     ok(-f $alias, "$label publishes the alias") or die('missing bootstrap alias');
     is(read_binary($alias), read_binary("$directory/$rpm"), "$label alias has final RPM bytes");
     is((stat($alias))[2] & 0777, 0644, "$label alias is readable");
-    my @packages = primary_packages($directory);
-    is(scalar(@packages), 1, "$label indexes the release package once");
-    for my $package (@packages) {
-        my ($location) = $package->findnodes('./*[local-name()="location"]');
-        is($location->getAttribute('href'), $rpm, "$label indexes the versioned filename only");
+    for my $entry ([$directory, $rpm], ["$directory/SRPMS", $srpm]) {
+        my ($repo, $filename) = @$entry;
+        my @indexed = primary_packages($repo);
+        is(scalar(@indexed), 1, "$label indexes one $filename");
+        for my $package (@indexed) {
+            my ($location) = $package->findnodes('./*[local-name()="location"]');
+            is($location->getAttribute('href'), $filename, "$label locates $filename");
+            my ($checksum) = $package->findnodes('./*[local-name()="checksum"]');
+            is($checksum->getAttribute('type'), 'sha256', "$label uses SHA256 for $filename");
+            is($checksum->textContent, sha256_hex(read_binary("$repo/$filename")),
+                "$label metadata matches final $filename bytes");
+        }
     }
     if ($signed) {
         for my $repo ($directory, "$directory/SRPMS") {
@@ -154,5 +185,7 @@ sub check_repository {
         my $signature = command($root, 'rpm', '-qp', '--qf', '%{RSAHEADER:pgpsig}', $alias);
         like($signature, qr/RSA.*Key ID/i, "$label alias carries the package signature");
         isnt(read_binary($alias), read_binary("$root/RPMS/noarch/$rpm"), "$label signing changed the unsigned RPM");
+        isnt(read_binary("$directory/SRPMS/$srpm"), read_binary("$root/SRPMS/$srpm"),
+            "$label signing changed the unsigned SRPM");
     }
 }
