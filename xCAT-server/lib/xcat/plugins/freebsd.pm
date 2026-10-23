@@ -344,11 +344,11 @@ sub _provision_ipv6_network {
         my $net = $network->{net};
         my $mask = $network->{mask};
         my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($net, $mask);
-        $net =~ s{/[^/]+\z}{}x;
+        $net =~ s{/[0-9]+\z}{}x;
         $mask =~ s{\A/}{}x if defined($mask) && !ref($mask);
         die "Invalid IPv6 provisioning network\n" unless xCAT::NetworkUtils->isIpv6addr($net) &&
             defined($prefix) && $prefix =~ /\A(?:[1-9]|[1-9][0-9]|1[01][0-9]|12[0-8])\z/x &&
-            (!defined($mask) || $mask eq '' || (!ref($mask) && $mask =~ /\A[0-9]+\z/x && $mask eq $prefix));
+            defined($mask) && !ref($mask) && $mask =~ /\A[0-9]+\z/x && $mask eq $prefix;
         push @matching, {%$network, net => $net, mask => $prefix}
             if xCAT::NetworkUtils::isInSameSubnet($net, $ip, $prefix, 1);
     }
