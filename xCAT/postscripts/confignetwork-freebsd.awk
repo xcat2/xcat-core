@@ -145,6 +145,10 @@ function address(value, family,    expanded) {
     return expanded
 }
 
+function management_address() {
+    return index(ENVIRON["IPADDR"], ":") ? ipv6(ENVIRON["IPADDR"]) : ENVIRON["IPADDR"]
+}
+
 function prefix(mask, family,    value, bits, remainder) {
     if (family == "inet6") {
         sub(/^\//, "", mask)
@@ -452,7 +456,7 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         subnet_family[subnet_count] = family
         subnet_ip[subnet_count] = ip
         subnet_bits[subnet_count] = bits
-        if (ip == ENVIRON["IPADDR"]) {
+        if (ip == management_address()) {
             management = nic
             management_count++
         }
@@ -460,7 +464,7 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         address_value[nic, i] = ip
         address_prefix[nic, i] = bits
         gateway = network[name, "gateway"]
-        if (family == "inet" && ip != ENVIRON["IPADDR"])
+        if (family == "inet" && ip != management_address())
             gateway = ""
         else if (gateway == "<xcatmaster>") {
             gateway = ""
@@ -489,7 +493,7 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         }
         if (gateway == ip)
             fail("A node address cannot be its own gateway")
-        if (gateway != "" && (family == "inet6" || ip == ENVIRON["IPADDR"])) {
+        if (gateway != "" && (family == "inet6" || ip == management_address())) {
             if (default_gateway[family] != "" && default_gateway[family] != gateway)
                 fail("Ambiguous " family " default gateway")
             default_gateway[family] = gateway
@@ -497,7 +501,7 @@ function node_addresses(nic,    ips, nets, count, nc, i, name, ip, family, net, 
         mtu = network[name, "mtu"]
         if (mtu != "" && !number(mtu, 576, 9216))
             fail("Invalid network MTU for " name)
-        if (ip == ENVIRON["IPADDR"])
+        if (ip == management_address())
             management_mtu = mtu
         if (option[nic, "MTU"] == "" && mtu != "") {
             if (network_mtu[nic] != "" && network_mtu[nic] != mtu)
@@ -794,7 +798,7 @@ function compile(    n) {
         node_addresses(order[n])
     if (configure_boot == 1 && visited[bootnic] &&
         (management_count != 1 || !descends(management, bootnic)))
-        fail("The installation interface topology must retain the management IPv4 address")
+        fail("The installation interface topology must retain the management address")
     if (configure_boot != 1 && management_count)
         fail("Use confignetwork -s to configure the management address")
     if (configure_boot == 1 && bootmac != "" && management != "" && descends(management, bootnic))
@@ -924,6 +928,14 @@ function lease_default(    count, bytes, i, width, size, gateway, routers) {
 }
 
 BEGIN {
+    if (mode == "endpoint") {
+        endpoint_family = index(ENVIRON["XCAT_ADDRESS"], ":") ? "inet6" : "inet"
+        endpoint = address(ENVIRON["XCAT_ADDRESS"], endpoint_family)
+        if (endpoint_family == "inet6" && endpoint ~ /^fe[89ab]/)
+            fail("A management endpoint requires an unscoped unicast address")
+        print endpoint
+        exit
+    }
     if (mode == "dhcp4-routes") {
         if (lease_side !~ /^(old|new)$/) fail("Invalid DHCP lease side")
         route_text = ENVIRON[lease_side "_classless_static_routes"]
@@ -1234,7 +1246,7 @@ END {
         for (key in observed_address) {
             split(key, parts, SUBSEP)
             if (configure_boot != 1 && parts[1] in wanted_interface &&
-                parts[2] == "inet" && parts[3] == ENVIRON["IPADDR"])
+                parts[3] == management_address())
                 fail("Use confignetwork -s for the interface carrying the management address")
         }
         for (key in observed_member) {

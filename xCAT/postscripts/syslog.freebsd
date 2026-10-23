@@ -19,22 +19,32 @@ case ${SYSLOG:-} in
     *) fail 'Only an empty syslog policy or ignore is supported' ;;
 esac
 master=${MASTER:-}
-printf '%s\n' "$master" | awk '
-    NR != 1 || length($0) < 1 || length($0) > 253 { bad=1 }
-    {
-        count=split($0, labels, ".")
-        for (i=1; i<=count; i++) {
-            if (length(labels[i]) > 63 || labels[i] !~ /^[[:alnum:]]([[:alnum:]-]*[[:alnum:]])?$/) bad=1
-        }
-        if ($0 ~ /^[0-9.]+$/) {
-            if (count != 4) bad=1
-            for (i=1; i<=count; i++) if (labels[i]+0 > 255) bad=1
-        }
-    }
-    END { exit bad || NR != 1 }
-' || fail 'Invalid logging master'
 case "$master" in
-    *[!0-9.]*) getent hosts "$master" >/dev/null || fail 'Cannot resolve the logging master' ;;
+*:*)
+    planner=$(CDPATH= cd -P "$(dirname "$0")" && pwd)/confignetwork-freebsd.awk
+    [ -f "$planner" ] && [ ! -L "$planner" ] || fail 'The FreeBSD network planner is missing'
+    master=$(XCAT_ADDRESS="$master" awk -v mode=endpoint -f "$planner") || fail 'Invalid logging master'
+    master="[$master]"
+    ;;
+*)
+    printf '%s\n' "$master" | awk '
+        NR != 1 || length($0) < 1 || length($0) > 253 { bad=1 }
+        {
+            count=split($0, labels, ".")
+            for (i=1; i<=count; i++) {
+                if (length(labels[i]) > 63 || labels[i] !~ /^[[:alnum:]]([[:alnum:]-]*[[:alnum:]])?$/) bad=1
+            }
+            if ($0 ~ /^[0-9.]+$/) {
+                if (count != 4) bad=1
+                for (i=1; i<=count; i++) if (labels[i]+0 > 255) bad=1
+            }
+        }
+        END { exit bad || NR != 1 }
+    ' || fail 'Invalid logging master'
+    case "$master" in
+        *[!0-9.]*) getent hosts "$master" >/dev/null || fail 'Cannot resolve the logging master' ;;
+    esac
+    ;;
 esac
 
 flags=$(sysrc -n syslogd_flags) || fail 'Cannot read syslogd flags'
@@ -44,6 +54,7 @@ secure=0
 OPTIND=1
 while getopts '468ACcdFHkNnosTuva:b:f:l:M:m:O:P:p:S:' option; do
     case $option in
+        4) case "$master" in \[*\]) fail 'syslogd flags disable IPv6 logging' ;; esac ;;
         s) secure=$((secure+1)) ;;
         N) [ "$secure" -ne 0 ] || secure=1 ;;
         f) [ "$OPTARG" = /etc/syslog.conf ] || fail 'The syslogd configuration must be /etc/syslog.conf' ;;

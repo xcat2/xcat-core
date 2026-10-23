@@ -137,7 +137,7 @@ sub _route {
     my %expected = map { $_ => 1 } @{$request->{node}};
     my (@requests, %seen);
     for my $owner (sort keys %$owners) {
-        _fail('FreeBSD owner must resolve to IPv4') unless $owner =~ /\A(?:[0-9]{1,3}[.]){3}[0-9]{1,3}\z/x;
+        _fail('FreeBSD owner must resolve to an IP address') unless xCAT::NetworkUtils->isValidIp($owner);
         for my $node (@{$owners->{$owner}}) {
             _fail('Ambiguous FreeBSD update owner') if !$expected{$node} || $seen{$node}++;
         }

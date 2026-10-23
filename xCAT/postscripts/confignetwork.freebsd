@@ -287,7 +287,7 @@ wait_ready()
             dhcp_ready "$ready_plan" >> "$pending/verify.log" 2>&1; then
             [ "$ready_mode" != addresses ] || return 0
             if verify_routes "$ready_plan" "$ready_mode" >> "$pending/verify.log" 2>&1 &&
-                nc -z -w 2 -s "$node_address" "$controller" "$port"; then return 0; fi
+                nc "-$management_family" -z -w 2 -s "$node_address" "$controller" "$port"; then return 0; fi
         fi
         attempt=$((attempt + 1))
         [ "$attempt" -lt "$ready_limit" ] || return 1
@@ -732,16 +732,19 @@ if [ -s "$pending/before.plan" ] && cmp -s "$pending/plan" "$pending/before.plan
 fi
 
 awk -v mode=carrier -f "$planner" "$pending/plan" "$pending/before.kernel"
-controller=${MASTER_IP:-}
+controller=$(XCAT_ADDRESS="${MASTER_IP:-}" awk -v mode=endpoint -f "$planner") ||
+    fail 'A valid controller address is required'
 port=${XCATIPORT:-3002}
-printf '%s\n' "$controller" | awk -F . 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1}' ||
-    fail 'An IPv4 controller address is required'
 case "$port" in ''|*[!0-9]*) fail 'Invalid controller port' ;; esac
 [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || fail 'Invalid controller port'
-node_address=${IPADDR:-}
-printf '%s\n' "$node_address" | awk -F . 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1}' ||
-    fail 'An IPv4 node address is required'
-nc -z -w 3 -s "$node_address" "$controller" "$port" || fail 'Cannot reach the controller before changing networking'
+node_address=$(XCAT_ADDRESS="${IPADDR:-}" awk -v mode=endpoint -f "$planner") ||
+    fail 'A valid node address is required'
+case "$controller:$node_address" in
+    *.*:*.*) management_family=4 ;;
+    *.*) fail 'The node and controller addresses must use the same family' ;;
+    *) management_family=6 ;;
+esac
+nc "-$management_family" -z -w 3 -s "$node_address" "$controller" "$port" || fail 'Cannot reach the controller before changing networking'
 for family in inet inet6; do
     current=$(route -n get "-$family" default 2>/dev/null | awk '$1 == "gateway:" {print $2}')
     printf '%s\t%s\n' "$family" "$current" >> "$pending/before.defaults"
