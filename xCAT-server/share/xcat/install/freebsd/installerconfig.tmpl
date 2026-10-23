@@ -7,8 +7,14 @@ install -d -m 0700 /root/.ssh
 printf '%s' "$XCAT_AUTHORIZED_KEY_BASE64" | base64 -d > /root/.ssh/authorized_keys
 chmod 0600 /root/.ssh/authorized_keys
 sysrc hostname="$XCAT_HOSTNAME" sshd_enable=YES xcatfirstboot_enable=YES
-sysrc "ifconfig_$XCAT_PROVISIONING_IF=inet $XCAT_IPV4 netmask $XCAT_NETMASK"
-[ -z "$XCAT_GATEWAY" ] || sysrc defaultrouter="$XCAT_GATEWAY"
+if [ -n "${XCAT_IPV6:-}" ]; then
+    sysrc "ifconfig_$XCAT_PROVISIONING_IF=mtu $XCAT_IPV6_MTU up" \
+        "ifconfig_${XCAT_PROVISIONING_IF}_ipv6=inet6 $XCAT_IPV6/$XCAT_IPV6_PREFIX"
+    [ -z "$XCAT_IPV6_GATEWAY" ] || sysrc ipv6_defaultrouter="$XCAT_IPV6_GATEWAY"
+else
+    sysrc "ifconfig_$XCAT_PROVISIONING_IF=inet $XCAT_IPV4 netmask $XCAT_NETMASK"
+    [ -z "$XCAT_GATEWAY" ] || sysrc defaultrouter="$XCAT_GATEWAY"
+fi
 if [ -n "$XCAT_NAMESERVERS" ]; then
     : > /etc/resolv.conf
     oldifs=$IFS

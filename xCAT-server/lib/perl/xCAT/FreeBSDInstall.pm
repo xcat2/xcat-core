@@ -635,7 +635,13 @@ sub handle_status {
     require xCAT::NetworkUtils;
     xCAT::NetworkUtils->clearcache();
     my $address = xCAT::NetworkUtils->getipaddr($node, OnlyV4 => 1);
-    $peer =~ s/\A::ffff:// if defined($peer) && !ref($peer);
+    if ($address) {
+        $peer =~ s/\A::ffff:// if defined($peer) && !ref($peer);
+    } else {
+        require xCAT::FreeBSDNetwork;
+        $address = xCAT::FreeBSDNetwork::ipv6_address(xCAT::NetworkUtils->getipaddr($node, OnlyV6 => 1));
+        $peer = xCAT::FreeBSDNetwork::ipv6_address($peer);
+    }
     _fail('Unexpected installation client') unless defined($peer) && !ref($peer) &&
         defined($address) && $address ne '0' && $peer eq $address;
     require xCAT::FreeBSDPool;

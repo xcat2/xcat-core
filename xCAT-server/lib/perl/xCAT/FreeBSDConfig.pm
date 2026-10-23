@@ -593,6 +593,12 @@ sub render_pkgbase {
     my @order = (qw(format release node generation master port mac ipv4 netmask gateway hostname),
         @storage, qw(filesystem swap_size install_url package_plan_sha256
         boot_media_sha256 runtime_sha256 authorized_key_base64 nameservers));
+    if (exists($config{ipv6})) {
+        _fail('IPv6 installation requires xcat-freebsd-ipv6-1 media') unless
+            ($media->{ipv6_contract} || '') eq 'xcat-freebsd-ipv6-1' &&
+            $install_contract =~ /\Axcat-freebsd-install-[3456]\z/x;
+        push @order, qw(ipv6 ipv6_prefix ipv6_gateway ipv6_mtu);
+    }
     if ($multi_disk) {
         _fail('Multi-disk storage requires a runtime with xcat-freebsd-install-4') unless
             $install_contract =~ /\Axcat-freebsd-install-[456]\z/x;
@@ -657,10 +663,27 @@ sub _render_config {
         my $length = $key eq 'generation' ? 32 : 64;
         _fail("Invalid $key") unless $config{$key} =~ /\A[0-9a-f]{$length}\z/;
     }
-    for my $key (qw(master ipv4 netmask)) { _fail("Invalid $key") unless _ipv4($config{$key}); }
-    _fail('Invalid gateway') if $config{gateway} ne '' && !_ipv4($config{gateway});
-    my $inverse = 0xffffffff ^ unpack('N', pack('C4', split(/\./, $config{netmask})));
-    _fail('Noncontiguous netmask') if $inverse & ($inverse + 1);
+    if (exists($config{ipv6})) {
+        require xCAT::FreeBSDNetwork;
+        for my $key (qw(master ipv6)) {
+            _fail("Invalid $key") unless xCAT::FreeBSDNetwork::ipv6_address($config{$key});
+        }
+        _fail('IPv6 installation requires DHCPv4 bootstrap without a persistent IPv4 address') unless
+            ($config{bootstrap} || '') eq 'dhcp' && !length($config{ipv4} . $config{netmask} . $config{gateway});
+        _fail('Invalid IPv6 prefix') unless $config{ipv6_prefix} =~ /\A(?:[1-9]|[1-9][0-9]|1[01][0-9]|12[0-8])\z/x;
+        _fail('Invalid IPv6 MTU') unless $config{ipv6_mtu} =~ /\A[1-9][0-9]{3}\z/x &&
+            $config{ipv6_mtu} >= 1280 && $config{ipv6_mtu} <= 9216;
+        _fail('Invalid IPv6 gateway') if length($config{ipv6_gateway}) &&
+            !xCAT::FreeBSDNetwork::ipv6_address($config{ipv6_gateway});
+        _fail('IPv6 gateway must be another address in the node subnet') if length($config{ipv6_gateway}) &&
+            (xCAT::FreeBSDNetwork::ipv6_address($config{ipv6_gateway}) eq xCAT::FreeBSDNetwork::ipv6_address($config{ipv6}) ||
+             !xCAT::NetworkUtils::isInSameSubnet($config{ipv6_gateway}, $config{ipv6}, $config{ipv6_prefix}, 1));
+    } else {
+        for my $key (qw(master ipv4 netmask)) { _fail("Invalid $key") unless _ipv4($config{$key}); }
+        _fail('Invalid gateway') if $config{gateway} ne '' && !_ipv4($config{gateway});
+        my $inverse = 0xffffffff ^ unpack('N', pack('C4', split(/\./, $config{netmask})));
+        _fail('Noncontiguous netmask') if $inverse & ($inverse + 1);
+    }
     _fail('Invalid status port') unless $config{port} =~ /\A[1-9][0-9]{0,4}\z/ && $config{port} <= 65535;
     _fail('Invalid provisioning MAC') unless $config{mac} =~ /\A(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\z/;
     _node($config{hostname});
@@ -674,11 +697,24 @@ sub _render_config {
     }
     _fail('Unsupported filesystem') unless $config{filesystem} =~ /\A(?:zfs|ufs)\z/;
     _fail('Invalid swap size') unless $config{swap_size} =~ /\A(?:0|[1-9][0-9]*[mMgG])\z/ && length($config{swap_size}) <= 6;
-    _fail("Invalid $url_description URL") unless $config{$url_key} =~ m{\Ahttps?://[A-Za-z0-9.-]+(?::[0-9]+)?/[A-Za-z0-9_.+/\-]+\z} &&
-        $config{$url_key} !~ m{/\.\.?(?:/|\z)};
+    if (exists($config{ipv6})) {
+        my ($authority) = $config{$url_key} =~ m{\Ahttps?://(\[[0-9a-f:]+\](?::[0-9]+)?)/[A-Za-z0-9_.+/\-]+\z}ix;
+        my ($host, $port) = defined($authority) ? xCAT::NetworkUtils->parse_host_port($authority, 80) : ();
+        _fail("Invalid $url_description URL") unless xCAT::FreeBSDNetwork::ipv6_address($host) &&
+            defined($port) && $port =~ /\A[1-9][0-9]{0,4}\z/x;
+        for my $endpoint ($host, $config{master}) {
+            _fail('An off-subnet IPv6 installation endpoint requires a gateway') unless length($config{ipv6_gateway}) ||
+                xCAT::NetworkUtils::isInSameSubnet($endpoint, $config{ipv6}, $config{ipv6_prefix}, 1);
+        }
+    } else {
+        _fail("Invalid $url_description URL") unless $config{$url_key} =~ m{\Ahttps?://[A-Za-z0-9.-]+(?::[0-9]+)?/[A-Za-z0-9_.+/\-]+\z};
+    }
+    _fail("Invalid $url_description URL") if $config{$url_key} =~ m{/\.\.?(?:/|\z)};
     _fail('Invalid encoded SSH keys') unless $config{authorized_key_base64} =~ /\A[A-Za-z0-9+\/=]+\z/;
     if (length($config{nameservers})) {
-        _fail('Invalid name server') if grep { !_ipv4($_) } split(/,/, $config{nameservers}, -1);
+        _fail('Invalid name server') if grep {
+            exists($config{ipv6}) ? !xCAT::FreeBSDNetwork::ipv6_address($_) : !_ipv4($_)
+        } split(/,/, $config{nameservers}, -1);
     }
     my $text = join('', map { "$_=$config{$_}\n" } @order);
     _fail('Generated configuration is too large') if length($text) > 32768;

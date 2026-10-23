@@ -212,7 +212,7 @@ sub inspect_media {
     my $manifest = eval { JSON->new->utf8->decode($raw) };
     _fail('Invalid xCAT mfsBSD JSON manifest') unless ref($manifest) eq 'HASH';
     my %allowed = map { $_ => 1 } qw(format release arch files mfsbsd_commit postscript_contract
-        install_contract network_contract dataset_contract disk_selection_contract disk_record_contract);
+        install_contract network_contract ipv6_contract dataset_contract disk_selection_contract disk_record_contract);
     _fail('Unknown xCAT mfsBSD manifest field') if grep { !$allowed{$_} } keys %$manifest;
     for my $key (qw(format release arch)) {
         _fail("Missing or invalid mfsBSD manifest $key")
@@ -234,6 +234,12 @@ sub inspect_media {
             ($manifest->{install_contract} || '') =~ /\Axcat-freebsd-install-[3456]\z/x &&
             defined($manifest->{network_contract}) && !ref($manifest->{network_contract}) &&
             $manifest->{network_contract} eq 'xcat-freebsd-bootstrap-1';
+    }
+    if (exists($manifest->{ipv6_contract})) {
+        _fail('Unsupported IPv6 installation contract') unless
+            ($manifest->{network_contract} || '') eq 'xcat-freebsd-bootstrap-1' &&
+            defined($manifest->{ipv6_contract}) && !ref($manifest->{ipv6_contract}) &&
+            $manifest->{ipv6_contract} eq 'xcat-freebsd-ipv6-1';
     }
     if (exists($manifest->{dataset_contract})) {
         _fail('Unsupported dataset contract') unless $boot_only &&

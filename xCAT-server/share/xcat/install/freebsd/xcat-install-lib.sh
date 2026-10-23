@@ -11,6 +11,17 @@ xcat_ipv4()
     printf '%s\n' "$1" | awk -F. 'NF != 4 {exit 1} {for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || length($i)>3 || $i+0>255 || (length($i)>1 && substr($i,1,1)=="0")) exit 1}'
 }
 
+xcat_ipv6()
+{
+    case "$1" in *:*) ;; *) return 1 ;; esac
+    XCAT_ADDRESS=$1 awk -v mode=endpoint -f /usr/local/libexec/confignetwork-freebsd.awk >/dev/null
+}
+
+xcat_ip()
+{
+    case "$1" in *:*) xcat_ipv6 "$1" ;; *) xcat_ipv4 "$1" ;; esac
+}
+
 xcat_hex()
 {
     [ "${#1}" -eq "$2" ] || return 1
@@ -19,6 +30,10 @@ xcat_hex()
 
 xcat_url()
 {
+    case "$1" in http://\[*|https://\[*)
+        XCAT_URL=$1 awk -v mode=ipv6-uri -f /usr/local/libexec/confignetwork-freebsd.awk >/dev/null
+        return ;;
+    esac
     printf '%s\n' "$1" | awk '
         !/^https?:\/\/[A-Za-z0-9.-]+(:[0-9]+)?\/[A-Za-z0-9_.+\/-]+$/ {exit 1}
         /\/\.\.?($|\/)/ {exit 1}'
@@ -116,6 +131,22 @@ xcat_check_bootstrap()
     [ "$XCAT_BOOTSTRAP" = static ] || return 0
     [ "$XCAT_IPV4" = "$XCAT_BOOTSTRAP_IPV4" ] && [ "$XCAT_NETMASK" = "$XCAT_BOOTSTRAP_NETMASK" ] &&
         [ "$XCAT_GATEWAY" = "$XCAT_BOOTSTRAP_GATEWAY" ]
+}
+
+xcat_install_ipv6()
+{
+    [ -n "${XCAT_IPV6:-}" ] || return 0
+    ifconfig "$XCAT_PROVISIONING_IF" mtu "$XCAT_IPV6_MTU" up &&
+        ifconfig "$XCAT_PROVISIONING_IF" inet6 -ifdisabled &&
+        ifconfig "$XCAT_PROVISIONING_IF" inet6 "$XCAT_IPV6/$XCAT_IPV6_PREFIX" alias || return 1
+    [ -z "$XCAT_IPV6_GATEWAY" ] || route add -inet6 default "$XCAT_IPV6_GATEWAY" || return 1
+    xcat_ipv6_attempt=0
+    while [ "$xcat_ipv6_attempt" -lt 30 ]; do
+        nc -6 -z -w 2 -s "$XCAT_IPV6" "$XCAT_MASTER" "$XCAT_PORT" && return 0
+        xcat_ipv6_attempt=$((xcat_ipv6_attempt + 1))
+        sleep 1
+    done
+    xcat_error 'Cannot reach the controller over IPv6'
 }
 
 xcat_fetch_config()
@@ -446,6 +477,7 @@ xcat_read_config()
 {
     XCAT_FORMAT= XCAT_RELEASE= XCAT_NODE= XCAT_GENERATION= XCAT_MASTER= XCAT_PORT=
     XCAT_MAC= XCAT_IPV4= XCAT_NETMASK= XCAT_GATEWAY= XCAT_HOSTNAME=
+    XCAT_IPV6= XCAT_IPV6_PREFIX= XCAT_IPV6_GATEWAY= XCAT_IPV6_MTU=
     XCAT_TARGET_DISK= XCAT_TARGET_DISK_IDENT= XCAT_FILESYSTEM= XCAT_SWAP_SIZE=
     XCAT_ZFS_TOPOLOGY= XCAT_ZFS_VDEVS= XCAT_SWAP_MODE=
     XCAT_ZFS_COMPRESSION= XCAT_ZFS_ASHIFT= XCAT_DISK_ACTION= XCAT_PRESERVE_DISKS=
@@ -480,6 +512,10 @@ xcat_read_config()
             ipv4) XCAT_IPV4=$xcat_value ;;
             netmask) XCAT_NETMASK=$xcat_value ;;
             gateway) XCAT_GATEWAY=$xcat_value ;;
+            ipv6) XCAT_IPV6=$xcat_value ;;
+            ipv6_prefix) XCAT_IPV6_PREFIX=$xcat_value ;;
+            ipv6_gateway) XCAT_IPV6_GATEWAY=$xcat_value ;;
+            ipv6_mtu) XCAT_IPV6_MTU=$xcat_value ;;
             hostname) XCAT_HOSTNAME=$xcat_value ;;
             target_disk) XCAT_TARGET_DISK=$xcat_value ;;
             target_disk_ident) XCAT_TARGET_DISK_IDENT=$xcat_value ;;
@@ -602,9 +638,22 @@ xcat_read_config()
         case "$xcat_name" in ''|[!A-Za-z0-9]*|*[!A-Za-z0-9._-]*) return 1 ;; esac
     done
     xcat_hex "$XCAT_GENERATION" 32 || return 1
-    for xcat_address in "$XCAT_MASTER" "$XCAT_IPV4" "$XCAT_NETMASK"; do xcat_ipv4 "$xcat_address" || return 1; done
-    xcat_netmask "$XCAT_NETMASK" || return 1
-    [ -z "$XCAT_GATEWAY" ] || xcat_ipv4 "$XCAT_GATEWAY" || return 1
+    case "$xcat_seen" in *' ipv6 '*|*' ipv6_prefix '*|*' ipv6_gateway '*|*' ipv6_mtu '*)
+        case "$XCAT_FORMAT" in xcat-freebsd-install-[3456]) ;; *) return 1 ;; esac
+        for xcat_required in ipv6 ipv6_prefix ipv6_gateway ipv6_mtu; do
+            case "$xcat_seen" in *" $xcat_required "*) ;; *) return 1 ;; esac
+        done
+        [ "$XCAT_BOOTSTRAP" = dhcp ] && [ -z "$XCAT_IPV4$XCAT_NETMASK$XCAT_GATEWAY" ] || return 1
+        XCAT_IPV6="$XCAT_IPV6" XCAT_IPV6_PREFIX="$XCAT_IPV6_PREFIX" XCAT_IPV6_GATEWAY="$XCAT_IPV6_GATEWAY" \
+            XCAT_IPV6_MTU="$XCAT_IPV6_MTU" XCAT_MASTER="$XCAT_MASTER" XCAT_INSTALL_URL="$XCAT_INSTALL_URL" \
+            awk -v mode=install-ipv6 -f /usr/local/libexec/confignetwork-freebsd.awk || return 1
+        ;;
+    *)
+        for xcat_address in "$XCAT_MASTER" "$XCAT_IPV4" "$XCAT_NETMASK"; do xcat_ipv4 "$xcat_address" || return 1; done
+        xcat_netmask "$XCAT_NETMASK" || return 1
+        [ -z "$XCAT_GATEWAY" ] || xcat_ipv4 "$XCAT_GATEWAY" || return 1
+        ;;
+    esac
     case "$XCAT_PORT" in ''|*[!0-9]*) return 1 ;; esac
     [ "${#XCAT_PORT}" -le 5 ] && [ "$XCAT_PORT" -gt 0 ] && [ "$XCAT_PORT" -le 65535 ] || return 1
     printf '%s\n' "$XCAT_MAC" | awk '!/^[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]$/ {exit 1}' || return 1
@@ -624,7 +673,11 @@ xcat_read_config()
     xcat_oldifs=$IFS
     IFS=,
     for xcat_address in $XCAT_NAMESERVERS; do
-        xcat_ipv4 "$xcat_address" || { IFS=$xcat_oldifs; return 1; }
+        if [ -n "$XCAT_IPV6" ]; then
+            xcat_ipv6 "$xcat_address" || { IFS=$xcat_oldifs; return 1; }
+        else
+            xcat_ipv4 "$xcat_address" || { IFS=$xcat_oldifs; return 1; }
+        fi
     done
     IFS=$xcat_oldifs
 }
@@ -1227,6 +1280,10 @@ xcat_write_installer()
         . /usr/local/libexec/xcat-network.sh
         printf '\nsysrc -x ifconfig_%s\n' "$XCAT_PROVISIONING_IF"
         [ -z "$XCAT_GATEWAY" ] || printf 'sysrc -x defaultrouter\n'
+        if [ -n "${XCAT_IPV6:-}" ]; then
+            printf 'sysrc -x ifconfig_%s_ipv6\n' "$XCAT_PROVISIONING_IF"
+            [ -z "$XCAT_IPV6_GATEWAY" ] || printf 'sysrc -x ipv6_defaultrouter\n'
+        fi
         printf '\ncat >> /etc/rc.conf <<\047XCAT_BOOTSTRAP_RC\047\n'
         xcat_network_rc || return 1
         printf 'XCAT_BOOTSTRAP_RC\n'
@@ -1250,6 +1307,11 @@ xcat_write_installer()
     printf '\ninstall -d -m 0755 /usr/local/libexec\ncat > /usr/local/libexec/xcat-install-lib.sh <<\047XCAT_INSTALL_LIB\047\n'
     cat "${2:-${1%/*}/xcat-install-lib.sh}" || return 1
     printf '\nXCAT_INSTALL_LIB\nchmod 0444 /usr/local/libexec/xcat-install-lib.sh\n'
+    if [ -n "${XCAT_IPV6:-}" ]; then
+        printf '\ncat > /usr/local/libexec/confignetwork-freebsd.awk <<\047XCAT_NETWORK_PLANNER\047\n'
+        cat /usr/local/libexec/confignetwork-freebsd.awk || return 1
+        printf '\nXCAT_NETWORK_PLANNER\nchmod 0444 /usr/local/libexec/confignetwork-freebsd.awk\n'
+    fi
 }
 
 xcat_pkgbase_workspace()
@@ -1349,6 +1411,8 @@ xcat_install_system()
         XCAT_ATTEMPT="$XCAT_ATTEMPT" XCAT_HOSTNAME="$XCAT_HOSTNAME" \
         XCAT_PROVISIONING_IF="$XCAT_PROVISIONING_IF" XCAT_IPV4="$XCAT_IPV4" \
         XCAT_NETMASK="$XCAT_NETMASK" XCAT_GATEWAY="$XCAT_GATEWAY" XCAT_NAMESERVERS="$XCAT_NAMESERVERS" \
+        XCAT_IPV6="${XCAT_IPV6:-}" XCAT_IPV6_PREFIX="${XCAT_IPV6_PREFIX:-}" \
+        XCAT_IPV6_GATEWAY="${XCAT_IPV6_GATEWAY:-}" XCAT_IPV6_MTU="${XCAT_IPV6_MTU:-}" \
         XCAT_AUTHORIZED_KEY_BASE64="$XCAT_AUTHORIZED_KEY_BASE64" XCAT_WORK="$XCAT_WORK" \
         "$@" bsdinstall script "$XCAT_WORK/installerconfig" > "$XCAT_WORK/bsdinstall.log" 2>&1 || return 1
     if xcat_guarded_storage; then

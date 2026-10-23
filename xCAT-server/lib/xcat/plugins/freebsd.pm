@@ -288,9 +288,102 @@ sub _local_server {
     return $ip;
 }
 
+sub _provision_mac {
+    my ($node, $resources) = @_;
+    my $macrow = _node_row('mac', $node, 0, 'mac');
+    my @eligible;
+    for my $entry (split(/\|/, $macrow->{mac} || '', -1)) {
+        my ($address, $alias, @extra) = split(/!/, $entry, -1);
+        die "Invalid mac table entry\n" if @extra;
+        next if defined($alias) && $alias ne $node;
+        die "Invalid provisioning MAC\n" unless defined($address) &&
+          $address =~ /\A(?:[0-9A-Fa-f]{12}|(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\z/;
+        push @eligible, lc(xCAT::Utils::parseMacTabEntry($address, $node));
+    }
+    my $selector = $resources->{installnic} || $resources->{primarynic} || 'mac';
+    my $mac;
+    if ($selector eq 'mac') {
+        die "FreeBSD installation requires one unambiguous provisioning MAC\n" unless @eligible == 1;
+        $mac = $eligible[0];
+    } else {
+        die "FreeBSD installnic must be mac or an explicit MAC address\n"
+          unless $selector =~ /\A(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\z/;
+        $mac = lc($selector);
+        die "The installation MAC must belong to this node in the mac table\n" unless grep { $_ eq $mac } @eligible;
+    }
+    return $mac;
+}
+
+sub _ipv6 {
+    my ($node, $value, $label) = @_;
+    $value = '!myipfn!' unless defined($value) && length($value);
+    die "A single $label hostname or IPv6 address is required\n" if ref($value) ||
+        ($value !~ /\A[A-Za-z0-9][A-Za-z0-9_.:-]*\z/x && $value ne '!myipfn!' && $value ne '<xcatmaster>');
+    require xCAT::FreeBSDNetwork;
+    my $ip = xCAT::FreeBSDNetwork::ipv6_address(xCAT::NetworkUtils->ipv6_server_for_node($node, $value));
+    die "Cannot resolve $label to unscoped unicast IPv6\n" unless defined($ip);
+    return $ip;
+}
+
+sub _provision_ipv6_network {
+    my ($node, $resources, $pool) = @_;
+    die "IPv6 FreeBSD installation does not support a service-node pool\n" if $pool;
+    my $ip = _ipv6($node, $node, 'node');
+    my $master = _ipv6($node, $resources->{xcatmaster} || _site('master', ''), 'installation owner');
+    die "FreeBSD installation must run on its selected xcatmaster\n" if xCAT::NetworkUtils->thishostisnot($master);
+    my $httpserver = _ipv6($node, $resources->{nfsserver} || $master, 'HTTP server');
+    die "Remote HTTP server is not supported for FreeBSD installation\n" if xCAT::NetworkUtils->thishostisnot($httpserver);
+    my $tab = xCAT::Table->new('networks', -create => 0) or die "Cannot open networks\n";
+    my @networks = eval { $tab->getAllAttribs(qw(netname net mask gateway nameservers domain tftpserver mtu)) };
+    my $error = $@;
+    $tab->close();
+    die $error if $error;
+    my @matching;
+    for my $network (@networks) {
+        next unless ref($network) eq 'HASH' && defined($network->{net}) && $network->{net} =~ /:/x;
+        my $prefix = $network->{mask};
+        die "Invalid IPv6 provisioning network\n" unless xCAT::NetworkUtils->isIpv6addr($network->{net}) &&
+            defined($prefix) && !ref($prefix) && $prefix =~ m{\A/?(?:[1-9]|[1-9][0-9]|1[01][0-9]|12[0-8])\z}x;
+        push @matching, $network if xCAT::NetworkUtils::isInSameSubnet($network->{net}, $ip, $prefix, 1);
+    }
+    die "FreeBSD installation requires exactly one matching IPv6 networks entry\n" unless @matching == 1;
+    my $network = $matching[0];
+    (my $prefix = $network->{mask}) =~ s{\A/}{}x;
+    my $gateway = $network->{gateway} || '';
+    $gateway = xCAT::NetworkUtils->ip_forwarding_enabled() ? $master : '' if $gateway eq '<xcatmaster>';
+    $gateway = _ipv6($node, $gateway, 'gateway') if length($gateway);
+    die "The FreeBSD IPv6 gateway must be another address in the node subnet\n" if length($gateway) &&
+        ($gateway eq $ip || !xCAT::NetworkUtils::isInSameSubnet($gateway, $ip, $prefix, 1));
+    for my $endpoint ($master, $httpserver) {
+        die "An off-subnet IPv6 installation endpoint requires a gateway\n" unless length($gateway) ||
+            xCAT::NetworkUtils::isInSameSubnet($endpoint, $ip, $prefix, 1);
+    }
+    my $bootstrap = $resources->{tftpserver} || $network->{tftpserver};
+    die "IPv6 FreeBSD installation requires an explicit local IPv4 TFTP server for bootstrap\n" unless length($bootstrap || '');
+    $bootstrap = _local_server($bootstrap, '', 'bootstrap TFTP server');
+    my $nameservers = $resources->{nameservers} || $network->{nameservers} || _site('nameservers', '');
+    my @nameservers = map { _ipv6($node, ($_ eq '<xcatmaster>' || $_ eq '!myipfn!') ? $master : $_, 'name server') }
+        length($nameservers) ? split(/,/, $nameservers, -1) : ();
+    my $domain = $network->{domain} || _site('domain', '');
+    my $hostname = $node;
+    $hostname .= ".$domain" if length($domain) && $node !~ /\./x;
+    die "FreeBSD installation requires HTTP distribution service\n" unless _site('httpmethod', 'http') eq 'http';
+    my $port = _site('httpport', '80');
+    die "Invalid HTTP port\n" unless $port =~ /\A[1-9][0-9]{0,4}\z/x && $port <= 65535;
+    my $authority = xCAT::NetworkUtils->format_host_port($httpserver, $port);
+    die "Invalid HTTP endpoint\n" unless defined($authority);
+    my $mtu = $network->{mtu} || 1500;
+    die "Invalid IPv6 network MTU\n" unless $mtu =~ /\A[1-9][0-9]{3}\z/x && $mtu >= 1280 && $mtu <= 9216;
+    return ({master => $master, port => _site('xcatiport', '3002'), mac => _provision_mac($node, $resources),
+        ipv4 => '', netmask => '', gateway => '', ipv6 => $ip, ipv6_prefix => $prefix,
+        ipv6_gateway => $gateway, ipv6_mtu => $mtu, hostname => $hostname, nameservers => join(',', @nameservers)},
+        "http://$bootstrap:$port/install", $mtu, "http://$authority/install");
+}
+
 sub _provision_network {
     my ($node, $resources, $pool) = @_;
     die "FreeBSD installation requires netboot=xnba\n" unless ($resources->{netboot} || '') eq 'xnba';
+    return _provision_ipv6_network($node, $resources, $pool) if xCAT::NetworkUtils->node_is_ipv6_only($node);
     my $owner = $pool ? $pool->{server} : ($resources->{xcatmaster} || _site('master', ''));
     if (length($owner)) {
         $owner = _ipv4($owner, 'installation owner');
@@ -337,27 +430,7 @@ sub _provision_network {
         die "An off-subnet installation endpoint requires a gateway\n" unless length($gateway) ||
           xCAT::NetworkUtils::isInSameSubnet($endpoint, $ip, $network->{mask}, 0);
     }
-    my $macrow = _node_row('mac', $node, 0, 'mac');
-    my @eligible;
-    for my $entry (split(/\|/, $macrow->{mac} || '', -1)) {
-        my ($address, $alias, @extra) = split(/!/, $entry, -1);
-        die "Invalid mac table entry\n" if @extra;
-        next if defined($alias) && $alias ne $node;
-        die "Invalid provisioning MAC\n" unless defined($address) &&
-          $address =~ /\A(?:[0-9A-Fa-f]{12}|(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\z/;
-        push @eligible, lc(xCAT::Utils::parseMacTabEntry($address, $node));
-    }
-    my $selector = $resources->{installnic} || $resources->{primarynic} || 'mac';
-    my $mac;
-    if ($selector eq 'mac') {
-        die "FreeBSD installation requires one unambiguous provisioning MAC\n" unless @eligible == 1;
-        $mac = $eligible[0];
-    } else {
-        die "FreeBSD installnic must be mac or an explicit MAC address\n"
-          unless $selector =~ /\A(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\z/;
-        $mac = lc($selector);
-        die "The installation MAC must belong to this node in the mac table\n" unless grep { $_ eq $mac } @eligible;
-    }
+    my $mac = _provision_mac($node, $resources);
     my $nameservers = $resources->{nameservers} || $network->{nameservers} || _site('nameservers', '');
     my @nameservers = map { _ipv4(($_ eq '<xcatmaster>' || $_ eq '!myipfn!') ? $master : $_, 'name server') }
       length($nameservers) ? split(/,/, $nameservers, -1) : ();
@@ -448,11 +521,13 @@ sub mkinstall {
             my $iscsi = _node_row('iscsi', $node, 1, qw(server target));
             die "An explicit iSCSI root conflicts with scripted FreeBSD installation\n"
               if length($iscsi->{server} || '') && length($iscsi->{target} || '');
-            my ($network, $url, $bootstrap_mtu) = _provision_network($node, $resources, $pool);
+            my ($network, $url, $bootstrap_mtu, $install_url) = _provision_network($node, $resources, $pool);
+            die "IPv6 FreeBSD installation requires pkgbase xcat-freebsd-ipv6-1 media\n" if exists($network->{ipv6}) &&
+                (!$image->{install} || ($image->{media}{ipv6_contract} || '') ne 'xcat-freebsd-ipv6-1');
             my $tftpdir = abs_path($resources->{tftpdir} || xCAT::TableUtils->getTftpDir());
             die "An existing TFTP directory is required\n" unless defined($tftpdir) && -d $tftpdir;
             if ($image->{install}) {
-                $network->{install_url} = $url;
+                $network->{install_url} = $install_url || $url;
             } else {
                 $network->{dist_url} = $url . substr($image->{pkgdir}, length($installroot)) . '/usr/freebsd-dist';
             }
@@ -490,6 +565,8 @@ sub mkinstall {
             }
             my $console = _node_row('nodehm', $node, 0, qw(serialport serialspeed serialflow));
             $settings = xCAT::FreeBSDConfig::boot_settings($settings, $commandline, $console, $image->{media});
+            die "IPv6 FreeBSD installation requires DHCPv4 bootstrap\n" if exists($network->{ipv6}) &&
+                ($settings->{bootstrap} || '') ne 'dhcp';
             my @postscript_options;
             if ($image->{media}{postscript_contract}) {
                 require xCAT::FreeBSDPostscript;

@@ -75,9 +75,11 @@ xcat_network_check()
 {
     [ "${XCAT_BOOT_NETWORK_BASE64:-}" = "${XCAT_BOOTSTRAP_NETWORK_BASE64:-}" ] || return 1
     [ -n "${XCAT_BOOTSTRAP_NETWORK_BASE64:-}" ] || return 0
-    xcat_net_bits=$(printf '%s\n' "$XCAT_NETMASK" | awk -F. '{n=0;for(i=1;i<=4;i++){v=$i;while(v){n+=v%2;v=int(v/2)}}print n}') || return 1
     cp "$XCAT_BOOT_NETWORK_PLAN" "$XCAT_WORK/bootstrap.expected" || return 1
-    printf 'A\t%s\tinet\t%s\t%s\n' "$XCAT_PROVISIONING_IF" "$XCAT_IPV4" "$xcat_net_bits" >> "$XCAT_WORK/bootstrap.expected"
+    if [ -n "$XCAT_IPV4" ]; then
+        xcat_net_bits=$(printf '%s\n' "$XCAT_NETMASK" | awk -F. '{n=0;for(i=1;i<=4;i++){v=$i;while(v){n+=v%2;v=int(v/2)}}print n}') || return 1
+        printf 'A\t%s\tinet\t%s\t%s\n' "$XCAT_PROVISIONING_IF" "$XCAT_IPV4" "$xcat_net_bits" >> "$XCAT_WORK/bootstrap.expected"
+    fi
     ifconfig -a > "$XCAT_WORK/bootstrap.observed" || return 1
     awk -v mode=verify -f /usr/local/libexec/confignetwork-freebsd.awk \
         "$XCAT_WORK/bootstrap.expected" "$XCAT_WORK/bootstrap.observed"
@@ -86,7 +88,15 @@ xcat_network_check()
 xcat_network_target_plan()
 {
     xcat_network_plan "$XCAT_BOOTSTRAP_NETWORK_BASE64" "$XCAT_MAC" "$XCAT_WORK/target-bootstrap.plan" || return 1
-    awk -F '\t' -v ip="$XCAT_IPV4" -v mask="$XCAT_NETMASK" -v gateway="$XCAT_GATEWAY" '
+    xcat_net_ipv6= xcat_net_gateway6=
+    if [ -n "${XCAT_IPV6:-}" ]; then
+        xcat_net_ipv6=$(XCAT_ADDRESS="$XCAT_IPV6" awk -v mode=endpoint -f /usr/local/libexec/confignetwork-freebsd.awk) || return 1
+        if [ -n "$XCAT_IPV6_GATEWAY" ]; then
+            xcat_net_gateway6=$(XCAT_ADDRESS="$XCAT_IPV6_GATEWAY" awk -v mode=endpoint -f /usr/local/libexec/confignetwork-freebsd.awk) || return 1
+        fi
+    fi
+    awk -F '\t' -v ip="$XCAT_IPV4" -v mask="$XCAT_NETMASK" -v gateway="$XCAT_GATEWAY" \
+        -v ip6="$xcat_net_ipv6" -v prefix6="${XCAT_IPV6_PREFIX:-}" -v gateway6="$xcat_net_gateway6" '
         BEGIN {
             OFS="\t"; bits=0; split(mask, octets, ".")
             for(i=1;i<=4;i++) {v=octets[i]; while(v) {bits+=v%2;v=int(v/2)}}
@@ -96,14 +106,21 @@ xcat_network_target_plan()
         $1=="M" {next}
         $1=="C" {print; print "S", "inet", ""; print "S", "inet6", ""; next}
         $1=="E" {mac[$2]=$3}
-        $1=="K" && $2=="ifconfig_" nic {
+        $1=="K" && $2=="ifconfig_" nic && ip!="" {
             if (nic in mac) print "K", "ifconfig_" nic "_alias0", "inet " ip "/" bits
             else $3="inet " ip "/" bits " " $3
             print "A", nic, "inet", ip, bits
         }
+        $1=="V" && $2==nic && ip6!="" {$3="-ifdisabled"}
+        $1=="K" && $2=="ifconfig_" nic && ip6!="" {
+            print "K", "ifconfig_" nic "_ipv6", "inet6 " ip6 " prefixlen " prefix6
+            print "A", nic, "inet6", ip6, prefix6
+        }
+        $1=="K" && $2=="ifconfig_" nic "_ipv6" && ip6!="" {next}
         {print}
         END {
             if (gateway!="") {print "K", "defaultrouter", gateway; print "D", "inet", gateway}
+            if (gateway6!="") {print "K", "ipv6_defaultrouter", gateway6; print "D", "inet6", gateway6}
         }' "$XCAT_WORK/target-bootstrap.plan" > "$XCAT_WORK/target-network.plan"
 }
 

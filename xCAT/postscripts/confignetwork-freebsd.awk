@@ -149,6 +149,27 @@ function management_address() {
     return index(ENVIRON["IPADDR"], ":") ? ipv6(ENVIRON["IPADDR"]) : ENVIRON["IPADDR"]
 }
 
+function management_endpoint(value,    family, result) {
+    family = index(value, ":") ? "inet6" : "inet"
+    result = address(value, family)
+    if (family == "inet6" && result ~ /^fe[89ab]/)
+        fail("A management endpoint requires an unscoped unicast address")
+    return result
+}
+
+function ipv6_uri_host(value,    host, tail, port) {
+    if (value !~ /^https?:\/\/\[[0-9a-fA-F:]+\](:[0-9]+)?\/[A-Za-z0-9_.+\/-]+$/ || value ~ /\/\.\.?(\/|$)/)
+        fail("Invalid IPv6 installation URL")
+    sub(/^https?:\/\/\[/, "", value)
+    host = substr(value, 1, index(value, "]") - 1)
+    tail = substr(value, index(value, "]") + 1)
+    if (substr(tail, 1, 1) == ":") {
+        port = substr(tail, 2, index(tail, "/") - 2)
+        if (!number(port, 1, 65535)) fail("Invalid IPv6 URL port")
+    }
+    return management_endpoint(host)
+}
+
 function prefix(mask, family,    value, bits, remainder) {
     if (family == "inet6") {
         sub(/^\//, "", mask)
@@ -929,11 +950,28 @@ function lease_default(    count, bytes, i, width, size, gateway, routers) {
 
 BEGIN {
     if (mode == "endpoint") {
-        endpoint_family = index(ENVIRON["XCAT_ADDRESS"], ":") ? "inet6" : "inet"
-        endpoint = address(ENVIRON["XCAT_ADDRESS"], endpoint_family)
-        if (endpoint_family == "inet6" && endpoint ~ /^fe[89ab]/)
-            fail("A management endpoint requires an unscoped unicast address")
-        print endpoint
+        print management_endpoint(ENVIRON["XCAT_ADDRESS"])
+        exit
+    }
+    if (mode == "ipv6-uri") {
+        print ipv6_uri_host(ENVIRON["XCAT_URL"])
+        exit
+    }
+    if (mode == "install-ipv6") {
+        install_ip = management_endpoint(ENVIRON["XCAT_IPV6"])
+        install_master = management_endpoint(ENVIRON["XCAT_MASTER"])
+        if (install_ip !~ /:/ || install_master !~ /:/ || !number(ENVIRON["XCAT_IPV6_PREFIX"], 1, 128) ||
+            !number(ENVIRON["XCAT_IPV6_MTU"], 1280, 9216)) fail("Invalid IPv6 installation network")
+        install_prefix = ENVIRON["XCAT_IPV6_PREFIX"] + 0
+        install_http = ipv6_uri_host(ENVIRON["XCAT_INSTALL_URL"])
+        if (ENVIRON["XCAT_IPV6_GATEWAY"] != "") {
+            install_gateway = management_endpoint(ENVIRON["XCAT_IPV6_GATEWAY"])
+            if (install_gateway !~ /:/ || install_gateway == install_ip ||
+                !subnet(install_gateway, install_ip, install_prefix, "inet6"))
+                fail("Invalid IPv6 installation gateway")
+        } else if (!subnet(install_master, install_ip, install_prefix, "inet6") ||
+            !subnet(install_http, install_ip, install_prefix, "inet6"))
+            fail("An off-subnet IPv6 installation endpoint requires a gateway")
         exit
     }
     if (mode == "dhcp4-routes") {

@@ -45,7 +45,7 @@ xcatpostboot_config()
             read -r XCAT_GENERATION && read -r XCAT_ATTEMPT &&
             ! read -r extra
     } < "$config" || return 1
-    [ -z "$extra" ] && xcat_ipv4 "$XCAT_MASTER" &&
+    [ -z "$extra" ] && xcat_ip "$XCAT_MASTER" &&
         xcat_hex "$XCAT_GENERATION" 32 && xcat_hex "$XCAT_ATTEMPT" 32 || return 1
     case "$XCAT_PORT" in ''|0*|*[!0-9]*) return 1 ;; esac
     [ "${#XCAT_PORT}" -le 5 ] && [ "$XCAT_PORT" -le 65535 ] || return 1

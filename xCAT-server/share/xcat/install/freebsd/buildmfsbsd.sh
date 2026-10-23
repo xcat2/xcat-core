@@ -205,6 +205,9 @@ awk '!/^[A-Za-z0-9_.+-]+(\/[A-Za-z0-9_.+-]+)*$/ || /(^|\/)\.\.?($|\/)/ {exit 1}'
     [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"disk_selection_contract":"xcat-freebsd-disk-selection-1",'
     [ "$bundle_format" != xcat-mfsbsd-2 ] || printf '"disk_record_contract":"xcat-freebsd-os-disks-1",'
     [ -z "$network_planner" ] || printf '"network_contract":"xcat-freebsd-bootstrap-1",'
+    if [ "$bundle_format" = xcat-mfsbsd-2 ] && [ -n "$network_planner" ]; then
+        printf '"ipv6_contract":"xcat-freebsd-ipv6-1",'
+    fi
     [ -z "$dataset_planner" ] || printf '"dataset_contract":"xcat-freebsd-datasets-1",'
     printf '"files":{'
     separator=

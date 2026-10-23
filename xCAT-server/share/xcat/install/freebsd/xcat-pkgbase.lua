@@ -694,6 +694,13 @@ local function configuration(config_path, workspace)
             and config.format ~= "xcat-freebsd-install-6" then fail("Datasets require explicit ZFS disks") end
         count = count - 1
     end
+    if config.ipv6 then
+        if config.format == "xcat-freebsd-install-2" then fail("IPv6 requires boot settings") end
+        for _, key in ipairs({"ipv6_prefix", "ipv6_gateway", "ipv6_mtu"}) do
+            if config[key] == nil then fail("Incomplete IPv6 configuration") end
+        end
+        count = count - 4
+    end
     if not ((config.format == "xcat-freebsd-install-2" and count == 21)
         or (config.format == "xcat-freebsd-install-3" and count == 27)
         or (config.format == "xcat-freebsd-install-4" and count == 28)

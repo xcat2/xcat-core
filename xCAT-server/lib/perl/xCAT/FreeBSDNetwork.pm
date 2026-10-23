@@ -7,6 +7,16 @@ use xCAT::FreeBSDPkg;
 
 sub _fail { die "FreeBSD bootstrap network: $_[0]\n"; }
 
+sub ipv6_address {
+    my $value = shift;
+    return unless defined($value) && !ref($value) && $value =~ /\A[0-9a-f:]{2,39}\z/ix;
+    require xCAT::NetworkUtils;
+    my $address = xCAT::NetworkUtils->canonical_ip_address($value);
+    return unless defined($address) && $address =~ /:/x;
+    return if $address eq '::' || $address eq '::1' || $address =~ /\.|\A(?:ff|fe[89ab]|::ffff:)/ix;
+    return $address;
+}
+
 sub decode {
     my $encoded = shift;
     _fail('Invalid bootstrap network description') unless defined($encoded) && !ref($encoded) &&

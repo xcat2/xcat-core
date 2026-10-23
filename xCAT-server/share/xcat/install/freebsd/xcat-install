@@ -31,6 +31,7 @@ xcat_fetch_config "$xcat_config_url"
 xcat_read_config "$XCAT_WORK/config" || xcat_error 'Invalid installation configuration'
 [ "$XCAT_BOOT_MAC" = "$XCAT_MAC" ] || xcat_error 'Configuration belongs to another provisioning interface'
 xcat_check_bootstrap || xcat_error 'Bootstrap networking differs from the installation configuration'
+xcat_install_ipv6 || xcat_error 'Cannot configure IPv6 installation networking'
 XCAT_CAN_REPORT=1
 xcat_validate_key "$XCAT_WORK/authorized_keys"
 xcat_install_system /usr/local/share/xcat/installerconfig.tmpl /usr/local/libexec/xcat-install-lib.sh
