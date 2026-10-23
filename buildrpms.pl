@@ -1034,8 +1034,13 @@ sub main {
         my $why = package_skip_reason($pair->@*);
         $why ? print "Skipping $pair->[0] for $pair->[1]: $why\n" : push @rpms, $pair;
     }
-    die "FATAL: every requested package is out of scope for the requested targets\n"
-        unless @rpms;
+    # An empty plan is the plan, not a failure. The dep pipeline asks for
+    # xCAT-genesis-base alone, and no openSUSE target builds it.
+    if (!@rpms) {
+        print "Nothing to build: every requested package is out of scope for the"
+            . " requested targets\n";
+        return;
+    }
     my $pm = Parallel::ForkManager->new($opts{nproc});
 
     # Track which mock chroot each live child is building so abort_builds can scrub it.

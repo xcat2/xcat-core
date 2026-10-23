@@ -48,7 +48,14 @@ Source1: xCAT-genesis-scripts.tar.bz2
 # so floor it at the 2.18.0 baseline: any 2.18.0-or-newer genesis-base snap satisfies it,
 # and core version bumps no longer force a genesis-base re-publish. (RPM ignores release
 # when the dependency omits it.)
+#
+# openSUSE is excluded. Operator decision, 2026-10-22: openSUSE ships no legacy Genesis, so
+# no openSUSE target builds xCAT-genesis-base. No OpenEmbedded payload is published for the
+# family either, so nothing an openSUSE management node reads can satisfy this name, and
+# stating it stops zypper install xCAT.
+%if ! 0%{?suse_version}
 Requires: xCAT-genesis-base-%{tarch} >= 2:2.18.0
+%endif
 
 Buildroot: %{_localstatedir}/tmp/xCAT-genesis
 Packager: IBM Corp.
