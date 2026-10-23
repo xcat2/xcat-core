@@ -68,7 +68,7 @@ my $sitentpservers;
 my $sitelogservers;
 my $nrhash;
 my $machash;
-my $vpdhash;
+my $dhcp6duids;
 my $iscsients;
 my $nodetypeents;
 my $chainents;
@@ -782,15 +782,16 @@ sub delnode
 sub addnode6 {
 
     # The omshell commands that add the host, or nothing when the node is skipped.
-    my $node = shift;
-    unless ($vpdhash) {
-        $callback->({ node => [ { name => [$node], warning => ["Skipping DHCPv6 setup due to missing vpd.uuid information."] } ] });
-        return;
-    }
-    my $ent = $vpdhash->{$node}->[0];    #tab->getNodeAttribs($node, [qw(mac)]);
-    unless ($ent and $ent->{uuid})
-    {
-        $callback->({ node => [ { name => [$node], warning => ["Skipping DHCPv6 setup due to missing vpd.uuid information."] } ] });
+    my ( $node, $identity ) = @_;
+    $identity ||= {};
+    my $ip = getipaddr($node);
+    if ( $identity->{error} ) {
+        # A node without an IPv6 address needs no reserved address, so its DUID cannot fail the request.
+        if ( $ip and $ip =~ /:/ ) {
+            $callback->({ node => [ { name => [$node], error => [ $identity->{error} ], errorcode => [1] } ] });
+        } else {
+            $callback->({ node => [ { name => [$node], warning => [ "Skipping DHCPv6 setup: $identity->{error}" ] } ] });
+        }
         return;
     }
 
@@ -802,18 +803,14 @@ sub addnode6 {
     #don't think dhclient is smart enough to assemble advertised domain with it's own name and then
     #request FQDN update
     #goal is simple enough, we want `hostname` to look sane *and* we want DNS to look right
-    # The same DUID-UUID the Kea path builds: the first three UUID fields are reversed, because
-    # SMBIOS stores them little-endian and a UEFI client sends them that way. One sub, so the two
-    # backends cannot disagree about what a client's DUID looks like.
-    my $uuid = kea_duid_from_uuid($ent->{uuid});
-    # A uuid that is not sixteen octets has no DUID. The old inline transformation produced a
-    # malformed string and wrote it to omshell; skipping with the same warning the missing-uuid
-    # path uses says what happened instead.
-    unless ($uuid) {
-        $callback->({ node => [ { name => [$node], warning => ["Skipping DHCPv6 setup: vpd.uuid is not a UUID."] } ] });
+    my $duid = $identity->{duid};
+    unless ($duid) {
+        my $warning = $identity->{uuid}
+          ? 'Skipping DHCPv6 setup: vpd.uuid is not a UUID.'
+          : 'Skipping DHCPv6 setup due to missing vpd.uuid information.';
+        $callback->({ node => [ { name => [$node], warning => [$warning] } ] });
         return;
     }
-    my $ip = getipaddr($node);
     if ( $ip and $ip =~ /:/ and _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
         return;
     }
@@ -841,13 +838,13 @@ sub addnode6 {
         $commands .= "close\n";
     }
     $commands .= "new host\n";
-    $commands .= "set dhcp-client-identifier = " . $uuid . "\n"; #find and destroy DUID-UUID conflict
+    $commands .= "set dhcp-client-identifier = " . $duid . "\n"; #find and destroy DUID-UUID conflict
     $commands .= "open\n";
     $commands .= "remove\n";
     $commands .= "close\n";
     $commands .= "new host\n";
     $commands .= "set name = \"$node\"\n";
-    $commands .= "set dhcp-client-identifier = $uuid\n";
+    $commands .= "set dhcp-client-identifier = $duid\n";
     $commands .= 'set statements = "ddns-hostname \"' . $node . '\";";' . "\n";
 
     if ($ip) {
@@ -2657,8 +2654,7 @@ sub process_request
             );
             return;
         }
-        my $vpdtab = xCAT::Table->new('vpd');
-        $vpdhash = $vpdtab->getNodesAttribs($req->{node}, ['uuid']);
+        my $duids = $usingipv6 ? dhcp6_client_duids($req->{node}) : {};
         my ($unchanged, $external_error) = ({});
         if ($omapi_settings and not $opt{d}) {
             ($unchanged, $external_error) = _isc_external_ipxe_check($req->{node}, $nrhash, $omapi_settings, $omapi_secret);
@@ -2686,7 +2682,7 @@ sub process_request
                 next if $unchanged->{$_};
                 addnode $_;
                 if ($usingipv6) {
-                    my $commands = addnode6($_);
+                    my $commands = addnode6($_, $duids->{$_});
                     print $omshell6 $commands if $commands;
                 }
             }
@@ -3823,13 +3819,12 @@ sub kea_build_node_reservations6
 
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
-    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
     my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
 
     $nrhash = $nrtab ? $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'xcatmaster', 'servicenode', 'tftpdir' ]) : undef;
     $machash = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
-    $vpdhash = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
     $nodetypeents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, ['arch']) : undef;
+    $dhcp6duids = dhcp6_client_duids($nodes);
 
     my @reservations;
     foreach my $node (@$nodes) {
@@ -4369,15 +4364,15 @@ sub kea_node_reservations6
 
     my $nrent = $nrhash && $nrhash->{$node} ? $nrhash->{$node}->[0] : undef;
     my $macent = $machash && $machash->{$node} ? $machash->{$node}->[0] : undef;
-    my $vpdent = $vpdhash && $vpdhash->{$node} ? $vpdhash->{$node}->[0] : undef;
     my $ntent = $nodetypeents && $nodetypeents->{$node} ? $nodetypeents->{$node}->[0] : undef;
+    my $identity = $dhcp6duids && $dhcp6duids->{$node} ? $dhcp6duids->{$node} : {};
 
     unless ($macent and $macent->{mac}) {
         $callback->({ warning => ["Unable to find mac address for $node"] });
         return [];
     }
 
-    my $duid = kea_duid_from_uuid($vpdent ? $vpdent->{uuid} : undef);
+    my $duid = $identity->{duid};
     my @reservations;
     foreach my $mace (split(/\|/, $macent->{mac})) {
         my ( $mac, $hname ) = split(/!/, $mace);
@@ -4407,6 +4402,10 @@ sub kea_node_reservations6
         unless ($subnet_id) {
             $callback->({ warning => ["Unable to find a Kea DHCPv6 subnet for $node ($ip), skipping DHCPv6 reservation"] });
             next;
+        }
+        if ( $identity->{error} ) {
+            $callback->({ error => [ $identity->{error} ], errorcode => [1] });
+            return [];
         }
 
         my %reservation = (
@@ -4501,24 +4500,60 @@ sub kea_boot_server6_for_node
 
 sub kea_duid_from_uuid
 {
-    my ($uuid) = @_;
+    my ( $uuid, $order ) = @_;
 
     return unless $uuid;
     $uuid =~ s/[^0-9a-fA-F]//g;
     return unless length($uuid) == 32;
-    # RFC 6355 carries the sixteen octets of the UUID as the FIRMWARE holds them. SMBIOS 2.6 and
-    # later store time_low, time_mid and time_hi_and_version little-endian, and vpd.uuid holds the
-    # canonical spelling that Linux reports in product_uuid, so the first three fields are reversed
-    # here. Without this the DUID does not match what the client sends, Kea never matches the
-    # reservation, and the node takes a pool address with no bootfile-url.
-    my @octets = unpack('(A2)16', $uuid);
-    @octets = (
-        reverse(@octets[0 .. 3]),
-        reverse(@octets[4 .. 5]),
-        reverse(@octets[6 .. 7]),
-        @octets[8 .. 15],
-    );
+    my @octets = unpack('(A2)16', lc($uuid));
+    # SMBIOS 2.6 and later store the first three UUID fields little-endian, and EDK2 copies those bytes into its DUID.
+    if ( defined($order) && $order eq 'firmware' ) {
+        @octets = (
+            reverse(@octets[0 .. 3]),
+            reverse(@octets[4 .. 5]),
+            reverse(@octets[6 .. 7]),
+            @octets[8 .. 15],
+        );
+    }
     return '00:04:' . join(':', @octets);
+}
+
+sub dhcp6_client_duid
+{
+    my ( $setting, $uuid ) = @_;
+
+    my $choice = lc( defined($setting) ? $setting : '' );
+    $choice =~ s/^\s+|\s+$//g;
+    return kea_duid_from_uuid( $uuid, 'firmware' ) if $choice eq '' || $choice eq 'firmware';
+    return kea_duid_from_uuid($uuid) if $choice eq 'canonical';
+    return $choice if $choice =~ /\A[0-9a-f]{2}(?::[0-9a-f]{2}){2,129}\z/;
+    return ( undef, "only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported" );
+}
+
+sub dhcp6_client_duids
+{
+    my ($nodes) = @_;
+
+    my $mactab = xCAT::Table->new('mac');
+    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
+    my $settings = $mactab ? $mactab->getNodesAttribs($nodes, ['duid']) : undef;
+    my $uuids    = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
+
+    my %duids;
+    foreach my $node (@$nodes) {
+        my $macent  = $settings && $settings->{$node} ? $settings->{$node}->[0] : undef;
+        my $vpdent  = $uuids && $uuids->{$node} ? $uuids->{$node}->[0] : undef;
+        my $setting = $macent ? $macent->{duid} : undef;
+        my $uuid    = $vpdent ? $vpdent->{uuid} : undef;
+        my ( $duid, $error ) = dhcp6_client_duid( $setting, $uuid );
+        $duids{$node} = {
+            duid  => $duid,
+            uuid  => $uuid,
+            error => $error ? "The duid attribute of $node is '$setting', but $error." : undef,
+        };
+    }
+
+    return \%duids;
 }
 
 sub kea_reservation_matches_for_nodes
@@ -4527,8 +4562,7 @@ sub kea_reservation_matches_for_nodes
 
     my $mactab = xCAT::Table->new('mac');
     my $machash_local = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
-    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
-    my $vpdhash_local = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
+    my $duids = dhcp6_client_duids($nodes);
     my @matches;
 
     foreach my $node (@$nodes) {
@@ -4537,8 +4571,7 @@ sub kea_reservation_matches_for_nodes
         push @matches, { 'ip-address' => $ip } if $ip;
         my $ip6 = getipaddr($node, OnlyV6 => 1);
         push @matches, { 'ip-address' => $ip6 } if $ip6;
-        my $vpdent = $vpdhash_local && $vpdhash_local->{$node} ? $vpdhash_local->{$node}->[0] : undef;
-        my $duid = kea_duid_from_uuid($vpdent ? $vpdent->{uuid} : undef);
+        my $duid = $duids->{$node}{duid};
         push @matches, { duid => $duid } if $duid;
         my $macent = $machash_local && $machash_local->{$node} ? $machash_local->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
