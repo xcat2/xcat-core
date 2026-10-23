@@ -338,30 +338,45 @@ sub release {
             eval { _write_metadata($borrow, $self->{identity}); 1 };
             my $current = _read_metadata($path);
             if (defined($current) && _key($current) eq _key($self->{identity})) {
-                $self->{released} = 1;
-                unlink("$path/metadata");
-                # A group that died without a detach leaves its record; drop those. A LIVE one
-                # is kept, and rmdir then refuses the non-empty directory, so the release fails
-                # rather than freeing a lock whose workers still run.
+                # Records of groups that are gone come off first. Then the metadata is deleted
+                # only once the directory can actually be removed: rmdir refuses a non-empty
+                # directory, and a lock left holding workers and no metadata is one acquire
+                # refuses for ever, because there is nothing there to validate. A lock still
+                # HELD is better than that -- it is refused with a reason, and it recovers when
+                # its owner dies.
                 _drop_dead_workers($path);
-                my $removed = rmdir($path);
-                my $error   = $!;
+                if (_only_metadata($path)) {
+                    $self->{released} = 1;
+                    unlink("$path/metadata");
+                    my $removed = rmdir($path);
+                    my $error   = $!;
+                    _drop_borrow($borrow);
+                    warn "Cannot remove $path: $error\n" unless $removed;
+                    $self->_log($removed ? 'released' : 'release-skipped', $removed ? () : ("rmdir: $error"));
+                    return $removed ? 1 : 0;
+                }
                 _drop_borrow($borrow);
-                warn "Cannot remove $path: $error\n" unless $removed;
-                $self->_log($removed ? 'released' : 'release-skipped', $removed ? () : ("rmdir: $error"));
-                return $removed ? 1 : 0;
+                # Still held, and NOT marked released: DESTROY and the signal handler have to be
+                # able to try again once the workers are gone.
+                my @busy = live_workers($path);
+                $why = @busy ? "build workers of process group $busy[0]{pgid} still exist"
+                             : "$path holds more than its metadata";
             }
-            _drop_borrow($borrow);
-            # Valid metadata of another acquisition, or no lock.d at all: this lock is gone.
-            if (defined($current) || !-d $path) {
-                $self->{released} = 1;
-                $self->_log('release-skipped', defined($current) ? 'owned by ' . _describe($current) : 'no lock.d');
-                return 0;
+            else {
+                _drop_borrow($borrow);
+                # Valid metadata of another acquisition, or no lock.d at all: this lock is gone.
+                if (defined($current) || !-d $path) {
+                    $self->{released} = 1;
+                    $self->_log('release-skipped', defined($current) ? 'owned by ' . _describe($current) : 'no lock.d');
+                    return 0;
+                }
+                $why = 'the lock metadata cannot be validated';
             }
-            $why = 'the lock metadata cannot be validated';
         }
         if ($count >= $self->{retries}) {
-            $self->{released} = 1;
+            # Marked released only when nothing is left to remove. A lock still on disk has to
+            # stay releasable, or the guard that owns it can never finish the job.
+            $self->{released} = 1 unless -d $path;
             $self->_log('release-skipped', "gave up: $why");
             warn "Cannot release $path after $count retries: $why\n";
             return 0;
@@ -771,6 +786,22 @@ sub live_workers {
 
 sub _worker_dir { return "$_[0]/workers" }
 
+# _only_metadata: true when $dir holds nothing besides its metadata file, so rmdir can finish
+# once that file is gone. Asked BEFORE the unlink, because the unlink is not reversible: a lock
+# directory with no metadata cannot be validated, so acquire refuses it for ever and only a
+# sweep under an exclusive claim can clear it.
+sub _only_metadata {
+    my ($dir) = @_;
+    opendir(my $dh, $dir) or return 0;
+    while (defined(my $entry = readdir($dh))) {
+        next if $entry eq '.' || $entry eq '..' || $entry eq 'metadata';
+        closedir($dh);
+        return 0;
+    }
+    closedir($dh);
+    return 1;
+}
+
 # _drop_dead_workers: remove the records of groups that are gone, and leave the rest.
 #
 # A group that died without a detach leaves its record behind -- the detach runs in the process
@@ -935,8 +966,16 @@ sub sweep_stranded {
 
 sub _remove {
     my ($dir, $why) = @_;
+    # Records of completed workers first, then the same question release asks: can this
+    # directory be removed at all? Deleting the metadata before knowing that left a lock holding
+    # workers and no owner, which acquire refuses for ever -- so the sweep left the lock in a
+    # WORSE state than a take-over would have, and a take-over recovers these locks by itself.
+    _drop_dead_workers($dir);
+    unless (_only_metadata($dir)) {
+        return { path => $dir, action => 'kept', why => "cannot remove: $dir is not empty" };
+    }
     unlink("$dir/metadata");
-    if (rmdir($dir)) { return { path => $dir, action => 'removed', why => $why } }
+    return { path => $dir, action => 'removed', why => $why } if rmdir($dir);
     return { path => $dir, action => 'kept', why => "cannot remove: $!" };
 }
 
