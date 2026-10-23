@@ -813,17 +813,29 @@ sub cancel_build {
 # or chronyd_manage_pid_files(). m4 leaves an undefined interface name in its
 # output, and checkmodule stops on it. openEuler 24.03sp4 carries
 # selinux-policy 40.7 and does compile the module, and is excluded too, so no
-# openEuler release ships a package the other releases cannot build.
+# openEuler release ships a package the other releases cannot build. openSUSE
+# Leap ships no selinux-policy-devel at all.
 my %EL_ONLY_PACKAGES = (
     'xCAT-selinux' => 'SELinux support is EL only',
 );
 
-# Why $pkg is not built for $target, or undef when the pair is built. openEuler
-# is the one non-EL family buildrpms.pl targets.
+# The EL build targets, named positively: alma+epel-<N>-<arch> for the three EL
+# releases, and the suffixed rocky target mock cross-builds riscv64 through.
+my $EL_TARGET = qr/\A(?:alma|rocky|centos|rhel)(?:\+epel)?-/;
+
+# Why $pkg is not built for $target, or undef when the pair is built. The test is
+# on EL rather than on the families that are not EL, so a family added later
+# skips an EL-only package instead of trying to build it. openSUSE was added
+# after this guard and matched neither arm of a /\Aopeneuler-/ test, so
+# xcat-core-build-opensuse #42 spent three attempts on "No matching package to
+# install: selinux-policy-devel" and failed the whole openSUSE family.
 sub package_skip_reason {
     my ($pkg, $target) = @_;
     my $reason = $EL_ONLY_PACKAGES{ $pkg // '' } or return undef;
-    return undef unless defined($target) && $target =~ /\Aopeneuler-/;
+    # No target names no platform. buildrpms.pl always has one; a caller that
+    # does not is asking about the package, not about a pair.
+    return undef unless defined($target) && length($target);
+    return undef if $target =~ $EL_TARGET;
     return $reason;
 }
 

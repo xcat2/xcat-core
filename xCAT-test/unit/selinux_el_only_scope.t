@@ -23,6 +23,15 @@ my @openeuler_targets = qw(
     openeuler-24.03sp4-x86_64
     openeuler-24.03-ppc64le
 );
+# openSUSE Leap ships no selinux-policy-devel at all, so the module has nothing
+# to compile against. The guard this test was written with named openEuler, and
+# openSUSE was enabled afterwards: xcat-core-build-opensuse #42 spent three
+# attempts on "No matching package to install: selinux-policy-devel" and took
+# the whole openSUSE family down with it.
+my @opensuse_targets = qw(
+    opensuse-leap-15.6-x86_64
+    opensuse-leap-42.3-x86_64
+);
 my @el_targets = qw(
     alma+epel-8-x86_64
     alma+epel-9-x86_64
@@ -34,9 +43,9 @@ my $decides = XCAT::BuildUtils->can('package_skip_reason');
 ok($decides, 'BuildUtils decides which packages a target builds');
 
 SKIP: {
-    skip 'BuildUtils has no build-plan decision', 17 unless $decides;
+    skip 'BuildUtils has no build-plan decision', 20 unless $decides;
 
-    foreach my $target (@openeuler_targets) {
+    foreach my $target (@openeuler_targets, @opensuse_targets) {
         ok($decides->('xCAT-selinux', $target),
             "xCAT-selinux is not built for $target");
     }
@@ -51,6 +60,8 @@ SKIP: {
         xCAT-genesis-scripts xCAT-test xCAT-release)) {
         is($decides->($pkg, 'openeuler-22.03sp4-x86_64'), undef,
             "$pkg is built for openEuler");
+        is($decides->($pkg, 'opensuse-leap-15.6-x86_64'), undef,
+            "$pkg is built for openSUSE");
     }
 }
 
