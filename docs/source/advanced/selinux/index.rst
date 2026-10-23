@@ -90,25 +90,51 @@ another type, from before the package was installed. ``restorecon`` over the
 publication directory cannot repair it, with or without ``-F``, because the
 path has no context to apply. Give it one.
 
-``site.installdir`` selects the publication directory. Read it, and map each
-published artifact of that one image root::
+``site.installdir`` selects the publication directory. Add the mappings in this
+order, and relabel once at the end::
 
     installdir=$(lsdef -t site -i installdir -c | sed 's/^.*=//; s:/*$::')
     imgroot=$installdir/netboot/rootimg/rhels9/x86_64/compute
 
+    # 1. The publication directory, when site.installdir is not /install. The
+    #    packaged mappings name /install and cover no other directory.
+    semanage fcontext -a -t public_content_t "$installdir(/.*)?"
+
+    # 2. Both guest trees, before anything relabels them.
+    semanage fcontext -a -t '<<none>>' "$installdir(/.*)?/rootimg(/.*)?"
+    semanage fcontext -a -t '<<none>>' "$installdir(/.*)?/rootimg-statelite(/.*)?"
+
+    # 3. The published artifacts of the one image root, after the exclusions.
     for name in kernel hypervisor 'initrd[^/]*' 'rootimg\.[^/]*' \
                 'rootimg-statelite\.[^/]*' 'rootimgtree\.[^/]*' \
                 'litefile\.csv' 'common\.filelist'; do
         semanage fcontext -a -t public_content_t -f f "$imgroot/$name"
     done
-    restorecon -R -v "$imgroot"
 
-Each expression names one regular file directly below the image root, so no
-path in ``$imgroot/rootimg`` or ``$imgroot/rootimg-statelite`` matches one.
-Both guest trees keep the ``<<none>>`` of the packaged mappings, and
-``restorecon`` leaves every file in them alone. ``file_contexts.local`` is read
-after the packaged file, and the last expression that matches a path wins, so
-each mapping above wins against ``/install(/.*)?/rootimg(/.*)?``.
+    # 4. One relabel, with every mapping in place.
+    restorecon -R -v "$installdir"
+
+Steps 1 and 2 come first because a relabel before them writes a generic type
+over the guest labels. With ``site.installdir=/srv/xcat-install`` and no mapping
+for that tree, ``rootimg/etc/shadow`` resolves to ``var_t``. A mapping added
+after such a relabel only stops the next one from changing what is already
+wrong.
+
+Step 3 comes after step 2 because ``file_contexts`` keeps the expressions in the
+order they are read, and the last one that matches a path wins.
+``$installdir(/.*)?/rootimg(/.*)?`` matches ``$imgroot`` itself when the image
+root carries a ``rootimg`` component in the middle, so it matches the published
+artifacts too. Read after the exclusions, each artifact mapping wins against
+them. Read before, the artifacts resolve to ``<<none>>``. An expression with no
+wildcard, such as ``kernel``, wins either way, so the defect shows on the
+initrds and the packed images alone.
+
+Step 4 runs once. Each expression in step 3 names one regular file directly
+below the image root, so no path in ``$imgroot/rootimg`` or
+``$imgroot/rootimg-statelite`` matches one, and ``restorecon`` leaves every file
+in both guest trees alone. Under the standard ``/install`` the packaged
+mappings already carry steps 1 and 2, and ``file_contexts.local`` is read after
+the packaged file, so step 3 still wins.
 
 Do not repair a label with ``chcon``, and do not map the image root as a tree.
 ``chcon`` writes a type that no mapping selects, so the next relabel of a path
@@ -116,19 +142,13 @@ that has a mapping reverts it, and a recursive ``chcon`` relabels both guest
 trees as well. A tree mapping over the image root relabels them through
 ``restorecon`` instead.
 
-The packaged mappings name ``/install``. A site that moved ``site.installdir``
-maps the configured directory, and keeps both guest trees out of that mapping::
-
-    semanage fcontext -a -t public_content_t "$installdir(/.*)?"
-    semanage fcontext -a -t '<<none>>' "$installdir(/.*)?/rootimg(/.*)?"
-    semanage fcontext -a -t '<<none>>' "$installdir(/.*)?/rootimg-statelite(/.*)?"
-    restorecon -R -v "$installdir"
-
 A mapping is persistent, so a later recursive relabel and a policy upgrade both
 keep the result. ``xCAT-test/native/selinux_image_repair.t`` starts with the
 wrong type on every published artifact and valid types in both guest trees,
-runs each procedure, and reads the labels back after a recursive relabel and
-after a reinstall of the module.
+runs the four steps in order, and reads the labels back after a recursive
+relabel and after a reinstall of the module. It does that for a moved
+``installdir`` whose image root also carries a ``rootimg`` component in the
+middle, which is the layout that needs every step.
 
 The unit holds ``/opt/xcat`` as the default prefix, and ``%post`` writes
 ``/etc/xcat/xcatroot.env`` with the prefix of the installation, which the unit
