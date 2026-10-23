@@ -781,7 +781,7 @@ sub delnode
 
 sub addnode6 {
 
-    #omshell to add host dynamically
+    # The omshell commands that add the host, or nothing when the node is skipped.
     my $node = shift;
     unless ($vpdhash) {
         $callback->({ node => [ { name => [$node], warning => ["Skipping DHCPv6 setup due to missing vpd.uuid information."] } ] });
@@ -817,44 +817,46 @@ sub addnode6 {
     if ( $ip and $ip =~ /:/ and _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
         return;
     }
+    my $commands = '';
     if ($ip and $ip =~ /:/) {
         $ip = getipaddr($ip, GetNumber => 1);
         $ip = $ip->as_hex;
         $ip =~ s/^0x//;
         $ip =~ s/(..)/$1:/g;
         $ip =~ s/:\z//;
-        print $omshell6 "set ip-address = $ip\n";
+        $commands .= "set ip-address = $ip\n";
     } else {
         $ip = 0;
     }
-    print $omshell6 "new host\n";
-    print $omshell6 "set name = \"$node\"\n";    #Find and destroy conflict name
-    print $omshell6 "open\n";
-    print $omshell6 "remove\n";
-    print $omshell6 "close\n";
+    $commands .= "new host\n";
+    $commands .= "set name = \"$node\"\n";    #Find and destroy conflict name
+    $commands .= "open\n";
+    $commands .= "remove\n";
+    $commands .= "close\n";
     if ($ip) {
-        print $omshell6 "new host\n";
-        print $omshell6 "set ip-address = $ip\n";  #find and destroy ip conflict
-        print $omshell6 "open\n";
-        print $omshell6 "remove\n";
-        print $omshell6 "close\n";
+        $commands .= "new host\n";
+        $commands .= "set ip-address = $ip\n";  #find and destroy ip conflict
+        $commands .= "open\n";
+        $commands .= "remove\n";
+        $commands .= "close\n";
     }
-    print $omshell6 "new host\n";
-    print $omshell6 "set dhcp-client-identifier = " . $uuid . "\n"; #find and destroy DUID-UUID conflict
-    print $omshell6 "open\n";
-    print $omshell6 "remove\n";
-    print $omshell6 "close\n";
-    print $omshell6 "new host\n";
-    print $omshell6 "set name = \"$node\"\n";
-    print $omshell6 "set dhcp-client-identifier = $uuid\n";
-    print $omshell6 'set statements = "ddns-hostname \"' . $node . '\";";' . "\n";
+    $commands .= "new host\n";
+    $commands .= "set dhcp-client-identifier = " . $uuid . "\n"; #find and destroy DUID-UUID conflict
+    $commands .= "open\n";
+    $commands .= "remove\n";
+    $commands .= "close\n";
+    $commands .= "new host\n";
+    $commands .= "set name = \"$node\"\n";
+    $commands .= "set dhcp-client-identifier = $uuid\n";
+    $commands .= 'set statements = "ddns-hostname \"' . $node . '\";";' . "\n";
 
     if ($ip) {
-        print $omshell6 "set ip-address = $ip\n";
+        $commands .= "set ip-address = $ip\n";
     }
-    print $omshell6 "create\n";
-    print $omshell6 "close\n";
+    $commands .= "create\n";
+    $commands .= "close\n";
 
+    return $commands;
 }
 
 sub _infiniband_twin_mac
@@ -2684,7 +2686,8 @@ sub process_request
                 next if $unchanged->{$_};
                 addnode $_;
                 if ($usingipv6) {
-                    addnode6 $_;
+                    my $commands = addnode6($_);
+                    print $omshell6 $commands if $commands;
                 }
             }
         }
