@@ -368,13 +368,21 @@ sub ipv6_network_fixture {
     $xCAT::TableUtils::site{nameservers} = '2001:db8:1::1';
 }
 
-subtest 'older media rejects an IPv6-only node before arming' => sub {
-    fixture();
-    ipv6_network_fixture();
-    my ($boot, $errors) = install();
-    like($errors->[0]{node}[0]{error}[0], qr/xcat-freebsd-ipv6-1/x, 'the public command names the missing media capability');
-    is($prepare_count, 0, 'unsupported media cannot prepare a destructive install');
-    ok(!exists($boot->{node1}) && !-e "$root/tftp/xcat/freebsd/node1", 'rejection leaves no boot entry');
+subtest 'IPv6 network and media admission precede arming' => sub {
+    for my $case ('bare', 'CIDR', 'non-numeric suffix', 'empty mask', 'missing mask') {
+        fixture();
+        ipv6_network_fixture();
+        $xCAT::Table::networks[0]{net} = '2001:db8:1::/64' unless $case eq 'bare';
+        $xCAT::Table::networks[0]{net} = '2001:db8:1::/xx' if $case eq 'non-numeric suffix';
+        $xCAT::Table::networks[0]{mask} = '' if $case eq 'empty mask';
+        delete $xCAT::Table::networks[0]{mask} if $case eq 'missing mask';
+        my ($boot, $errors) = install();
+        my $expected = $case eq 'bare' || $case eq 'CIDR' ? qr/xcat-freebsd-ipv6-1/x
+            : qr/Invalid[ ]IPv6[ ]provisioning[ ]network/x;
+        like($errors->[0]{node}[0]{error}[0], $expected, "$case reaches its network or media diagnostic");
+        is($prepare_count, 0, "$case cannot prepare a destructive install");
+        ok(!exists($boot->{node1}) && !-e "$root/tftp/xcat/freebsd/node1", "$case leaves no boot entry");
+    }
 };
 
 subtest 'pkgbase installation publishes a native source-bound package plan' => sub {
