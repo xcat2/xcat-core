@@ -11,6 +11,9 @@ use File::Copy qw(move);
 use File::Find;
 use File::Path;
 use Cwd qw(realpath);
+# Debian's standalone builder carries this helper with its copied scripts.
+use lib dirname(__FILE__) . '/../debian';
+use xCAT::ProfileUtils;
 use xCAT::SvrUtils;
 
 sub el_major_version {
@@ -241,33 +244,9 @@ sub get_profile_def_filename {
     if ($osver =~ /^leap15/) {
         $fallbackos = "sle15";
     }
-    if (-r "$base/$profile.$osver.$arch.$ext") {
-        return "$base/$profile.$osver.$arch.$ext";
-    }
-    foreach my $osbase (@osbase) {
-        if (-r "$base/$profile.$osbase.$arch.$ext") {
-            return "$base/$profile.$osbase.$arch.$ext";
-        }
-    }
-    if ($fallbackos && -r "$base/$profile.$fallbackos.$arch.$ext") {
-        return "$base/$profile.$fallbackos.$arch.$ext";
-    } elsif (-r "$base/$profile.$arch.$ext") {
-        return "$base/$profile.$arch.$ext";
-    } elsif (-r "$base/$profile.$osver.$ext") {
-        return "$base/$profile.$osver.$ext";
-    }
-    foreach my $osbase (@osbase) {
-        if (-r "$base/$profile.$osbase.$ext") {
-            return "$base/$profile.$osbase.$ext";
-        }
-    }
-    if ($fallbackos && -r "$base/$profile.$fallbackos.$ext") {
-        return "$base/$profile.$fallbackos.$ext";
-    } elsif (-r "$base/$profile.$ext") {
-        return "$base/$profile.$ext";
-    }
-
-    return "";
+    return xCAT::ProfileUtils::find_profile_asset(
+        $base, $profile, $arch, $ext, $osver, @osbase,
+        ($fallbackos ? ($fallbackos) : ()));
 }
 
 sub include_file
