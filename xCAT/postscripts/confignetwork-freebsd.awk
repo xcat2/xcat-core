@@ -1045,7 +1045,7 @@ BEGIN {
         compile()
         exit
     }
-    if (mode != "links" && mode != "carrier" && mode != "dhcp4-default" && mode != "verify" && mode != "verify-prior" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
+    if (mode != "links" && mode != "carrier" && mode != "dhcp4-default" && mode != "verify" && mode != "verify-prior" && mode != "verify-bootstrap" && mode != "snapshot" && mode != "clear" && mode != "routes" &&
         mode != "routeconflicts" && mode != "rcconflicts" && mode != "rcoptions" && mode != "rclists" && mode != "conflicts")
         fail("Unknown network planner operation")
 }
@@ -1061,6 +1061,10 @@ FILENAME == ARGV[1] {
     fields = split($0, column, "\t")
     if (column[1] == "I")
         wanted_interface[column[2]] = column[3]
+    else if (column[1] == "B") {
+        wanted_bootstrap_count++
+        wanted_bootstrap = column[2]
+    }
     else if (mode == "rclists" && (column[1] == "C" || column[1] == "S")) {
         key = column[1] == "C" ? "cloned_interfaces" : (column[2] == "inet" ? "static_routes" : "ipv6_static_routes")
         count = split(column[column[1] == "C" ? 2 : 3], words, " ")
@@ -1325,7 +1329,22 @@ END {
         verify_links(0)
     } else if (mode == "carrier") {
         verify_existing_carrier()
-    } else if (mode == "verify" || mode == "verify-prior") {
+    } else if (mode == "verify" || mode == "verify-prior" || mode == "verify-bootstrap") {
+        if (mode == "verify-bootstrap") {
+            if (wanted_bootstrap_count != 1 || !interface_name(wanted_bootstrap) || !(wanted_bootstrap in wanted_interface))
+                fail("Missing bootstrap interface")
+            for (key in observed_address) {
+                split(key, parts, SUBSEP)
+                if (parts[1] == wanted_bootstrap && parts[2] == "inet") {
+                    address(parts[3], "inet")
+                    if (++bootstrap_addresses > 1 || !number(observed_address[key], 0, 32))
+                        fail("Ambiguous bootstrap IPv4 lease")
+                    wanted_address[key] = observed_address[key]
+                }
+            }
+            if (bootstrap_addresses != 1)
+                fail("Missing bootstrap IPv4 lease")
+        }
         for (nic in wanted_interface) {
             if (!observed_interface[nic] || up[nic] != (wanted_up[nic] == "" ? "up" : wanted_up[nic]) || invalid_address[nic] ||
                 (invalid_link_local[nic] && observed_ipv6[nic] != "ifdisabled"))

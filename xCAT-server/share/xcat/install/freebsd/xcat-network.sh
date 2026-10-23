@@ -81,7 +81,12 @@ xcat_network_check()
         printf 'A\t%s\tinet\t%s\t%s\n' "$XCAT_PROVISIONING_IF" "$XCAT_IPV4" "$xcat_net_bits" >> "$XCAT_WORK/bootstrap.expected"
     fi
     ifconfig -a > "$XCAT_WORK/bootstrap.observed" || return 1
-    awk -v mode=verify -f /usr/local/libexec/confignetwork-freebsd.awk \
+    xcat_net_verify=verify
+    if [ -n "${XCAT_IPV6:-}" ]; then
+        [ "$XCAT_BOOTSTRAP" = dhcp ] && [ "$XCAT_BOOTSTRAP_MODE" = dhcp ] || return 1
+        xcat_net_verify=verify-bootstrap
+    fi
+    awk -v mode="$xcat_net_verify" -f /usr/local/libexec/confignetwork-freebsd.awk \
         "$XCAT_WORK/bootstrap.expected" "$XCAT_WORK/bootstrap.observed"
 }
 
