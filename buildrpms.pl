@@ -696,7 +696,7 @@ sub index_repo {
 
     # The stable bootstrap filename is a direct-download convenience, not a
     # second package. Keep it out of repository metadata.
-    unlink $alias if -f $alias;
+    unlink $alias if !$opts{source_only} && -f $alias;
     say "Creating repository $repodir";
     # Drop the top-level stray src.rpm and the mock logs (build.log/root.log/...)
     # that mock leaves in the resultdir, so the dir is directly deployable (upstream
@@ -719,6 +719,7 @@ sub update_repo {
 
 sub write_release_alias {
     my ($repodir) = @_;
+    return if $opts{source_only};
     my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
 
     # glob() returns a wildcard-free pattern verbatim even when the file does not exist, so
@@ -737,14 +738,12 @@ sub sign_rpms {
     sign_repo_dir("dist/$target/rpms", $opts{gpg_key_name});
 }
 
-# Sign every rpm in a core repo dir -- the top-level binaries AND SRPMS/*.src.rpm --
-# then re-index (signing rewrites the rpms, invalidating checksums) and detach-sign
-# + export the key into BOTH the binary and the SRPMS repodata dirs.
+# Source-only runs sign and index only SRPMS; normal runs also update the binary repository.
 sub sign_repo_dir {
     my ($repodir, $key_name) = @_;
 
     say "Signing RPMs in $repodir";
-    my @bin = glob("$repodir/*.rpm");
+    my @bin = $opts{source_only} ? () : glob("$repodir/*.rpm");
     if (@bin) {
         sh_or_die(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
            . join(" ", map { qq("$_") } @bin),
@@ -760,7 +759,7 @@ sub sign_repo_dir {
     # Signing can change RPM bytes without changing the size or timestamp used by the metadata cache.
     index_repo($repodir, 1);
 
-    for my $rd ("$repodir/repodata",
+    for my $rd (($opts{source_only} ? () : ("$repodir/repodata")),
                 (-d "$repodir/SRPMS/repodata" ? ("$repodir/SRPMS/repodata") : ())) {
         my $repomd = "$rd/repomd.xml";
         next unless -f $repomd;
@@ -865,10 +864,7 @@ sub merge_core_repos {
         "Failed to rsync '$in' into '$out'\n");
     }
 
-    # Index, sign (when --gpg-sign), write the final repository metadata, then create the
-    # xCAT-release-latest stable bootstrap alias. The alias MUST be created AFTER the final
-    # metadata pass so write_release_alias can unlink it before createrepo and keep it out of
-    # the repository index.
+    # Create the bootstrap alias after the final index pass so it does not enter repository metadata.
     index_repo($out);
     if ($opts{gpg_sign}) {
         $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
@@ -1198,11 +1194,10 @@ C<--rebuild> is skipped.
   ./buildrpms.pl --target alma+epel-9-x86_64 --source-only
 
 The srpms land in C<dist/E<lt>targetE<gt>/rpms/SRPMS/> and that index is regenerated.
-The binary metadata under C<dist/E<lt>targetE<gt>/rpms/> is deliberately left as the
-last binary build wrote it: re-indexing a directory with no binaries in it would
-replace working metadata with metadata for an empty repository. For the same reason
-no C<.repo> file or buildinfo is emitted, since both describe an installable binary
-repo that this mode does not produce. With C<--gpg-sign> the srpms are signed.
+Repository finalization leaves existing binary RPMs, metadata, signatures,
+public keys and the bootstrap alias unchanged. No C<.repo> file or buildinfo is
+emitted, since both describe an installable binary repo that this mode does not
+produce. With C<--gpg-sign>, the source RPMs and their repository metadata are signed.
 
 Cannot be combined with C<--merge-core-repos>, which assembles already-built
 per-arch binary trees.
@@ -1311,11 +1306,13 @@ Builds all selected package/target combinations.
 
 =item 2.
 
-Runs C<createrepo --update> for each selected target under C<dist/>.
+Indexes repositories for each selected target under C<dist/>. With C<--source-only>,
+only the SRPM repository is indexed.
 
 =item 3.
 
 If C<--gpg-sign> is set, signs RPMs and C<repomd.xml> for each target.
+With C<--source-only>, only source RPMs and their repository metadata are signed.
 
 =item 4.
 
