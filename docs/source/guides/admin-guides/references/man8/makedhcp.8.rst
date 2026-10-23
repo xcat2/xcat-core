@@ -89,6 +89,16 @@ DHCP or set ``site.dhcpomshellpath`` to a compatible binary.
 If you need to delete node entries from the DHCP configuration, use the \ **-d**\  flag.
 
 
+For a node with an IPv6 address, \ **makedhcp**\  reserves the address for one DHCPv6 client identifier (DUID).
+The ``duid`` attribute of the node selects it.
+Without the attribute, the DUID is the DUID-UUID that UEFI firmware built on EDK2 sends, made from ``vpd.uuid``.
+``vpd.uuid`` holds the UUID as the operating system reports it in ``/sys/class/dmi/id/product_uuid``.
+Earlier xCAT releases stored ``vpd.uuid`` with the first three fields swapped for nodes from Genesis discovery and for KVM guests from \ **mkvm**\ , \ **clonevm**\  or \ **rscan**\ .
+Set ``vpd.uuid`` of such a node to the UUID that it reports.
+Set ``duid=canonical`` for a client that sends ``vpd.uuid`` in RFC 4122 byte order, or set the DUID itself.
+When the firmware and the operating system of a node send different identifiers, only the client that ``duid`` selects gets the reserved address.
+
+
 *******
 OPTIONS
 *******
