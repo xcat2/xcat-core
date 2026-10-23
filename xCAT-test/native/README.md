@@ -375,6 +375,7 @@ user with Bubblewrap and unprivileged user namespaces enabled:
 ```
 prove xCAT-test/native/install_profile_riscv64.t \
       xCAT-test/native/netboot_profile_riscv64.t \
+      xCAT-test/native/netboot_profile_postinstall.t \
       xCAT-test/native/builddebs_riscv64.t \
       xCAT-test/native/ubuntu_subiquity_template.t
 ```
@@ -387,12 +388,20 @@ The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
 on non-Debian hosts. Each case creates its own temporary files and database.
 The temporary directory must allow execution; set TMPDIR if /tmp is noexec.
 Sandbox commands require GNU timeout and have a 45-second limit.
-Pull-request CI runs these cases and rejects whole-file skips. The permissive
-SELinux case records an existing postinstall defect as TODO, without changing
-production behavior.
+Pull-request CI runs these cases and rejects whole-file skips.
 
 The netboot case executes the selected postinstall file directly. Its private
 /bin/sh uses Bash, as on EL, including when the test host uses another shell.
+
+`netboot_profile_postinstall.t` runs the affected EL postinstall owners and
+their distro and service aliases. It checks the resulting SELinux settings,
+missing files, comments, repeated execution, permissions, ownership and host
+sentinels. It uses the same sandbox and Perl dependencies. CI runs it on
+Ubuntu, EL8 and EL10. It executes host tools against private image roots;
+it does not boot the target architecture or verify kernel SELinux state.
+Both Bash and dash are required. The firewalld cases cover regular files,
+valid and dangling symlinks, absent entries and directories under both shells.
+The unit files, unrelated links and host entries must remain unchanged.
 
 The Subiquity case replaces downloads and external commands, and uses a
 loopback install-monitor peer. It does not install an operating system.

@@ -103,7 +103,7 @@ jobs:
         run: |
           log=$(mktemp)
           trap 'rm -f -- "$log"' EXIT
-          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
+          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
           ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04
@@ -124,7 +124,7 @@ jobs:
       - name: Install lifecycle test dependencies
         run: |
           dnf install -y epel-release
-          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip bzip2 which diffutils httpd curl procps-ng openssl
+          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap dash systemd chkconfig initscripts tar gzip bzip2 which diffutils httpd curl procps-ng openssl
       - name: Enable lifecycle test namespaces
         run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Test RPM package lifecycle
@@ -132,3 +132,6 @@ jobs:
       - name: Test FIPS package artifacts
         if: ${{ !cancelled() }}
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/fips_package_payload.t'
+      - name: Test netboot postinstall profiles
+        if: ${{ !cancelled() }}
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/netboot_profile_postinstall.t'
