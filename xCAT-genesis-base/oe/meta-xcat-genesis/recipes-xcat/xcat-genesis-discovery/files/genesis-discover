@@ -76,21 +76,6 @@ read_value() {
     tr -d '\000\r\n' <"$value_file" | head -c 512
 }
 
-# sysfs renders the SMBIOS UUID canonically, and SMBIOS 2.6 and later store the first three fields
-# little-endian. vpd.uuid holds the raw order: dodiscovery swaps them, kvm.pm swaps them back to
-# build the libvirt <uuid>, and makedhcp uses the column as the DUID-UUID payload. Report the same
-# order, or one machine has two vpd.uuid values depending on the Genesis generation.
-smbios_uuid_order() {
-    local value=$1 pair='[0-9a-fA-F]{2}'
-
-    if [[ $value =~ ^($pair)($pair)($pair)($pair)-($pair)($pair)-($pair)($pair)(-.+)$ ]]; then
-        value=${BASH_REMATCH[4]}${BASH_REMATCH[3]}${BASH_REMATCH[2]}${BASH_REMATCH[1]}
-        value+=-${BASH_REMATCH[6]}${BASH_REMATCH[5]}
-        value+=-${BASH_REMATCH[8]}${BASH_REMATCH[7]}${BASH_REMATCH[9]}
-    fi
-    printf '%s' "$value"
-}
-
 read_sysinfo_value() {
     local name=$1
 
@@ -157,8 +142,7 @@ esac
 product_name=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_name" || true)
 system_vendor=$(read_value "$sys_root/sys/devices/virtual/dmi/id/sys_vendor" || true)
 serial=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_serial" || true)
-uuid=$(smbios_uuid_order \
-    "$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_uuid" || true)")
+uuid=$(read_value "$sys_root/sys/devices/virtual/dmi/id/product_uuid" || true)
 machine_type=
 s390_virtual=
 [[ -z $system_vendor && -z $product_name ]] \

@@ -1324,7 +1324,7 @@ foreach my $case (@invalid_mac_cases) {
         'query and delete retain alias matches when the associated MAC is malformed'
     );
     ok(
-        grep( { ( $_->{duid} || '' ) eq '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff' } @$matches ),
+        grep( { ( $_->{duid} || '' ) eq '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff' } @$matches ),
         'query and delete retain DUID matches when the associated MAC is malformed'
     );
 }
@@ -2472,8 +2472,10 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 
     my %by_hostname = map { $_->{hostname} => $_ } @$reservations;
     my $grub2 = $by_hostname{nodev6};
-    # vpd.uuid is the DUID payload, in the order the client sends it. See kea_duid_from_uuid.
-    is( $grub2->{duid}, '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation matches the DUID-UUID a UEFI client sends' );
+    # The first three UUID fields are reversed, because that is what a UEFI client sends --
+    # see kea_duid_from_uuid. This expectation held the canonical spelling and so agreed with a
+    # DUID no firmware ever presents.
+    is( $grub2->{duid}, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation matches the DUID-UUID a UEFI client sends' );
     is( $grub2->{'option-data'}[0]{name}, 'bootfile-url', 'grub2 reservation carries RFC 5970 bootfile-url' );
     is( $grub2->{'option-data'}[0]{data}, 'tftp://[2001:db8::1]/boot/grub2/grub2-nodev6', 'grub2 bootfile URL uses the IPv6-facing xCAT server and bracketed authority' );
     ok( $grub2->{'option-data'}[0]{'always-send'}, 'grub2 bootfile URL is always sent' );
@@ -2616,28 +2618,29 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
         'an IPv6-only node never reaches the IPv4 next-server resolver' );
 }
 
-# A DUID-UUID CARRIES vpd.uuid VERBATIM.
+# A DUID-UUID CARRIES THE UUID AS THE FIRMWARE HOLDS IT, NOT AS vpd.uuid SPELLS IT.
 #
-# RFC 6355 puts the sixteen octets of the system UUID in the DUID, in the order the client sends
-# them. vpd.uuid already holds that order: discovery swaps the first three SMBIOS fields before it
-# reports them, and kvm.pm swaps them back to build the libvirt <uuid>. A swap here is a second
-# one, Kea never matches the reservation, and the node takes a pool address with no bootfile-url.
+# RFC 6355 puts the sixteen octets of the system UUID in the DUID. SMBIOS 2.6 and later store
+# time_low, time_mid and time_hi_and_version LITTLE-ENDIAN, while vpd.uuid holds the canonical
+# spelling -- which is what Linux reports in product_uuid and what discovery writes. So the two
+# disagree in the first eight octets, Kea never matches the reservation, and the node takes a pool
+# address with no bootfile-url and stops at PXE-E21.
 #
-# xcat76-cn, 2026-10-23: the libvirt domain UUID is c78c76bf-3286-46f3-b80d-8fe079dd6de7, which
-# kvm.pm built from vpd.uuid bf768cc7-8632-f346-b80d-8fe079dd6de7. The firmware sent
-# 00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7, which is that vpd.uuid unchanged.
+# Measured on xcat76-cn, 2026-10-23, with vpd.uuid c78c76bf-3286-46f3-b80d-8fe079dd6de7:
+#   xCAT wrote        00:04:c7:8c:76:bf:32:86:46:f3:b8:0d:8f:e0:79:dd:6d:e7
+#   the firmware sent 00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7
 {
-    is( xCAT_plugin::dhcp::kea_duid_from_uuid('bf768cc7-8632-f346-b80d-8fe079dd6de7'),
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('c78c76bf-3286-46f3-b80d-8fe079dd6de7'),
         '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
-        'the DUID is 00:04 and vpd.uuid unchanged, the octets the firmware on xcat76-cn sent' );
+        'the DUID reverses the first three UUID fields, as the firmware sends them' );
 
-    # An asymmetric uuid: every field would move under a swap, and none may.
+    # The last eight octets are byte order independent and must NOT move.
     my $duid = xCAT_plugin::dhcp::kea_duid_from_uuid('00112233-4455-6677-8899-aabbccddeeff');
-    is( $duid, '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff',
-        'time_low, time_mid and time_hi keep the order vpd.uuid spells them in' );
+    is( $duid, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff',
+        'the clock-seq and node fields keep their order' );
 
     # A UUID with no separators is the same value.
-    is( xCAT_plugin::dhcp::kea_duid_from_uuid('bf768cc78632f346b80d8fe079dd6de7'),
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('c78c76bf328646f3b80d8fe079dd6de7'),
         '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
         'separators in vpd.uuid do not change the DUID' );
 

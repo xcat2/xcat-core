@@ -243,12 +243,10 @@ check:rc==0
 cmd:mkdef -t network -o ci-ipv6 net=2001:db8:176:: mask=/64 mgtifname=$$SECONDNIC dynamicrange=2001:db8:176::1000-2001:db8:176::1fff
 check:rc==0
 # A node that answers only on IPv6. Its uuid is fixed, because the DUID asserted below is derived
-# from it and a generated uuid would make the expected value unknowable. The spelling is the one
-# discovery writes: dodiscovery and genesis-discover swap the first three SMBIOS fields, so the
-# libvirt domain this uuid describes reports product_uuid c78c76bf-3286-46f3-b80d-8fe079dd6de7.
+# from it and a generated uuid would make the expected value unknowable.
 cmd:mkdef -t node ci-ipv6-cn groups=all mgt=kvm netboot=grub2 ip=2001:db8:176::20 mac=aa:bb:cc:dd:ee:01
 check:rc==0
-cmd:chtab node=ci-ipv6-cn vpd.uuid=bf768cc7-8632-f346-b80d-8fe079dd6de7
+cmd:chtab node=ci-ipv6-cn vpd.uuid=c78c76bf-3286-46f3-b80d-8fe079dd6de7
 check:rc==0
 cmd:makehosts ci-ipv6-cn
 check:rc==0
@@ -261,10 +259,10 @@ check:rc==0
 # Kea must accept its own configuration. A reservation xCAT renders and Kea rejects serves nobody.
 cmd:kea-dhcp6 -t /etc/kea/kea-dhcp6.conf
 check:rc==0
-# The DUID, read out of the JSON and compared EXACTLY. RFC 6355 carries the sixteen octets in the
-# order the client sends them, which is the order vpd.uuid holds, so these octets are 00:04 and
-# the uuid above unchanged. They are what the firmware on xcat76-cn sent on 2026-10-23. A grep for
-# "duid" would pass on the key alone.
+# The DUID, read out of the JSON and compared EXACTLY. RFC 6355 carries the UUID as the firmware
+# holds it, and SMBIOS stores the first three fields little-endian, so these octets are the
+# canonical spelling of the uuid above with those fields reversed. A grep for "duid" would pass on
+# the key alone.
 cmd:python3 -c 'import json;d=json.load(open("/etc/kea/kea-dhcp6.conf"));print("".join(r.get("duid","") for s in d["Dhcp6"]["subnet6"] for r in s.get("reservations",[]) if r.get("hostname")=="ci-ipv6-cn"))'
 check:rc==0
 check:output==00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7
