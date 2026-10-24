@@ -190,6 +190,18 @@ not_in_packet()
     grep -qx STATE=READY "$XCAT_STATUS_DIR/discovery.env"
 }
 
+@test "discovery reports the system UUID in the order a DUID-UUID carries it" {
+    # vpd.uuid holds this value, and makedhcp writes 00:04 followed by these octets into the
+    # DHCPv6 reservation. SMBIOS 2.6 and later store the first three fields little-endian and
+    # sysfs renders them canonically, so reporting product_uuid unchanged gave the same machine a
+    # different vpd.uuid depending on which Genesis generation discovered it. dodiscovery in the
+    # legacy image swaps the same three fields.
+    discover
+    [ "$status" -eq 0 ]
+    in_packet '<uuid>33221100-5544-7766-8899-aabbccddeeff</uuid>'
+    not_in_packet '<uuid>00112233-4455-6677-8899-aabbccddeeff</uuid>'
+}
+
 @test "successful discovery does not depend on logging" {
     XCAT_TEST_LOGGER_FAIL=1 discover
     [ "$status" -eq 0 ]
