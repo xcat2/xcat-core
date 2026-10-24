@@ -3,8 +3,9 @@
 # SMBIOS 2.6 specifies, so the guest reports the domain UUID unchanged, and the KVM plugin must
 # carry vpd.uuid to the domain and back without changing its byte order: mkvm writes it to the
 # domain XML, rscan imports the domain UUID into vpd.uuid, and rinv prints it. Machine types
-# pc-i440fx-2.1 and pc-i440fx-rhel7.1.0 are the exception: their guest reports the domain UUID with
-# the first three fields swapped, so the plugin swaps them for those machine types only.
+# pc-i440fx-2.1, pc-q35-2.1, pc-i440fx-rhel7.1.0 and pc-i440fx-utopic are the exception: their guest
+# reports the domain UUID with the first three fields swapped, so the plugin swaps them for those
+# machine types only.
 #
 # The plugin runs through process_request, with a private SQLite database and a hypervisor
 # connection that serves fixed domain XML in place of libvirt.
@@ -92,17 +93,19 @@ sub node_attribute {
 
 # cn1 has a vpd.uuid. cn2 has none, so mkvm generates one. cn3 runs on machine type pc-i440fx-2.1.
 # cn4 names no machine type and cn5 names the alias pc, so libvirt picks the default machine type.
+# cn6 runs on machine type pc-q35-2.1.
 # known1 is a guest that an earlier rscan defined, with a DHCPv6 client identifier chosen in
 # mac.duid. This process keeps the node list it reads first, and the forked plugin inherits it, so
 # every node exists before the first command.
 my $known = '0a1b2c3d-4e5f-4a6b-8c7d-8e9fa0b1c2d3';
 set_rows( 'nodelist', cn1 => { groups => 'all' }, cn2 => { groups => 'all' }, cn3 => { groups => 'all' },
-    cn4 => { groups => 'all' }, cn5 => { groups => 'all' }, known1 => { groups => 'vm,all' }, hyp1 => { groups => 'all' } );
+    cn4 => { groups => 'all' }, cn5 => { groups => 'all' }, cn6 => { groups => 'all' }, known1 => { groups => 'vm,all' },
+    hyp1 => { groups => 'all' } );
 set_rows( 'nodehm', cn1 => { mgt => 'kvm', power => 'kvm' }, cn2 => { mgt => 'kvm', power => 'kvm' },
     cn3 => { mgt => 'kvm', power => 'kvm' }, cn4 => { mgt => 'kvm', power => 'kvm' }, cn5 => { mgt => 'kvm', power => 'kvm' },
-    known1 => { mgt => 'kvm' }, hyp1 => { mgt => 'ipmi' } );
+    cn6 => { mgt => 'kvm', power => 'kvm' }, known1 => { mgt => 'kvm' }, hyp1 => { mgt => 'ipmi' } );
 set_rows( 'nodetype', cn1 => { arch => 'x86_64' }, cn2 => { arch => 'x86_64' }, cn3 => { arch => 'x86_64' },
-    cn4 => { arch => 'x86_64' }, cn5 => { arch => 'x86_64' }, known1 => { arch => 'x86_64' } );
+    cn4 => { arch => 'x86_64' }, cn5 => { arch => 'x86_64' }, cn6 => { arch => 'x86_64' }, known1 => { arch => 'x86_64' } );
 set_rows( 'vm',
     cn1    => { host => 'hyp1', storage => 'phy:/dev/xcattest',  nics => 'br0', memory => '1024', cpus => '1' },
     cn2    => { host => 'hyp1', storage => 'phy:/dev/xcattest3', nics => 'br0', memory => '1024', cpus => '1' },
@@ -111,12 +114,14 @@ set_rows( 'vm',
     cn4    => { host => 'hyp1', storage => 'phy:/dev/xcattest8', nics => 'br0', memory => '1024', cpus => '1' },
     cn5    => { host => 'hyp1', storage => 'phy:/dev/xcattest9', nics => 'br0', memory => '1024', cpus => '1',
                 othersettings => 'machine:pc' },
+    cn6    => { host => 'hyp1', storage => 'phy:/dev/xcattest11', nics => 'br0', memory => '1024', cpus => '1',
+                othersettings => 'machine:pc-q35-2.1' },
     known1 => { host => 'hyp1', storage => '/dev/xcattest4', nics => 'br0', othersettings => 'nodefromrscan' } );
 set_rows( 'mac', cn1 => { mac => '52:54:00:76:00:21' }, cn2 => { mac => '52:54:00:76:00:23' },
     cn3 => { mac => '52:54:00:76:00:27' }, cn4 => { mac => '52:54:00:76:00:2a' }, cn5 => { mac => '52:54:00:76:00:2b' },
-    known1 => { mac => '52:54:00:76:00:24', duid => 'canonical' } );
+    cn6 => { mac => '52:54:00:76:00:2d' }, known1 => { mac => '52:54:00:76:00:24', duid => 'canonical' } );
 set_rows( 'vpd', cn1 => { uuid => $uuid }, cn3 => { uuid => $uuid }, cn4 => { uuid => $uuid }, cn5 => { uuid => $uuid },
-    known1 => { uuid => $known } );
+    cn6 => { uuid => $uuid }, known1 => { uuid => $known } );
 
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/kvm.pm";
 require $plugin;
@@ -219,16 +224,17 @@ foreach my $option ( '-u', '-w' ) {
         "after rscan $option the DHCPv6 reservation still uses the identifier that mac.duid selects" );
 }
 
-# Measured with -uuid 12345678-1234-4bcd-9876-1234567890ab on QEMU 8.2 and on the qemu-kvm 6.2 of EL8: the
-# pc-i440fx-2.1 and pc-i440fx-rhel7.1.0 guests report 78563412-3412-cd4b-9876-1234567890ab, and the other
-# machine types report the UUID unchanged.
+# Measured with -uuid 12345678-1234-4bcd-9876-1234567890ab on QEMU 8.2, the qemu-kvm 6.2 of EL8 and the
+# QEMU 2.5 of Ubuntu 16.04: the pc-i440fx-2.1, pc-q35-2.1, pc-i440fx-rhel7.1.0 and pc-i440fx-utopic guests
+# report 78563412-3412-cd4b-9876-1234567890ab, and the other machine types report the UUID unchanged.
 my $swapped = '78563412-3412-cd4b-9876-1234567890ab';
-foreach my $machine ( 'pc-i440fx-2.1', 'pc-i440fx-rhel7.1.0' ) {
+foreach my $machine ( 'pc-i440fx-2.1', 'pc-q35-2.1', 'pc-i440fx-rhel7.1.0', 'pc-i440fx-utopic' ) {
     is( xCAT::KVMUtils::guest_uuid( $uuid, $machine ), $swapped, "guest_uuid swaps the UUID of a $machine domain" );
     is( xCAT::KVMUtils::guest_uuid( $swapped, $machine ), $uuid, 'and swapping again gives the domain UUID back' );
 }
-foreach my $machine ( undef, 'pc-i440fx-2.0', 'pc-i440fx-2.2', 'pc-i440fx-8.2', 'pc-i440fx-rhel7.0.0', 'pc-i440fx-rhel7.2.0',
-    'pc-i440fx-rhel10.0.0', 'pc-i440fx-trusty', 'pc-i440fx-wily', 'q35', 'pc-q35-rhel10.2.0' ) {
+foreach my $machine ( undef, 'pc-i440fx-2.0', 'pc-i440fx-2.2', 'pc-i440fx-2.11', 'pc-q35-2.0', 'pc-q35-2.4',
+    'pc-q35-2.11', 'pc-i440fx-8.2', 'pc-i440fx-rhel7.0.0', 'pc-i440fx-rhel7.2.0', 'pc-i440fx-rhel10.0.0',
+    'pc-i440fx-trusty', 'pc-i440fx-wily', 'pc-i440fx-xenial', 'q35', 'pc-q35-rhel10.2.0' ) {
     is( xCAT::KVMUtils::guest_uuid( $uuid, $machine ), $uuid, 'guest_uuid keeps the UUID of machine type ' . ( $machine // 'default' ) );
 }
 
@@ -265,5 +271,16 @@ run_command( 'rscan', ['hyp1'], '-w' );
 is( node_attribute( 'vpd', 'scanned4', 'uuid' ), $swapped,
     'rscan -w swaps the UUID of a domain whose default machine type is pc-i440fx-rhel7.1.0' );
 $XCATTestHypervisor::default_machine = 'pc-i440fx-8.2';
+
+# mkvm, rinv and rscan swap the UUID for a pc-q35-2.1 guest too.
+run_command( 'mkvm', ['cn6'] );
+is( domain_uuid( node_attribute( 'kvm_nodedata', 'cn6', 'xml' ) ), $swapped, 'mkvm swaps the UUID of a pc-q35-2.1 guest' );
+@XCATTestHypervisor::domains = ( domain_xml( 'cn1', $uuid, '/dev/xcattest', '52:54:00:76:00:21', 'pc-q35-2.1' ) );
+my @q35_rinv = run_command( 'rinv', ['cn1'] );
+ok( ( grep { $_ eq $swapped } @q35_rinv ), 'rinv prints the UUID that a pc-q35-2.1 guest reports' )
+  or diag( join "\n", @q35_rinv );
+@XCATTestHypervisor::domains = ( domain_xml( 'scanned5', $uuid, '/dev/xcattest12', '52:54:00:76:00:2e', 'pc-q35-2.1' ) );
+run_command( 'rscan', ['hyp1'], '-w' );
+is( node_attribute( 'vpd', 'scanned5', 'uuid' ), $swapped, 'rscan -w stores the UUID that a pc-q35-2.1 guest reports' );
 
 done_testing();
