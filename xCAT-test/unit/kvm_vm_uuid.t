@@ -84,19 +84,25 @@ sub node_attribute {
 }
 
 # cn1 has a vpd.uuid. cn2 has none, so mkvm generates one. cn3 runs on machine type pc-i440fx-2.1.
+# known1 is a guest that an earlier rscan defined, with a DHCPv6 client identifier chosen in
+# mac.duid. This process keeps the node list it reads first, and the forked plugin inherits it, so
+# every node exists before the first command.
+my $known = '0a1b2c3d-4e5f-4a6b-8c7d-8e9fa0b1c2d3';
 set_rows( 'nodelist', cn1 => { groups => 'all' }, cn2 => { groups => 'all' }, cn3 => { groups => 'all' },
-    hyp1 => { groups => 'all' } );
+    known1 => { groups => 'vm,all' }, hyp1 => { groups => 'all' } );
 set_rows( 'nodehm', cn1 => { mgt => 'kvm', power => 'kvm' }, cn2 => { mgt => 'kvm', power => 'kvm' },
-    cn3 => { mgt => 'kvm', power => 'kvm' }, hyp1 => { mgt => 'ipmi' } );
-set_rows( 'nodetype', cn1 => { arch => 'x86_64' }, cn2 => { arch => 'x86_64' }, cn3 => { arch => 'x86_64' } );
+    cn3 => { mgt => 'kvm', power => 'kvm' }, known1 => { mgt => 'kvm' }, hyp1 => { mgt => 'ipmi' } );
+set_rows( 'nodetype', cn1 => { arch => 'x86_64' }, cn2 => { arch => 'x86_64' }, cn3 => { arch => 'x86_64' },
+    known1 => { arch => 'x86_64' } );
 set_rows( 'vm',
     cn1    => { host => 'hyp1', storage => 'phy:/dev/xcattest',  nics => 'br0', memory => '1024', cpus => '1' },
     cn2    => { host => 'hyp1', storage => 'phy:/dev/xcattest3', nics => 'br0', memory => '1024', cpus => '1' },
     cn3    => { host => 'hyp1', storage => 'phy:/dev/xcattest5', nics => 'br0', memory => '1024', cpus => '1',
-                othersettings => 'machine:pc-i440fx-2.1' } );
+                othersettings => 'machine:pc-i440fx-2.1' },
+    known1 => { host => 'hyp1', storage => '/dev/xcattest4', nics => 'br0', othersettings => 'nodefromrscan' } );
 set_rows( 'mac', cn1 => { mac => '52:54:00:76:00:21' }, cn2 => { mac => '52:54:00:76:00:23' },
-    cn3 => { mac => '52:54:00:76:00:27' } );
-set_rows( 'vpd', cn1 => { uuid => $uuid }, cn3 => { uuid => $uuid } );
+    cn3 => { mac => '52:54:00:76:00:27' }, known1 => { mac => '52:54:00:76:00:24', duid => 'canonical' } );
+set_rows( 'vpd', cn1 => { uuid => $uuid }, cn3 => { uuid => $uuid }, known1 => { uuid => $known } );
 
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/kvm.pm";
 require $plugin;
@@ -182,6 +188,21 @@ my $scanned = '87654321-4321-4dcb-8967-ba0987654321';
 my @rscan = run_command( 'rscan', ['hyp1'], '-w' );
 is( node_attribute( 'vpd', 'scanned1', 'uuid' ), $scanned, 'rscan -w stores the domain UUID in vpd.uuid unchanged' )
   or diag( join "\n", @rscan );
+
+# rscan -u and rscan -w rewrite a guest that xCAT already knows. They update its MAC address, and its
+# mac row keeps mac.duid, so the reservation that makedhcp builds next does not change.
+require "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
+my $canonical = '00:04:0a:1b:2c:3d:4e:5f:4a:6b:8c:7d:8e:9f:a0:b1:c2:d3';
+my %rescan_mac = ( '-u' => '52:54:00:76:00:25', '-w' => '52:54:00:76:00:26' );
+foreach my $option ( '-u', '-w' ) {
+    @XCATTestHypervisor::domains = ( domain_xml( 'known1', $known, '/dev/xcattest4', $rescan_mac{$option} ) );
+    my @output = run_command( 'rscan', ['hyp1'], $option );
+    is( node_attribute( 'mac', 'known1', 'mac' ), $rescan_mac{$option}, "rscan $option updates the MAC address of the guest" )
+      or diag( join "\n", @output );
+    is( node_attribute( 'mac', 'known1', 'duid' ), 'canonical', "rscan $option keeps mac.duid" );
+    is( xCAT_plugin::dhcp::dhcp6_client_duids( ['known1'] )->{known1}->{duid}, $canonical,
+        "after rscan $option the DHCPv6 reservation still uses the identifier that mac.duid selects" );
+}
 
 # Measured with -uuid 12345678-1234-4bcd-9876-1234567890ab on QEMU 8.2 and on the qemu-kvm 6.2 of EL8: the
 # pc-i440fx-2.1 and pc-i440fx-rhel7.1.0 guests report 78563412-3412-cd4b-9876-1234567890ab, and the other
