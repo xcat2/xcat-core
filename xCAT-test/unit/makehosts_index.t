@@ -5,6 +5,11 @@ use warnings;
 use FindBin;
 use Test::More;
 
+# The real xCAT::NetworkUtils is loaded, because the host-entry index keys on
+# the canonical form of an address and that is where it comes from. The other
+# modules reach the xCAT database and nothing here calls them.
+use lib "$FindBin::Bin/../../perl-xCAT";
+
 BEGIN {
     package xCAT::Table;
     $INC{'xCAT/Table.pm'} = __FILE__;
@@ -14,9 +19,6 @@ BEGIN {
 
     package xCAT::Utils;
     $INC{'xCAT/Utils.pm'} = __FILE__;
-
-    package xCAT::NetworkUtils;
-    $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
 
     package xCAT::MsgUtils;
     $INC{'xCAT/MsgUtils.pm'} = __FILE__;

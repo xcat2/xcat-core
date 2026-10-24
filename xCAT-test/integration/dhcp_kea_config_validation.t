@@ -211,6 +211,13 @@ SKIP: {
                             duid           => '00:04:52:54:00:12:34:56',
                             'ip-addresses' => ['2001:db8:1::50'],
                             hostname       => 'nodev6',
+                            'option-data'  => [
+                                {
+                                    name          => 'bootfile-url',
+                                    data          => 'tftp://[2001:db8:1::1]/boot/grub2/grub2-nodev6',
+                                    'always-send' => JSON::true,
+                                },
+                            ],
                         },
                     ],
                 },

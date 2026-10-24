@@ -104,8 +104,24 @@ EXAMPLES
  
  Assuming the group "compute" contains node01, node02, etc., then in /etc/hosts they will be given
  IP addresses of 1.2.3.1, 1.2.3.2, etc.
- 
 
+
+3. Add an IPv6 primary address and an IPv6 additional interface for node01. The
+exclamation mark separates an interface hostname from an IPv6 address because
+the address itself contains colons. This example assumes the site domain is
+example.com.
+
+ .. code-block:: perl
+
+    chdef node01 ip=2001:db8::10 otherinterfaces='node01-storage!2001:db8:1::10'
+    makehosts node01
+
+ The resulting entries include:
+
+ .. code-block:: perl
+
+    2001:db8::10 node01 node01.example.com
+    2001:db8:1::10 node01-storage node01-storage.example.com
 
 
 ********
@@ -114,4 +130,3 @@ SEE ALSO
 
 
 hosts(5)|hosts.5, makedns(8)|makedns.8
-

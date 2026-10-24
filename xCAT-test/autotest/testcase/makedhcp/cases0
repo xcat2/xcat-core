@@ -227,3 +227,58 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:cp -f /etc/hosts.bak /etc/hosts
 end
+
+start:makedhcp_dhcpv6_boot_intent
+description:makedhcp writes a DHCPv6 reservation whose DUID and bootfile-url a UEFI client can use
+label:mn_only,ipv6
+# PRE-CLEAN, because xcattest stops a case at its first failed check and the cleanup at the end
+# would then not run. Without this a failed run leaves an address, a network and a node behind and
+# the next run measures the leftovers.
+cmd:sh -c 'makedhcp -d ci-ipv6-cn >/dev/null 2>&1; makehosts -d ci-ipv6-cn >/dev/null 2>&1; chtab -d node=ci-ipv6-cn vpd >/dev/null 2>&1; rmdef -t node ci-ipv6-cn >/dev/null 2>&1; rmdef -t network ci-ipv6 >/dev/null 2>&1; ip -6 addr del 2001:db8:176::1/64 dev $$SECONDNIC >/dev/null 2>&1; true'
+check:rc==0
+# An IPv6 address on the provisioning NIC, and the xCAT network that matches it. The prefix is
+# documentation-reserved (RFC 3849), so nothing it names can be reached off this bridge.
+cmd:ip -6 addr add 2001:db8:176::1/64 dev $$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o ci-ipv6 net=2001:db8:176:: mask=/64 mgtifname=$$SECONDNIC dynamicrange=2001:db8:176::1000-2001:db8:176::1fff
+check:rc==0
+# A node that answers only on IPv6. Its uuid is fixed, because the DUID asserted below is derived
+# from it and a generated uuid would make the expected value unknowable. The spelling is the one
+# discovery writes: dodiscovery and genesis-discover swap the first three SMBIOS fields, so the
+# libvirt domain this uuid describes reports product_uuid c78c76bf-3286-46f3-b80d-8fe079dd6de7.
+cmd:mkdef -t node ci-ipv6-cn groups=all mgt=kvm netboot=grub2 ip=2001:db8:176::20 mac=aa:bb:cc:dd:ee:01
+check:rc==0
+cmd:chtab node=ci-ipv6-cn vpd.uuid=bf768cc7-8632-f346-b80d-8fe079dd6de7
+check:rc==0
+cmd:makehosts ci-ipv6-cn
+check:rc==0
+# makedhcp MUST SUCCEED on an IPv6-only node. It exited 1 while writing the reservation correctly,
+# because the IPv4 next-server resolver ran before the loop that skips such a node.
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp ci-ipv6-cn
+check:rc==0
+# Kea must accept its own configuration. A reservation xCAT renders and Kea rejects serves nobody.
+cmd:kea-dhcp6 -t /etc/kea/kea-dhcp6.conf
+check:rc==0
+# The DUID, read out of the JSON and compared EXACTLY. RFC 6355 carries the sixteen octets in the
+# order the client sends them, which is the order vpd.uuid holds, so these octets are 00:04 and
+# the uuid above unchanged. They are what the firmware on xcat76-cn sent on 2026-10-23. A grep for
+# "duid" would pass on the key alone.
+cmd:python3 -c 'import json;d=json.load(open("/etc/kea/kea-dhcp6.conf"));print("".join(r.get("duid","") for s in d["Dhcp6"]["subnet6"] for r in s.get("reservations",[]) if r.get("hostname")=="ci-ipv6-cn"))'
+check:rc==0
+check:output==00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7
+# RFC 5970 bootfile-url, with the authority bracketed. The address is this management node's own
+# IPv6 address on the provisioning NIC.
+cmd:python3 -c 'import json;d=json.load(open("/etc/kea/kea-dhcp6.conf"));print("".join(o.get("data","") for s in d["Dhcp6"]["subnet6"] for r in s.get("reservations",[]) if r.get("hostname")=="ci-ipv6-cn" for o in r.get("option-data",[]) if o.get("name")=="bootfile-url"))'
+check:rc==0
+check:output==tftp://[2001:db8:176::1]/boot/grub2/grub2-ci-ipv6-cn
+# And the IPv4 side must carry NOTHING for this node: an IPv6-only node gets no DHCPv4
+# reservation and no client class, not even a DROP class.
+cmd:python3 -c 'import json,os;p="/etc/kea/kea-dhcp4.conf";d=json.load(open(p)) if os.path.exists(p) else {"Dhcp4":{}};print(sum(1 for s in d["Dhcp4"].get("subnet4",[]) for r in s.get("reservations",[]) if r.get("hostname")=="ci-ipv6-cn")+sum(1 for c in d["Dhcp4"].get("client-classes",[]) if "ci-ipv6-cn" in c.get("name","")))'
+check:rc==0
+check:output==0
+# Leave the management node as it was found.
+cmd:sh -c 'makedhcp -d ci-ipv6-cn >/dev/null 2>&1; makehosts -d ci-ipv6-cn; chtab -d node=ci-ipv6-cn vpd; rmdef -t node ci-ipv6-cn; rmdef -t network ci-ipv6; ip -6 addr del 2001:db8:176::1/64 dev $$SECONDNIC; true'
+check:rc==0
+end

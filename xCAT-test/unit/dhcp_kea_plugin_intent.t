@@ -36,7 +36,61 @@ BEGIN {
     }
     sub getipaddr { return '10.0.0.1'; }
     sub my_ip_facing { return ( 0, '10.0.0.1' ); }
+    sub my_ip_facing_family { return ( 0, '2001:db8::1' ); }
+    sub node_is_ipv6_only {
+        my $node = $_[-1];
+        return 0 if getipaddr($node, OnlyV4 => 1);
+        return getipaddr($node, OnlyV6 => 1) ? 1 : 0;
+    }
+    sub ipv6_server_for_node {
+        my ( $class, $node, $server ) = @_;
+        ( $node, $server ) = ( $class, $node ) if $class ne __PACKAGE__;
+        if (!defined($server) || $server eq '!myipfn!' || $server eq '<xcatmaster>') {
+            my @facing = my_ip_facing_family(__PACKAGE__, $node, 6);
+            return unless @facing && !$facing[0];
+            return $facing[1];
+        }
+        return $server if $server =~ /:/ && isValidIp(__PACKAGE__, $server);
+        return getipaddr($server, OnlyV6 => 1);
+    }
+    sub isIpv6addr {
+        my $addr = $_[-1];
+        return 0 unless defined($addr) && length($addr);
+        return 0 if $addr =~ /%/;
+        return 0 unless $addr =~ /:/;
+        return $addr =~ /^[0-9a-fA-F:.]+$/ ? 1 : 0;
+    }
+    sub isValidIp {
+        my $addr = $_[-1];
+        return 0 unless defined($addr) && length($addr);
+        return 1 if $addr =~ /^\d{1,3}(?:\.\d{1,3}){3}$/;
+        return 1 if $addr =~ /^[0-9a-fA-F:]+$/ && $addr =~ /:/;
+        return 0;
+    }
+    sub getIPv6PrefixLength {
+        my ( $class, $network, $mask ) = @_;
+        ( $network, $mask ) = ( $class, $network ) if $class ne __PACKAGE__;
+        return $1 if defined($network) && $network =~ m{/([0-9]+)$} && $1 <= 128;
+        return $1 if defined($mask) && $mask =~ m{^/?([0-9]+)$} && $1 <= 128;
+        return;
+    }
+    sub getIPv6ReverseZone {
+        my ( $class, $network, $mask ) = @_;
+        ( $network, $mask ) = ( $class, $network ) if $class ne __PACKAGE__;
+        my $prefix = getIPv6PrefixLength(__PACKAGE__, $network, $mask);
+        return unless defined($prefix);
+        return '0.0.0.0.9.0.3.7.8.b.d.0.1.0.0.2.ip6.arpa.'
+          if $network =~ /^2001:db8:7309::/ && $prefix == 64;
+        return;
+    }
+    sub format_uri_host {
+        my ($host) = @_;
+        $host = $_[1] if defined($host) && $host eq __PACKAGE__;
+        return "[$host]" if defined($host) && $host =~ /:/;
+        return $host;
+    }
     sub thishostisnot { return 0; }
+    sub ishostinsubnet { return 0; }
     sub ip_forwarding_enabled { return 0; }
     sub nodeonmynet { return 1; }
     sub formatNetmask {
@@ -70,7 +124,14 @@ BEGIN {
     $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
 
     package xCAT::ServiceNodeUtils;
-    sub getSNList { return; }
+    our $service_nodes = {};
+    our $dhcp_servers = [];
+    sub getSNList {
+        return @{ $dhcp_servers || [] } if $_[-1] eq 'dhcpserver';
+        return;
+    }
+    sub get_ServiceNode { return $service_nodes; }
+    sub getSNformattedhash { return $service_nodes; }
     $INC{'xCAT/ServiceNodeUtils.pm'} = __FILE__;
 
     package xCAT::NodeRange;
@@ -112,6 +173,16 @@ require xCAT::DHCP::Backend::Kea;
         return { %{ $self->{entry} } };
     }
     sub close { return; }
+
+    package DHCPKeaIntentFilteredNetTable;
+    our @ISA = ('DHCPKeaIntentNetTable');
+    sub getAllAttribs {
+        my ( $self, @attrs ) = @_;
+        return {
+            map { $_ => $self->{entry}{$_} }
+              grep { exists $self->{entry}{$_} } @attrs
+        };
+    }
 }
 
 {
@@ -221,6 +292,49 @@ foreach my $case (@sysconfig_policy_cases) {
     my ( $os, $expected, $description ) = @{$case};
     my $actual = xCAT_plugin::dhcp::dhcpd_sysconfig_uses_interface_key($os);
     is( $actual, $expected, "$description keeps the dhcpd sysconfig policy" );
+}
+
+{
+    # Regression: makenetworks stores some IPv6 networks as a literal in
+    # networks.net and a numeric prefix in networks.mask. Reverse-zone
+    # generation must consume that representation without looping.
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::getipaddr = sub {
+        my ( $address, %options ) = @_;
+        return Math::BigInt->new('0x20010db8730900000000000000000000')
+          if $address eq '2001:db8:7309::' && $options{GetNumber};
+        return;
+    };
+
+    my ($zone, $error);
+    {
+        local $SIG{ALRM} = sub { die "IPv6 reverse-zone generation timed out\n" };
+        eval {
+            alarm 2;
+            $zone = xCAT_plugin::dhcp::getzonesfornet(
+                '2001:db8:7309::', '64'
+            );
+            alarm 0;
+            1;
+        } or $error = $@;
+        alarm 0;
+    }
+    is($error, undef, 'Kea DDNS reverse-zone generation terminates');
+    is(
+        $zone,
+        '0.0.0.0.9.0.3.7.8.b.d.0.1.0.0.2.ip6.arpa.',
+        'Kea DDNS accepts an IPv6 network with a separate numeric prefix mask'
+    );
+    is_deeply(
+        [ xCAT_plugin::dhcp::getzonesfornet('2001:db8:7309::', undef) ],
+        [],
+        'Kea DDNS rejects a missing IPv6 prefix without looping'
+    );
+    is_deeply(
+        [ xCAT_plugin::dhcp::getzonesfornet('2001:db8:7309::', '129') ],
+        [],
+        'Kea DDNS rejects an out-of-range IPv6 prefix without looping'
+    );
 }
 
 {
@@ -349,6 +463,51 @@ foreach my $case (@sysconfig_policy_cases) {
     is_deeply( $intent->{interfaces}, ['eth0'], 'empty dhcpinterfaces infers the local provisioning interface' );
     is( scalar @{ $intent->{subnets} }, 1, 'empty dhcpinterfaces still renders local routed subnet' );
     is( $intent->{subnets}[0]{subnet}, '10.0.0.0/24', 'rendered subnet comes from local route' );
+}
+
+{
+    package DHCPKeaControlSocketBackend;
+    sub control_socket_path {
+        my ( $self, $name ) = @_;
+        return "shared-$name";
+    }
+    sub host_cmds_hook_path { return '/usr/lib64/kea/hooks/libdhcp_host_cmds.so'; }
+    sub bootp_hook_path     { return '/usr/lib64/kea/hooks/libdhcp_bootp.so'; }
+
+    package main;
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_ipv4_routes = sub {
+        return ([ '10.0.0.0', 'eth0', '255.255.255.0', '' ]);
+    };
+    local *xCAT_plugin::dhcp::kea_boot_client_classes = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_option_defs = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_global_option_data = sub { return []; };
+    local *xCAT_plugin::dhcp::kea_dhcp_lease_time = sub { return 43200; };
+    local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 1; };
+
+    my $backend = bless {}, 'DHCPKeaControlSocketBackend';
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new( \%network_entry );
+    my $intent4 = xCAT_plugin::dhcp::kea_build_dhcp4_intent($backend, { eth0 => 1 });
+    is(
+        $intent4->{'control-socket'}{'socket-name'},
+        'shared-kea4-ctrl-socket',
+        'DHCPv4 and Control Agent use the shared Kea socket-name policy'
+    );
+
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new(
+        {
+            net       => '2001:db8:7309::',
+            mask      => '64',
+            mgtifname => 'eth0',
+            domain    => 'cluster.test',
+        }
+    );
+    my $intent6 = xCAT_plugin::dhcp::kea_build_dhcp6_intent($backend, { eth0 => 1 });
+    is(
+        $intent6->{'control-socket'}{'socket-name'},
+        'shared-kea6-ctrl-socket',
+        'DHCPv6 and Control Agent use the shared Kea socket-name policy'
+    );
 }
 
 {
@@ -547,6 +706,98 @@ foreach my $case (@sysconfig_policy_cases) {
 }
 
 {
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_dhcp_lease_time = sub { return 43200; };
+    local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 0; };
+
+    my %network6_entry = (
+        net          => '2001:db8:7309::',
+        mask         => '64',
+        mgtifname    => 'eth0',
+        dynamicrange => '2001:db8:7309::100/120',
+        domain       => 'cluster.test',
+        dhcpserver   => 'service-node-a',
+    );
+    my $backend = bless {}, 'DHCPKeaIntentBackend';
+
+    {
+        local *xCAT::NetworkUtils::thishostisnot = sub { return 1; };
+        local $xCAT::Table::networks = DHCPKeaIntentFilteredNetTable->new( \%network6_entry );
+
+        my $intent = xCAT_plugin::dhcp::kea_build_dhcp6_intent( $backend, { eth0 => 1 } );
+        ok( !defined( $intent->{subnets}[0]{dynamicrange} ), 'non-owning Kea DHCPv6 server does not render dynamic pool' );
+    }
+
+    {
+        local *xCAT::NetworkUtils::thishostisnot = sub { return 0; };
+        local $xCAT::Table::networks = DHCPKeaIntentFilteredNetTable->new( \%network6_entry );
+
+        my $intent = xCAT_plugin::dhcp::kea_build_dhcp6_intent( $backend, { eth0 => 1 } );
+        is( $intent->{subnets}[0]{dynamicrange}, $network6_entry{dynamicrange}, 'owning Kea DHCPv6 server renders dynamic pool' );
+    }
+
+    {
+        local *xCAT::NetworkUtils::my_ip_facing_family = sub {
+            return ( 0, '2001:db8:7309::1' );
+        };
+        my $v6_getipaddr = sub {
+            my ( $host, %options ) = @_;
+            return unless $options{OnlyV6};
+            return '2001:db8::53' if $host eq 'dns6.example.test';
+            return;
+        };
+        local *xCAT::NetworkUtils::getipaddr = $v6_getipaddr;
+        local *xCAT_plugin::dhcp::getipaddr = $v6_getipaddr;
+
+        is(
+            xCAT_plugin::dhcp::kea_ipv6_nameservers(
+                '2001:db8:7309::/64',
+                '<xcatmaster>, 192.0.2.53, dns6.example.test'
+            ),
+            '2001:db8:7309::1, 2001:db8::53',
+            'DHCPv6 resolves the local xCAT server and filters IPv4 DNS fallbacks'
+        );
+
+        my %dns_network6 = (
+            %network6_entry,
+            nameservers => '<xcatmaster>, 192.0.2.53',
+        );
+        my $subnet = xCAT_plugin::dhcp::kea_subnet6_intent(
+            \%dns_network6, 'eth0', 0, 10001
+        );
+        my ($dns_option) = grep { $_->{name} eq 'dns-servers' }
+          @{ $subnet->{option_data} || [] };
+        is(
+            $dns_option->{data},
+            '2001:db8:7309::1',
+            'service-node DHCPv6 advertises its compute-facing IPv6 DNS address'
+        );
+
+        # The networks table carries an IPv6 mask as a prefix length, and
+        # makenetworks and the osimage templates write it with the leading
+        # slash. Both forms name the same prefix and both have to be accepted,
+        # or makedhcp refuses the network it was given.
+        foreach my $mask ( '64', '/64' ) {
+            my %network6_mask = ( %network6_entry, mask => $mask );
+            my $masked = xCAT_plugin::dhcp::kea_subnet6_intent(
+                \%network6_mask, 'eth0', 0, 10002
+            );
+            ok( !$masked->{error}, "mask '$mask' is accepted" )
+              or diag( $masked->{error} );
+            is( $masked->{subnet}, '2001:db8:7309::/64',
+                "mask '$mask' yields the /64 subnet" );
+        }
+
+        my %network6_noprefix = ( %network6_entry, mask => '' );
+        my $noprefix = xCAT_plugin::dhcp::kea_subnet6_intent(
+            \%network6_noprefix, 'eth0', 0, 10003
+        );
+        like( ( $noprefix->{error} || '' ), qr/must include a prefix length/,
+            'a network with no prefix length is refused by name' );
+    }
+}
+
+{
     # Regression: networks.nameservers / site.nameservers default to the
     # <xcatmaster> placeholder.  Kea D2 rejects a non-IP dns-servers ip-address,
     # so kea_build_ddns_intent must resolve <xcatmaster> to the management IP
@@ -582,6 +833,179 @@ foreach my $case (@sysconfig_policy_cases) {
 }
 
 {
+    # The same placeholder resolution and reverse-zone path must work when an
+    # IPv6 network stores its prefix in networks.mask instead of CIDR notation.
+    no warnings 'redefine';
+    local *xCAT_plugin::dhcp::kea_ddns_enabled = sub { 1 };
+    local *xCAT_plugin::dhcp::kea_ddns_key     = sub { ( 'HMAC-SHA256', 'YWJjMTIz' ); };
+    local *xCAT_plugin::dhcp::getipaddr = sub {
+        my ( $address, %options ) = @_;
+        return Math::BigInt->new('0x20010db8730900000000000000000000')
+          if $address eq '2001:db8:7309::' && $options{GetNumber};
+        return;
+    };
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new(
+        {
+            net         => '2001:db8:7309::',
+            mask        => '64',
+            nameservers => '<xcatmaster>',
+            domain      => 'cluster.test',
+        }
+    );
+
+    my ($ddns_intent, $error);
+    {
+        local $SIG{ALRM} = sub { die "IPv6 Kea DDNS intent timed out\n" };
+        eval {
+            alarm 2;
+            $ddns_intent = xCAT_plugin::dhcp::kea_build_ddns_intent();
+            alarm 0;
+            1;
+        } or $error = $@;
+        alarm 0;
+    }
+
+    is($error, undef, 'IPv6 Kea DDNS intent generation terminates');
+    ok(
+        $ddns_intent && !$ddns_intent->{error},
+        'IPv6 Kea DDNS intent accepts a separate numeric prefix mask'
+    );
+    is(
+        $ddns_intent->{reverse_domains}[0]{name},
+        '0.0.0.0.9.0.3.7.8.b.d.0.1.0.0.2.ip6.arpa.',
+        'IPv6 Kea DDNS intent renders the expected reverse zone'
+    );
+    is(
+        $ddns_intent->{reverse_domains}[0]{'dns-servers'}[0]{'ip-address'},
+        '2001:db8::1',
+        'IPv6 Kea DDNS resolves <xcatmaster> to the IPv6-facing management address'
+    );
+}
+
+{
+    # Kea D2 on a service node must update the authoritative management-node
+    # DNS server, not the service node's local forwarding cache or slave.
+    no warnings 'redefine';
+    local *xCAT::Utils::isServiceNode = sub { return 1; };
+
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '10.0.0.0', '<xcatmaster>, 192.0.2.53'
+        ),
+        '192.0.2.53',
+        'service-node D2 uses the documented IPv4 management-node fallback'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '2001:db8:7309::', '<xcatmaster>, 2001:db8::53'
+        ),
+        '2001:db8::53',
+        'service-node D2 uses the documented IPv6 management-node fallback'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '10.0.0.0', '192.0.2.54, 192.0.2.53'
+        ),
+        '192.0.2.54',
+        'service-node D2 preserves an explicit first IPv4 DNS target'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '2001:db8:7309::', '2001:db8::54, 2001:db8::53'
+        ),
+        '2001:db8::54',
+        'service-node D2 preserves an explicit first IPv6 DNS target'
+    );
+
+    {
+        local *xCAT::TableUtils::get_site_attribute = sub {
+            return $_[-1] eq 'master' ? ('mn.example.test') : ();
+        };
+        local *xCAT_plugin::dhcp::getipaddr = sub {
+            return '192.0.2.55' if $_[0] eq 'mn.example.test';
+            return '2001:db8::56' if $_[0] eq 'dns.example.test';
+            return;
+        };
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '2001:db8:7309::', '<xcatmaster>'
+            ),
+            '192.0.2.55',
+            'service-node D2 resolves site.master when no explicit fallback is configured'
+        );
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '2001:db8:7309::', 'dns.example.test'
+            ),
+            '2001:db8::56',
+            'service-node D2 resolves an explicit DNS hostname to an address literal'
+        );
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '2001:db8:7309::', '<xcatmaster>, <xcatmaster>'
+            ),
+            '192.0.2.55',
+            'duplicate placeholders fall back to the resolvable site.master address'
+        );
+    }
+
+    {
+        local *xCAT_plugin::dhcp::getipaddr = sub { return; };
+        is(
+            xCAT_plugin::dhcp::kea_ddns_update_target(
+                '10.0.0.0', 'not-an-address.invalid'
+            ),
+            undef,
+            'unresolvable explicit D2 targets are omitted instead of breaking Kea validation'
+        );
+    }
+
+    local *xCAT_plugin::dhcp::kea_ddns_enabled = sub { 1 };
+    local *xCAT_plugin::dhcp::kea_ddns_key = sub {
+        return ( 'HMAC-SHA256', 'YWJjMTIz' );
+    };
+    local $xCAT::Table::networks = DHCPKeaIntentNetTable->new(
+        {
+            %network_entry,
+            nameservers => '<xcatmaster>, 192.0.2.53',
+        }
+    );
+
+    my $ddns_intent = xCAT_plugin::dhcp::kea_build_ddns_intent();
+    my @dns_ips =
+      map { $_->{'ip-address'} }
+      map { @{ $_->{'dns-servers'} || [] } }
+      ( @{ $ddns_intent->{forward_domains} || [] }, @{ $ddns_intent->{reverse_domains} || [] } );
+
+    ok( scalar(@dns_ips), 'service-node DDNS intent renders forward and reverse DNS targets' );
+    is_deeply(
+        [ grep { $_ ne '192.0.2.53' } @dns_ips ],
+        [],
+        'service-node DDNS intent sends every update to the authoritative management node'
+    );
+}
+
+{
+    no warnings 'redefine';
+    local *xCAT::Utils::isServiceNode = sub { return 0; };
+
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '10.0.0.0', '<xcatmaster>, 192.0.2.53'
+        ),
+        '10.0.0.1',
+        'management-node D2 keeps the local IPv4-facing target when a fallback is present'
+    );
+    is(
+        xCAT_plugin::dhcp::kea_ddns_update_target(
+            '2001:db8:7309::', '<xcatmaster>, 2001:db8::53'
+        ),
+        '2001:db8::1',
+        'management-node D2 keeps the local IPv6-facing target when a fallback is present'
+    );
+}
+
+{
     # Regression: a service node (noderes.servicenode set, groups=service) must
     # get a Kea host reservation exactly like a regular compute node.  The Kea
     # reservation builder loops over every requested node without filtering on
@@ -599,7 +1023,10 @@ foreach my $case (@sysconfig_policy_cases) {
     sub getNodesAttribs {
         my ( $self, $nodes, $attrs ) = @_;
         my %out;
-        $out{$_} = [ $self->{rows}{$_} || {} ] for @$nodes;
+        foreach my $node (@$nodes) {
+            my $row = $self->{rows}{$node} || {};
+            $out{$node} = [ { map { exists($row->{$_}) ? ($_ => $row->{$_}) : () } @$attrs } ];
+        }
         return \%out;
     }
     sub close { return; }
@@ -727,6 +1154,32 @@ foreach my $case (@sysconfig_policy_cases) {
     my @unresolvable = xCAT_plugin::dhcp::next_server_for_node( 'n1', { xcatmaster => 'no.such.host.invalid' } );
     is( scalar(@unresolvable), 0, 'an unresolvable xcatmaster yields no address' );
     like( ( $errors[0] || '' ), qr/xcatmaster/, 'and says which attribute to look at' );
+
+    # An IPv6 tftpserver or xcatmaster is not a DHCPv4 next-server. inet_aton
+    # cannot read it, and reporting that as an error makes makedhcp fail for a
+    # node whose boot server is named in the DHCPv6 reservation instead.
+    @errors = ();
+    my @v6_tftp = xCAT_plugin::dhcp::next_server_for_node(
+        'n1', { tftpserver => '2001:db8:7309::1' } );
+    is( scalar(@v6_tftp), 0, 'an IPv6 tftpserver yields no DHCPv4 next-server' );
+    is_deeply( \@errors, [],
+        'and reports no error, because a DHCPv4 answer was never due' );
+
+    @errors = ();
+    my @v6_master = xCAT_plugin::dhcp::next_server_for_node(
+        'n1', { xcatmaster => '2001:db8:7309::1' } );
+    is( scalar(@v6_master), 0, 'an IPv6 xcatmaster yields no DHCPv4 next-server' );
+    is_deeply( \@errors, [], 'and reports no error either' );
+
+    # A name that genuinely does not resolve still has to be reported, or the
+    # check above would be satisfied by removing the error path altogether.
+    @errors = ();
+    my @broken = xCAT_plugin::dhcp::next_server_for_node(
+        'n1', { tftpserver => 'no.such.host.invalid' } );
+    is( scalar(@broken), 0, 'an unresolvable tftpserver yields no next-server' );
+    like( ( $errors[0] || '' ), qr/tftpserver/,
+        'and says which attribute to look at' );
+
 }
 
 my @normalized_mac_cases = (
@@ -1929,6 +2382,268 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
     my ($onie) = grep { $_->{name} eq 'xcat-onie-10.0.0.0_24' } @{$subnet->{client_classes}};
     is($onie->{'option-data'}[0]{data}, "http://10.0.0.1$suffix/install/onie/onie-installer",
         'subnet generation preserves the supplied port');
+}
+
+{
+    my %res_tables = (
+        noderes => DHCPKeaResTable->new(
+            {
+                'nodev6'     => { netboot => 'grub2',      tftpserver => '<xcatmaster>', servicenode => 'sn01' },
+                'nodev6http' => { netboot => 'grub2-http', tftpserver => 'boot6.example.test' },
+                'nodev6tftp' => { netboot => 'grub2-tftp', tftpserver => 'boot6.example.test' },
+                'nodev6xnba' => { netboot => 'xnba',       tftpserver => 'boot6.example.test' },
+                'nodev6aliasv4' => { netboot => 'xnba',    tftpserver => '<xcatmaster>' },
+                'nodev4aliasv6' => { netboot => 'xnba',    tftpserver => '<xcatmaster>' },
+            }
+        ),
+        mac => DHCPKeaResTable->new(
+            {
+                'nodev6'     => { mac => '02:00:00:00:00:61' },
+                'nodev6http' => { mac => '02:00:00:00:00:62' },
+                'nodev6tftp' => { mac => '02:00:00:00:00:64' },
+                'nodev6xnba' => { mac => '02:00:00:00:00:63' },
+                'nodev6aliasv4' => { mac => '02:00:00:00:00:65!aliasv4' },
+                'nodev4aliasv6' => { mac => '02:00:00:00:00:66!aliasv6' },
+            }
+        ),
+        vpd => DHCPKeaResTable->new(
+            {
+                'nodev6'     => { uuid => '00112233-4455-6677-8899-aabbccddeeff' },
+                'nodev6http' => {},
+                'nodev6tftp' => {},
+                'nodev6xnba' => {},
+            }
+        ),
+    );
+
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub {
+        my ( $class, $name ) = @_;
+        return $res_tables{$name};
+    };
+    my %node_addresses = (
+        nodev6             => '2001:db8:61::50',
+        nodev6http         => '2001:db8:62::50',
+        nodev6tftp         => '2001:db8:64::50',
+        nodev6xnba         => '2001:db8:63::50',
+        'boot6.example.test' => '2001:db8::10',
+        aliasv6            => '2001:db8:66::50',
+        nodev6aliasv4      => '2001:db8:65::50',
+    );
+    my %node_v4_addresses = (
+        aliasv4       => '192.0.2.65',
+        nodev4aliasv6 => '192.0.2.66',
+    );
+    my $v6_getipaddr = sub {
+        my ( $host, %opt ) = @_;
+        return $node_v4_addresses{$host} if $opt{OnlyV4};
+        return $node_addresses{$host} if $opt{OnlyV6};
+        return;
+    };
+    local *xCAT::NetworkUtils::getipaddr = $v6_getipaddr;
+    local *xCAT_plugin::dhcp::getipaddr = $v6_getipaddr;
+    local *xCAT::NetworkUtils::my_ip_facing_family = sub {
+        my ( $class, $peer, $family ) = @_;
+        return ( 1, 'unexpected address family' ) unless $family == 6;
+        return ( 0, '2001:db8::1' );
+    };
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
+
+    my @errors;
+    local $xCAT_plugin::dhcp::callback = sub {
+        my $resp = shift;
+        push @errors, @{ $resp->{error} } if $resp->{error};
+    };
+
+    my $backend = bless {}, 'DHCPKeaRes6Backend';
+    {
+        package DHCPKeaRes6Backend;
+        sub subnet_id_for_ip { return 61; }
+    }
+
+    my $reservations = xCAT_plugin::dhcp::kea_build_node_reservations6(
+        $backend,
+        {},
+        [qw(nodev6 nodev6http nodev6tftp nodev6xnba)]
+    );
+
+    is( scalar(@errors), 0, 'DHCPv6 reservations build without errors' );
+    is( scalar(@$reservations), 4, 'all known IPv6 nodes receive reservations' );
+
+    my %by_hostname = map { $_->{hostname} => $_ } @$reservations;
+    my $grub2 = $by_hostname{nodev6};
+    # vpd.uuid is the DUID payload, in the order the client sends it. See kea_duid_from_uuid.
+    is( $grub2->{duid}, '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation matches the DUID-UUID a UEFI client sends' );
+    is( $grub2->{'option-data'}[0]{name}, 'bootfile-url', 'grub2 reservation carries RFC 5970 bootfile-url' );
+    is( $grub2->{'option-data'}[0]{data}, 'tftp://[2001:db8::1]/boot/grub2/grub2-nodev6', 'grub2 bootfile URL uses the IPv6-facing xCAT server and bracketed authority' );
+    ok( $grub2->{'option-data'}[0]{'always-send'}, 'grub2 bootfile URL is always sent' );
+
+    my $grub2_http = $by_hostname{nodev6http};
+    is( $grub2_http->{'hw-address'}, '02:00:00:00:00:62', 'DHCPv6 reservation retains hardware-address fallback' );
+    is( $grub2_http->{'option-data'}[0]{data}, 'tftp://[2001:db8::10]/boot/grub2/grub2-nodev6http', 'grub2-http firmware handoff still loads GRUB over TFTP from the configured IPv6 server' );
+
+    my $grub2_tftp = $by_hostname{nodev6tftp};
+    is( $grub2_tftp->{'option-data'}[0]{data}, 'tftp://[2001:db8::10]/boot/grub2/grub2-nodev6tftp', 'grub2-tftp receives the DHCPv6 bootfile URL advertised as supported on x86_64' );
+
+    ok( !exists($by_hostname{nodev6xnba}{'option-data'}), 'unsupported IPv6 netboot modes do not receive a GRUB bootfile URL' );
+
+    @errors = ();
+    my $v4_reservations = xCAT_plugin::dhcp::kea_build_node_reservations(
+        $backend,
+        {},
+        [qw(nodev6 nodev6http nodev6tftp nodev6xnba)]
+    );
+    is( scalar(@errors), 0, 'IPv6-only nodes do not enter the IPv4 TFTP resolver' );
+    is( scalar(@$v4_reservations), 0, 'IPv6-only nodes do not create DHCPv4 reservations' );
+
+    {
+        my $next_server_calls = 0;
+        local *xCAT_plugin::dhcp::kea_next_server_for_node = sub {
+            $next_server_calls++;
+            return ('192.0.2.1', '192.0.2.1');
+        };
+        my $config = { Dhcp4 => { 'client-classes' => [] } };
+        my $saved_mac = $res_tables{mac};
+        $res_tables{mac} = DHCPKeaResTable->new(
+            { 'nodev6xnba' => { mac => '02:00:00:00:00:63!*NOIP*' } }
+        );
+
+        xCAT_plugin::dhcp::kea_sync_node_client_classes(
+            $config, ['nodev6xnba']
+        );
+        $res_tables{mac} = $saved_mac;
+
+        is( scalar(@{ $config->{Dhcp4}{'client-classes'} }), 0, 'xNBA does not create a DHCPv4 client class for an explicit *NOIP* MAC alias' );
+        is( $next_server_calls, 0, 'IPv6-only xNBA node does not enter the IPv4 TFTP resolver' );
+    }
+
+    {
+        local *xCAT::NetworkUtils::my_ip_facing = sub {
+            return ( 0, '192.0.2.1' );
+        };
+        my $config = { Dhcp4 => { 'client-classes' => [] } };
+
+        xCAT_plugin::dhcp::kea_sync_node_client_classes(
+            $config, [qw(nodev6aliasv4 nodev4aliasv6)]
+        );
+
+        my @owners = map {
+            $_->{'user-context'}{'xcat-node'}
+        } @{ $config->{Dhcp4}{'client-classes'} };
+        ok(
+            scalar(grep { $_ eq 'nodev6aliasv4' } @owners),
+            'IPv6 base node retains xNBA when its per-MAC alias is IPv4'
+        );
+        ok(
+            !scalar(grep { $_ eq 'nodev4aliasv6' } @owners),
+            'IPv4 base node omits xNBA when its per-MAC alias is IPv6-only'
+        );
+    }
+
+    {
+        local *xCAT::TableUtils::get_site_attribute = sub {
+            return $_[-1] eq 'disjointdhcps' ? ('1') : ();
+        };
+        local $xCAT::ServiceNodeUtils::dhcp_servers = ['configured-dhcp-service'];
+        local $xCAT::ServiceNodeUtils::service_nodes = {
+            'sn01' => ['nodev6'],
+        };
+        local *xCAT::NetworkUtils::thishostisnot = sub { return 1; };
+        @errors = ();
+        my $remote = xCAT_plugin::dhcp::kea_build_node_reservations6(
+            $backend, {}, ['nodev6']
+        );
+        is( scalar(@$remote), 0, 'disjoint DHCPv6 omits a node owned by another service node' );
+        is( scalar(@errors), 0, 'non-owning DHCPv6 server skips the node without an error' );
+    }
+
+    {
+        local *xCAT::TableUtils::get_site_attribute = sub {
+            return $_[-1] eq 'disjointdhcps' ? ('1') : ();
+        };
+        local $xCAT::ServiceNodeUtils::dhcp_servers = ['configured-dhcp-service'];
+        local $xCAT::ServiceNodeUtils::service_nodes = {
+            'remote-service-node' => ['nodev6'],
+        };
+        local *xCAT::NetworkUtils::thishostisnot = sub {
+            return $_[-1] eq 'dynamic-dhcp6-owner' ? 0 : 1;
+        };
+        $res_tables{networks} = DHCPKeaIntentNetTable->new(
+            {
+                net          => '2001:db8:99::/64',
+                dynamicrange => '2001:db8:99::100/120',
+                dhcpserver   => 'dynamic-dhcp6-owner',
+            }
+        );
+
+        my $owned = xCAT_plugin::dhcp::kea_build_node_reservations6(
+            $backend, {}, ['nodev6']
+        );
+        delete $res_tables{networks};
+
+        is( scalar(@$owned), 1, 'global dynamic-range DHCP owner retains an unrelated IPv6 reservation like legacy dispatch' );
+    }
+}
+
+# AN IPv6-ONLY NODE MUST NOT REACH THE IPv4 NEXT-SERVER RESOLVER.
+#
+# kea_node_client_classes_for_nodes resolved next_server_for_node before the per-MAC loop that
+# skips an IPv6-only node, so the node still reached the IPv4 resolver. With noderes.xcatmaster
+# naming a host that has only an AAAA record, inet_aton fails, the sub reports "Unable to resolve
+# the tftpserver" with errorcode 1, and makedhcp exits 1 on a node whose DHCPv6 reservation and
+# bootfile-url it had just written correctly -- measured on xcat76-cn, 2026-10-23.
+#
+# 6f171a22b made the same call lazy in kea_node_reservations and missed this site. The assertion
+# is on the CALL, not on the exit code, because the error is what the exit code is made of.
+{
+    no warnings 'redefine';
+    my $resolver_calls = 0;
+    my %v6only_tables = (
+        noderes => DHCPKeaResTable->new(
+            { nodev6only => { netboot => 'grub2', xcatmaster => 'v6only.example.test' } } ),
+        mac     => DHCPKeaResTable->new( { nodev6only => { mac => 'aa:bb:cc:dd:ee:01' } } ),
+    );
+    local *xCAT::Table::new = sub { my ( $class, $name ) = @_; return $v6only_tables{$name}; };
+    local *xCAT_plugin::dhcp::next_server_for_node = sub {
+        $resolver_calls++;
+        return ( '192.0.2.1', '192.0.2.1' );
+    };
+    # The node answers only on IPv6, which is what makes the loop skip it.
+    local *xCAT::NetworkUtils::node_is_ipv6_only = sub { return 1; };
+
+    xCAT_plugin::dhcp::kea_node_client_classes_for_nodes( ['nodev6only'] );
+    is( $resolver_calls, 0,
+        'an IPv6-only node never reaches the IPv4 next-server resolver' );
+}
+
+# A DUID-UUID CARRIES vpd.uuid VERBATIM.
+#
+# RFC 6355 puts the sixteen octets of the system UUID in the DUID, in the order the client sends
+# them. vpd.uuid already holds that order: discovery swaps the first three SMBIOS fields before it
+# reports them, and kvm.pm swaps them back to build the libvirt <uuid>. A swap here is a second
+# one, Kea never matches the reservation, and the node takes a pool address with no bootfile-url.
+#
+# xcat76-cn, 2026-10-23: the libvirt domain UUID is c78c76bf-3286-46f3-b80d-8fe079dd6de7, which
+# kvm.pm built from vpd.uuid bf768cc7-8632-f346-b80d-8fe079dd6de7. The firmware sent
+# 00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7, which is that vpd.uuid unchanged.
+{
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('bf768cc7-8632-f346-b80d-8fe079dd6de7'),
+        '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
+        'the DUID is 00:04 and vpd.uuid unchanged, the octets the firmware on xcat76-cn sent' );
+
+    # An asymmetric uuid: every field would move under a swap, and none may.
+    my $duid = xCAT_plugin::dhcp::kea_duid_from_uuid('00112233-4455-6677-8899-aabbccddeeff');
+    is( $duid, '00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff',
+        'time_low, time_mid and time_hi keep the order vpd.uuid spells them in' );
+
+    # A UUID with no separators is the same value.
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('bf768cc78632f346b80d8fe079dd6de7'),
+        '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
+        'separators in vpd.uuid do not change the DUID' );
+
+    # Anything that is not sixteen octets has no DUID rather than a truncated one.
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid('not-a-uuid'), undef, 'a malformed uuid gives no DUID' );
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid(undef),        undef, 'an absent uuid gives no DUID' );
 }
 
 done_testing();

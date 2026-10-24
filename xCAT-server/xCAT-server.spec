@@ -92,6 +92,17 @@ Requires: chkconfig
 Requires: openssl
 %endif
 
+# IO::Socket::INET6 and Socket6 carry the AF_INET6 constants the discovery
+# callbacks use. Every caller loads them with an eval and keeps working on
+# IPv4 when they are absent, so a hard Requires would state a dependency the
+# code does not have. Recommends installs them by default and still lets xCAT
+# install where they are missing.
+# Both are in EL AppStream and in openEuler 24.03 everything.
+%if !0%{?suse_version}
+Recommends: perl-IO-Socket-INET6
+Recommends: perl-Socket6
+%endif
+
 %if %fsm
 # nothing needed here
 %else

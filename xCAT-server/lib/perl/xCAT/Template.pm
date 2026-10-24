@@ -16,6 +16,7 @@ use xCAT::Utils;
 use xCAT::HTTPUtils ();
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use xCAT::SvrUtils;
 use xCAT::PasswordUtils;
 use xCAT::MsgUtils;
 use xCAT::SELinux;
@@ -40,6 +41,9 @@ my $field;
 my $idir;
 my $node;
 my $master;
+my $master_uri_host;
+my $node_ipv6_only;
+my $template_os;
 my $httpportsuffix;
 my %loggedrealms;
 my $lastmachinepassdata;
@@ -55,18 +59,70 @@ sub httpport_suffix {
     return xCAT::HTTPUtils::httpport_suffix($httpport);
 }
 
+sub _is_el10
+{
+    my $os = shift;
+    return defined($os) && $os =~ /^(?:rh\w*|centos|alma|rocky|ol)10(?:\D|$)/i;
+}
+
+sub _dynamic_kickstart_network
+{
+    my ($suffix, $ipv6_only) = @_;
+    my $network = "dhcp --device=$suffix";
+    $network .= " --noipv4 --ipv6=dhcp" if $ipv6_only;
+    return $network;
+}
+
+sub _static_kickstart_network6
+{
+    my ($candidate, $suffix) = @_;
+    my ($ipaddr, $hostname, $gateway, $prefix) =
+      xCAT::NetworkUtils->getNodeNetworkCfg6($candidate);
+
+    unless ($ipaddr && defined($prefix)) {
+        $tmplerr = "Cannot resolve the static IPv6 network configuration of $candidate";
+        return;
+    }
+
+    if (defined($gateway) && length($gateway)) {
+        $gateway = xCAT::NetworkUtils->ipv6_server_for_node($candidate, $gateway);
+        unless ($gateway) {
+            $tmplerr = "Cannot resolve the IPv6 gateway of $candidate";
+            return;
+        }
+    }
+
+    my $network = "static --device=$suffix --activate --noipv4 --ipv6=$ipaddr/$prefix";
+    $network .= " --ipv6gateway=$gateway" if defined($gateway) && length($gateway);
+    $network .= " --hostname=$hostname" if defined($hostname) && length($hostname);
+
+    my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$candidate]) };
+    my @nameserver_ips;
+    foreach my $nameserver (split(/,/, $nameservers{$candidate} || '')) {
+        next unless length($nameserver);
+        my $resolved = xCAT::NetworkUtils->ipv6_server_for_node($candidate, $nameserver);
+        push @nameserver_ips, $resolved if $resolved;
+    }
+    $network .= " --nameserver=" . join(',', @nameserver_ips) if @nameserver_ips;
+
+    return $network;
+}
+
+
 sub subvars {
     my $self = shift;
     my $inf  = shift;
     my $outf = shift;
     $tmplerr = undef;    #clear tmplerr since we are starting fresh
     $node    = shift;
+    $node_ipv6_only = xCAT::NetworkUtils->node_is_ipv6_only($node);
     my $pkglistfile      = shift;
     my $media_dir        = shift;
     my $platform         = shift;
     my $partitionfileval = shift;
     my $tmpl_hash = shift;
     my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
+    $template_os = $namedargs{os};
 
     unless ($namedargs{reusemachinepass}) {
         $lastmachinepassdata->{password} = "";
@@ -96,6 +152,7 @@ sub subvars {
     ## 2, the ip address of the mn/sn facing the compute node
     ## 3, the site.master
     $master = undef;
+    $master_uri_host = undef;
 
     #the "xcatmaster" attribute of the node
     if ($tmpl_hash->{'xcatmaster'}) {
@@ -106,7 +163,9 @@ sub subvars {
 
         #the ip address of the mn facing the compute node
         my $ipfn;
-        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        my @ipfnd = $node_ipv6_only
+          ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+          : xCAT::NetworkUtils->my_ip_facing($node);
         unless ($ipfnd[0]) { $ipfn = $ipfnd[1]; }
         if ($ipfn) {
             $master = $ipfn;
@@ -129,12 +188,17 @@ sub subvars {
     }
 
     $ENV{XCATMASTER} = $master;
-    my $ipaddr = xCAT::NetworkUtils->getipaddr($master);
+    my $ipaddr = $node_ipv6_only
+      ? xCAT::NetworkUtils->ipv6_server_for_node($node, $master)
+      : xCAT::NetworkUtils->getipaddr($master);
     unless ($ipaddr) {
         $tmplerr = "Unable to resolve master \"$master\" to an IP address for $node";
         return;
     }
     $ENV{MASTER_IP} = "$ipaddr";
+    $master_uri_host = $node_ipv6_only
+      ? xCAT::NetworkUtils->format_uri_host($ipaddr)
+      : $master;
 
     my @nodestatus = xCAT::TableUtils->get_site_attribute("nodestatus");
     my $tmp        = $nodestatus[0];
@@ -317,15 +381,17 @@ sub subvars {
             my $c = 0;
             my $space10 = " " x 10;
             my $space12 = " " x 12;
+            my $nextserver_url_var = $node_ipv6_only ? '$nextserver_uri_host' : '$nextserver';
             foreach my $pkgdir (@pkgdirs) {
                 if ($platform =~ /^(rh|SL|centos|alma|ol|fedora|rocky|openeuler)$/) {
                     if ($c == 0) {
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
-                        $source_in_pre .= "echo 'url --url http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
+                        $source_in_pre .= 'nextserver_uri_host="[$nextserver]"' . "\n" if $node_ipv6_only;
+                        $source_in_pre .= "echo 'url --url http://'$nextserver_url_var'$httpportsuffix/$pkgdir' >> /tmp/repos";
                         $source .= "url --url http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #For rhels5.9
                     } else {
-                        $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
+                        $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'$nextserver_url_var'$httpportsuffix/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #for rhels5.9
                     }
                     my $distrepofile="$installroot/postscripts/repos/$pkgdir/local-repository.tmpl";
@@ -336,7 +402,7 @@ sub subvars {
                         open($repofd,"<","$distrepofile");
                         $repo_in_post = <$repofd>;
                         close($repofd);
-                        $repo_in_post =~ s#baseurl=#baseurl=http://$master$httpportsuffix/#g;
+                        $repo_in_post =~ s#baseurl=#baseurl=http://$master_uri_host$httpportsuffix/#g;
                         $writerepo .= "\ncat >/etc/yum.repos.d/local-repository-$c.repo << 'EOF'\n";
                         $writerepo .="$repo_in_post\n";
                         $writerepo .="EOF\n";
@@ -1080,8 +1146,18 @@ sub kickstartnetwork {
     my $params = install_device_params($installnic, $primarynic, $ent->{mac}, $node);
     my $macaddr = defined($params->{mac}) ? lc($params->{mac}) : '';
     my $suffix = defined($params->{nicname}) ? $params->{nicname} : $macaddr;
+    my $ipv6_only = defined($node_ipv6_only)
+      ? $node_ipv6_only
+      : xCAT::NetworkUtils->node_is_ipv6_only($node);
 
-    if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
+    if ($ipv6_only
+        && xCAT::SvrUtils->is_el10_os($template_os)
+        && $::XCATSITEVALS{managedaddressmode} ne "autoula")
+    {
+        my $static_network = _static_kickstart_network6($node, $suffix);
+        return unless defined($static_network);
+        $line .= $static_network;
+    } elsif ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
         unless ($hoststab) { $hoststab = xCAT::Table->new('hosts', -create => 1); }
         $line .= "static --device=$suffix --noipv4 --ipv6=";
         my $ulaaddr = autoulaaddress($macaddr);
@@ -1123,7 +1199,7 @@ sub kickstartnetwork {
 
         #return "#KSNET static unsupported";
     } else {
-        $line .= "dhcp --device=$suffix";
+        $line .= _dynamic_kickstart_network($suffix, $ipv6_only);
         $line .= " --hostname=$node" if (defined($platform) && $platform eq 'openeuler');
     }
     return $line;
@@ -2194,7 +2270,8 @@ sub ubuntu_subiquity_pkgdir_uri
     return $path if $path =~ m{^https?://};
 
     $path = "/$path" if $path !~ m{^/};
-    return "http://$master$httpportsuffix$path";
+    my $url_host = $master_uri_host || $master;
+    return "http://$url_host$httpportsuffix$path";
 }
 
 sub tabdb
@@ -2263,7 +2340,12 @@ sub tabdb
         unless ($blankok) {
             if ($field eq "xcatmaster") {
                 my $ipfn;
-                my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+                my $ipv6_only = defined($node_ipv6_only)
+                  ? $node_ipv6_only
+                  : xCAT::NetworkUtils->node_is_ipv6_only($node);
+                my @ipfnd = $ipv6_only
+                  ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+                  : xCAT::NetworkUtils->my_ip_facing($node);
                 unless ($ipfnd[0]) { $ipfn = $ipfnd[1]; }
                 if ($ipfn) {
                     return $ipfn;

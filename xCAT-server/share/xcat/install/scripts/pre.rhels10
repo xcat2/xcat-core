@@ -32,8 +32,7 @@ cat >/tmp/baz.py <<'EOF'
 import socket
 import sys
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
+sock = socket.create_connection(('#ENV:MASTER_IP#',#TABLE:site:key=xcatiport:value#))
 
 print(sys.argv[1])
 response = sock.recv(100)
@@ -52,8 +51,39 @@ import os
 import linecache
 import re
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
+def create_listen_socket(port, master):
+	last_error = None
+	master_addresses = socket.getaddrinfo(master, None, socket.AF_UNSPEC,
+									  socket.SOCK_STREAM)
+	seen_families = set()
+	for master_family, socktype, proto, canonname, master_sockaddr in master_addresses:
+		if master_family in seen_families:
+			continue
+		seen_families.add(master_family)
+		allowed_peers = {
+			address[4][0]
+			for address in master_addresses
+			if address[0] == master_family
+		}
+		listen_addresses = socket.getaddrinfo(
+			None, port, master_family, socket.SOCK_STREAM, 0, socket.AI_PASSIVE)
+		for family, socktype, proto, canonname, sockaddr in listen_addresses:
+			listen_sock = socket.socket(family, socktype, proto)
+			listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			if family == socket.AF_INET6 and hasattr(socket, 'IPV6_V6ONLY'):
+				listen_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+			try:
+				listen_sock.bind(sockaddr)
+				listen_sock.listen(5)
+				return listen_sock, allowed_peers
+			except OSError as error:
+				last_error = error
+				listen_sock.close()
+	if last_error:
+		raise last_error
+	raise OSError('no usable address for install monitor')
+
+sock = socket.create_connection(('#ENV:MASTER_IP#',#TABLE:site:key=xcatiport:value#))
 
 response = sock.recv(100)
 if(response == b"ready\n"):
@@ -62,22 +92,20 @@ if(response == b"ready\n"):
 
 sock.close()
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
 port = 3054
-sock.bind(('', port))
-
-sock.listen(5)
+sock, allowed_peers = create_listen_socket(port, '#ENV:MASTER_IP#')
 
 try:
 	while 1:
 		newSocket, address = sock.accept()
+		if address[0] not in allowed_peers:
+			newSocket.close()
+			continue
 		while 1:
 			received = newSocket.recv(200)
 			if not received:
 				break
-			command = re.split(b'\s+',received)
+			command = re.split(b'\s+',received.strip())
 			if(command[0] == b"stat"):
 				ilog = ""
 				line = ""
@@ -120,11 +148,17 @@ try:
 #UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output)
 #UNCOMMENTOENABLEDEBUGPORT#				break
 			if(command[0] == b"screendump"):
-				newcommand = "cat /dev/vcs"
-				for i in command[1:]:
-					newcommand = newcommand + i
-				output = os.popen(newcommand).read()
-				newSocket.send(output.encode())
+				screen = command[1] if len(command) == 2 else b""
+				if len(command) > 2 or (screen and not screen.isdigit()):
+					newSocket.send(b"invalid virtual console\n")
+					break
+				console_path = "/dev/vcs" + screen.decode("ascii")
+				try:
+					with open(console_path, "rb") as console:
+						output = console.read()
+				except OSError as error:
+					output = (str(error) + "\n").encode()
+				newSocket.sendall(output)
 				break
 				
 		newSocket.close()
@@ -315,9 +349,24 @@ msgutil_r "$MASTER_IP" "info" "Generate the repository for the installation" "/v
 # The following code is to generate the repository for the installation
 cat /proc/cmdline
 
-NEXTSERVER="$(grep -m 1 http /proc/cmdline)"
-NEXTSERVER="${NEXTSERVER#*http://}"
-NEXTSERVER="${NEXTSERVER%%:*}"
+extract_url_host()
+{
+    local authority="${1#*://}"
+
+    authority="${authority%%/*}"
+    case "$authority" in
+    \[*\]*)
+        authority="${authority#\[}"
+        printf '%s\n' "${authority%%\]*}"
+        ;;
+    *)
+        printf '%s\n' "${authority%%:*}"
+        ;;
+    esac
+}
+
+NEXTSERVER_URL="$(grep -oE 'https?://(\[[^]]+\]|[^[:space:]/:]+)(:[0-9]+)?' /proc/cmdline | head -n 1)"
+NEXTSERVER="$(extract_url_host "$NEXTSERVER_URL")"
 
 export nextserver="$NEXTSERVER"
 #INSTALL_SOURCES_IN_PRE#
