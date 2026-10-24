@@ -120,4 +120,39 @@ sub update_discovery_data {
     }
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 request_client_names
+
+    Descriptions: The names a node-initiated request offers for correlating it to a node, most
+                  trustworthy first.
+
+                  xcatd fills _xcat_clienthost and _xcat_clientfqdn from a reverse lookup of the
+                  peer socket, so both are empty when that lookup fails, however good the client
+                  credentials are. _xcat_authname is the name in the validated client certificate
+                  and does not depend on name resolution.
+
+                  The request's own node attribute is NOT a candidate. A client sends it, so it
+                  states what the client wants to be rather than what it proved it is.
+
+    Arguments   : $request - the request hash xcatd built
+    Returns     : the candidate names, without duplicates; an empty list when there are none
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub request_client_names {
+    my ($request) = @_;
+    return () unless ref($request) eq 'HASH';
+    my @names;
+    foreach my $key (qw(_xcat_clienthost _xcat_clientfqdn _xcat_authname)) {
+        my $value = $request->{$key};
+        next unless ref($value) eq 'ARRAY';
+        my $name = $value->[0];
+        next unless defined $name && $name ne '';
+        push @names, $name unless grep { $_ eq $name } @names;
+    }
+    return @names;
+}
+
 1;
