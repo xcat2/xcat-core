@@ -40,8 +40,23 @@ my @cases = (
         require => [ '/usr/sbin/dhcpd' ],
     },
     {
+        # openSUSE has no perl-generators, so no perl(...) requirement is auto-generated and the
+        # modules each package loads must be named. Measured on xcat20-mn after a successful
+        # install: xcatd stayed inactive because xCAT::Table dies loading JSON, and Date::Parse,
+        # Expect, HTML::Form and SNMP were absent too. The other 80 modules the EL build
+        # auto-requires were present. Each list below mirrors what EL's generator emits for that
+        # package.
         spec    => 'xCAT-server/xCAT-server.spec',
-        require => [ 'perl(DB_File)' ],
+        require => [ 'perl(DB_File)',
+                     'perl(Date::Parse)', 'perl(Expect)', 'perl(JSON)', 'perl(SNMP)' ],
+    },
+    {
+        spec    => 'perl-xCAT/perl-xCAT.spec',
+        require => [ 'perl(Expect)', 'perl(HTML::Form)', 'perl(JSON)', 'perl(SNMP)' ],
+    },
+    {
+        spec    => 'xCAT-client/xCAT-client.spec',
+        require => [ 'perl(Expect)' ],
     },
 );
 
@@ -64,9 +79,9 @@ for my $c (@cases) {
     my $suse = join "\n", @suse;
 
     for my $want (@{ $c->{require} }) {
-        my $q = quotemeta $want;
-        like($suse, qr/^\s*Requires:\s*(?:\S+\s+)*\Q$want\E\s*$/m,
-            "$c->{spec} asks openSUSE for $want");
+        # a Requires: line may name several capabilities, so match the token anywhere on it
+        my $found = grep { /^\s*Requires:/ && /(?:^|\s)\Q$want\E(?:\s|$)/ } @suse;
+        ok($found, "$c->{spec} asks openSUSE for $want");
     }
 }
 
