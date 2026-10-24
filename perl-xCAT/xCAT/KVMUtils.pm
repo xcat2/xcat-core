@@ -515,6 +515,36 @@ sub guest_os {
 
 #-------------------------------------------------------
 
+=head3 guest_uuid
+
+    Descriptions:
+        Converts between the UUID of a libvirt domain and the UUID that its guest reports.
+        vpd.uuid holds the UUID that the guest reports.
+
+        QEMU stores the domain UUID as SMBIOS 2.6 specifies, so the guest reports it
+        unchanged. Machine type pc-i440fx-2.1 and its RHEL counterpart pc-i440fx-rhel7.1.0
+        are the exception: they store the UUID bytes in text order behind an SMBIOS 2.8 entry
+        point, so the guest reports the first three fields swapped. Older machine types store
+        the same bytes in SMBIOS 2.4 tables, which the guest reads unswapped. The swap is its
+        own inverse, so one sub converts both ways.
+    Arguments:
+        $uuid - a domain UUID or a guest UUID, or undef
+        $machine - the machine type of the domain, or undef for the libvirt default
+    Returns:
+        the UUID on the other side
+
+=cut
+
+#-------------------------------------------------------
+sub guest_uuid {
+    my ($uuid, $machine) = @_;
+    return $uuid unless defined($uuid) and defined($machine) and $machine =~ /\Apc-i440fx-(?:2\.1|rhel7\.1\.0)\z/;
+    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+    return $uuid;
+}
+
+#-------------------------------------------------------
+
 =head3 clock_offset
 
     Descriptions:
