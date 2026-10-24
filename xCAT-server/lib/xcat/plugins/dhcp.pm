@@ -802,9 +802,7 @@ sub addnode6 {
     #don't think dhclient is smart enough to assemble advertised domain with it's own name and then
     #request FQDN update
     #goal is simple enough, we want `hostname` to look sane *and* we want DNS to look right
-    # The same DUID-UUID the Kea path builds: the first three UUID fields are reversed, because
-    # SMBIOS stores them little-endian and a UEFI client sends them that way. One sub, so the two
-    # backends cannot disagree about what a client's DUID looks like.
+    # One sub, so the two backends cannot disagree about what a client's DUID looks like.
     my $uuid = kea_duid_from_uuid($ent->{uuid});
     # A uuid that is not sixteen octets has no DUID. The old inline transformation produced a
     # malformed string and wrote it to omshell; skipping with the same warning the missing-uuid
@@ -4503,19 +4501,13 @@ sub kea_duid_from_uuid
     return unless $uuid;
     $uuid =~ s/[^0-9a-fA-F]//g;
     return unless length($uuid) == 32;
-    # RFC 6355 carries the sixteen octets of the UUID as the FIRMWARE holds them. SMBIOS 2.6 and
-    # later store time_low, time_mid and time_hi_and_version little-endian, and vpd.uuid holds the
-    # canonical spelling that Linux reports in product_uuid, so the first three fields are reversed
-    # here. Without this the DUID does not match what the client sends, Kea never matches the
-    # reservation, and the node takes a pool address with no bootfile-url.
-    my @octets = unpack('(A2)16', $uuid);
-    @octets = (
-        reverse(@octets[0 .. 3]),
-        reverse(@octets[4 .. 5]),
-        reverse(@octets[6 .. 7]),
-        @octets[8 .. 15],
-    );
-    return '00:04:' . join(':', @octets);
+    # RFC 6355 carries the sixteen octets of the UUID in the order the client sends them, and
+    # vpd.uuid already holds that order: discovery swaps the first three SMBIOS fields before it
+    # reports them, and kvm.pm swaps them back to build the libvirt <uuid>. A swap here is a
+    # second one.
+    $uuid =~ s/(..)/$1:/g;
+    $uuid =~ s/:$//;
+    return "00:04:$uuid";
 }
 
 sub kea_reservation_matches_for_nodes
