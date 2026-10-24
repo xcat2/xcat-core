@@ -3400,7 +3400,7 @@ sub rscan {
             else {
                 if ($hash_vm2host{$node} eq $hypervisor) {
 
-                    #mark this node to delete in 'vm' 'mac' vpd' 'nodelist' 'nodetype' 'nodehm' tables
+                    #mark this node to delete in 'vm' vpd' 'nodelist' 'nodetype' 'nodehm' tables; its mac row keeps duid
                     $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
 
                     $updatetable->{vm}->{$node}->{host}     = $hypervisor;
@@ -3410,7 +3410,6 @@ sub rscan {
                     $updatetable->{vm}->{$node}->{nics}     = $vmnics;
                     $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
                     $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
-                    $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                     $updatetable->{mac}->{$node}->{mac} = $mac;
                     $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                     $updatetable->{vpd}->{$node}->{uuid} = $uuid;
@@ -3440,7 +3439,6 @@ sub rscan {
                 $updatetable->{vm}->{$node}->{nics}          = $vmnics;
                 $updatetable->{vm}->{$node}->{nicmodel}      = $vmnicnicmodel;
                 $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
-                $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{mac}->{$node}->{mac}                     = $mac;
                 $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{vpd}->{$node}->{uuid}                    = $uuid;
