@@ -63,7 +63,14 @@ Requires: /usr/bin/killall
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
 # openEuler's system-release version does not identify an EL release.
+#
+# openSUSE takes the plain name: rpm 4.11 on the sles12 node has no rich dependencies, and
+# neither Leap release carries kea, so the expression resolves to ISC dhcpd there anyway.
+%if 0%{?suse_version}
+Requires: /usr/sbin/dhcpd
+%else
 Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
+%endif
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %ifnarch s390x

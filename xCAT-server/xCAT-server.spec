@@ -58,11 +58,17 @@ Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael
 # and skipped where it cannot. The dependency generator still turns that "use DB_File"
 # into a hard perl(DB_File) requirement; drop it there too, appending to any filter the
 # build root already set. Every other platform keeps the hard requirement it has today.
+# openSUSE has no package of that name: Leap 15.6 calls it perl-core-DB_File and 42.3 has
+# neither, but both provide the capability, so ask for the capability there.
 %if 0%{?rhel} >= 10
 Recommends: perl-DB_File
 %global __requires_exclude %{?__requires_exclude:%{__requires_exclude}|}^perl\\(DB_File\\)$
 %else
+%if 0%{?suse_version}
+Requires: perl(DB_File)
+%else
 Requires: perl-DB_File
+%endif
 %endif
 %endif
 Obsoletes: atftp-xcat
