@@ -526,6 +526,18 @@ sub getNodeUUID {
 
 }
 
+# The machine type that libvirt gives a domain whose XML names none, or names an alias such as pc.
+sub domain_machine_type {
+    my ($machine, $arch, $domtype) = @_;
+    return $machine unless $hypconn and $parser;
+    my $resolved = eval {
+        my $capsxml = $hypconn->get_domain_capabilities(undef, $arch, $machine, $domtype);
+        my ($element) = $parser->parse_string($capsxml)->findnodes('/domainCapabilities/machine');
+        $element ? $element->textContent : undef;
+    };
+    return (defined($resolved) and length($resolved)) ? $resolved : $machine;
+}
+
 sub build_nicstruct {
     my $rethash;
     my $node = shift;
@@ -673,7 +685,8 @@ sub build_xmldesc {
         hyp_cpumodel => $hypcpumodel,
         bootorder    => $confdata->{vm}->{$node}->[0]->{bootorder},
         machine      => $machine_type);
-    $xtree{uuid}->{content} = getNodeUUID($node, $xtree{os}->{type}->{machine});
+    $xtree{uuid}->{content} = getNodeUUID($node,
+        domain_machine_type($xtree{os}->{type}->{machine}, $profile->{arch}, $profile->{domtype}));
 
     #prepare the xml hash for memory binding
     if (defined $memnumanodes) {
@@ -1555,7 +1568,8 @@ sub rinv {
     my $domain = $parser->parse_string($currxml);
     my ($ostype) = $domain->findnodes('/domain/os/type');
     my $uuid = xCAT::KVMUtils::guest_uuid($domain->findnodes('/domain/uuid')->[0]->to_literal,
-        $ostype ? $ostype->getAttribute('machine') : undef);
+        domain_machine_type($ostype ? $ostype->getAttribute('machine') : undef,
+            $ostype ? $ostype->getAttribute('arch') : undef, $domain->findnodes('/domain')->[0]->getAttribute('type')));
     xCAT::SvrUtils::sendmsg("UUID/GUID: $uuid", $callback, $node);
     my $cpus = $domain->findnodes('/domain/vcpu')->[0]->to_literal;
     xCAT::SvrUtils::sendmsg("CPUs: $cpus", $callback, $node);
@@ -2867,7 +2881,8 @@ sub clone_vm_from_master {
     my $newnodexml = $parser->parse_string($kvmmasteref->{xml});
     $newnodexml->findnodes("/domain/name/text()")->[0]->setData($node); #set name correctly
     my ($clonetype) = $newnodexml->findnodes('/domain/os/type');
-    my $uuid = getNodeUUID($node, $clonetype ? $clonetype->getAttribute('machine') : undef);
+    my $uuid = getNodeUUID($node, domain_machine_type($clonetype ? $clonetype->getAttribute('machine') : undef,
+        $clonetype ? $clonetype->getAttribute('arch') : undef, $newnodexml->findnodes('/domain')->[0]->getAttribute('type')));
     $newnodexml->findnodes("/domain/uuid/text()")->[0]->setData($uuid); #put in correct uuid
         #set up mac addresses and such right...
     fixup_clone_network(mastername => $mastername, mastertableentry => $masteref, kvmmastertableentry => $kvmmasteref, xmlinprogress => $newnodexml);
@@ -3262,7 +3277,9 @@ sub rscan {
         my @uuidobj = $domain->findnodes("/domain/uuid");
         if (@uuidobj) {
             my ($ostype) = $domain->findnodes('/domain/os/type');
-            $uuid = xCAT::KVMUtils::guest_uuid($uuidobj[0]->to_literal, $ostype ? $ostype->getAttribute('machine') : undef);
+            $uuid = xCAT::KVMUtils::guest_uuid($uuidobj[0]->to_literal,
+                domain_machine_type($ostype ? $ostype->getAttribute('machine') : undef,
+                    $ostype ? $ostype->getAttribute('arch') : undef, $domain->findnodes('/domain')->[0]->getAttribute('type')));
         }
         my $type = $domain->findnodes("/domain")->[0]->getAttribute("type");
         if (length($type) > $maxlength[0]) {
