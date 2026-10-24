@@ -46,7 +46,14 @@ BEGIN {
 {
     package XCATTestHypervisor;
     our @domains;
+    our $default_machine = 'pc-i440fx-8.2';
     sub get_node_info { return { model => 'x86_64' }; }
+    # libvirt names the machine type that a domain gets for no machine type or for the alias pc.
+    sub get_domain_capabilities {
+        my ( undef, undef, undef, $machine ) = @_;
+        $machine = $default_machine if !defined($machine) or $machine eq 'pc';
+        return "<domainCapabilities><machine>$machine</machine></domainCapabilities>";
+    }
     sub list_all_domains { return map { bless { xml => $_ }, 'XCATTestDomain' } @domains; }
     sub get_domain_by_name {
         my ( undef, $name ) = @_;
@@ -84,25 +91,32 @@ sub node_attribute {
 }
 
 # cn1 has a vpd.uuid. cn2 has none, so mkvm generates one. cn3 runs on machine type pc-i440fx-2.1.
+# cn4 names no machine type and cn5 names the alias pc, so libvirt picks the default machine type.
 # known1 is a guest that an earlier rscan defined, with a DHCPv6 client identifier chosen in
 # mac.duid. This process keeps the node list it reads first, and the forked plugin inherits it, so
 # every node exists before the first command.
 my $known = '0a1b2c3d-4e5f-4a6b-8c7d-8e9fa0b1c2d3';
 set_rows( 'nodelist', cn1 => { groups => 'all' }, cn2 => { groups => 'all' }, cn3 => { groups => 'all' },
-    known1 => { groups => 'vm,all' }, hyp1 => { groups => 'all' } );
+    cn4 => { groups => 'all' }, cn5 => { groups => 'all' }, known1 => { groups => 'vm,all' }, hyp1 => { groups => 'all' } );
 set_rows( 'nodehm', cn1 => { mgt => 'kvm', power => 'kvm' }, cn2 => { mgt => 'kvm', power => 'kvm' },
-    cn3 => { mgt => 'kvm', power => 'kvm' }, known1 => { mgt => 'kvm' }, hyp1 => { mgt => 'ipmi' } );
+    cn3 => { mgt => 'kvm', power => 'kvm' }, cn4 => { mgt => 'kvm', power => 'kvm' }, cn5 => { mgt => 'kvm', power => 'kvm' },
+    known1 => { mgt => 'kvm' }, hyp1 => { mgt => 'ipmi' } );
 set_rows( 'nodetype', cn1 => { arch => 'x86_64' }, cn2 => { arch => 'x86_64' }, cn3 => { arch => 'x86_64' },
-    known1 => { arch => 'x86_64' } );
+    cn4 => { arch => 'x86_64' }, cn5 => { arch => 'x86_64' }, known1 => { arch => 'x86_64' } );
 set_rows( 'vm',
     cn1    => { host => 'hyp1', storage => 'phy:/dev/xcattest',  nics => 'br0', memory => '1024', cpus => '1' },
     cn2    => { host => 'hyp1', storage => 'phy:/dev/xcattest3', nics => 'br0', memory => '1024', cpus => '1' },
     cn3    => { host => 'hyp1', storage => 'phy:/dev/xcattest5', nics => 'br0', memory => '1024', cpus => '1',
                 othersettings => 'machine:pc-i440fx-2.1' },
+    cn4    => { host => 'hyp1', storage => 'phy:/dev/xcattest8', nics => 'br0', memory => '1024', cpus => '1' },
+    cn5    => { host => 'hyp1', storage => 'phy:/dev/xcattest9', nics => 'br0', memory => '1024', cpus => '1',
+                othersettings => 'machine:pc' },
     known1 => { host => 'hyp1', storage => '/dev/xcattest4', nics => 'br0', othersettings => 'nodefromrscan' } );
 set_rows( 'mac', cn1 => { mac => '52:54:00:76:00:21' }, cn2 => { mac => '52:54:00:76:00:23' },
-    cn3 => { mac => '52:54:00:76:00:27' }, known1 => { mac => '52:54:00:76:00:24', duid => 'canonical' } );
-set_rows( 'vpd', cn1 => { uuid => $uuid }, cn3 => { uuid => $uuid }, known1 => { uuid => $known } );
+    cn3 => { mac => '52:54:00:76:00:27' }, cn4 => { mac => '52:54:00:76:00:2a' }, cn5 => { mac => '52:54:00:76:00:2b' },
+    known1 => { mac => '52:54:00:76:00:24', duid => 'canonical' } );
+set_rows( 'vpd', cn1 => { uuid => $uuid }, cn3 => { uuid => $uuid }, cn4 => { uuid => $uuid }, cn5 => { uuid => $uuid },
+    known1 => { uuid => $known } );
 
 my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/kvm.pm";
 require $plugin;
@@ -162,13 +176,14 @@ is( domain_uuid( node_attribute( 'kvm_nodedata', 'cn2', 'xml' ) ), $generated,
 sub domain_xml {
     my ( $name, $domain_uuid, $disk, $mac, $machine ) = @_;
     $machine //= 'q35';
+    my $machine_attr = length($machine) ? qq( machine="$machine") : '';
     return <<"XML";
 <domain type="kvm" id="7">
   <name>$name</name>
   <uuid>$domain_uuid</uuid>
   <memory unit="KiB">1048576</memory>
   <vcpu>1</vcpu>
-  <os><type arch="x86_64" machine="$machine">hvm</type></os>
+  <os><type arch="x86_64"$machine_attr>hvm</type></os>
   <devices>
     <disk type="block" device="disk"><source dev="$disk"/><target dev="vda" bus="virtio"/></disk>
     <interface type="bridge"><source bridge="br0"/><mac address="$mac"/><model type="virtio"/></interface>
@@ -236,5 +251,19 @@ is( node_attribute( 'vpd', 'scanned2', 'uuid' ), $swapped, 'rscan -w stores the 
 @XCATTestHypervisor::domains = ( domain_xml( 'scanned3', $uuid, '/dev/xcattest7', '52:54:00:76:00:29', 'pc-i440fx-rhel7.1.0' ) );
 run_command( 'rscan', ['hyp1'], '-w' );
 is( node_attribute( 'vpd', 'scanned3', 'uuid' ), $swapped, 'rscan -w stores the UUID that a pc-i440fx-rhel7.1.0 guest reports' );
+
+# A domain that names no machine type, or the alias pc, gets the default machine type of the hypervisor.
+# Where that default is pc-i440fx-rhel7.1.0, its UUID is swapped as for that machine type.
+$XCATTestHypervisor::default_machine = 'pc-i440fx-rhel7.1.0';
+foreach my $node ( 'cn4', 'cn5' ) {
+    run_command( 'mkvm', [$node] );
+    is( domain_uuid( node_attribute( 'kvm_nodedata', $node, 'xml' ) ), $swapped,
+        "mkvm swaps the UUID of $node, whose default machine type is pc-i440fx-rhel7.1.0" );
+}
+@XCATTestHypervisor::domains = ( domain_xml( 'scanned4', $uuid, '/dev/xcattest10', '52:54:00:76:00:2c', '' ) );
+run_command( 'rscan', ['hyp1'], '-w' );
+is( node_attribute( 'vpd', 'scanned4', 'uuid' ), $swapped,
+    'rscan -w swaps the UUID of a domain whose default machine type is pc-i440fx-rhel7.1.0' );
+$XCATTestHypervisor::default_machine = 'pc-i440fx-8.2';
 
 done_testing();
