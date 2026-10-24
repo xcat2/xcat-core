@@ -23,6 +23,17 @@ use lib File::Spec->catdir($FindBin::Bin, '..', '..', 'perl-xCAT'),
   File::Spec->catdir($FindBin::Bin, '..', '..', 'xCAT-server', 'lib', 'perl');
 use xCAT::DiscoveryUtils;
 
+# Which tree is under test. Ninety xCAT modules carry
+# BEGIN { $::XCATROOT = $ENV{XCATROOT} || '/opt/xcat' } use lib "$::XCATROOT/lib/perl";
+# so the first xCAT module a test loads can put an INSTALLED product in front of the checkout in
+# @INC, and a build host has one: /opt/xcat/lib/perl/xCAT/DiscoveryUtils.pm exists on xcat-master.
+# A test that loaded that copy would pass while measuring a product built weeks ago, so say which
+# file answered rather than assuming the use lib above won.
+my $under_test = $INC{'xCAT/DiscoveryUtils.pm'} // '';
+ok(length $under_test, 'xCAT::DiscoveryUtils was loaded at all');
+unlike($under_test, qr{^/opt/xcat/}, "the module under test is this checkout's, not an installed one ($under_test)");
+can_ok('xCAT::DiscoveryUtils', 'request_client_names');
+
 sub names_for { return xCAT::DiscoveryUtils::request_client_names($_[0]) }
 
 # The resolved peer stays first, so a management node whose reverse lookup works behaves exactly
