@@ -537,7 +537,11 @@ sub do_installm_service {
                 if ($inet6support) {
                     ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET6);
                     unless ($client_name) {
-                        ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
+
+                        # A dual-stack listener reports an IPv4 peer as the 16-byte
+                        # ::ffff:a.b.c.d. AF_INET needs the 4 bytes; not every glibc unmaps it.
+                        ($client_name, $client_aliases) =
+                          gethostbyaddr(xCAT::NetworkUtils::unmap_v4mapped_addr($conn->peeraddr), AF_INET);
                     }
                 } else {
                     ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
@@ -1817,7 +1821,7 @@ until ($quit) {
             $peerhost = gethostbyaddr($connection->peeraddr, AF_INET);
         }
 
-        unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr, AF_INET); }
+        unless ($peerhost) { $peerhost = gethostbyaddr(xCAT::NetworkUtils::unmap_v4mapped_addr($connection->peeraddr), AF_INET); }
         $peerfqdn = $peerhost;
         my $peerhostorg = $peerhost;  # save original with domain for validation
 

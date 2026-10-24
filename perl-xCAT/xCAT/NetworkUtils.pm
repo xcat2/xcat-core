@@ -558,6 +558,34 @@ sub clearcache
 
 #-------------------------------------------------------------------------------
 
+=head3  unmap_v4mapped_addr
+    Reduce a packed IPv4-mapped IPv6 address to its 4 IPv4 bytes, so a caller
+    can ask gethostbyaddr for AF_INET.
+    Arguments:
+       a packed address, as IO::Socket peeraddr returns
+    Returns:
+       the 4-byte IPv4 address when the argument is a 16-byte ::ffff:a.b.c.d,
+       otherwise the argument unchanged
+    Globals:
+    Error:
+        none
+    Example:
+        my $addr = xCAT::NetworkUtils::unmap_v4mapped_addr($conn->peeraddr);
+    Comments:
+        A real IPv6 address keeps all 16 bytes. Truncating one would offer
+        gethostbyaddr its last 4 bytes as an IPv4 address.
+=cut
+
+#-------------------------------------------------------------------------------
+sub unmap_v4mapped_addr {
+    my ($addr) = @_;
+    return $addr unless (defined($addr) and length($addr) == 16);
+    return $addr unless (substr($addr, 0, 12) eq ("\0" x 10) . "\xff\xff");
+    return substr($addr, 12, 4);
+}
+
+#-------------------------------------------------------------------------------
+
 =head3  linklocaladdr
     Only for IPv6.
     Takes a mac address, calculate the IPv6 link local address
