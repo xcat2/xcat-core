@@ -52,6 +52,15 @@ Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 pe
 # Time::HiRes and Text::Balanced) are not pulled in transitively by perl-xCAT
 # either. List them here or the affected subcommands die at load time.
 Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael
+# openSUSE has no perl-generators, so no perl(...) requirement is generated here and nothing
+# installs the modules this code loads. xcatd stays inactive without them: xCAT::Table dies
+# loading JSON. EL and openEuler generate these automatically and need no list.
+%if 0%{?suse_version}
+Requires: perl(Date::Parse)
+Requires: perl(Expect)
+Requires: perl(JSON)
+Requires: perl(SNMP)
+%endif
 # DB_File is only used by the Confluent client (lib/xcat/Confluent/Client.pm). EL10
 # dropped libdb: EPEL still carries perl-DB_File for x86_64 and ppc64le, but riscv64 has
 # no EPEL at all, so on EL10 ask for the module weakly -- it is installed where it exists
