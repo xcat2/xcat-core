@@ -112,7 +112,8 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 	    echo $line > /tmp/cpumod
         done
         CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
-        UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
+        # makedhcp derives the firmware DUID from vpd.uuid, so report the UUID that dmidecode prints.
+        UUID=`cat /sys/devices/virtual/dmi/id/product_uuid`
 
 elif [ -r /proc/device-tree/model ]; then #POWER
         MTM=`cat /proc/device-tree/model -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
