@@ -11,6 +11,7 @@ package xCAT_plugin::getpostscript;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
+use xCAT::DiscoveryUtils;
 1;
 
 #-------------------------------------------------------
@@ -57,23 +58,31 @@ sub process_request
 
 
     my $client;
+    my @candidates;
     if ($::XCATSITEVALS{nodeauthentication}) { #if requiring node authentication, this request will have a certificate associated with it, use it instead of name resolution
         unless (ref $request->{username}) { return; } #TODO: log an attempt without credentials?
-        $client = $request->{username}->[0];
+        @candidates = ($request->{username}->[0]);
     } else {
-        unless ($request->{'_xcat_clienthost'}->[0]) {
-
-            #ERROR? malformed request
-            xCAT::MsgUtils->trace(0, 'E', "Received malformed getpostscript requesting, ignore it.");
+        # The peer host and fqdn are a reverse lookup of the client socket, so both are empty when
+        # that lookup fails, however good the client credentials are. Asking only for the peer host
+        # cost every postscript of an openEuler 22.03sp4 node on 2026-10-24: the certificate named
+        # the node, the reverse lookup did not, and 100 requests were dropped while 0 were served.
+        # request_client_names adds the certificate name, and excludes the request's own node
+        # attribute, which the client sends and has not proved.
+        @candidates = xCAT::DiscoveryUtils::request_client_names($request);
+        unless (@candidates) {
+            xCAT::MsgUtils->trace(0, 'E', "Received getpostscript from a client this request does not identify: it carries no peer name and no client certificate name. Ignoring it.");
             return;
         }
-        $client = $request->{'_xcat_clienthost'}->[0];
     }
 
-    my $origclient = $client;
-    if ($client) { ($client) = noderange($client) }
+    foreach my $candidate (@candidates) {
+        next unless defined $candidate && $candidate ne '';
+        my ($node) = noderange($candidate);
+        if ($node) { $client = $node; last; }
+    }
     unless ($client) {    #Not able to do identify the host in question
-        xCAT::MsgUtils->trace(0, "E", "Received getpostscript from $origclient, which couldn't be correlated to a node (domain mismatch?)");
+        xCAT::MsgUtils->trace(0, "E", "Received getpostscript from " . join(', ', @candidates) . ", none of which could be correlated to a node (domain mismatch?)");
         return;
     }
     my $state;
