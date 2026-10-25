@@ -1,5 +1,47 @@
 #!/bin/bash
 
+# How many times to ask ICMP, and how long to wait between asks. Overridable so a test can drive
+# node_pingable without sleeping.
+PING_TRIES=${PING_TRIES:-5}
+PING_RETRY_SLEEP=${PING_RETRY_SLEEP:-2}
+
+#--- node_pingable
+# Descriptions: whether the node answers ICMP, asked more than once.
+#
+#   ICMP to a node is lossy for a few seconds after it finishes booting. One sample on an
+#   openSUSE Leap 15.6 cluster lost 2 of 2 packets while xdsh to the same node succeeded a second
+#   later; the caller ANDs both answers, so that one sample forced a second full rinstall and cost
+#   401 seconds. A second run of the same cell lost 2 of 3 packets at a moment that was not the
+#   decision point and passed. The difference between the two runs was which side of a
+#   two-packet sample landed, not the state of the node.
+#
+#   So ask again before concluding. A node that never answers still reports non-pingable, because
+#   that is a real defect and the caller must keep vetoing it.
+# Arguments: $1 - the node
+# Returns: 0 if the node answered, non-zero if it never did
+#---
+node_pingable() {
+    local node=$1
+    local i
+    for (( i = 1; i <= PING_TRIES; ++i )); do
+        if ping -c 2 "$node"; then
+            return 0
+        fi
+        echo "[$i/$PING_TRIES] $node did not answer ICMP; asking again"
+        if [ "$i" -lt "$PING_TRIES" ]; then
+            sleep "$PING_RETRY_SLEEP"
+        fi
+    done
+    return 1
+}
+
+# Sourcing stops here. BASH_SOURCE[0] differs from $0 only when this file is sourced, so a bats
+# test can drive node_pingable without running a provisioning loop -- and without the lsdef below,
+# which needs an xCAT database.
+if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+    return 0
+fi
+
 declare -i installsuccess=0
 declare -i a=0
 declare -i tryreinstall=1
@@ -64,7 +106,7 @@ do
     tobooted=$?
     echo "The tobooted is $tobooted"
 
-    ping -c 2 $node
+    node_pingable $node
     pingable=$?
     echo "The pingable is $pingable"
 
