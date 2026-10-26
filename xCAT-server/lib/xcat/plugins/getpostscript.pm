@@ -64,9 +64,7 @@ sub process_request
         @candidates = ($request->{username}->[0]);
     } else {
         # The peer host and fqdn are a reverse lookup of the client socket, so both are empty when
-        # that lookup fails, however good the client credentials are. Asking only for the peer host
-        # cost every postscript of an openEuler 22.03sp4 node on 2026-10-24: the certificate named
-        # the node, the reverse lookup did not, and 100 requests were dropped while 0 were served.
+        # that lookup fails, however good the client credentials are.
         # request_client_names adds the certificate name, and excludes the request's own node
         # attribute, which the client sends and has not proved.
         @candidates = xCAT::DiscoveryUtils::request_client_names($request);
