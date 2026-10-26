@@ -805,9 +805,14 @@ sub addnode6 {
     #goal is simple enough, we want `hostname` to look sane *and* we want DNS to look right
     my $duid = $identity->{duid};
     unless ($duid) {
-        my $warning = $identity->{uuid}
-          ? 'Skipping DHCPv6 setup: vpd.uuid is not a UUID.'
-          : 'Skipping DHCPv6 setup due to missing vpd.uuid information.';
+        my $warning;
+        if ( !$identity->{uuid} ) {
+            $warning = 'Skipping DHCPv6 setup due to missing vpd.uuid information.';
+        } elsif ( dhcp6_uuid_is_placeholder( $identity->{uuid} ) ) {
+            $warning = 'Skipping DHCPv6 setup: vpd.uuid is the nil UUID, a placeholder that every node shares.';
+        } else {
+            $warning = 'Skipping DHCPv6 setup: vpd.uuid is not a UUID.';
+        }
         $callback->({ node => [ { name => [$node], warning => [$warning] } ] });
         return;
     }
@@ -4498,11 +4503,23 @@ sub kea_boot_server6_for_node
     return $facing[1];
 }
 
+sub dhcp6_uuid_is_placeholder
+{
+    my ($uuid) = @_;
+
+    return 0 unless defined($uuid);
+    $uuid =~ s/[^0-9a-fA-F]//g;
+    return ( length($uuid) == 32 and $uuid =~ /\A0{32}\z/ ) ? 1 : 0;
+}
+
 sub kea_duid_from_uuid
 {
     my ( $uuid, $order ) = @_;
 
     return unless $uuid;
+    # nodeimport writes the nil UUID to vpd.uuid for every PowerKVM node it creates, so one DUID
+    # made from it would cover all of them and each reservation would replace the one before it.
+    return if dhcp6_uuid_is_placeholder($uuid);
     $uuid =~ s/[^0-9a-fA-F]//g;
     return unless length($uuid) == 32;
     my @octets = unpack('(A2)16', lc($uuid));
