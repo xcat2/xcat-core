@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Write the DHCPv6 client identifier that the xCAT reservation holds.
+#
+# makedhcp builds a DUID-UUID (RFC 6355) from vpd.uuid, and a DHCPv6 host reservation
+# carries either a duid or a hw-address, never both. A DUID-LL therefore matches no
+# reservation for a node that reported an SMBIOS UUID: the node gets a pool address and no
+# bootfile-url. NetworkManager cannot derive a DUID from the SMBIOS UUID. Its own DUID-UUID
+# forms come from the machine-id, so write the DUID as a literal hexadecimal value.
+set -u
+
+LC_ALL=C
+export LC_ALL
+
+uuid_file=${XCAT_PRODUCT_UUID_FILE:-/sys/devices/virtual/dmi/id/product_uuid}
+conf_dir=${XCAT_NM_CONF_DIR:-/etc/NetworkManager/conf.d}
+# NetworkManager reads conf.d in name order and a later file wins, so this name has to sort
+# after 10-xcat-genesis.conf, which carries the DUID-LL default.
+duid_file=$conf_dir/15-xcat-genesis-duid.conf
+
+log() {
+    logger -t xcat-genesis-duid -- "$*" || true
+}
+
+# Without an SMBIOS UUID the node reports a synthetic uuid that makedhcp cannot turn into a
+# DUID, so the reservation holds a hw-address and Kea reads the hardware address out of a
+# DUID-LL. Leave 10-xcat-genesis.conf in charge.
+if [ ! -r "$uuid_file" ]; then
+    log "no SMBIOS UUID at $uuid_file, keeping the DUID-LL default"
+    exit 0
+fi
+
+uuid=$(tr -d -c '[:xdigit:]' <"$uuid_file" | tr 'A-F' 'a-f')
+if [ "${#uuid}" -ne 32 ]; then
+    log "no usable SMBIOS UUID at $uuid_file, keeping the DUID-LL default"
+    exit 0
+fi
+
+# SMBIOS 2.6 and later store the first three UUID fields little-endian, and EDK2 copies
+# those bytes into its DUID. product_uuid prints the fields in canonical order, so the
+# first three go back into firmware order here. doxcat and makedhcp do the same swap.
+octets=${uuid:6:2}:${uuid:4:2}:${uuid:2:2}:${uuid:0:2}
+octets=$octets:${uuid:10:2}:${uuid:8:2}
+octets=$octets:${uuid:14:2}:${uuid:12:2}
+for offset in 16 18 20 22 24 26 28 30; do
+    octets=$octets:${uuid:$offset:2}
+done
+
+if ! mkdir -p "$conf_dir"; then
+    log "unable to create $conf_dir"
+    exit 1
+fi
+
+# NetworkManager reads conf.d at startup only, so this unit runs before NetworkManager.
+if ! printf '%s\n' '[connection]' "ipv6.dhcp-duid=00:04:$octets" >"$duid_file"; then
+    log "unable to write $duid_file"
+    exit 1
+fi
+
+log "DHCPv6 client identifier is 00:04:$octets"
