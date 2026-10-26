@@ -294,7 +294,7 @@ logger -s -t $log_label -p local4.info "Discovery packet file is ready."
 rm -f /tmp/discopacket.gz
 gzip -9 /tmp/discopacket
 	if [ ! -z "$XCATMASTER" ]; then
-		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT)..."
+		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT (${XCATDEST:-$XCATMASTER:$XCATPORT})..."
 		(cat /tmp/discopacket.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
