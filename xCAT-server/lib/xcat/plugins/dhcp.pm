@@ -805,11 +805,19 @@ sub addnode6 {
     #goal is simple enough, we want `hostname` to look sane *and* we want DNS to look right
     my $duid = $identity->{duid};
     unless ($duid) {
-        my $warning = $identity->{uuid}
-          ? 'Skipping DHCPv6 setup: vpd.uuid is not a UUID.'
-          : 'Skipping DHCPv6 setup due to missing vpd.uuid information.';
+        my $warning;
+        if ( !$identity->{uuid} ) {
+            $warning = 'Skipping DHCPv6 setup due to missing vpd.uuid information.';
+        } elsif ( dhcp6_uuid_is_placeholder( $identity->{uuid} ) ) {
+            $warning = 'Skipping DHCPv6 setup: vpd.uuid is the nil UUID, a placeholder that every node shares.';
+        } else {
+            $warning = 'Skipping DHCPv6 setup: vpd.uuid is not a UUID.';
+        }
         $callback->({ node => [ { name => [$node], warning => [$warning] } ] });
         return;
+    }
+    if ( $identity->{warning} ) {
+        $callback->({ node => [ { name => [$node], warning => [ $identity->{warning} ] } ] });
     }
     if ( $ip and $ip =~ /:/ and _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
         return;
@@ -4373,6 +4381,7 @@ sub kea_node_reservations6
     }
 
     my $duid = $identity->{duid};
+    my $warned_order = 0;
     my @reservations;
     foreach my $mace (split(/\|/, $macent->{mac})) {
         my ( $mac, $hname ) = split(/!/, $mace);
@@ -4406,6 +4415,11 @@ sub kea_node_reservations6
         if ( $identity->{error} ) {
             $callback->({ error => [ $identity->{error} ], errorcode => [1] });
             return [];
+        }
+        # Once for the node, not once for each of its NICs.
+        if ( $identity->{warning} and not $warned_order ) {
+            $warned_order = 1;
+            $callback->({ node => [ { name => [$node], warning => [ $identity->{warning} ] } ] });
         }
 
         my %reservation = (
@@ -4498,11 +4512,47 @@ sub kea_boot_server6_for_node
     return $facing[1];
 }
 
+sub dhcp6_uuid_is_placeholder
+{
+    my ($uuid) = @_;
+
+    return 0 unless defined($uuid);
+    $uuid =~ s/[^0-9a-fA-F]//g;
+    return ( length($uuid) == 32 and $uuid =~ /\A0{32}\z/ ) ? 1 : 0;
+}
+
+sub dhcp6_uuid_looks_byte_swapped
+{
+    my ($uuid) = @_;
+
+    return 0 unless defined($uuid);
+    $uuid = lc($uuid);
+    $uuid =~ s/[^0-9a-f]//g;
+    return 0 unless length($uuid) == 32;
+    # A swap of the first three fields moves the RFC 4122 version nibble from the first nibble of
+    # the third field to the third one. Nothing else in the value moves, so a version that is only
+    # valid in the swapped position is the one tell a single row carries.
+    return 0 if substr( $uuid, 12, 1 ) =~ /\A[1-8]\z/;
+    return substr( $uuid, 14, 1 ) =~ /\A[1-8]\z/ ? 1 : 0;
+}
+
+sub dhcp6_uuid_order_warning
+{
+    my ($uuid) = @_;
+
+    return unless dhcp6_uuid_looks_byte_swapped($uuid);
+    return 'vpd.uuid looks byte-swapped, so the DHCPv6 reservation may not match the client.'
+      . ' Set vpd.uuid to the UUID that the node reports, or set the duid attribute.';
+}
+
 sub kea_duid_from_uuid
 {
     my ( $uuid, $order ) = @_;
 
     return unless $uuid;
+    # nodeimport writes the nil UUID to vpd.uuid for every PowerKVM node it creates, so one DUID
+    # made from it would cover all of them and each reservation would replace the one before it.
+    return if dhcp6_uuid_is_placeholder($uuid);
     $uuid =~ s/[^0-9a-fA-F]//g;
     return unless length($uuid) == 32;
     my @octets = unpack('(A2)16', lc($uuid));
@@ -4524,8 +4574,15 @@ sub dhcp6_client_duid
 
     my $choice = lc( defined($setting) ? $setting : '' );
     $choice =~ s/^\s+|\s+$//g;
-    return kea_duid_from_uuid( $uuid, 'firmware' ) if $choice eq '' || $choice eq 'firmware';
-    return kea_duid_from_uuid($uuid) if $choice eq 'canonical';
+    # The third value is a warning about the stored vpd.uuid, and only the two orders read it.
+    if ( $choice eq '' || $choice eq 'firmware' ) {
+        my $duid = kea_duid_from_uuid( $uuid, 'firmware' );
+        return ( $duid, undef, dhcp6_uuid_order_warning($uuid) );
+    }
+    if ( $choice eq 'canonical' ) {
+        my $duid = kea_duid_from_uuid($uuid);
+        return ( $duid, undef, dhcp6_uuid_order_warning($uuid) );
+    }
     return $choice if $choice =~ /\A[0-9a-f]{2}(?::[0-9a-f]{2}){2,129}\z/;
     return ( undef, "only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported" );
 }
@@ -4545,11 +4602,12 @@ sub dhcp6_client_duids
         my $vpdent  = $uuids && $uuids->{$node} ? $uuids->{$node}->[0] : undef;
         my $setting = $macent ? $macent->{duid} : undef;
         my $uuid    = $vpdent ? $vpdent->{uuid} : undef;
-        my ( $duid, $error ) = dhcp6_client_duid( $setting, $uuid );
+        my ( $duid, $error, $warning ) = dhcp6_client_duid( $setting, $uuid );
         $duids{$node} = {
-            duid  => $duid,
-            uuid  => $uuid,
-            error => $error ? "The duid attribute of $node is '$setting', but $error." : undef,
+            duid    => $duid,
+            uuid    => $uuid,
+            error   => $error ? "The duid attribute of $node is '$setting', but $error." : undef,
+            warning => $warning,
         };
     }
 
