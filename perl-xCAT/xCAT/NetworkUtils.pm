@@ -3958,4 +3958,31 @@ sub send_tcp_msg {
         return 1;
     }
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 xcatd_cmdline_address
+
+    Format a management node address and port for the xcatd= kernel argument.
+
+    Arguments:
+        $address - the management node address, IPv4 or IPv6
+        $port    - the xcatd port
+    Returns:
+        "<address>:<port>", with the address bracketed when it is IPv6.
+
+    An IPv6 address contains colons, so an unbracketed "<v6>:<port>" cannot be
+    split on the colon. RFC 3986 brackets the host for exactly this reason.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub xcatd_cmdline_address {
+    my ($address, $port) = @_;
+
+    return unless defined($address) && length($address);
+    return "[$address]:$port" if index($address, ':') >= 0;
+    return "$address:$port";
+}
+
 1;

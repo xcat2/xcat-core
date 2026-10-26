@@ -14,6 +14,7 @@ use xCAT::TableUtils;
 use Sys::Syslog;
 use xCAT::GlobalDef;
 use xCAT::Table;
+use xCAT::NetworkUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT_monitoring::monitorctrl;
 use Getopt::Long;
@@ -690,11 +691,11 @@ sub setdestiny {
                 if (-r "$tftpdir/xcat/genesis.fs.$arch.$bestsuffix") {
                     $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
                     $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$bestsuffix";
-                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=" . xCAT::NetworkUtils::xcatd_cmdline_address($master, $xcatdport) . " destiny=$state";
                 } else {
                     $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
                     $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$othersuffix";
-                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=" . xCAT::NetworkUtils::xcatd_cmdline_address($master, $xcatdport) . " destiny=$state";
                 }
             } else {    # genesis.kernel file is not there, assume 'legacy' environment
                 if (-r "$tftpdir/xcat/nbk.$arch") {

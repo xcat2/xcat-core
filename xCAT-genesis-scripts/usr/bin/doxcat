@@ -264,8 +264,16 @@ for parm in `cat /proc/cmdline`; do
     elif [[ ${key,,} == "gateway" ]]; then
         gateway=$value
     elif [[ ${key,,} == "xcatd" ]]; then
-        XCATMASTER=`echo $value |awk -F: '{print $1}'`
-        XCATPORT=`echo $value |awk -F: '{print $2}'`
+        # An IPv6 address holds colons, so "<addr>:<port>" cannot be split on the colon.
+        # destiny.pm brackets an IPv6 address, as RFC 3986 does.
+        if [[ $value == \[*\]:* ]]; then
+            XCATMASTER=${value%%\]:*}
+            XCATMASTER=${XCATMASTER#\[}
+            XCATPORT=${value##*\]:}
+        else
+            XCATMASTER=`echo $value |awk -F: '{print $1}'`
+            XCATPORT=`echo $value |awk -F: '{print $2}'`
+        fi
     fi
 done
 export XCATPORT
