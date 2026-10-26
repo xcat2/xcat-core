@@ -179,6 +179,11 @@ cp -hpR share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 %endif
 
+# Debian scripts must remain self-contained when copied from an installed package.
+rm -f $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/debian/xCAT/ProfileUtils.pm
+cp share/xcat/netboot/imgutils/xCAT/ProfileUtils.pm $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/debian/xCAT/ProfileUtils.pm
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/debian/xCAT/ProfileUtils.pm $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/imgutils/xCAT/ProfileUtils.pm
+
 %ifos linux
 # pwd
 cp -d sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin

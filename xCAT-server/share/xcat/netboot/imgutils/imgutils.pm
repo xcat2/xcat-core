@@ -11,8 +11,7 @@ use File::Copy qw(move);
 use File::Find;
 use File::Path;
 use Cwd qw(realpath);
-# Debian's standalone builder carries this helper with its copied scripts.
-use lib dirname(__FILE__) . '/../debian';
+use lib dirname(__FILE__);
 use xCAT::ProfileUtils;
 use xCAT::SvrUtils;
 
