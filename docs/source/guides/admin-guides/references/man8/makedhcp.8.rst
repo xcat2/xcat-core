@@ -95,6 +95,10 @@ Without the attribute, the DUID is the DUID-UUID that UEFI firmware built on EDK
 ``vpd.uuid`` holds the UUID as the operating system reports it in ``/sys/class/dmi/id/product_uuid``.
 Earlier xCAT releases stored ``vpd.uuid`` with the first three fields swapped for nodes from Genesis discovery and for KVM guests from \ **mkvm**\ , \ **clonevm**\  or \ **rscan**\ .
 Set ``vpd.uuid`` of such a node to the UUID that it reports.
+\ **makedhcp**\  warns about a node whose ``vpd.uuid`` looks byte-swapped, and never changes the value.
+The warning is a report, not a diagnosis.
+A swap moves the version field, but it leaves a valid version in the first field about half the time.
+\ **makedhcp**\  cannot report those rows, and it cannot read the UUID that the node itself holds.
 A node whose ``vpd.uuid`` is the nil UUID gets no DUID from it, because \ **nodeimport**\  writes that one value to every PowerKVM node.
 With Kea DHCP such a node keeps the reservation of its MAC address, like a node with no ``vpd.uuid``.
 With ISC DHCP it gets no DHCPv6 host, again like a node with no ``vpd.uuid``.

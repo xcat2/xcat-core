@@ -79,6 +79,10 @@ my $canonical = '00:04:12:34:56:78:12:34:4b:cd:98:76:12:34:56:78:90:ab';
 my $literal   = '00:01:00:01:2e:4f:61:a0:02:00:00:00:00:64';
 # The nil UUID that nodeimport writes to vpd.uuid for every PowerKVM node it creates.
 my $nil = '00000000-0000-0000-0000-000000000000';
+# $uuid with its first three fields byte-swapped: what xCAT stored before vpd.uuid held the UUID
+# that the operating system reports. A firmware-order DUID made from it is the canonical order of
+# $uuid, which no client sends.
+my $swapped = '78563412-3412-cd4b-9876-1234567890ab';
 my $invalid   = "but only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported.";
 
 # The node, its mac.duid, its vpd.uuid, and the DUID that its reservation must match: undef when the
@@ -93,6 +97,7 @@ my @cases = (
     [ 'cn07', undef,          undef,                                    undef,     'no vpd.uuid gives no DUID' ],
     [ 'cn08', 'canonical',    'not-a-uuid',                             undef,     'a malformed vpd.uuid gives no DUID' ],
     [ 'cn09', undef,          $nil,                                     undef,     'the nil vpd.uuid gives no DUID' ],
+    [ 'cn10', undef,          $swapped,                                 $canonical, 'a byte-swapped vpd.uuid still gives its DUID' ],
 );
 my %case = map { $_->[0] => $_ } @cases;
 my @nodes = map { $_->[0] } @cases;
@@ -250,13 +255,15 @@ sub isc_hosts {
         }
     }
     is_deeply(
-        [ grep { /^cn0[789]: / } @isc_warnings ],
+        [ grep { /^cn(?:0[789]|10): / } @isc_warnings ],
         [
             'cn07: Skipping DHCPv6 setup due to missing vpd.uuid information.',
             'cn08: Skipping DHCPv6 setup: vpd.uuid is not a UUID.',
             'cn09: Skipping DHCPv6 setup: vpd.uuid is the nil UUID, a placeholder that every node shares.',
+            'cn10: vpd.uuid looks byte-swapped, so the DHCPv6 reservation may not match the client.'
+              . ' Set vpd.uuid to the UUID that the node reports, or set the duid attribute.',
         ],
-        'ISC: a node without a usable vpd.uuid is skipped with the reason'
+        'ISC: a node without a usable vpd.uuid is skipped with the reason, and a suspect order is reported'
     );
 
     # makedhcp -d and -q find a reservation by the DUID that makedhcp gave it, and by nothing else.
@@ -489,6 +496,56 @@ sub isc_hosts {
         ],
         'ISC: each node is skipped with the nil UUID named as the reason'
     );
+}
+
+# ---- A vpd.uuid in the old byte order is reported, never rewritten ----------------------------------
+# Before this work xCAT stored vpd.uuid with its first three fields swapped. Nothing can tell which
+# spelling a given row holds, so makedhcp reports the rows whose version field sits where a swap puts
+# it and leaves the value alone.
+{
+    my $swapped_note = 'vpd.uuid looks byte-swapped, so the DHCPv6 reservation may not match the client.'
+      . ' Set vpd.uuid to the UUID that the node reports, or set the duid attribute.';
+
+    is( xCAT_plugin::dhcp::dhcp6_uuid_looks_byte_swapped($swapped), 1, 'the swapped spelling of a version 4 UUID is detected' );
+    is( xCAT_plugin::dhcp::dhcp6_uuid_looks_byte_swapped($uuid), 0, 'the UUID that the operating system reports is not' );
+    is( xCAT_plugin::dhcp::dhcp6_uuid_looks_byte_swapped($nil), 0, 'the nil UUID is not' );
+    is( xCAT_plugin::dhcp::dhcp6_uuid_looks_byte_swapped('not-a-uuid'), 0, 'a value that is not a UUID is not' );
+    # What the check cannot know: a swap leaves a valid version in the first position about half the
+    # time. '78563412-3412-2d4b-...' is the swapped spelling of '12345678-1234-4b2d-...' and reads
+    # like a version 2 UUID, so the row is missed.
+    is( xCAT_plugin::dhcp::dhcp6_uuid_looks_byte_swapped('78563412-3412-2d4b-9876-1234567890ab'), 0,
+        'and a swap that leaves a valid version in the first position is missed' );
+
+    # The harm the warning names: the firmware order of the swapped spelling is the canonical order of
+    # the UUID that the node reports, which no client sends.
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid( $swapped, 'firmware' ), $canonical,
+        'the firmware order of the swapped spelling is the canonical order of the real UUID' );
+    is( $canonical, '00:04:12:34:56:78:12:34:4b:cd:98:76:12:34:56:78:90:ab', 'which is this DUID' );
+    # The remedy the warning gives: duid=canonical sends the stored bytes in RFC 4122 order, which is
+    # the DUID that EDK2 firmware builds from the real UUID.
+    is( xCAT_plugin::dhcp::kea_duid_from_uuid($swapped), $firmware,
+        'and duid=canonical on the swapped spelling gives the DUID that the firmware sends' );
+    is( $firmware, '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ab', 'which is this DUID' );
+
+    # Each backend reports the node once, and still writes the reservation.
+    my $config = empty_config();
+    local %DUIDTable::rows = node_rows();
+    $DUIDTable::rows{vpd}{cn01} = { uuid => $swapped };
+    $DUIDTable::rows{mac}{cn01}{mac} = "$mac{cn01}|02:00:00:00:01:99!cn01-eth1";
+    local %main::resolve = ( %main::resolve, 'cn01-eth1' => { 6 => '2001:db8:176::31' } );
+    my $reservations = kea_reservations( $config, 'cn01' );
+    is_deeply( [@warnings], ["cn01: $swapped_note"], 'Kea: the node is reported once, not once for each of its NICs' );
+    is_deeply( [ map { $_->{duid} } @$reservations ], [ $canonical, $canonical ],
+        'Kea: the reservation is still written with the DUID the stored value gives' );
+
+    my $session = isc_commands('cn01')->[1] // '';
+    is_deeply( [@warnings], ["cn01: $swapped_note"], 'ISC: the node is reported with the same text' );
+    is( isc_hosts($session)->{cn01}, $canonical, 'ISC: the host is still created' );
+
+    # A literal mac.duid does not read vpd.uuid, so there is nothing to report.
+    $DUIDTable::rows{mac}{cn01}{duid} = $literal;
+    kea_reservations( $config, 'cn01' );
+    is_deeply( [ grep { /byte-swapped/ } @warnings ], [], 'Kea: a node whose duid attribute is a DUID is not reported' );
 }
 
 done_testing();
