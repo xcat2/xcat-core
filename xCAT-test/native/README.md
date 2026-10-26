@@ -63,6 +63,12 @@ they do not qualify package installation on every target architecture. On EL8,
 install both `python36` and `python3-rpm` to provide the interpreter and its RPM
 bindings.
 
+The release case also runs source-only finalization with unsigned and signed
+binary RPMs, empty binary trees, and absent, retained and standalone aliases.
+It checks that binary files and aliases retain their bytes, modes and timestamps
+while source RPMs and metadata use a different signing key. This covers cached
+source RPMs; it does not run mock or publish a repository.
+
 The Debian probe permission test has a separate pull-request CI step. It needs
 Debian build tools, BATS, bubblewrap, fakeroot, reprepro and
 libfile-slurper-perl. Run it as an ordinary user on a Debian or Ubuntu host
