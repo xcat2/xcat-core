@@ -52,6 +52,16 @@ sub render {
             nested => '#NODEATTRIB:hosts:ip#',
             table => '#TABLE:hosts:THISNODE:ip#',
             special => 'a$1\\b&c',
+            selfref => '#NODEATTRIB:hosts:selfref#',
+            tableself => '#TABLE:hosts:THISNODE:tableself#',
+            cycle_a => '#NODEATTRIB:hosts:cycle_b#',
+            cycle_b => '#NODEATTRIB:hosts:cycle_a#',
+            table_a => '#TABLE:hosts:THISNODE:table_b#',
+            table_b => '#TABLE:hosts:THISNODE:table_a#',
+            growing => 'x#NODEATTRIB:hosts:growing#',
+            tablegrow => 'x#TABLE:hosts:THISNODE:tablegrow#',
+            (map { ("depth$_" => $_ == 16 ? $node : '#NODEATTRIB:hosts:depth' . ($_ + 1) . '#') } 0 .. 16),
+            (map { ("tabledepth$_" => $_ == 16 ? $node : '#TABLE:hosts:THISNODE:tabledepth' . ($_ + 1) . '#') } 0 .. 16),
         }},
     );
     for my $other (@nodes) {
@@ -70,6 +80,7 @@ sub render {
     }
     no warnings qw(redefine once);
     local @ARGV;
+    local $::myxcatname = 'mn.example';
     local *xCAT::Table::new = sub {
         my ($class, $table) = @_;
         die "Unexpected table $table" unless exists $rows{$table};
@@ -86,7 +97,8 @@ sub render {
     local *xCAT::NetworkUtils::checkNodeIPaddress = sub { return {ip => $_[1]}; };
     local *xCAT::MsgUtils::trace = sub { return; };
     my $callback = sub {
-        push @responses, dclone($_[0]) if @responses < 5;
+        die "too many callback responses\n" if @responses == 5;
+        push @responses, dclone($_[0]);
     };
     my $completed = eval {
         local $SIG{ALRM} = sub { die "template expansion timed out\n"; };
@@ -132,6 +144,16 @@ my @cases = (
     ['empty and zero', 'a=#NODEATTRIB:hosts:empty# b=#NODEATTRIB:hosts:zero#', 'a= b=0', 'quiet a= b=0 '],
     ['repeat', '#NODEATTRIB:hosts:ip#,#NODEATTRIB:hosts:ip#', '192.0.2.10,192.0.2.10', 'quiet 192.0.2.10,192.0.2.10 '],
     ['nested node', '#NODEATTRIB:hosts:nested#', '192.0.2.10', 'quiet 192.0.2.10 '],
+    ['node replacement limit', '#NODEATTRIB:hosts:depth1#', '192.0.2.10', 'quiet 192.0.2.10 '],
+    ['table replacement limit', '#TABLE:hosts:THISNODE:tabledepth1#', '192.0.2.10', 'quiet 192.0.2.10 '],
+    ['shared node budget', '#NODEATTRIB:hosts:depth0#,#NODEATTRIB:hosts:ip#',
+        '192.0.2.10,192.0.2.10', 'quiet 192.0.2.10,192.0.2.10 '],
+    ['shared table budget', '#TABLE:hosts:THISNODE:tabledepth0#,#TABLE:hosts:THISNODE:ip#',
+        '192.0.2.10,192.0.2.10', 'quiet 192.0.2.10,192.0.2.10 '],
+    ['many independent nodes', join(',', ('#NODEATTRIB:hosts:ip#') x 20),
+        join(',', ('192.0.2.10') x 20), 'quiet ' . join(',', ('192.0.2.10') x 20) . ' '],
+    ['many independent tables', join(',', ('#TABLE:hosts:THISNODE:ip#') x 20),
+        join(',', ('192.0.2.10') x 20), 'quiet ' . join(',', ('192.0.2.10') x 20) . ' '],
     ['node then table', '#NODEATTRIB:hosts:table#', '192.0.2.10', 'quiet 192.0.2.10 '],
     ['table recursion', '#TABLE:hosts:THISNODE:table#', '192.0.2.10', 'quiet 192.0.2.10 '],
     ['table does not restart node pass', '#TABLE:hosts:THISNODE:nested#', '#NODEATTRIB:hosts:ip#', 'quiet #NODEATTRIB:hosts:ip# '],
@@ -186,77 +208,103 @@ for my $method (qw(pxe xnba ipxe boottarget)) {
     };
 }
 
+my @failures;
+for my $position (0, 1, 2) {
+    for my $existing (0, 1) {
+        push @failures, [$position, $existing, 'unsupported key',
+            'before=#NODEATTRIB:hosts:ip# #TABLE:hosts:unsupported:ip# #TABLE:hosts:other:ip#',
+            'Table key of unsupported not yet supported by boottarget mini-template'];
+    }
+}
+for my $case (
+    ['node self-reference', '#NODEATTRIB:hosts:selfref#'],
+    ['table self-reference', '#TABLE:hosts:THISNODE:tableself#'],
+    ['node cycle', '#NODEATTRIB:hosts:cycle_a#'],
+    ['table cycle', '#TABLE:hosts:THISNODE:table_a#'],
+    ['growing node', '#NODEATTRIB:hosts:growing#'],
+    ['growing table', '#TABLE:hosts:THISNODE:tablegrow#'],
+    ['node over limit', '#NODEATTRIB:hosts:depth0#', '#NODEATTRIB:hosts:depth16#'],
+    ['table over limit', '#TABLE:hosts:THISNODE:tabledepth0#', '#TABLE:hosts:THISNODE:tabledepth16#'],
+    ['node budget stays separate', '#NODEATTRIB:hosts:depth0#,#TABLE:hosts:THISNODE:ip#',
+        '#NODEATTRIB:hosts:depth16#'],
+    ['table budget stays separate', '#NODEATTRIB:hosts:ip#,#TABLE:hosts:THISNODE:tabledepth0#',
+        '#TABLE:hosts:THISNODE:tabledepth16#'],
+) {
+    my ($name, $input, $token) = @$case;
+    $token //= $input;
+    push @failures, [1, 1, $name, $input,
+        "Node template expansion exceeded its replacement limit at $token"];
+}
+
 for my $method (qw(pxe xnba ipxe boottarget)) {
-    for my $position (0, 1, 2) {
-        for my $existing (0, 1) {
-            subtest "$method unsupported key at $position existing=$existing" => sub {
-                my @nodes = qw(192.0.2.20 192.0.2.21 192.0.2.22);
-                my $bad = $nodes[$position];
-                for my $good (grep { $_ ne $bad } @nodes) {
-                    next if $method eq 'boottarget';
+    for my $failure (@failures) {
+        my ($position, $existing, $name, $input, $message) = @$failure;
+        subtest "$method $name at $position existing=$existing" => sub {
+            my @nodes = qw(192.0.2.20 192.0.2.21 192.0.2.22);
+            my $bad = $nodes[$position];
+            for my $good (grep { $_ ne $bad } @nodes) {
+                next if $method eq 'boottarget';
+                my $file = $method eq 'pxe' ? "$tftp/pxelinux.cfg/$good"
+                    : "$tftp/xcat/$method/nodes/$good";
+                write_text($file, "previous boot configuration\n");
+            }
+            my @files = $method eq 'pxe' ? ("$tftp/pxelinux.cfg/$bad")
+                : $method eq 'boottarget' ? ()
+                : map { "$tftp/xcat/$method/nodes/$bad$_" } ('', '.pxelinux', '.uefi', '.elilo');
+            for my $file (@files) {
+                if ($existing) {
+                    write_text($file, "previous boot configuration\n");
+                } else {
+                    unlink($file) or die "unlink $file: $!" if -e $file;
+                }
+            }
+            my $link;
+            if ($method eq 'pxe') {
+                $link = "$tftp/pxelinux.cfg/" . sprintf('%02X%02X%02X%02X', split(/\./, $bad));
+                unlink($link) or die "unlink $link: $!" if -e $link || -l $link;
+                symlink($bad, $link) or die "symlink $link: $!" if $existing;
+            }
+            my $exception = render($method, 'marker=#NODEATTRIB:hosts:ip#',
+                nodes => \@nodes, bad_node => $bad,
+                bad_input => $input);
+            is($exception, '', 'request completes before the timeout');
+            my @expected = ({node => [{name => [$bad], errorcode => [1], error => [$message]}]});
+            push @expected, {errorcode => [1], error =>
+                ['Failed to generate xnba configurations for some node(s) on mn.example. Check xCAT log file for more details.']}
+                if $method eq 'xnba' || $method eq 'ipxe';
+            is_deeply(\@responses, \@expected,
+                'responses contain the node error and only the caller-required summary');
+            for my $file (@files) {
+                if ($existing) {
+                    ok(-f $file, 'failure keeps the existing artifact') or next;
+                    is(read_text($file), "previous boot configuration\n", 'failure preserves the existing artifact');
+                } else {
+                    ok(!-e $file, 'failure creates no artifact');
+                }
+            }
+            if ($link) {
+                if ($existing) {
+                    ok(-l $link, 'failure preserves the existing boot symlink');
+                    is(readlink($link), $bad, 'failure preserves the boot symlink target');
+                } else {
+                    ok(!-e $link && !-l $link, 'failure creates no boot symlink');
+                }
+            }
+            if ($method eq 'boottarget') {
+                ok(!exists($written{$bad}), 'failure does not update bootparams');
+            } else {
+                is($kernels{$bad}{kcmdline}, 'quiet', 'failure does not append a partial expansion');
+            }
+            for my $good (grep { $_ ne $bad } @nodes) {
+                if ($method eq 'boottarget') {
+                    is($written{$good}{kcmdline}, "marker=$good", 'other nodes still update bootparams');
+                } else {
                     my $file = $method eq 'pxe' ? "$tftp/pxelinux.cfg/$good"
                         : "$tftp/xcat/$method/nodes/$good";
-                    write_text($file, "previous boot configuration\n");
+                    like(read_text($file), qr/marker=\Q$good\E /, 'other nodes still get boot artifacts');
                 }
-                my @files = $method eq 'pxe' ? ("$tftp/pxelinux.cfg/$bad")
-                    : $method eq 'boottarget' ? ()
-                    : map { "$tftp/xcat/$method/nodes/$bad$_" } ('', '.pxelinux', '.uefi', '.elilo');
-                for my $file (@files) {
-                    if ($existing) {
-                        write_text($file, "previous boot configuration\n");
-                    } else {
-                        unlink($file) or die "unlink $file: $!" if -e $file;
-                    }
-                }
-                my $link;
-                if ($method eq 'pxe') {
-                    $link = "$tftp/pxelinux.cfg/" . sprintf('%02X%02X%02X%02X', split(/\./, $bad));
-                    unlink($link) or die "unlink $link: $!" if -e $link || -l $link;
-                    symlink($bad, $link) or die "symlink $link: $!" if $existing;
-                }
-                my $exception = render($method, 'marker=#NODEATTRIB:hosts:ip#',
-                    nodes => \@nodes, bad_node => $bad,
-                    bad_input => 'before=#NODEATTRIB:hosts:ip# #TABLE:hosts:unsupported:ip# #TABLE:hosts:other:ip#');
-                is($exception, '', 'request completes before the timeout');
-                my @node_errors = grep { $_->{errorcode} }
-                    map { @{ $_->{node} || [] } } @responses;
-                is(scalar @node_errors, 1, 'one node error is reported');
-                my $response = $node_errors[0] || {};
-                is_deeply($response->{name}, [$bad], 'error identifies the failed node');
-                is_deeply($response->{errorcode}, [1], 'response is an error');
-                is($response->{error}[0] // '', 'Table key of unsupported not yet supported by boottarget mini-template',
-                    'error identifies the unsupported table key');
-                for my $file (@files) {
-                    if ($existing) {
-                        is(read_text($file), "previous boot configuration\n", 'failure preserves the existing artifact');
-                    } else {
-                        ok(!-e $file, 'failure creates no artifact');
-                    }
-                }
-                if ($link) {
-                    if ($existing) {
-                        ok(-l $link, 'failure preserves the existing boot symlink');
-                        is(readlink($link), $bad, 'failure preserves the boot symlink target');
-                    } else {
-                        ok(!-e $link && !-l $link, 'failure creates no boot symlink');
-                    }
-                }
-                if ($method eq 'boottarget') {
-                    ok(!exists($written{$bad}), 'failure does not update bootparams');
-                } else {
-                    is($kernels{$bad}{kcmdline}, 'quiet', 'failure does not append a partial expansion');
-                }
-                for my $good (grep { $_ ne $bad } @nodes) {
-                    if ($method eq 'boottarget') {
-                        is($written{$good}{kcmdline}, "marker=$good", 'other nodes still update bootparams');
-                    } else {
-                        my $file = $method eq 'pxe' ? "$tftp/pxelinux.cfg/$good"
-                            : "$tftp/xcat/$method/nodes/$good";
-                        like(read_text($file), qr/marker=\Q$good\E /, 'other nodes still get boot artifacts');
-                    }
-                }
-            };
-        }
+            }
+        };
     }
 }
 
