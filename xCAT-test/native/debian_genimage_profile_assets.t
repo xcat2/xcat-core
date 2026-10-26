@@ -5,17 +5,23 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use File::Path qw(make_path);
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 use XCAT::Test::ImageSandbox;
+use XCAT::Test::Process qw(run_command);
 
 plan skip_all => 'Linux namespaces are required' unless $^O eq 'linux';
 die 'Run image tests as an unprivileged user' unless $>;
 
+my $payload = shift @ARGV;
+my $source = $payload // repo_path('xCAT-server/share/xcat/netboot/debian');
+
 sub standalone_image {
     my $box = XCAT::Test::ImageSandbox->new();
     make_path("$box->{root}/work/share/xcat/netboot");
-    my ($rc, $output, $error) = $box->run('cp', '-R', '--no-preserve=mode,ownership',
-        '/repo/xCAT-server/share/xcat/netboot/debian', '/work/share/xcat/netboot/');
-    die "copy Debian scripts: $output $error" if $rc;
+    my @copy = ('-R', '--no-preserve=mode,ownership');
+    push @copy, '-L' unless defined $payload;
+    my ($rc, $output) = run_command('cp', @copy, $source, "$box->{root}/work/share/xcat/netboot/");
+    die "copy Debian scripts: $output" if $rc;
     return $box;
 }
 
