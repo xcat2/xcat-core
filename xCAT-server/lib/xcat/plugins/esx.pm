@@ -757,8 +757,8 @@ sub inv {
     my $vmview = $args{vmview};
     my $moref  = $vmview->{mo_ref}->value;
     xCAT::SvrUtils::sendmsg("Managed Object Reference: $moref", $output_handler, $node);
-    my $uuid = $vmview->config->uuid;
-    $uuid =~ s/(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+    # vpd.uuid holds the UUID that the guest reports, which is what rinv prints.
+    my $uuid = xCAT::VMCommon::esx_guest_uuid($vmview->config->uuid, $vmview->config->{firmware}, $vmview->config->{version});
     xCAT::SvrUtils::sendmsg("UUID/GUID:  $uuid", $output_handler, $node);
     my $cpuCount = $vmview->config->hardware->numCPU;
     xCAT::SvrUtils::sendmsg("CPUs:  $cpuCount", $output_handler, $node);
@@ -2692,7 +2692,9 @@ sub clone_task_callback {
         my $nodeviews = $conn->find_entity_views(view_type => 'VirtualMachine', filter => { 'config.name' => $regex });
         unless (scalar @$nodeviews == 1) { die "this should be impossible"; }
         my $vpdtab = xCAT::Table->new('vpd', -create => 1);
-        $vpdtab->setAttribs({ node => $node }, { uuid => $nodeviews->[0]->config->uuid });
+        my $clonedconfig = $nodeviews->[0]->config;
+        $vpdtab->setAttribs({ node => $node },
+            { uuid => xCAT::VMCommon::esx_guest_uuid($clonedconfig->uuid, $clonedconfig->{firmware}, $clonedconfig->{version}) });
         my $ndev;
         my @devstochange;
         foreach $ndev (@{ $nodeviews->[0]->config->hardware->device }) {
@@ -3207,18 +3209,18 @@ sub build_cfgspec {
         my $vpdtab = xCAT::Table->new('vpd');
         $vpdtab->setNodeAttribs($node, { uuid => $uuid });
     }
-    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+    my ($vmxspec, $extraconfig) = xCAT::VMCommon::esx_vmx_settings($tablecfg{vm}->{$node}->[0]->{othersettings});
+
+    # config.uuid must hold the UUID that the guest reports as vpd.uuid, and the firmware and
+    # the hardware version of the new VM decide which byte order that is.
+    $uuid = xCAT::VMCommon::esx_guest_uuid($uuid, $vmxspec->{firmware}, $vmxspec->{version});
     my @optionvals;
-    if ($tablecfg{vm}->{$node}->[0]->{othersettings}) {
-        my $key;
-        my $value;
-        foreach (split /;/, $tablecfg{vm}->{$node}->[0]->{othersettings}) {
-            ($key, $value) = split /=/;
-            if ($value) {
-                push @optionvals, OptionValue->new(key => $key, value => $value);
-            } else {
-                push @optionvals, OptionValue->new(key => $key);
-            }
+    foreach my $option (@$extraconfig) {
+        my ($key, $value) = @$option;
+        if ($value) {
+            push @optionvals, OptionValue->new(key => $key, value => $value);
+        } else {
+            push @optionvals, OptionValue->new(key => $key);
         }
     }
     my %specargs = (
@@ -3230,6 +3232,9 @@ sub build_cfgspec {
         deviceChange => \@devices,
         uuid         => $uuid,
     );
+    foreach my $field (keys %$vmxspec) {
+        $specargs{$field} = $vmxspec->{$field};
+    }
     if (@optionvals) {
         $specargs{extraConfig} = \@optionvals;
     }

@@ -238,7 +238,12 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
           PCI passthrough:
              PCI devices can be assigned to a virtual machine for exclusive usage, e.g., 'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0'. A PCI device can also be expressed as 'devpassthrough:0001:01:00.1'. The devices are put in a comma-delimited list. The PCI device names can be obtained by running B<virsh nodedev-list> on the host.
           VM machine type:
-             Specify a machine type for VM creation on the host, e.g., 'machine:pc'. Typical machine types are pc, q35, and pseries.",
+             Specify a machine type for VM creation on the host, e.g., 'machine:pc'. Typical machine types are pc, q35, and pseries.
+          VMware firmware and hardware version:
+             Specify the firmware and the hardware version of a VMware guest, e.g.,
+             'firmware=efi;virtualHW.version=17'. mkvm passes both to vSphere as fields of the
+             VirtualMachineConfigSpec, not as extraConfig, because extraConfig does not apply them.
+             They also decide the byte order of config.uuid, so that the guest reports vpd.uuid.",
 'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
 'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
 'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
