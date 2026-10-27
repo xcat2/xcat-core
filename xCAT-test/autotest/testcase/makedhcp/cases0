@@ -321,10 +321,24 @@ cmd:mkdef -t node ci-ipv6-ds groups=all mgt=kvm netboot=grub2 ip=2001:db8:177::2
 check:rc==0
 cmd:makehosts ci-ipv6-ds
 check:rc==0
+# REGENERATE THE SERVER CONFIG. makedhcp <node> only writes a reservation into a subnet that is
+# already in kea-dhcp6.conf, so without this the node has no subnet, makedhcp SKIPS it with a
+# warning and still exits 0 -- and an assertion on the exit status alone then passes while
+# nothing was measured.
+cmd:makedhcp -n
+check:rc==0
+# The subnet must be there, or the next assertions cannot tell a skipped node from a wrong URL.
+cmd:python3 -c 'import json;d=json.load(open("/etc/kea/kea-dhcp6.conf"));print(" ".join(s["subnet"] for s in d["Dhcp6"]["subnet6"]))'
+check:rc==0
+check:output=~2001:db8:177::/64
 # makedhcp MUST SUCCEED. It resolved the tftpserver as IPv6, got no answer, and reported an error
 # with errorcode 1, so the whole command exited 1 for a node that boots over IPv4.
 cmd:makedhcp ci-ipv6-ds
 check:rc==0
+# The node MUST get a reservation. A skip leaves none and says so only in a warning.
+cmd:python3 -c 'import json;d=json.load(open("/etc/kea/kea-dhcp6.conf"));print(sum(1 for s in d["Dhcp6"]["subnet6"] for r in s.get("reservations",[]) if r.get("hostname")=="ci-ipv6-ds"))'
+check:rc==0
+check:output==1
 cmd:kea-dhcp6 -t /etc/kea/kea-dhcp6.conf
 check:rc==0
 # The boot URL survives, and its authority is the address of this management node that faces the
