@@ -59,6 +59,18 @@ ok(xCAT::SvrUtils->is_el10_os('rhels10.0'), 'RHEL 10 is recognized as EL10');
 ok(xCAT::SvrUtils->is_el10_os('rocky10'), 'Rocky 10 is recognized as EL10');
 ok(!xCAT::SvrUtils->is_el10_os('rhels9.6'), 'EL9 is outside the EL10 IPv6 rendering path');
 
+# The gates read uses_static_ipv6_boot, not is_el10_os: openEuler reaches the same kickstart and
+# dracut code through #KICKSTARTNET# but is not EL10, so is_el10_os left it asking DHCPv6 with
+# an identifier no reservation holds. The predicate is the capability, so a later EL keeps it.
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels10.0'), 'EL10 takes the static IPv6 address');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels11.0'), 'and so does a later EL, which an equality test missed');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('openeuler24.03sp4'), 'openEuler takes it as well');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('openeuler20.03sp4'), 'every openEuler release, not just the newest');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot('rhels9.6'), 'EL9 does not, so it keeps the DHCPv6 path');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot('sles12'), 'SUSE does not');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot('ubuntu24.04'), 'Ubuntu does not');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot(undef), 'and an undefined osver is not a capability');
+
 ok(xCAT::NetworkUtils->node_is_ipv6_only('nodev6'), 'AAAA-only node is detected as IPv6-only');
 ok(!xCAT::NetworkUtils->node_is_ipv6_only('nodev4'), 'IPv4-only node stays on the IPv4 path');
 ok(!xCAT::NetworkUtils->node_is_ipv6_only('nodedual'), 'dual-stack node retains IPv4 preference');

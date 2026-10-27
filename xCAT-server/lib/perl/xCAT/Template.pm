@@ -1145,7 +1145,7 @@ sub kickstartnetwork {
       : xCAT::NetworkUtils->node_is_ipv6_only($node);
 
     if ($ipv6_only
-        && xCAT::SvrUtils->is_el10_os($template_os)
+        && xCAT::SvrUtils->uses_static_ipv6_boot($template_os)
         && $::XCATSITEVALS{managedaddressmode} ne "autoula")
     {
         my $static_network = _static_kickstart_network6($node, $suffix);

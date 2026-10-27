@@ -829,7 +829,7 @@ sub mknetboot
 
         $ent = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['primarynic']);
         my $sent = $hmhash->{$node}->[0];
-        my $el10_ipv6_only = xCAT::SvrUtils->is_el10_os($osver)
+        my $static_ipv6_boot = xCAT::SvrUtils->uses_static_ipv6_boot($osver)
           && xCAT::NetworkUtils->node_is_ipv6_only($node);
 
         #          $hmtab->getNodeAttribs($node,
@@ -864,7 +864,7 @@ sub mknetboot
 
         my $imgsrvip;
         my $xcatmasterip;
-        if ($el10_ipv6_only) {
+        if ($static_ipv6_boot) {
             $imgsrvip = xCAT::NetworkUtils->ipv6_server_for_node($node, $imgsrv);
             unless ($imgsrvip) {
                 xCAT::MsgUtils->report_node_error($callback, $node, "Unable to resolve the image server for $node as IPv6");
@@ -895,8 +895,8 @@ sub mknetboot
             }
         }
 
-        my $imgsrv_authority = _server_authority($imgsrvip, $httpport, $el10_ipv6_only);
-        my $xcatmaster_endpoint = _server_authority($xcatmasterip, $xcatdport, $el10_ipv6_only);
+        my $imgsrv_authority = _server_authority($imgsrvip, $httpport, $static_ipv6_boot);
+        my $xcatmaster_endpoint = _server_authority($xcatmasterip, $xcatdport, $static_ipv6_boot);
         unless ($imgsrv_authority && $xcatmaster_endpoint) {
             xCAT::MsgUtils->report_node_error($callback, $node, "Unable to format the IPv6 server endpoint for $node");
             next;
@@ -1053,7 +1053,7 @@ sub mknetboot
         } elsif (defined($net_params->{BOOTIF}) && ($net_params->{setmac} || $arch =~ /ppc/)) {
             $kcmdline .= "$net_params->{BOOTIF} ";
         }
-        if ($el10_ipv6_only && !$statelite) {
+        if ($static_ipv6_boot && !$statelite) {
             my $network_args = _el10_static_ipv6_boot_args($node, $net_params);
             unless ($network_args) {
                 xCAT::MsgUtils->report_node_error($callback, $node, "Unable to render static IPv6 boot networking for $node");
@@ -1642,9 +1642,9 @@ sub mkinstall
                 $instserver = $ent->{nfsserver};
             }
 
-            my $el10_ipv6_only = xCAT::SvrUtils->is_el10_os($os)
+            my $static_ipv6_boot = xCAT::SvrUtils->uses_static_ipv6_boot($os)
               && xCAT::NetworkUtils->node_is_ipv6_only($node);
-            if ($el10_ipv6_only) {
+            if ($static_ipv6_boot) {
                 $instserver = xCAT::NetworkUtils->ipv6_server_for_node($node, $instserver);
                 unless ($instserver) {
                     xCAT::MsgUtils->report_node_error($callback, $node, "Unable to resolve the install server for $node as IPv6");
@@ -1656,7 +1656,7 @@ sub mkinstall
                     $instserver = $ip;
                 }
             }
-            my $instserver_authority = _server_authority($instserver, $httpport, $el10_ipv6_only);
+            my $instserver_authority = _server_authority($instserver, $httpport, $static_ipv6_boot);
             unless ($instserver_authority) {
                 xCAT::MsgUtils->report_node_error($callback, $node, "Unable to format the install server endpoint for $node");
                 next;
@@ -1713,7 +1713,7 @@ sub mkinstall
 
             # EL10 IPv6-only boots need the node address after the firmware
             # handoff.  Other platforms retain the site-managed legacy path.
-            if ($el10_ipv6_only) {
+            if ($static_ipv6_boot) {
                 my $network_args = _el10_static_ipv6_boot_args($node, $net_params);
                 unless ($network_args) {
                     xCAT::MsgUtils->report_node_error($callback, $node, "Unable to render static IPv6 boot networking for $node");
@@ -1778,7 +1778,7 @@ sub mkinstall
             }
 
             if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
-                unless ($instserver eq '!myipfn!' || $el10_ipv6_only) {
+                unless ($instserver eq '!myipfn!' || $static_ipv6_boot) {
                     my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($instserver);
                     $instserver = $ip;
                 }

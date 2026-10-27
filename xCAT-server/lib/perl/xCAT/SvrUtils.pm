@@ -2253,6 +2253,51 @@ sub parseosver
 
 #-------------------------------------------------------------------------------
 
+#-----------------------------------------------------------------------------
+
+=head3   uses_static_ipv6_boot
+
+    Description:
+        Whether the installer of this OS takes a static IPv6 address from the kernel command
+        line instead of asking DHCPv6 for one.
+
+        The firmware and the install initrd of a node send different DHCPv6 identifiers, and a
+        reservation matches one. An OS whose initrd honours "ip=<ip>::<gw>:<prefix>:<host>:<if>:none"
+        is given the address of the node directly, so only the firmware stage speaks DHCPv6.
+
+    Arguments:
+        osver
+    Returns:
+        1 when the OS takes the static address, 0 otherwise.
+    Example:
+        if (xCAT::SvrUtils->uses_static_ipv6_boot($osver)) { ... }
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub uses_static_ipv6_boot
+{
+    my $osver = shift;
+    if (defined($osver) && $osver eq __PACKAGE__)
+    {
+        $osver = shift;
+    }
+
+    return 0 unless defined($osver);
+    my ($basename, $majorversion) = xCAT::SvrUtils::parseosver($osver);
+    return 0 unless defined($basename) && defined($majorversion);
+
+    # openEuler reaches the same kickstart and dracut code as EL through #KICKSTARTNET#.
+    return 1 if $basename =~ /^openeuler$/i;
+    # EL 10 is where the installer gained it. A later release keeps it, so this is not an
+    # equality: is_el10_os tested for 10 exactly and left EL11 on the DHCPv6 path.
+    return 1
+      if $basename =~ /^(?:rh\w*|centos|alma|rocky|ol)$/i
+      && $majorversion =~ /^\d+$/
+      && $majorversion >= 10;
+    return 0;
+}
+
 sub is_el10_os
 {
     my $osver = shift;
