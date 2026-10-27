@@ -143,18 +143,20 @@ SKIP: {
 
     # A prefix that is not a multiple of 4 has no reverse zone of its own, because a zone is
     # delegated on a nibble. getzonesfornet used to die here and take makedns with it.
+    # A network whose prefix is not a nibble is covered by several zones of the next nibble.
+    # getzonesfornet used to die here and take makedns with it; the zones come from
+    # NetworkUtils::getIPv6ReverseZones, which both copies of the routine call.
     foreach my $case (
-        [ '2001:db8:7309::/62',    '0.0.0.9.0.3.7.8.b.d.0.1.0.0.2.ip6.arpa.', '/62', '/60', 15 ],
-        [ '2001:db8:7309::1/126',
-            '0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.9.0.3.7.8.b.d.0.1.0.0.2.ip6.arpa.',
-            '/126', '/124', 31 ],
+        [ '2001:db8:7309::/62',   '/62',  4 ],
+        [ '2001:db8:7309::1/126', '/126', 4 ],
+        [ '2001:db8:7309::/64',   '/64',  1 ],
       )
     {
-        my ( $network, $expected, $prefix, $zone_prefix, $nibbles ) = @$case;
+        my ( $network, $prefix, $expected ) = @$case;
         my @zones = eval { xCAT_plugin::ddns::getzonesfornet({ net => $network }) };
         ok( !$@, "an IPv6 $prefix does not abort makedns" );
-        is( $zones[0], $expected,
-            "an IPv6 $prefix gives the enclosing $zone_prefix reverse zone, $nibbles nibbles" );
+        is( scalar(@zones), $expected,
+            "an IPv6 $prefix is covered by $expected reverse zone(s)" );
     }
     my $default_route_ctx = {
         hoststab => {

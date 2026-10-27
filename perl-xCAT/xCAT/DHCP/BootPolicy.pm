@@ -895,21 +895,6 @@ my %GRUB2_NODE_LOADER_SUFFIX = ( aarch64 => '.efi' );
 
 # The file in boot/grub2 that DHCP names as the boot file of a grub2 node. With tftpdir, the name is
 # grub2-<node> until nodeset creates the suffixed link there: a node set by an older xCAT has only that.
-# The IPv6 boot server of a grub2 node. A dual-stack node keeps an IPv4 tftpserver, which
-# has no IPv6 address, so a configured value that does not resolve falls back to the address
-# of the management node that faces the node. Returns the server, or nothing and a reason.
-sub dhcp6_boot_server {
-    my ( $class, %opts ) = @_;
-
-    return $opts{configured_v6} if $opts{configured_v6};
-    return $opts{facing_v6}     if $opts{facing_v6};
-
-    my $reason = $opts{reason} || 'no IPv6-facing address was found';
-    return ( undef, "$opts{configured} has no IPv6 address and $reason" )
-      if defined $opts{configured} && length $opts{configured};
-    return ( undef, $reason );
-}
-
 sub grub2_node_loader {
     my ( $class, %opts ) = @_;
 
@@ -918,6 +903,30 @@ sub grub2_node_loader {
     return $loader if $suffix eq '';
     return $loader if defined $opts{tftpdir} && !-e "$opts{tftpdir}/boot/grub2/$loader$suffix";
     return "$loader$suffix";
+}
+
+# The IPv6 boot server of a grub2 node. A dual-stack node keeps an IPv4 tftpserver, which
+# has no IPv6 address, so a configured value that does not resolve falls back to the address
+# of the management node that faces the node. Returns the server, or nothing and a reason.
+sub dhcp6_boot_server {
+    my ( $class, %opts ) = @_;
+
+    return $opts{configured_v6} if $opts{configured_v6};
+
+    my $named = ( defined $opts{configured} && length $opts{configured} ) ? $opts{configured} : undef;
+
+    # The fallback is reported even when it succeeds. A dual-stack node keeps an IPv4
+    # tftpserver and the fallback is expected there, but so is a typo and a DNS outage, and
+    # without this the boot server silently stops being the configured one.
+    if ( $opts{facing_v6} ) {
+        return ( $opts{facing_v6}, undef ) unless defined $named;
+        return ( $opts{facing_v6},
+            "$named has no IPv6 address, so the DHCPv6 boot server is $opts{facing_v6}" );
+    }
+
+    my $reason = $opts{reason} || 'no IPv6-facing address was found';
+    return ( undef, "$named has no IPv6 address and $reason" ) if defined $named;
+    return ( undef, $reason );
 }
 
 # The ISC host statements that choose the boot file of a node with netboot ipxe, xnba or pxe. They

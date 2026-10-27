@@ -83,6 +83,17 @@ BEGIN {
           if $network =~ /^2001:db8:7309::/ && $prefix == 64;
         return;
     }
+    # Records what the plugin passes, so a test can assert the network reaches the helper with
+    # its prefix. The zones themselves are asserted against the REAL helper in
+    # xCAT-test/unit/networkutils_ipv6_helpers.t; this stub would only measure itself.
+    our @REVERSE_ZONE_CALLS;
+    sub getIPv6ReverseZones {
+        my ( $class, $network, $mask ) = @_;
+        ( $network, $mask ) = ( $class, $network ) if $class ne __PACKAGE__;
+        push @REVERSE_ZONE_CALLS, [ $network, $mask ];
+        my $zone = getIPv6ReverseZone( __PACKAGE__, $network, $mask );
+        return defined($zone) ? ($zone) : ();
+    }
     sub format_uri_host {
         my ($host) = @_;
         $host = $_[1] if defined($host) && $host eq __PACKAGE__;
@@ -335,6 +346,20 @@ foreach my $case (@sysconfig_policy_cases) {
         [],
         'Kea DDNS rejects an out-of-range IPv6 prefix without looping'
     );
+
+    # The ISC and Kea paths pass the network WITH its prefix, and that is the form that broke:
+    # the plugin rounded the prefix itself and passed it beside an embedded one, which
+    # getIPv6PrefixLength ignores, so no reverse zone reached dhcpd.conf. The plugin must hand
+    # the network to the helper unchanged and round nothing.
+    {
+        local @xCAT::NetworkUtils::REVERSE_ZONE_CALLS = ();
+        xCAT_plugin::dhcp::getzonesfornet('2001:db8:7309::/62');
+        is_deeply(
+            [@xCAT::NetworkUtils::REVERSE_ZONE_CALLS],
+            [ [ '2001:db8:7309::/62', undef ] ],
+            'Kea DDNS hands a /62 to the reverse-zone helper with its prefix intact'
+        );
+    }
 }
 
 {

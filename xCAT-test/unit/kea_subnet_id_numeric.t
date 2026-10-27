@@ -13,7 +13,17 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 
-use Test::More tests => 6;
+use Test::More;
+
+# Only the XS backend keeps the string form that an aliased $_ attaches to the scalar. Under
+# JSON::PP every assertion here passes with the bug in place, so the test skips unless the
+# backend that Kea.pm will use is the XS one. The workflow installs libjson-xs-perl.
+use JSON ();
+BEGIN {
+    plan skip_all => 'the JSON backend is ' . JSON->backend . ', which does not keep the string form'
+      unless JSON->backend =~ /XS/;
+}
+plan tests => 6;
 
 use xCAT::DHCP::Backend::Kea;
 

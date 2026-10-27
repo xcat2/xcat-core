@@ -5,7 +5,7 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
-use Test::More tests => 12;
+use Test::More tests => 13;
 
 use xCAT::DHCP::BootPolicy;
 
@@ -28,7 +28,9 @@ is($warning, undef, 'a resolved tftpserver raises no warning');
     facing_v6     => 'fd00::2',
 );
 is($server, 'fd00::2', 'an IPv4 tftpserver falls back to the facing address');
-is($warning, undef, 'the fallback raises no warning');
+like($warning, qr/\Q192.0.2.10\E/,
+    'and the fallback is reported, so a typo or a DNS outage is not silent');
+like($warning, qr/\Qfd00::2\E/, 'naming the address that was used instead');
 
 # <xcatmaster>, or no tftpserver at all.
 ($server, $warning) = choose(facing_v6 => 'fd00::2');

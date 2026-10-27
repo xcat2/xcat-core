@@ -662,4 +662,35 @@ SKIP: {
     );
 }
 
+
+# getIPv6ReverseZones covers a network with several zones when its prefix is not a nibble. Both
+# getzonesfornet copies call it, so one test covers the ISC path and the DDNS path.
+{
+    is_deeply(
+        [ xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/64') ],
+        ['0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.'],
+        'a nibble-aligned prefix gives one zone'
+    );
+    # The embedded prefix is what getIPv6PrefixLength reads, so a value passed beside it is
+    # ignored. The zones must still come from the /62.
+    my @sixtytwo = xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/62');
+    is( scalar(@sixtytwo), 4, 'a /62 is covered by four /64 zones, as a /22 is by four /24 zones' );
+    is_deeply(
+        [@sixtytwo],
+        [
+            '0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+            '1.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+            '2.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+            '3.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+        ],
+        'and they are the four zones of the networks it owns, not the enclosing /60'
+    );
+    is( scalar( xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/126') ), 4,
+        'a /126 is covered by four /128 zones' );
+    is_deeply( [ xCAT::NetworkUtils->getIPv6ReverseZones('::/0') ], ['ip6.arpa.'],
+        'a /0 gives the root zone' );
+    is_deeply( [ xCAT::NetworkUtils->getIPv6ReverseZones('not-an-address/64') ], [],
+        'a value that is not an address gives no zone' );
+}
+
 done_testing();

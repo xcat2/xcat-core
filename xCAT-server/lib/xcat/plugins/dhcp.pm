@@ -4509,13 +4509,12 @@ sub kea_boot_server6_for_node
         facing_v6     => $facing_v6,
         reason        => $reason,
     );
-    return $server if $server;
 
-    # The reservation keeps its address and its identifier, and loses only the boot URL. An
-    # error here would fail makedhcp for a node that boots over IPv4.
-    $callback->({ node => [ { name => [$node],
-        warning => ["Unable to determine the IPv6 boot server: $warning"] } ] });
-    return;
+    # A warning comes with a server when the configured one was substituted, so it is reported
+    # before the server is returned. The reservation keeps its address and its identifier and
+    # loses only the boot URL; an error would fail makedhcp for a node that boots over IPv4.
+    $callback->({ node => [ { name => [$node], warning => [$warning] } ] }) if $warning;
+    return $server;
 }
 
 sub dhcp6_uuid_is_placeholder
@@ -4949,14 +4948,11 @@ sub getzonesfornet {
     my $net   = shift;
     my $mask  = shift;
     my @zones = ();
-    if ($net =~ /:/) { #ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
-        my $maskbits = xCAT::NetworkUtils->getIPv6PrefixLength($net, $mask);
-        return () unless defined($maskbits);
-        # A reverse zone is delegated on a nibble, so a prefix that is not a multiple of 4 has
-        # no zone of its own. Use the enclosing nibble-aligned zone.
-        $maskbits -= $maskbits % 4;
-        my $zone = xCAT::NetworkUtils->getIPv6ReverseZone($net, $maskbits);
-        return defined($zone) ? ($zone) : ();
+    if ($net =~ /:/) {
+        # A reverse zone is delegated on a nibble, so a network whose prefix is not a multiple of
+        # 4 is covered by several zones of the next nibble. The IPv4 arm below splits a /22 into
+        # its /24 zones the same way.
+        return ( @zones, xCAT::NetworkUtils->getIPv6ReverseZones( $net, $mask ) );
     }
 
     #return all in-addr reverse zones for a given mask and net

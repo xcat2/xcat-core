@@ -1653,6 +1653,68 @@ sub getIPv6PrefixLength
 
 #-------------------------------------------------------------------------------
 
+#-------------------------------------------------------
+
+=head3    getIPv6ReverseZones
+
+    Description: The reverse zones that cover an IPv6 network.
+
+    Arguments:
+        network: the network, with or without a prefix length
+        mask:    the prefix length, used when the network carries none
+
+    Returns:
+        The nibble-aligned zones that cover the network, as a list. A reverse zone is delegated
+        on a nibble, so a prefix that is not a multiple of 4 is covered by several zones of the
+        next nibble: a /62 by four /64 zones. This is what the IPv4 side does with a /22.
+        An empty list when the network does not parse.
+
+    Example:
+        my @zones = xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/62');
+
+=cut
+
+#-------------------------------------------------------
+sub getIPv6ReverseZones
+{
+    my $network = shift;
+    if (defined($network) && $network eq __PACKAGE__)
+    {
+        $network = shift;
+    }
+    my $mask = shift;
+
+    my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($network, $mask);
+    return () unless defined($prefix);
+
+    # The address is taken without the prefix, because getIPv6PrefixLength prefers an embedded
+    # one and a rounded value passed beside it would be ignored.
+    my $address = $network;
+    $address =~ s{/.*$}{};
+    my $packed = _pack_ip_address($address, 6);
+    return () unless defined($packed);
+    return ('ip6.arpa.') if $prefix == 0;
+
+    my $remainder = $prefix % 4;
+    my $zonebits  = $remainder ? $prefix + ( 4 - $remainder ) : $prefix;
+    return () if $zonebits > 128;
+
+    my $nibbles = $zonebits / 4;
+    my $hex     = substr( unpack('H*', $packed), 0, $nibbles );
+    my $count   = $remainder ? ( 1 << ( 4 - $remainder ) ) : 1;
+    my $base    = hex( substr( $hex, $nibbles - 1, 1 ) );
+    my $head    = substr( $hex, 0, $nibbles - 1 );
+
+    my @zones;
+    foreach my $step ( 0 .. $count - 1 ) {
+        my $last = $base + $step;
+        last if $last > 0xf;
+        my $zone = $head . sprintf( '%x', $last );
+        push @zones, join( '.', reverse( split( //, $zone ) ) ) . '.ip6.arpa.';
+    }
+    return @zones;
+}
+
 sub getIPv6ReverseZone
 {
     my $network = shift;
