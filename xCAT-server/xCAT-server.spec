@@ -98,7 +98,9 @@ Requires: openssl
 # code does not have. Recommends installs them by default and still lets xCAT
 # install where they are missing.
 # Both are in EL AppStream and in openEuler 24.03 everything.
-%if !0%{?suse_version}
+# Recommends needs rpm 4.12, so the guard names the distributions that have both the tag and the
+# packages. EL7 carries rpm 4.11 and cannot parse the tag at all.
+%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?openEuler}
 Recommends: perl-IO-Socket-INET6
 Recommends: perl-Socket6
 %endif
