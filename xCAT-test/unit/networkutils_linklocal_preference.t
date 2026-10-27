@@ -16,16 +16,16 @@ use xCAT::NetworkUtils;
 
 my @cases = (
     [   'a global IPv6 address outranks a link-local one',
-        [ 'fe80::4054:ff:fec9:9ad2', '2001:db8::50' ],
+        [ 'fe80::5054:ff:fe12:3456', '2001:db8::50' ],
         '2001:db8::50',
     ],
     [   'an IPv4 address outranks a link-local IPv6 address',
-        [ 'fe80::4054:ff:fec9:9ad2', '192.0.2.154' ],
+        [ 'fe80::5054:ff:fe12:3456', '192.0.2.154' ],
         '192.0.2.154',
     ],
     [   'the zone identifier is removed from the address that is returned',
-        [ 'fe80::4054:ff:fec9:9ad2%mgmt0' ],
-        'fe80::4054:ff:fec9:9ad2',
+        [ 'fe80::5054:ff:fe12:3456%mgmt0' ],
+        'fe80::5054:ff:fe12:3456',
     ],
     [   'a link-local address is still returned when it is the only one',
         [ 'fe80::1%eth0' ],
@@ -69,7 +69,7 @@ is_deeply( [ xCAT::NetworkUtils->prefer_routable_addresses() ],
     local *Socket6::NI_NUMERICHOST = sub { 1 };
     local *Socket6::getnameinfo = sub {
         my %address_of = (
-            PACKED_LINKLOCAL => 'fe80::4054:ff:fec9:9ad2',
+            PACKED_LINKLOCAL => 'fe80::5054:ff:fe12:3456',
             PACKED_GLOBAL    => '2001:db8::50',
             PACKED_V4        => '192.0.2.154',
             PACKED_BROKEN    => undef,

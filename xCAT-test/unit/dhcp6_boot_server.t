@@ -37,12 +37,12 @@ is($server, 'fd00::2', 'with no configured server the facing address is used');
 # Nothing resolves. The caller keeps the reservation, so this is a warning and not an error.
 ($server, $warning) = choose(
     configured => '192.0.2.10',
-    reason     => 'the xcat76-cn can not be resolved as IPv6',
+    reason     => 'the node1 can not be resolved as IPv6',
 );
 is($server, undef, 'an unresolvable server yields no boot server');
 like($warning, qr/\Q192.0.2.10\E/,
     'the warning names the configured server that did not resolve');
-like($warning, qr/\Qthe xcat76-cn can not be resolved as IPv6\E/,
+like($warning, qr/\Qthe node1 can not be resolved as IPv6\E/,
     'the warning carries the resolution reason');
 
 # With no configured server there is nothing to name, so the reason stands alone.

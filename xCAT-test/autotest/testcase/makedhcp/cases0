@@ -301,3 +301,43 @@ check:output==0
 cmd:sh -c 'makedhcp -d ci-ipv6-cn >/dev/null 2>&1; makehosts -d ci-ipv6-cn; chtab -d node=ci-ipv6-cn vpd; rmdef -t node ci-ipv6-cn; rmdef -t network ci-ipv6; ip -6 addr del 2001:db8:176::1/64 dev $$SECONDNIC; true'
 check:rc==0
 end
+
+start:makedhcp_dhcpv6_dual_stack_boot_server
+description:makedhcp keeps the DHCPv6 boot URL for a grub2 node whose tftpserver is IPv4
+label:mn_only,ipv6
+# PRE-CLEAN, for the same reason as makedhcp_dhcpv6_boot_intent: a case stops at its first failed
+# check, so the cleanup at the end does not run and the next run measures the leftovers.
+cmd:sh -c 'makedhcp -d ci-ipv6-ds >/dev/null 2>&1; makehosts -d ci-ipv6-ds >/dev/null 2>&1; rmdef -t node ci-ipv6-ds >/dev/null 2>&1; rmdef -t network ci-ipv6ds >/dev/null 2>&1; ip -6 addr del 2001:db8:177::1/64 dev $$SECONDNIC >/dev/null 2>&1; true'
+check:rc==0
+# A second documentation prefix (RFC 3849), so this case cannot read the address the IPv6-only
+# case adds. The node IP below shares this /64 and no other.
+cmd:ip -6 addr add 2001:db8:177::1/64 dev $$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o ci-ipv6ds net=2001:db8:177:: mask=/64 mgtifname=$$SECONDNIC dynamicrange=2001:db8:177::1000-2001:db8:177::1fff
+check:rc==0
+# A dual-stack node keeps an IPv4 tftpserver. The address is TEST-NET-1, so it has no IPv6 form
+# and nothing resolves it off this host.
+cmd:mkdef -t node ci-ipv6-ds groups=all mgt=kvm netboot=grub2 ip=2001:db8:177::20 mac=aa:bb:cc:dd:ee:02 tftpserver=192.0.2.10
+check:rc==0
+cmd:makehosts ci-ipv6-ds
+check:rc==0
+# makedhcp MUST SUCCEED. It resolved the tftpserver as IPv6, got no answer, and reported an error
+# with errorcode 1, so the whole command exited 1 for a node that boots over IPv4.
+cmd:makedhcp ci-ipv6-ds
+check:rc==0
+cmd:kea-dhcp6 -t /etc/kea/kea-dhcp6.conf
+check:rc==0
+# The boot URL survives, and its authority is the address of this management node that faces the
+# node, which is what <xcatmaster> already resolved to. Compared EXACTLY: an IPv4 tftpserver that
+# reached the URL, or a dropped option, both differ from this string.
+cmd:python3 -c 'import json;d=json.load(open("/etc/kea/kea-dhcp6.conf"));print("".join(o.get("data","") for s in d["Dhcp6"]["subnet6"] for r in s.get("reservations",[]) if r.get("hostname")=="ci-ipv6-ds" for o in r.get("option-data",[]) if o.get("name")=="bootfile-url"))'
+check:rc==0
+check:output==tftp://[2001:db8:177::1]/boot/grub2/grub2-ci-ipv6-ds
+# The reservation still identifies the client. Without a uuid or a duid attribute that is the MAC.
+cmd:python3 -c 'import json;d=json.load(open("/etc/kea/kea-dhcp6.conf"));print("".join(r.get("hw-address","") for s in d["Dhcp6"]["subnet6"] for r in s.get("reservations",[]) if r.get("hostname")=="ci-ipv6-ds"))'
+check:rc==0
+check:output==aa:bb:cc:dd:ee:02
+# Leave the management node as it was found.
+cmd:sh -c 'makedhcp -d ci-ipv6-ds >/dev/null 2>&1; makehosts -d ci-ipv6-ds; rmdef -t node ci-ipv6-ds; rmdef -t network ci-ipv6ds; ip -6 addr del 2001:db8:177::1/64 dev $$SECONDNIC; true'
+check:rc==0
+end

@@ -1034,7 +1034,7 @@ foreach my $case (@sysconfig_policy_cases) {
     package main;
 
     my %res_tables = (
-        noderes  => DHCPKeaResTable->new( { 'svc01' => { netboot => 'xnba', servicenode => '192.168.201.20', tftpserver => '<xcatmaster>' } } ),
+        noderes  => DHCPKeaResTable->new( { 'svc01' => { netboot => 'xnba', servicenode => '192.0.2.20', tftpserver => '<xcatmaster>' } } ),
         chain    => DHCPKeaResTable->new( { 'svc01' => {} } ),
         nodetype => DHCPKeaResTable->new( { 'svc01' => { arch => 'x86_64', provmethod => 'install', os => 'rhels9' } } ),
         iscsi    => DHCPKeaResTable->new( {} ),
@@ -1049,13 +1049,13 @@ foreach my $case (@sysconfig_policy_cases) {
     my $svc_getipaddr = sub {
         my ( $host, %opt ) = @_;
         return if $opt{OnlyV6};
-        return '192.168.201.21';
+        return '192.0.2.21';
     };
     local *xCAT::NetworkUtils::getipaddr = $svc_getipaddr;
     # dhcp.pm imports getipaddr into its own namespace at use-time, so override
     # the imported copy as well.
     local *xCAT_plugin::dhcp::getipaddr = $svc_getipaddr;
-    local *xCAT::NetworkUtils::my_ip_facing = sub { return ( 0, '192.168.201.20' ); };
+    local *xCAT::NetworkUtils::my_ip_facing = sub { return ( 0, '192.0.2.20' ); };
     local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
 
     my @errors;
@@ -1075,7 +1075,7 @@ foreach my $case (@sysconfig_policy_cases) {
     is( scalar(@errors), 0, 'service node reservation builds without errors' );
     is( scalar( @{ $reservations || [] } ), 1, 'service node yields exactly one Kea host reservation' );
     my $r = $reservations->[0] || {};
-    is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
+    is( $r->{'ip-address'},  '192.0.2.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
     # S-74. The reservation names the node in two places and both are needed.
     # The "hostname" field is the only name a client cannot displace: with the
@@ -2591,7 +2591,7 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 # skips an IPv6-only node, so the node still reached the IPv4 resolver. With noderes.xcatmaster
 # naming a host that has only an AAAA record, inet_aton fails, the sub reports "Unable to resolve
 # the tftpserver" with errorcode 1, and makedhcp exits 1 on a node whose DHCPv6 reservation and
-# bootfile-url it had just written correctly -- measured on xcat76-cn, 2026-10-23.
+# bootfile-url it had just written correctly, which a run reproduced.
 #
 # 6f171a22b made the same call lazy in kea_node_reservations and missed this site. The assertion
 # is on the CALL, not on the exit code, because the error is what the exit code is made of.
