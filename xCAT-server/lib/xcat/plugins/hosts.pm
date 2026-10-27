@@ -135,6 +135,18 @@ sub _push_host_line
     _index_host_line($#hosts);
 }
 
+# True when the address on line $idx is of the same family as $ip. An unparsable first field
+# is treated as the same family, so a legacy entry keeps the behaviour it had.
+sub _host_line_same_family
+{
+    my ($idx, $ip) = @_;
+
+    return 1 unless defined($ip);
+    my ($line_ip) = defined($hosts[$idx]) ? $hosts[$idx] =~ /^(\S+)\s/ : ();
+    return 1 unless defined($line_ip);
+    return ( ( index($line_ip, ':') >= 0 ) == ( index($ip, ':') >= 0 ) ) ? 1 : 0;
+}
+
 sub _matching_host_indexes
 {
     my ($node, $ip) = @_;
@@ -146,9 +158,17 @@ sub _matching_host_indexes
     {
         $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$key} };
     }
+    # A node name matches only lines of the address family being written. A dual-stack node has
+    # an A line and an AAAA line under one name, and that is the only way to give it both records
+    # through /etc/hosts and makedns. Matching across families made the caller overwrite one line
+    # and blank the other, so writing the IPv4 address deleted the IPv6 entry.
     if (exists($host_indexes_by_node{$node}))
     {
-        $matches{$_} = 1 foreach keys %{ $host_indexes_by_node{$node} };
+        foreach my $idx (keys %{ $host_indexes_by_node{$node} })
+        {
+            next unless _host_line_same_family($idx, $ip);
+            $matches{$idx} = 1;
+        }
     }
 
     my @indexes = sort { $a <=> $b } keys %matches;
