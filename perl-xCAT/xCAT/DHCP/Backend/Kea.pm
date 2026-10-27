@@ -807,9 +807,8 @@ sub live_upsert_reservations {
             ( $identifier_type, $identifier ) = ( 'ip-address', $reservation->{'ip-addresses'}[0] );
         }
         my $key = join('|',
-            # Copy before lc: map aliases $_ to the hash element, and reading a numeric
-            # subnet-id in string context attaches a string form to it, so JSON then sends
-            # "subnet-id":"1" and Kea rejects the update.
+            # Copy before lc: an aliased $_ makes JSON send the subnet-id as a string, which
+            # Kea rejects.
             map { my $v = $_; defined($v) ? lc($v) : '' }
               $reservation->{'subnet-id'}, $identifier_type, $identifier,
         );

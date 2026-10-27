@@ -42,3 +42,12 @@ sent_duid()
     run_genesis 0 --setenv BOOTIF 01-aa-bb-cc-dd-ee-ff
     [ ! -e "$leases" ]
 }
+
+@test "a machine whose SMBIOS UUID is the nil UUID sends no DUID-UUID" {
+    # makedhcp refuses the nil UUID and reserves the hardware address, so a DUID built from it
+    # matches no reservation and the node would take a pool address with no boot file.
+    printf '00000000-0000-0000-0000-000000000000\n' \
+        >"$fixture/sys/devices/virtual/dmi/id/product_uuid"
+    run_genesis 0 --setenv BOOTIF 01-aa-bb-cc-dd-ee-ff
+    [ ! -e "$leases" ]
+}

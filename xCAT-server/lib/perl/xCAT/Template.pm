@@ -59,12 +59,6 @@ sub httpport_suffix {
     return xCAT::HTTPUtils::httpport_suffix($httpport);
 }
 
-sub _is_el10
-{
-    my $os = shift;
-    return defined($os) && $os =~ /^(?:rh\w*|centos|alma|rocky|ol)10(?:\D|$)/i;
-}
-
 sub _dynamic_kickstart_network
 {
     my ($suffix, $ipv6_only) = @_;

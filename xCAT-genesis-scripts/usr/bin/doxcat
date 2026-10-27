@@ -66,14 +66,20 @@ if [ -z "$bootnic" ]; then
 fi
 
 if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
-	duid='default-duid "\\000\\004';
-	# EDK2 firmware sends the SMBIOS bytes, and product_uuid prints the first three fields byte-swapped.
-	for i in `sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/;s/-//g;s/\(..\)/\1 /g' /sys/devices/virtual/dmi/id/product_uuid`; do
-		octnum="\\"`printf "\\%03o" 0x$i`
-		duid=$duid$octnum
-	done
-	duid=$duid'";'
-	echo $duid > /var/lib/dhclient/dhclient6.leases
+	# makedhcp refuses the nil UUID and reserves the hardware address instead, so a DUID
+	# built from it matches no reservation. genesis-duid skips it for the same reason.
+	if [ "$(tr -d -c '0-9a-fA-F' </sys/devices/virtual/dmi/id/product_uuid)" = 00000000000000000000000000000000 ]; then
+		logger -s -t $log_label -p local4.info "SMBIOS UUID is the nil UUID, sending no DUID-UUID"
+	else
+		duid='default-duid "\\000\\004';
+		# EDK2 firmware sends the SMBIOS bytes, and product_uuid prints the first three fields byte-swapped.
+		for i in `sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/;s/-//g;s/\(..\)/\1 /g' /sys/devices/virtual/dmi/id/product_uuid`; do
+			octnum="\\"`printf "\\%03o" 0x$i`
+			duid=$duid$octnum
+		done
+		duid=$duid'";'
+		echo $duid > /var/lib/dhclient/dhclient6.leases
+	fi
 fi
 
 rpcbind

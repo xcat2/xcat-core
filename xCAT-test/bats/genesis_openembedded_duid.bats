@@ -91,6 +91,15 @@ ipv6.dhcp-duid=00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff' ]
     grep -F 'no usable SMBIOS UUID' "$XCAT_TEST_LOG"
 }
 
+@test "a machine whose SMBIOS UUID is the nil UUID keeps the packaged DUID-LL" {
+    # makedhcp refuses the nil UUID and reserves the hardware address, so a DUID built from it
+    # would match no reservation. dhcp6_uuid_is_placeholder is the other half of this pair.
+    run_duid 00000000-0000-0000-0000-000000000000
+    [ "$status" -eq 0 ]
+    [ "$(conf_order)" = 10-xcat-genesis.conf ]
+    grep -F 'nil UUID' "$XCAT_TEST_LOG"
+}
+
 @test "a conf.d directory that cannot be created fails loudly" {
     # A regular file in the way, so mkdir -p fails for root as well.
     printf 'not a directory\n' >"$BATS_TEST_TMPDIR/blocked"

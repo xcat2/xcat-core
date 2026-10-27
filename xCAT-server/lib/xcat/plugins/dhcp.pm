@@ -4952,10 +4952,10 @@ sub getzonesfornet {
     if ($net =~ /:/) { #ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
         my $maskbits = xCAT::NetworkUtils->getIPv6PrefixLength($net, $mask);
         return () unless defined($maskbits);
-        if ($maskbits % 4) {
-            die "Not supporting an IPv6 prefix length that is not divisible by 4 on network $net";
-        }
-        my $zone = xCAT::NetworkUtils->getIPv6ReverseZone($net, $mask);
+        # A reverse zone is delegated on a nibble, so a prefix that is not a multiple of 4 has
+        # no zone of its own. Use the enclosing nibble-aligned zone.
+        $maskbits -= $maskbits % 4;
+        my $zone = xCAT::NetworkUtils->getIPv6ReverseZone($net, $maskbits);
         return defined($zone) ? ($zone) : ();
     }
 

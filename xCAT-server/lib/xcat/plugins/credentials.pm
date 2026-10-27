@@ -37,7 +37,6 @@ use Time::HiRes qw(sleep);
 
 use xCAT::NetworkUtils;
 use xCAT::Utils;
-use xCAT::NetworkUtils;
 use xCAT::PasswordUtils;
 use xCAT::TableUtils;
 use xCAT::StringUtils qw(trim);

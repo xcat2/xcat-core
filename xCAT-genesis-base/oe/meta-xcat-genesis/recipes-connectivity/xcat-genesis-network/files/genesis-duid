@@ -36,6 +36,16 @@ if [ "${#uuid}" -ne 32 ]; then
     exit 0
 fi
 
+# makedhcp refuses the nil UUID, because nodeimport writes it to every PowerKVM node, and
+# reserves the hardware address instead. A DUID built from it would match no reservation, so
+# keep the DUID-LL that Kea can read the hardware address out of.
+case $uuid in
+    00000000000000000000000000000000)
+        log "SMBIOS UUID is the nil UUID, keeping the DUID-LL default"
+        exit 0
+        ;;
+esac
+
 # SMBIOS 2.6 and later store the first three UUID fields little-endian, and EDK2 copies
 # those bytes into its DUID. product_uuid prints the fields in canonical order, so the
 # first three go back into firmware order here. doxcat and makedhcp do the same swap.

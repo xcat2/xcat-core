@@ -158,10 +158,8 @@ sub _matching_host_indexes
     {
         $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$key} };
     }
-    # A node name matches only lines of the address family being written. A dual-stack node has
-    # an A line and an AAAA line under one name, and that is the only way to give it both records
-    # through /etc/hosts and makedns. Matching across families made the caller overwrite one line
-    # and blank the other, so writing the IPv4 address deleted the IPv6 entry.
+    # A dual-stack node has an A line and an AAAA line under one name, so a node name matches
+    # only lines of the family being written. A delete passes all_families.
     if (exists($host_indexes_by_node{$node}))
     {
         foreach my $idx (keys %{ $host_indexes_by_node{$node} })
