@@ -96,6 +96,8 @@ Without the attribute, the DUID is the DUID-UUID that UEFI firmware built on EDK
 Earlier xCAT releases stored ``vpd.uuid`` with the first three fields swapped for nodes from Genesis discovery and for KVM guests from \ **mkvm**\ , \ **clonevm**\  or \ **rscan**\ .
 Set ``vpd.uuid`` of such a node to the UUID that it reports.
 \ **makedhcp**\  warns about a node whose ``vpd.uuid`` looks byte-swapped, and never changes the value.
+The warning is reported only for a node with no ``duid`` attribute. Setting ``duid`` to ``firmware``, to ``canonical`` or to a DUID silences it.
+The check reads the version field, which a swap moves, so it does not report every swapped value and it reports a UUID that does not follow RFC 4122.
 The warning is a report, not a diagnosis.
 A swap moves the version field, but it leaves a valid version in the first field about half the time.
 \ **makedhcp**\  cannot report those rows, and it cannot read the UUID that the node itself holds.

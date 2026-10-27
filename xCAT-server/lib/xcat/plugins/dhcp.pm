@@ -4581,13 +4581,17 @@ sub dhcp6_client_duid
     my $choice = lc( defined($setting) ? $setting : '' );
     $choice =~ s/^\s+|\s+$//g;
     # The third value is a warning about the stored vpd.uuid, and only the two orders read it.
-    if ( $choice eq '' || $choice eq 'firmware' ) {
+    # The warning is reported only when no duid attribute is set. Setting one is the remedy it
+    # asks for, so firmware and canonical must silence it as a literal DUID already does.
+    if ( $choice eq '' ) {
         my $duid = kea_duid_from_uuid( $uuid, 'firmware' );
         return ( $duid, undef, dhcp6_uuid_order_warning($uuid) );
     }
+    if ( $choice eq 'firmware' ) {
+        return ( kea_duid_from_uuid( $uuid, 'firmware' ), undef, undef );
+    }
     if ( $choice eq 'canonical' ) {
-        my $duid = kea_duid_from_uuid($uuid);
-        return ( $duid, undef, dhcp6_uuid_order_warning($uuid) );
+        return ( kea_duid_from_uuid($uuid), undef, undef );
     }
     return $choice if $choice =~ /\A[0-9a-f]{2}(?::[0-9a-f]{2}){2,129}\z/;
     return ( undef, "only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported" );

@@ -542,10 +542,23 @@ sub isc_hosts {
     is_deeply( [@warnings], ["cn01: $swapped_note"], 'ISC: the node is reported with the same text' );
     is( isc_hosts($session)->{cn01}, $canonical, 'ISC: the host is still created' );
 
-    # A literal mac.duid does not read vpd.uuid, so there is nothing to report.
-    $DUIDTable::rows{mac}{cn01}{duid} = $literal;
+    # A duid attribute of any kind is the decision the warning asks for, so none of the three
+    # values is reported. Before this, firmware and canonical were reported and the remedy the
+    # text names could not silence it.
+    foreach my $choice ( $literal, 'firmware', 'canonical' ) {
+        @warnings = ();
+        $DUIDTable::rows{mac}{cn01}{duid} = $choice;
+        kea_reservations( $config, 'cn01' );
+        is_deeply( [ grep { /byte-swapped/ } @warnings ], [],
+            "Kea: a node with duid=$choice is not reported" );
+    }
+
+    # And the default still reports it, so the three above are not passing for want of a warning.
+    @warnings = ();
+    delete $DUIDTable::rows{mac}{cn01}{duid};
     kea_reservations( $config, 'cn01' );
-    is_deeply( [ grep { /byte-swapped/ } @warnings ], [], 'Kea: a node whose duid attribute is a DUID is not reported' );
+    is_deeply( [ grep { /byte-swapped/ } @warnings ], ["cn01: $swapped_note"],
+        'Kea: a node with no duid attribute is still reported' );
 }
 
 done_testing();

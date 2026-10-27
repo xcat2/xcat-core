@@ -149,7 +149,7 @@ sub _host_line_same_family
 
 sub _matching_host_indexes
 {
-    my ($node, $ip) = @_;
+    my ($node, $ip, %opts) = @_;
     my %matches;
 
     my $canonical = xCAT::NetworkUtils->canonical_ip_address($ip);
@@ -166,7 +166,7 @@ sub _matching_host_indexes
     {
         foreach my $idx (keys %{ $host_indexes_by_node{$node} })
         {
-            next unless _host_line_same_family($idx, $ip);
+            next unless $opts{all_families} || _host_line_same_family($idx, $ip);
             $matches{$idx} = 1;
         }
     }
@@ -188,7 +188,10 @@ sub delnode
     my $othernames = shift;
     my $domain     = shift;
 
-    foreach my $idx (_matching_host_indexes($node, $ip))
+    # A delete removes the node, so it takes every family. The family filter exists to keep the
+    # other record of a dual-stack node during an update; applied here it left the old record
+    # behind when the address of a node changed family.
+    foreach my $idx (_matching_host_indexes($node, $ip, all_families => 1))
     {
         _set_host_line($idx, "");
     }
