@@ -814,7 +814,9 @@ sub load_config_file {
             $type = "Varible";
         } elsif ($type eq "Table") {
             ##TABLE BLOCK##
-            if ($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
+            # The value class carries ':' and '/' so an IPv6 network reaches the table. Without
+            # them "net=2001:db8:176::" matched "2001" and the row was written with that value.
+            if ($line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/) {
                 $attr  = $1;
                 $value = $2;
                 if ($name && ($$config_ref{table}{$sub_type}{$name}{__KEY__} ne $attr)) {

@@ -1,41 +1,64 @@
 #!/usr/bin/env perl
 #
 # Kea rejects a reservation whose subnet-id arrives as a JSON string, so every Control Agent
-# update falls back to a full dhcpd restart.
+# update falls back to a full server restart.
 #
-# The cause is Perl aliasing, not a type declaration: map binds $_ to the hash element itself, and
-# reading a numeric subnet-id through a string function attaches a string form to that scalar.
-# JSON then serialises it as "1" rather than 1. Copying the element before reading it keeps the
-# value numeric.
+# The cause is Perl aliasing: the dedupe key in live_upsert_reservations read the subnet-id of
+# each reservation through an aliased $_, and reading a numeric scalar in string context attaches
+# a string form to it. The reservation body is encoded from the same scalar afterwards.
 
 use strict;
 use warnings;
-use Test::More;
 
-BEGIN {
-    eval { require JSON::XS; 1 } or plan skip_all => 'JSON::XS is required to observe the encoding';
+use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
+
+use Test::More tests => 6;
+
+use xCAT::DHCP::Backend::Kea;
+
+# Drive the real sub and encode the captured payload with the backend's own encoder, which is
+# what the HTTP path uses. Asserting on the Perl value would pass with the bug in place.
+sub upsert {
+    my (@args) = @_;
+    my @payloads;
+    my $backend = xCAT::DHCP::Backend::Kea->new(
+        control_agent_handler => sub {
+            my ($payload) = @_;
+            push @payloads, $payload;
+            return { ok => 1, result => 0, response => { result => 0 } };
+        },
+    );
+    my $result = $backend->live_upsert_reservations(@args);
+    my @adds = grep { $_->{command} eq 'reservation-add' } @payloads;
+    return ( $result, $backend, \@adds );
 }
-plan tests => 4;
 
-my $enc = JSON::XS->new->canonical;
+my $reservation = {
+    'subnet-id'  => 1,
+    duid         => '00:04:aa:bb',
+    'ip-addresses' => ['2001:db8::20'],
+    hostname     => 'node20',
+};
 
-# How the dedupe key is built. The second form is what the backend must use.
-sub key_aliased { my ($r) = @_; join('|', map { defined($_) ? lc($_) : '' } $r->{'subnet-id'}, 'duid') }
-sub key_copied  { my ($r) = @_; join('|', map { my $v = $_; defined($v) ? lc($v) : '' } $r->{'subnet-id'}, 'duid') }
+my ( $result, $backend, $adds ) = upsert( [$reservation], service => ['dhcp6'] );
+ok( !$result->{error}, 'the upsert reaches the Control Agent handler' );
+is( scalar(@$adds), 1, 'one reservation-add is sent' );
 
-my $before = { 'subnet-id' => 1 };
-is($enc->encode({ 'subnet-id' => $before->{'subnet-id'} }), '{"subnet-id":1}',
-    'a subnet-id straight from subnet_id_for_ip encodes as a JSON number');
+my $body = $backend->encode_config( $adds->[0] );
+like( $body, qr/"subnet-id"\s*:\s*1\b/,
+    'the reservation body encodes subnet-id as a JSON number' );
+unlike( $body, qr/"subnet-id"\s*:\s*"1"/,
+    'the reservation body does not encode subnet-id as a JSON string, which Kea rejects' );
 
-my $aliased = { 'subnet-id' => 1 };
-key_aliased($aliased);
-is($enc->encode({ 'subnet-id' => $aliased->{'subnet-id'} }), '{"subnet-id":"1"}',
-    'reading the element through an aliased $_ makes it encode as a JSON string, which Kea rejects');
-
-my $copied = { 'subnet-id' => 1 };
-key_copied($copied);
-is($enc->encode({ 'subnet-id' => $copied->{'subnet-id'} }), '{"subnet-id":1}',
-    'copying the element first leaves it a JSON number');
-
-is(key_copied({ 'subnet-id' => 1 }), key_aliased({ 'subnet-id' => 1 }),
-    'and both forms still build the same dedupe key, so nothing else changes');
+# The dedupe key is built over the stale list as well, so a stale entry reads the same scalar a
+# second time.
+my $stale = { 'subnet-id' => 1, duid => '00:04:cc:dd' };
+( $result, $backend, $adds ) = upsert(
+    [ { %$reservation } ],
+    service            => ['dhcp6'],
+    stale_reservations => [$stale],
+);
+ok( !$result->{error}, 'the upsert succeeds with a stale reservation to delete' );
+like( $backend->encode_config( $adds->[0] ), qr/"subnet-id"\s*:\s*1\b/,
+    'subnet-id stays a JSON number when the dedupe key also reads a stale reservation' );
