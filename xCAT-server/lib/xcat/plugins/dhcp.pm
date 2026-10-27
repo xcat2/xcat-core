@@ -4486,30 +4486,36 @@ sub kea_boot_server6_for_node
         $configured_server = $nrent->{xcatmaster};
     }
 
+    my $configured_v6;
     if ($configured_server) {
-        my $server = xCAT::NetworkUtils->ipv6_server_for_node(
+        $configured_v6 = xCAT::NetworkUtils->ipv6_server_for_node(
             $peer, $configured_server
         );
-        unless ($server) {
-            $callback->({ error => ["Unable to resolve an IPv6 boot server for $node from $configured_server"], errorcode => [1] });
-            return;
-        }
-        return $server;
     }
 
-    my $server = xCAT::NetworkUtils->ipv6_server_for_node(
-        $peer, '<xcatmaster>'
+    my ( $facing_v6, $reason );
+    unless ($configured_v6) {
+        my @facing = xCAT::NetworkUtils->my_ip_facing_family($peer, 6);
+        if ( @facing && !$facing[0] ) {
+            $facing_v6 = $facing[1];
+        } elsif ( @facing > 1 ) {
+            $reason = $facing[1];
+        }
+    }
+
+    my ( $server, $warning ) = xCAT::DHCP::BootPolicy->dhcp6_boot_server(
+        configured    => $configured_server,
+        configured_v6 => $configured_v6,
+        facing_v6     => $facing_v6,
+        reason        => $reason,
     );
     return $server if $server;
 
-    my @facing = xCAT::NetworkUtils->my_ip_facing_family($peer, 6);
-    if (!@facing || $facing[0]) {
-        my $reason = @facing > 1 ? $facing[1] : 'no IPv6-facing address was found';
-        $callback->({ error => ["Unable to determine the IPv6 boot server for $node: $reason"], errorcode => [1] });
-        return;
-    }
-
-    return $facing[1];
+    # The reservation keeps its address and its identifier, and loses only the boot URL. An
+    # error here would fail makedhcp for a node that boots over IPv4.
+    $callback->({ node => [ { name => [$node],
+        warning => ["Unable to determine the IPv6 boot server: $warning"] } ] });
+    return;
 }
 
 sub dhcp6_uuid_is_placeholder
