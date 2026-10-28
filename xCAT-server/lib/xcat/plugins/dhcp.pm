@@ -84,10 +84,9 @@ our $distro = xCAT::Utils->osver();
 my $checkdomain=0;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
-my $dhcp6conffile;
+our $dhcp6conffile;
 if ($^O ne 'aix' and not -e $dhcpconffile and -d "/etc/dhcp") {
-    $dhcpconffile  = '/etc/dhcp/dhcpd.conf';
-    $dhcp6conffile = '/etc/dhcp/dhcpd6.conf';
+    $dhcpconffile = '/etc/dhcp/dhcpd.conf';
 }
 my $usingipv6;
 
@@ -104,6 +103,33 @@ if ($distro =~ /ubuntu.*/) {
         $dhcpconffile = '/etc/dhcp3/dhcpd.conf';
     }
 }
+
+#-------------------------------------------------------
+
+=head3 dhcp6_conf_file_for
+
+    Descriptions: The DHCPv6 configuration file that belongs beside a DHCPv4 one.
+                  ISC serves the two families from two files in the same directory,
+                  and the directory differs per distro: openSUSE keeps
+                  /etc/dhcpd.conf, dhcp 4.x uses /etc/dhcp/dhcpd.conf.
+    Arguments: the DHCPv4 configuration file
+    Returns: the DHCPv6 configuration file, or undef where there is no ISC v6 file
+=cut
+
+#-------------------------------------------------------
+sub dhcp6_conf_file_for
+{
+    my ($conffile) = @_;
+    return undef unless defined $conffile;
+    return undef unless $conffile =~ /dhcpd\.conf$/;
+    $conffile =~ s/dhcpd\.conf$/dhcpd6.conf/;
+    return $conffile;
+}
+
+# Derived from the v4 file, which every branch above may have changed. Deriving it inside one
+# of those branches left it undef on openSUSE, where /etc/dhcpd.conf already exists, so
+# makedhcp wrote no IPv6 configuration at all and dhcpd6 had no subnet6 to serve.
+$dhcp6conffile = dhcp6_conf_file_for($dhcpconffile);
 
 sub check_uefi_support {
     my $ntent     = shift;
