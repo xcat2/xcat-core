@@ -62,6 +62,9 @@ my @reported;
         return '10.0.0.1' if defined($name) && $name eq 'mn.cluster';
         return undef;
     }
+    # The nodes of this test all have an IPv4 address; the IPv6-only refusal is covered in
+    # debian_subiquity_boot_params.t.
+    sub node_is_ipv6_only { return 0 }
 }
 
 {
