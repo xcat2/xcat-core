@@ -59,6 +59,34 @@ sub httpport_suffix {
     return xCAT::HTTPUtils::httpport_suffix($httpport);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 _sles_media_url
+
+    The media_url of an autoyast add-on product.
+
+    Arguments:
+        $node_ipv6_only  - whether the node has no IPv4 address
+        $master_host     - the master host, already bracketed when it is IPv6
+        $httpportsuffix  - the port suffix, empty on port 80
+        $pkgdir          - the package directory
+    Returns:
+        the URL YaST installs the product from.
+
+    The table substitution writes the address of the management node as it
+    stands, and "http://2001:db8::1//install" is not a URL YaST can read. A node
+    that has IPv4 keeps the substitution, which service nodes rely on.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub _sles_media_url {
+    my ($node_ipv6_only, $master_host, $httpportsuffix, $pkgdir) = @_;
+
+    my $host = $node_ipv6_only ? $master_host : '#TABLE:noderes:$NODE:nfsserver#';
+    return "http://$host$httpportsuffix/$pkgdir";
+}
+
 sub _dynamic_kickstart_network
 {
     my ($suffix, $ipv6_only) = @_;
@@ -402,7 +430,7 @@ sub subvars {
                         $writerepo .="EOF\n";
                     }
                 } elsif ($platform =~ /^(sles|suse|leap15)/) {
-                    my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir";
+                    my $http = _sles_media_url($node_ipv6_only, $master_uri_host, $httpportsuffix, $pkgdir);
                     $source .= "         <listentry>
                <media_url>$http</media_url>
                <product>SuSE-Linux-pkg$c</product>
