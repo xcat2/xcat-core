@@ -84,7 +84,14 @@ Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (sy
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %if %nots390x
+%if 0%{?suse_version}
+# Two openSUSE packages provide /usr/sbin/in.tftpd and the solver may pick either. atftp has
+# no IPv6 option, so it binds 0.0.0.0:69 only and a node booting over DHCPv6 never fetches its
+# loader. tftp is the hpa server, which listens on both families.
+Requires: tftp
+%else
 Requires: /usr/sbin/in.tftpd
+%endif
 Requires: xCAT-buildkit = 4:%{version}-%{release}
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 Requires: perl-IO-Stty >= 0.04-5
