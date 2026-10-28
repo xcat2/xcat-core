@@ -13,6 +13,20 @@ export HTTPPORT="#TABLEBLANKOKAY:site:key=httpport:value#"
 
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
+# An IPv6 management node address already contains colons, so it has to be bracketed
+# before it goes in a URL. The same helper is in post.xcat.rhels10: a node has no shared
+# shell library at the point this script runs.
+format_uri_host()
+{
+    case "$1" in
+    \[*\]) printf '%s' "$1" ;;
+    *:*) printf '[%s]' "$1" ;;
+    *) printf '%s' "$1" ;;
+    esac
+}
+
+MASTER_HTTP_HOST="$(format_uri_host "$MASTER_IP")"
+
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set -x
 fi
@@ -100,9 +114,9 @@ if [ ! -x /usr/bin/wget ]; then
     sleep 36500d
 fi
 
-xcat_download_postscripts "${MASTER_IP}:${HTTPPORT}" "$INSTALLDIR" "/xcatpost" "/tmp/wget.log"
+xcat_download_postscripts "${MASTER_HTTP_HOST}:${HTTPPORT}" "$INSTALLDIR" "/xcatpost" "/tmp/wget.log"
 if [ "$?" != "0" ]; then
-    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/,check /tmp/wget.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
+    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://${MASTER_HTTP_HOST}:${HTTPPORT}$INSTALLDIR/postscripts/,check /tmp/wget.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
     /tmp/updateflag $MASTER $XCATIPORT "installstatus failed"
     sleep 36500d
 fi
@@ -117,7 +131,7 @@ export NODE=#TABLE:nodelist:THISNODE:node#
 
 msgutil_r "$MASTER_IP" "info" "trying to get mypostscript from $MASTER_IP..." "/var/log/xcat/xcat.log" "$log_label"
 
-wget -N --waitretry=10 --random-wait --retry-connrefused -t 20 -T 60 http://${MASTER_IP}:${HTTPPORT}${TFTPDIR}/mypostscripts/mypostscript.$NODE  -P /xcatpost 2> /tmp/wget.log
+wget -N --waitretry=10 --random-wait --retry-connrefused -t 20 -T 60 "http://${MASTER_HTTP_HOST}:${HTTPPORT}${TFTPDIR}/mypostscripts/mypostscript.$NODE"  -P /xcatpost 2> /tmp/wget.log
 if [ "$?" = "0" ]; then
     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "debug" "precreated mypostscript downloaded successfully" "/var/log/xcat/xcat.log" "$log_label"
