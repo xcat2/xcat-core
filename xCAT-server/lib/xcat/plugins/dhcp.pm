@@ -79,7 +79,7 @@ my %kea_effective_service_owners;
 my %kea_local_server_cache;
 our $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
-my %netcfgs;
+our %netcfgs;
 our $distro = xCAT::Utils->osver();
 my $checkdomain=0;
 
@@ -5071,6 +5071,34 @@ sub putmyselffirst {
     return $srvlist;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 dynamic_range_for
+
+    Descriptions: The dynamic range of a subnet, as ISC writes it.
+    Arguments: the subnet, as the DHCP configuration names it
+    Returns: the range, or undef when the subnet has none.
+
+    addrangedetection keys the ranges on networks.net, which carries no prefix
+    length, while addnet6 names a subnet "<net>/<prefix>". A lookup under the
+    long form found nothing, so an IPv6 subnet never got a range6 and any client
+    whose DUID does not match a reservation received no address at all.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub dynamic_range_for
+{
+    my ($net) = @_;
+
+    return unless defined $net;
+    my $cfg = $netcfgs{$net};
+    return $cfg->{range} if $cfg and $cfg->{range};
+    (my $bare = $net) =~ s{/.*$}{};
+    $cfg = $netcfgs{$bare};
+    return $cfg ? $cfg->{range} : undef;
+}
+
 sub addnet6
 {
     if ($::XCATSITEVALS{externaldhcpservers}) { return; }
@@ -5174,8 +5202,9 @@ sub addnet6
         key_name   => $settings ? $settings->{key_name} : undef,
         zones      => [ getzonesfornet($net) ],
     );
-    if ($netcfgs{$net}->{range}) {
-        push @netent, "    range6 " . $netcfgs{$net}->{range} . ";\n";
+    my $dynamic_range = dynamic_range_for($net);
+    if ($dynamic_range) {
+        push @netent, "    range6 " . $dynamic_range . ";\n";
     } else {
         $callback->({ warning => ["No dynamic range specified for $net. Hosts with no static address will receive no addresses on this subnet."] });
     }
