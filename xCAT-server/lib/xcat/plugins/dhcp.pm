@@ -853,7 +853,15 @@ sub addnode6 {
     $commands .= "new host\n";
     $commands .= "set name = \"$node\"\n";
     $commands .= "set dhcp-client-identifier = $duid\n";
-    $commands .= 'set statements = "ddns-hostname \"' . $node . '\";";' . "\n";
+
+    # RFC 5970 option 59. Without it the firmware takes the reserved address and has nothing
+    # to load, so EDK2 reports "PXE-E21: Remote boot cancelled" and tries the next boot entry.
+    my $nrent        = $nrhash       ? $nrhash->{$node}->[0]       : undef;
+    my $ntent        = $nodetypeents ? $nodetypeents->{$node}->[0] : undef;
+    my $bootfile_url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent );
+    my $statements6  = 'ddns-hostname \"' . $node . '\";';
+    $statements6 .= ' option dhcp6.bootfile-url \"' . $bootfile_url . '\";' if $bootfile_url;
+    $commands .= 'set statements = "' . $statements6 . '";' . "\n";
 
     if ($ip) {
         $commands .= "set ip-address = $ip\n";
@@ -2384,10 +2392,6 @@ sub process_request
                 if ($missingfiles{dhcpd}) {
                     $callback->({ error => ["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"] });
                 }
-            } else {
-                if ($missingfiles{dhcpd6}) {
-                    $callback->({ error => ["The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"] });
-                }
             }
         }
         if ($missingfiles{dhcpd}) {
@@ -2709,6 +2713,10 @@ sub process_request
             unlink($pending) unless restart_dhcpd();
             print "xx";
         }
+    }
+    if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp6 and $^O ne 'aix') {
+        xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: restart dhcp6 service");
+        restart_dhcpd6();
     }
     flock($dhcplockfd, LOCK_UN);
     umask $oldmask;
@@ -4432,7 +4440,7 @@ sub kea_node_reservations6
         } else {
             $reservation{'hw-address'} = $mac;
         }
-        my $bootfile_url = kea_bootfile_url6_for_node($node, $hname, $nrent, $ntent);
+        my $bootfile_url = dhcp6_bootfile_url_for_node($node, $hname, $nrent, $ntent);
         if ($bootfile_url) {
             $reservation{'option-data'} = [
                 {
@@ -4449,7 +4457,7 @@ sub kea_node_reservations6
     return \@reservations;
 }
 
-sub kea_bootfile_url6_for_node
+sub dhcp6_bootfile_url_for_node
 {
     my ( $node, $peer, $nrent, $ntent ) = @_;
 
@@ -4459,7 +4467,7 @@ sub kea_bootfile_url6_for_node
         || $netboot eq 'grub2-http'
         || $netboot eq 'grub2-tftp');
 
-    my $server = kea_boot_server6_for_node($node, $peer, $nrent);
+    my $server = dhcp6_boot_server_for_node($node, $peer, $nrent);
     return unless $server;
 
     my $uri_host = xCAT::NetworkUtils->format_uri_host($server);
@@ -4475,7 +4483,7 @@ sub kea_bootfile_url6_for_node
     return "tftp://$uri_host/boot/grub2/$loader";
 }
 
-sub kea_boot_server6_for_node
+sub dhcp6_boot_server_for_node
 {
     my ( $node, $peer, $nrent ) = @_;
 
@@ -4920,6 +4928,14 @@ sub restart_dhcpd
         }
     }
     return xCAT::Utils->restartservice("dhcp");
+}
+
+# Restart the ISC DHCPv6 daemon. It is a second service, so restarting dhcpd leaves it
+# with the previous configuration -- or stopped, which grants no address at all.
+# restartservice answers -1 where the name does not resolve, as on Debian.
+sub restart_dhcpd6
+{
+    return xCAT::Utils->restartservice("dhcp6");
 }
 
 # Restart dhcpd on aix
