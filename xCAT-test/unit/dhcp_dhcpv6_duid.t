@@ -235,6 +235,37 @@ sub isc_hosts {
     return \%duid;
 }
 
+# ---- RFC 5970 option 59: both backends deliver the same boot file URL -----------------------
+# Without option 59 the firmware takes the reserved address and has nothing to load, so it
+# releases the address and solicits again. dhcp6_bootfile_url_for_node is the one place the URL
+# is built, and both backends call it, so the two must agree.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+    # cn07 asks for xnba, which does not read option 59, so it must get none.
+    $DUIDTable::rows{noderes}{cn07} = { netboot => 'xnba', tftpserver => '2001:db8:176::1' };
+
+    my $config = empty_config();
+    my %kea = map { $_->{hostname} => $_ } @{ kea_reservations( $config, 'cn01', 'cn07' ) };
+    my $sessions = isc_commands( 'cn01', 'cn07' );
+    my $isc6 = $sessions->[1] // '';
+
+    my ($kea_opt) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn01}{'option-data'} || [] };
+    my $kea_url = $kea_opt && $kea_opt->{data};
+    my ($isc_url) = $isc6 =~ /option dhcp6\.bootfile-url \\"([^\\]+)\\"/;
+
+    like( $kea_url, qr{^tftp://\[2001:db8:176::1\]/boot/grub2/},
+        'Kea: the grub2 node gets a bootfile-url from the bracketed IPv6 server' );
+    is( $isc_url, $kea_url,
+        'ISC and Kea deliver the same bootfile-url for the same node' );
+    ok( $kea_opt && $kea_opt->{'always-send'},
+        'Kea sends the bootfile-url even when the client does not ask for it' );
+
+    my ($kea_none) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn07}{'option-data'} || [] };
+    is( $kea_none, undef, 'Kea: an xnba node gets no bootfile-url' );
+    unlike( $isc6, qr/set name = "cn07"\n(?:[^\n]*\n)*?option dhcp6\.bootfile-url/,
+        'ISC: an xnba node gets no bootfile-url' );
+}
+
 # ---- Each backend builds the DUID that mac.duid selects --------------------------------------------
 {
     local %DUIDTable::rows = node_rows(%settings);
