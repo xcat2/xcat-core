@@ -57,4 +57,18 @@ is( xCAT_plugin::sles::rootimg_url('http', '192.168.156.1', 80, 'install/netboot
     'http://192.168.156.1:80/install/netboot/x86_64/rootimg.gz',
     'imgurl= leaves an IPv4 image server alone' );
 
+# grub2.pm substitutes !myipfn! into these same URLs, after the port is already appended.
+is( xCAT::NetworkUtils::substitute_facing_address(
+        'install=http://!myipfn!:80/install/leap15.6/x86_64/1', '2001:db8:156::1'),
+    'install=http://[2001:db8:156::1]:80/install/leap15.6/x86_64/1',
+    'a placeholder that a port follows is bracketed for IPv6' );
+is( xCAT::NetworkUtils::substitute_facing_address('xcatd=!myipfn! quiet', '2001:db8:156::1'),
+    'xcatd=2001:db8:156::1 quiet',
+    'a placeholder with no port keeps the bare IPv6 address' );
+is( xCAT::NetworkUtils::substitute_facing_address(
+        'install=http://!myipfn!:80/x', '192.168.156.1'),
+    'install=http://192.168.156.1:80/x', 'an IPv4 address is never bracketed' );
+is( xCAT::NetworkUtils::substitute_facing_address('xcatd=!myipfn!', undef),
+    'xcatd=!myipfn!', 'no facing address leaves the command line alone' );
+
 done_testing();
