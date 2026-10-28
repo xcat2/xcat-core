@@ -42,6 +42,8 @@ for my $name (qw(subiquity_nfsroot_server subiquity_kcmdline subiquity_boot_para
 {
     package xCAT::NetworkUtils;
     sub getipaddr { return undef }
+    # The default answer: a node that has an IPv4 address. The IPv6-only case injects its own.
+    sub node_is_ipv6_only { return 0 }
 }
 
 {
@@ -109,6 +111,31 @@ my $resolver = sub { $_[0] eq 'mn.cluster' ? '10.0.0.1' : undef };
     ok( !defined $kcmdline, 'an unresolvable install server yields no boot config' );
     like( $err, qr/nosuchhost/, 'and the error names the server that failed' );
     like( $err, qr/klibc|nfsmount|address/i, 'and says why it matters' );
+}
+
+# ---- an IPv6-only node cannot use the live installer -----------------------------------------
+# Measured on noble: the ipconfig in the casper initrd carries no IPv6 string at all, and klibc
+# nfsmount answers "need a path" for both "[2001:db8::1]:/export" and "2001:db8::1:/export".
+# So the node cannot configure its interface or mount its root, and a command line built for it
+# can only PXE-loop. The refusal names the reason instead.
+{
+    my $ipv6_only = sub { return 1 };
+    my ($kcmdline, $err) = T::subiquity_boot_params(
+        'nofb utf8 auto xcatd=!myipfn!', '!myipfn!',
+        '/install/ubuntu24.04/x86_64', '80', 'cn6', $resolver, $ipv6_only );
+    ok( !defined $kcmdline, 'an IPv6-only node gets no Subiquity command line' );
+    like( $err, qr/\bcn6\b/, '... and the refusal names the node' );
+    like( $err, qr/klibc/, '... and says which component has no IPv6 support' );
+}
+
+# A node that has an IPv4 address is unaffected, whatever the management node also has.
+{
+    my $ipv6_only = sub { return 0 };
+    my ($kcmdline, $err) = T::subiquity_boot_params(
+        'nofb utf8 auto xcatd=mn.cluster', 'mn.cluster',
+        '/install/ubuntu24.04/x86_64', '80', 'cn1', $resolver, $ipv6_only );
+    ok( !defined $err, 'a dual-stack node still gets a boot config' ) or diag("error: $err");
+    like( $kcmdline, qr{nfsroot=10\.0\.0\.1:}, '... with its IPv4 nfsroot' );
 }
 
 done_testing();
