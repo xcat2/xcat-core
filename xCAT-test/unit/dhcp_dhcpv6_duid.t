@@ -169,13 +169,26 @@ print {$fh} "#xCAT generated dhcp configuration\n",
   "subnet 192.0.2.0 netmask 255.255.255.0 {\n",
   "} # 192.0.2.0/255.255.255.0 subnet_end\n";
 close($fh) or die "Cannot close $conf: $!";
+our @restarted;
+# The OS that makedhcp believes it runs on. Without this the sysconfig decisions follow the
+# host the suite runs on, and the branch under test is whichever that host happens to take.
+our $osver = 'rhels9.4';
+
 sub isc_commands {
     my (@wanted) = @_;
     my @sessions;
     @errors = @warnings = ();
+    @restarted = ();
     no warnings 'redefine';
+    # Without this the test restarts the dhcp services of the host it runs on.
+    local *xCAT::Utils::restartservice = sub {
+        shift if @_ && defined( $_[0] ) && $_[0] eq 'xCAT::Utils';
+        push @restarted, $_[0];
+        return 0;
+    };
     local @DUIDTable::networks = ( { net => '2001:db8:176::', mask => '/64', mgtifname => 'eth0' } );
     local *xCAT::DHCP::Backend::new_backend = sub { return bless {}, 'DUIDISCBackend'; };
+    local *xCAT::Utils::osver = sub { return $osver; };
     local *xCAT::Utils::isServiceNode = sub { return 0; };
     local *xCAT::Utils::isLinux = sub { return 1; };
     local *xCAT::Utils::isFIPS = sub { return 0; };
@@ -559,6 +572,48 @@ sub isc_hosts {
     kea_reservations( $config, 'cn01' );
     is_deeply( [ grep { /byte-swapped/ } @warnings ], ["cn01: $swapped_note"],
         'Kea: a node with no duid attribute is still reported' );
+}
+
+# ---- The DHCPv6 reservation names the boot file (RFC 5970 option 59) ------------------------------
+# Without the option the firmware takes the reserved address and has nothing to load. EDK2 then
+# reports "PXE-E21: Remote boot cancelled" and falls through to the next boot entry, which reads
+# like a DHCP failure although the address was granted.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+    my $sessions = isc_commands(@nodes);
+    my $v6       = $sessions->[1] // '';
+
+    my @urls  = $v6 =~ m{dhcp6\.bootfile-url\s*\\?"?(tftp:[^"\\;]+)}g;
+    my @hosts = sort keys %{ isc_hosts($v6) };
+    diag( "hosts created: " . scalar(@hosts) . " (@hosts), urls: " . scalar(@urls) );
+    is( scalar(@urls), scalar(@hosts), 'ISC: every DHCPv6 host that is created gets a boot file URL' );
+    is( $urls[0], "tftp://[2001:db8:176::1]/boot/grub2/grub2-$nodes[0]",
+        'ISC: the URL brackets the IPv6 boot server and names the node loader' );
+
+    # ISC runs DHCPv6 as a second daemon, so restarting dhcpd alone leaves it stopped or
+    # holding the previous configuration. The node then gets no address at all.
+    is( scalar( grep { $_ eq 'dhcp6' } @restarted ), 1,
+        'ISC: makedhcp restarts the DHCPv6 daemon, which is a service of its own' );
+
+    # No EL or openEuler dhcp package ships /etc/sysconfig/dhcpd6, and dhcpd6 does not need
+    # it: ISC dhcpd listens on the interfaces its subnet declarations name. Only an OS outside
+    # the DHCPD_INTERFACE family reaches this decision, so the OS is named here.
+    {
+        local $osver = 'openeuler24.03';
+        isc_commands(@nodes);
+        unlike( join( ' ', @errors ), qr{/etc/sysconfig/dhcpd6},
+            'ISC: a missing /etc/sysconfig/dhcpd6 is not reported as an error' );
+    }
+
+    # A node that cannot netboot over IPv6 must get no URL: only the grub2 loaders read one.
+    local %DUIDTable::rows = node_rows(%settings);
+    $DUIDTable::rows{noderes}{ $nodes[0] }{netboot} = 'xnba';
+    my $mixed = isc_commands(@nodes)->[1] // '';
+    my @mixed_urls  = $mixed =~ m{dhcp6\.bootfile-url\s*\\?"?(tftp:[^"\\;]+)}g;
+    my @mixed_hosts = sort keys %{ isc_hosts($mixed) };
+    is( scalar(@mixed_urls), scalar(@mixed_hosts) - 1, 'ISC: an xnba node gets no DHCPv6 boot file URL' );
+    unlike( join( '', @mixed_urls ), qr/\Q$nodes[0]\E/,
+        'ISC: the URL that is left belongs to the grub2 nodes' );
 }
 
 done_testing();
