@@ -1390,7 +1390,10 @@ sub _autoyast_network6 {
                     {
                         'domain'        => ["$domain"],
                         'dhcp_hostname' => [ { 'content' => 'false', 'config:type' => 'boolean' } ],
-                        'dhcp_resolv'   => [ { 'content' => 'false', 'config:type' => 'boolean' } ],
+                        # dhcp_resolv says whether DHCP may overwrite resolv.conf. The
+                        # AutoYaST schema of Leap 15.6 refuses it, and one element it
+                        # refuses makes YaST reject the whole profile. This section is
+                        # static, so no DHCP can touch resolv.conf anyway.
                         'nameservers'   => [ { 'config:type' => 'list', 'nameserver' => [@nameserversIP] } ],
                     }
                 ],
