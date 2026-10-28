@@ -772,8 +772,10 @@ sub subiquity_nfsroot_server {
     return undef unless defined($instserver) && length($instserver);
     return $instserver if $instserver eq '!myipfn!';
 
-    # A dual-stack management node also has an AAAA record. casper takes everything after the
-    # first colon in nfsroot= as the path, so an IPv6 address there cannot be parsed.
+    # A dual-stack management node also has an AAAA record, and the live filesystem must be
+    # mounted over IPv4. casper passes nfsroot= through untouched; it is klibc nfsmount that
+    # cannot read an IPv6 server. Measured on noble: "[2001:db8::1]:/export" and
+    # "2001:db8::1:/export" both answer "need a path", while "192.0.2.1:/export" is accepted.
     $resolver ||= sub { xCAT::NetworkUtils->getipaddr($_[0], OnlyV4 => 1) };
     return $resolver->($instserver);
 }

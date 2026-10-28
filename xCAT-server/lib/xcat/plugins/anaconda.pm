@@ -1053,7 +1053,7 @@ sub mknetboot
         } elsif (defined($net_params->{BOOTIF}) && ($net_params->{setmac} || $arch =~ /ppc/)) {
             $kcmdline .= "$net_params->{BOOTIF} ";
         }
-        if ($static_ipv6_boot && !$statelite) {
+        if ($static_ipv6_boot) {
             my $network_args = _el10_static_ipv6_boot_args($node, $net_params);
             unless ($network_args) {
                 xCAT::MsgUtils->report_node_error($callback, $node, "Unable to render static IPv6 boot networking for $node");
@@ -2199,6 +2199,21 @@ sub mksysclone
             $kcmdline .= " $net_params->{ksdevice} ";
             if ($arch =~ /ppc/) {
                 $kcmdline .= " $net_params->{BOOTIF} ";
+            }
+
+            # A cloned node reaches the same dracut networking as a netboot one, so it takes the
+            # static address too. Without this it asked DHCPv6 with the identifier its initrd
+            # generates, which matches no reservation.
+            if (xCAT::SvrUtils->uses_static_ipv6_boot($os)
+                && xCAT::NetworkUtils->node_is_ipv6_only($node))
+            {
+                my $network_args = _el10_static_ipv6_boot_args($node, $net_params);
+                unless ($network_args) {
+                    xCAT::MsgUtils->report_node_error($callback, $node,
+                        "Unable to render static IPv6 boot networking for $node");
+                    next;
+                }
+                $kcmdline .= "$network_args ";
             }
 
             #TODO: dd=<url> for driver disks
