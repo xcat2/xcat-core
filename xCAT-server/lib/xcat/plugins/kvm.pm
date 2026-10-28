@@ -893,7 +893,10 @@ sub build_xmldesc {
 
     $xtree{devices}->{console}->{type} = 'pty';
     $xtree{devices}->{console}->{target}->{port} = '1';
-    return XMLout(\%xtree, RootName => "domain");
+    # XML::Simple writes the firmware attribute of <os>; the <firmware> element that states
+    # what the node asks of Secure Boot is a child of the same name, so it is added after.
+    return xCAT::KVMUtils::with_firmware_features(
+        XMLout(\%xtree, RootName => "domain"), $firmware);
 }
 
 sub refresh_vm {
