@@ -63,6 +63,30 @@ is(
     'dhcp --device=02:00:00:00:00:61 --noipv4 --ipv6=dhcp',
     'IPv6-only Kickstart network fragment disables IPv4 and enables DHCPv6'
 );
+# The media_url of an autoyast add-on product. The table substitution writes the address of
+# the management node as it stands, so an IPv6-only node was told to install from
+# "http://2001:db8::1//install/leap15.6/x86_64", which is not a URL YaST can read.
+is(
+    xCAT::Template::_sles_media_url(1, '[2001:db8::1]', '', '/install/leap15.6/x86_64'),
+    'http://[2001:db8::1]//install/leap15.6/x86_64',
+    'an IPv6-only node gets a bracketed media_url'
+);
+is(
+    xCAT::Template::_sles_media_url(1, '[2001:db8::1]', ':8080', '/install/leap15.6/x86_64'),
+    'http://[2001:db8::1]:8080//install/leap15.6/x86_64',
+    'a custom port follows the bracketed address'
+);
+is(
+    xCAT::Template::_sles_media_url(0, '[2001:db8::1]', '', '/install/leap15.6/x86_64'),
+    'http://#TABLE:noderes:$NODE:nfsserver#//install/leap15.6/x86_64',
+    'a node with IPv4 keeps the table substitution'
+);
+unlike(
+    xCAT::Template::_sles_media_url(1, '[2001:db8::1]', '', '/install/leap15.6/x86_64'),
+    qr{http://2001:db8::1},
+    'no unbracketed IPv6 authority reaches the media_url'
+);
+
 {
     package TemplateIPv6MacTable;
     sub new { return bless {}, shift; }
