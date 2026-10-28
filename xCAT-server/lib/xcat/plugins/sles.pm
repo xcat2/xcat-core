@@ -26,6 +26,42 @@ use File::Copy;
 use File::Temp qw/mkdtemp/;
 my $httpmethod     = "http";
 my $httpport       = "80";
+
+#-------------------------------------------------------
+
+=head3 rootimg_url
+
+    Descriptions: The imgurl= value a statelite or stateless node downloads its root image from.
+    Arguments: the method, the image server, the port, the image directory, the image file
+    Returns: the URL, with an IPv6 server bracketed
+=cut
+
+#-------------------------------------------------------
+sub rootimg_url
+{
+    my ($httpmethod, $imgsrv, $httpport, $rootimgdir, $image) = @_;
+    my $authority = xCAT::NetworkUtils::uri_authority($imgsrv, $httpport);
+    return "$httpmethod://$authority/$rootimgdir/$image";
+}
+
+#-------------------------------------------------------
+
+=head3 autoyast_boot_args
+
+    Descriptions: The autoyast= and install= arguments of a diskful SLES or Leap install.
+    Arguments: the method, the install server, the port, the package directory prefix, the node
+    Returns: both arguments, with an IPv6 server bracketed
+=cut
+
+#-------------------------------------------------------
+sub autoyast_boot_args
+{
+    my ($httpmethod, $netserver, $httpport, $httpprefix, $node) = @_;
+    my $authority = xCAT::NetworkUtils::uri_authority($netserver, $httpport);
+    return "autoyast=$httpmethod://$authority/install/autoinst/$node"
+      . " install=$httpmethod://$authority$httpprefix/1";
+}
+
 my $useflowcontrol = "0";
 use File::Find;
 use File::Basename;
@@ -521,7 +557,7 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
             } else {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = "imgurl=" . rootimg_url($httpmethod, $imgsrv, $httpport, $rootimgdir, "rootimg-statelite.gz") . " STATEMNT=";
                 $kcmdline = $checksum_arg . $kcmdline;
             }
 
@@ -575,7 +611,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+              "imgurl=" . rootimg_url($httpmethod, $imgsrv, $httpport, $rootimgdir, $compressedrootimg) . " ";
             $kcmdline .= $checksum_arg;
             $kcmdline .= $uftp_args;
         }
@@ -1158,13 +1194,7 @@ sub mkinstall
                 $httpprefix =~ s/^$installroot/\/install/;
             }
             my $kcmdline =
-              "autoyast=$httpmethod://"
-              . $netserver . ":" . $httpport
-              . "/install/autoinst/"
-              . $node
-              . " install=$httpmethod://"
-              . $netserver . ":" . $httpport
-              . "$httpprefix/1";
+              autoyast_boot_args($httpmethod, $netserver, $httpport, $httpprefix, $node);
             if ($os =~ /^leap15/) {
                 $kcmdline .= " self_update=0";
             }

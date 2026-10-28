@@ -4023,13 +4023,13 @@ sub send_tcp_msg {
 
 #-----------------------------------------------------------------------------
 
-=head3 xcatd_cmdline_address
+=head3 uri_authority
 
-    Format a management node address and port for the xcatd= kernel argument.
+    Format an address and port as a URI authority, for a kernel argument or a URL.
 
     Arguments:
-        $address - the management node address, IPv4 or IPv6
-        $port    - the xcatd port
+        $address - an address, IPv4 or IPv6
+        $port    - the port
     Returns:
         "<address>:<port>", with the address bracketed when it is IPv6.
 
@@ -4039,12 +4039,27 @@ sub send_tcp_msg {
 =cut
 
 #-----------------------------------------------------------------------------
-sub xcatd_cmdline_address {
+sub uri_authority {
     my ($address, $port) = @_;
 
     return unless defined($address) && length($address);
     return "[$address]:$port" if index($address, ':') >= 0;
     return "$address:$port";
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 xcatd_cmdline_address
+
+    The authority of the xcatd= kernel argument. See uri_authority.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub xcatd_cmdline_address {
+    my ($address, $port) = @_;
+
+    return uri_authority($address, $port);
 }
 
 1;
