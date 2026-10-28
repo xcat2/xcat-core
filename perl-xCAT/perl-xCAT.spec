@@ -14,6 +14,12 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifos linux
 BuildArch: noarch
 BuildRequires: perl perl-DBI perl-JSON
+# openSUSE has no perl-generators, so rpm derives no perl() requires from the module
+# sources the way EL does. Name the modules an openSUSE node does not already carry, or
+# xCAT::Table dies with "Can't locate JSON.pm" and xcatd never starts.
+%if 0%{?suse_version}
+Requires: perl(JSON) perl(Expect) perl(SNMP) perl(HTML::Form)
+%endif
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
 #Requires: perl-SOAP-Lite
 %endif
