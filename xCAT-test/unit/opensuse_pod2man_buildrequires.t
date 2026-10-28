@@ -34,7 +34,7 @@ sub build_requires {
         '--undefine', 'rhel', '--undefine', 'suse_version', '--undefine', 'openEuler',
         '--define', $define, repo_path($spec)) or die "run rpmspec: $!";
     my @requires = <$fh>;
-    close($fh) or BAIL_OUT("rpmspec failed for $spec with $define");
+    close($fh) or die "rpmspec failed for $spec with $define";
     chomp @requires;
     return @requires;
 }
