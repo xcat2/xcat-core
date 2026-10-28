@@ -579,7 +579,7 @@ sub mknetboot
             $kcmdline .= $checksum_arg;
             $kcmdline .= $uftp_args;
         }
-        $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+        $kcmdline .= "XCAT=" . xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport) . " ";
         $kcmdline .= " XCATHTTPPORT=$httpport ";
 
         #if site.nodestatus="n", append "nonodestatus" to kcmdline
@@ -1537,7 +1537,8 @@ sub mksysclone
                     }
                 }
             }
-            $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+            my $xcat_endpoint = xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport);
+            $kcmdline .= " XCAT=$xcat_endpoint xcatd=$xcat_endpoint SCRIPTNAME=$imagename";
 
             $bootparams->{$node}->[0]->{kernel} = "xcat/$genesis_kernel";
             $bootparams->{$node}->[0]->{initrd} = "xcat/$genesis_initrd";

@@ -1830,7 +1830,8 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
             } else {
-                $kcmdline = "imgurl=http://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = "imgurl=http://" . xCAT::NetworkUtils->format_host_port($imgsrv, $httpport)
+                  . "/$rootimgdir/rootimg-statelite.gz STATEMNT=";
                 $kcmdline = $checksum_arg . $kcmdline;
             }
 
@@ -1859,7 +1860,7 @@ sub mknetboot
             }
             $kcmdline .= $statemnt . " ";
             $kcmdline .=
-              "XCAT=$xcatmaster:$xcatdport ";
+              "XCAT=" . xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport) . " ";
             $kcmdline .=
               "NODE=$node ";
 
@@ -1887,10 +1888,10 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=http://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+              "imgurl=http://" . xCAT::NetworkUtils->format_host_port($imgsrv, $httpport) . "/$rootimgdir/$compressedrootimg ";
             $kcmdline .= $checksum_arg;
             $kcmdline .= $uftp_args;
-            $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+            $kcmdline .= "XCAT=" . xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport) . " ";
         }
 
         

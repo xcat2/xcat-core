@@ -701,7 +701,8 @@ sub setdestiny {
                 if (-r "$tftpdir/xcat/nbk.$arch") {
                     $bphash->{$_}->[0]->{kernel} = "xcat/nbk.$arch";
                     $bphash->{$_}->[0]->{initrd} = "xcat/nkfs.$arch.gz";
-                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd="
+                      . xCAT::NetworkUtils::xcatd_cmdline_address($master, $xcatdport);
                     $callback->({ warning => ["No genesis.kernel.$arch file found. Defaulting to legacy nbk.$arch"]});
                 } else { # can not find genesis.kernel or nbk file
                     $callback->({ error => ["Could not find genesis.kernel.$arch or legacy nbk.$arch files"], errorcode => [1] });

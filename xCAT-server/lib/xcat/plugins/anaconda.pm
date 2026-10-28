@@ -2243,7 +2243,8 @@ sub mksysclone
                     $kcmdline .= "n8r";
                 }
             }
-            $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+            my $xcat_endpoint = xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport);
+            $kcmdline .= " XCAT=$xcat_endpoint xcatd=$xcat_endpoint SCRIPTNAME=$imagename";
 
             my $k;
             my $i;

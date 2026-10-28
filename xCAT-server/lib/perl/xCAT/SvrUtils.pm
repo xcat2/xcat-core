@@ -2613,8 +2613,14 @@ sub build_statelite_nfsroot_parameter {
     my ($additional_mount_options, $error) = _parse_statelite_nfsroot_options($additional_options);
     return (undef, $error) if $error;
 
+    # root=nfs: separates the server, the directory and the options with colons, so an IPv6
+    # server has to be bracketed or the directory cannot be told from the address. dracut and
+    # mount.nfs both read the bracketed form. All three netboot plugins build it here.
+    my $authority = xCAT::NetworkUtils->format_uri_host($server);
+    return (undef, "Unable to render the NFS root server $server") unless defined($authority);
+
     my @mount_options = ('ro', @{$additional_mount_options});
-    return ('root=nfs:' . $server . ':' . $rootdir . ':' . join(',', @mount_options), undef);
+    return ('root=nfs:' . $authority . ':' . $rootdir . ':' . join(',', @mount_options), undef);
 }
 
 #--------------------------------------------------------------------------------------------------------
