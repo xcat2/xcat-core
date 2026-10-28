@@ -12,7 +12,7 @@ no warnings 'once';
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 13;
+use Test::More tests => 14;
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
 $ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
@@ -53,6 +53,13 @@ like($xml, qr{<nameserver>\Q2001:db8:1::fe\E</nameserver>}, 'and the resolver is
 # section configures the node statically, so there is no DHCP to keep away from resolv.conf.
 unlike($xml, qr{<dhcp_resolv}, 'no dhcp_resolv, which the Leap 15.6 schema refuses');
 like($xml, qr{<dhcp_hostname}, 'dhcp_hostname stays, which the schema does accept');
+
+# AutoYaST keeps the network the installer used unless the profile says otherwise, and the
+# templates it replaces set keep_install_network to true. Without this the static interface
+# below is ignored: the installed node came up with ifcfg-eth0 BOOTPROTO=dhcp, no address but
+# a link-local one, and xcat.sh failed with "Network is unreachable".
+like($xml, qr{<keep_install_network config:type="boolean">false</keep_install_network>},
+    'the profile network replaces the one the installer used');
 
 # A node with no gateway still installs; it simply gets no default route.
 my $nogw = xCAT::Template::_autoyast_network6('cn6nogw');
