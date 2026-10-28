@@ -1397,6 +1397,12 @@ sub _autoyast_network6 {
                         'nameservers'   => [ { 'config:type' => 'list', 'nameserver' => [@nameserversIP] } ],
                     }
                 ],
+                # AutoYaST keeps the network the installer used unless the profile says
+                # otherwise, and the section this one replaces sets it true. Without this the
+                # interface below is ignored: the node installs, then boots with
+                # BOOTPROTO=dhcp and no address of its own.
+                'keep_install_network' =>
+                  [ { 'content' => 'false', 'config:type' => 'boolean' } ],
                 'interfaces' => [ { 'interface' => [$interface], 'config:type' => 'list' } ],
                 'routing'    => [$routing],
             }
