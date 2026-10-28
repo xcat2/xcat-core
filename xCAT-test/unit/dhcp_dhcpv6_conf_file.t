@@ -50,4 +50,27 @@ is( $xCAT_plugin::dhcp::dhcp6conffile,
 ok( defined $xCAT_plugin::dhcp::dhcp6conffile,
     'this host has a DHCPv6 configuration file to write' );
 
+# The dynamic range of an IPv6 subnet. addrangedetection keys the ranges on networks.net,
+# which has no prefix length, while addnet6 names the subnet "<net>/<prefix>". The lookup
+# missed, so no range6 was written and a client whose DUID matches no reservation -- the SUSE
+# installer, which uses its own DUID rather than the firmware's -- received no address.
+{
+    local %xCAT_plugin::dhcp::netcfgs = (
+        '2001:db8:156::' => { range => '2001:db8:156::1000 2001:db8:156::1fff' },
+        '192.168.156.0'  => { range => '192.168.156.100 192.168.156.200' },
+    );
+    is( xCAT_plugin::dhcp::dynamic_range_for('2001:db8:156::/64'),
+        '2001:db8:156::1000 2001:db8:156::1fff',
+        'the range of an IPv6 subnet is found under the network address' );
+    is( xCAT_plugin::dhcp::dynamic_range_for('2001:db8:156::'),
+        '2001:db8:156::1000 2001:db8:156::1fff',
+        'the bare network address still finds its range' );
+    is( xCAT_plugin::dhcp::dynamic_range_for('192.168.156.0'),
+        '192.168.156.100 192.168.156.200',
+        'an IPv4 subnet is unchanged' );
+    is( xCAT_plugin::dhcp::dynamic_range_for('2001:db8:999::/64'),
+        undef, 'a subnet with no range reports none' );
+    is( xCAT_plugin::dhcp::dynamic_range_for(undef), undef, 'no subnet reports no range' );
+}
+
 done_testing();
