@@ -1583,10 +1583,11 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{object}) {
         foreach my $type (keys %{ $$config_ref{object} }) {
             foreach my $name (keys %{ $$config_ref{object}{$type} }) {
-                $cmd = "chdef -t $type -o $name";
-                foreach my $attr (keys %{ $$config_ref{object}{$type}{$name} }) {
-                    $cmd = $cmd . " $attr=$$config_ref{object}{$type}{$name}{$attr}";
-                }
+                # The values come from a conf and runcmd passes the command to bash, so a
+                # value that carries shell syntax must be quoted. vmothersetting separates
+                # its settings with a semicolon, which would end the chdef.
+                $cmd = xCAT::Test::OS::object_definition_command(
+                    $type, $name, $$config_ref{object}{$type}{$name} );
                 log_this($running_log_fd, "$cmd");
                 runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
@@ -1601,9 +1602,10 @@ sub setup_env_by_configure_file {
         foreach my $type (keys %{ $$config_ref{table} }) {
             foreach my $name (keys %{ $$config_ref{table}{$type} }) {
                 $cmd = "chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
-                foreach my $attr (keys %{ $$config_ref{table}{$type}{$name} }) {
+                foreach my $attr (sort keys %{ $$config_ref{table}{$type}{$name} }) {
                     if ($attr ne '__KEY__') {
-                        $cmd = $cmd . " $type.$attr=$$config_ref{table}{$type}{$name}{$attr}";
+                        $cmd = $cmd . " $type.$attr="
+                          . xCAT::Test::OS::shell_quote( $$config_ref{table}{$type}{$name}{$attr} );
                     }
                 }
                 log_this($running_log_fd, "$cmd");

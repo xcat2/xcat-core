@@ -84,4 +84,47 @@ sub _slurp {
     return $text;
 }
 
+
+#-------------------------------------------------------
+
+=head3 shell_quote
+
+    Descriptions: Quote a value so a shell passes it through unchanged.
+    Arguments: the value
+    Returns: the value in single quotes, with any single quote escaped
+=cut
+
+#-------------------------------------------------------
+sub shell_quote
+{
+    my ($value) = @_;
+    $value = '' unless defined $value;
+    $value =~ s/'/'\\''/g;
+    return "'" . $value . "'";
+}
+
+#-------------------------------------------------------
+
+=head3 object_definition_command
+
+    Descriptions: The chdef command that defines one object from a conf section.
+                  Attribute values are quoted, because a conf carries values a
+                  shell would read as syntax: vmothersetting separates its
+                  settings with a semicolon, which ends the command.
+    Arguments: the object type, the object name, a hash reference of attributes
+    Returns: the command
+=cut
+
+#-------------------------------------------------------
+sub object_definition_command
+{
+    my ($type, $name, $attrs) = @_;
+
+    my $cmd = "chdef -t $type -o $name";
+    foreach my $attr (sort keys %$attrs) {
+        $cmd .= " $attr=" . shell_quote($attrs->{$attr});
+    }
+    return $cmd;
+}
+
 1;
