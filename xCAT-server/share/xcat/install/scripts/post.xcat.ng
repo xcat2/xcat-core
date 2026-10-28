@@ -27,6 +27,11 @@ format_uri_host()
 
 MASTER_HTTP_HOST="$(format_uri_host "$MASTER_IP")"
 
+format_host_port()
+{
+    printf '%s:%s' "$(format_uri_host "$1")" "$2"
+}
+
 umask 0022
 
 case "$XCATDEBUGMODE" in
@@ -187,7 +192,7 @@ fi
 # Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
 USEOPENSSLFORXCAT=1
 export USEOPENSSLFORXCAT
-XCATSERVER=$MASTER_IP:3001
+XCATSERVER="$(format_host_port "$MASTER_IP" 3001)"
 export XCATSERVER
 
 # If mypostscript doesn't exist, we will get it through getpostscript.awk
