@@ -851,7 +851,19 @@ sub subiquity_kcmdline {
 
 #-------------------------------------------------------------------------------
 sub subiquity_boot_params {
-    my ($base, $instserver, $pkgdir, $httpport, $node, $resolver) = @_;
+    my ($base, $instserver, $pkgdir, $httpport, $node, $resolver, $ipv6_only) = @_;
+
+    # The live installer configures its interface with klibc ipconfig and mounts its root with
+    # klibc nfsmount, and neither knows IPv6. Measured on noble: the ipconfig in the casper
+    # initrd carries no IPv6 string, and nfsmount answers "need a path" for both
+    # "[2001:db8::1]:/export" and "2001:db8::1:/export". A node with no IPv4 address cannot
+    # reach its install media, so it is refused rather than given a command line that can only
+    # PXE-loop.
+    $ipv6_only ||= sub { return xCAT::NetworkUtils->node_is_ipv6_only($_[0]); };
+    return (undef, "$node has no IPv4 address. The Ubuntu live installer configures its network "
+          . "and mounts its root with klibc, which has no IPv6 support, so it cannot install "
+          . "over an IPv6-only network.")
+      if $ipv6_only->($node);
 
     my $nfsip = subiquity_nfsroot_server($instserver, $resolver);
     return (undef, "Could not resolve the install server '$instserver' to an address. "
