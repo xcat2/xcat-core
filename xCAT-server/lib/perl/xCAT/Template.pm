@@ -462,6 +462,7 @@ sub subvars {
         }
         $inc =~ s/#MIRRORSPEC#/mirrorspec()/eg;
         $inc =~ s/#YAST2NET#/yast2network()/eg;
+        $inc =~ s/#YAST2NET6#/yast2network6()/eg;
         $inc =~ s/#KICKSTARTBOOTLOADER#/kickstartbootloader()/eg;
         $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
         $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
@@ -1269,6 +1270,110 @@ d-i apt-setup/local$index/comment string online mirror $index\n";
 
 
 
+# The AutoYaST networking section chosen by address family. An IPv4 node gets the same DHCP
+# block the SUSE templates carried before this directive replaced it, so its profile does not
+# change; only an IPv6-only node gets something different, because DHCP cannot serve it.
+sub yast2network6 {
+    if (xCAT::NetworkUtils->node_is_ipv6_only($node)
+        && $::XCATSITEVALS{managedaddressmode} ne "autoula")
+    {
+        my $section = _autoyast_network6($node);
+        return defined($section) ? $section : '';
+    }
+    return <<'EOY';
+<networking>
+   <dns>
+    <dhcp_hostname config:type="boolean">true</dhcp_hostname>
+    <hostname>linux</hostname>
+  </dns>
+  <interfaces config:type="list">
+    <interface>
+      <bootproto>dhcp</bootproto>
+      <device>eth0</device>
+      <startmode>onboot</startmode>
+    </interface>
+  </interfaces>
+  <keep_install_network config:type="boolean">true</keep_install_network>
+  <routing>
+    <ipv4_forward config:type="boolean">false</ipv4_forward>
+  </routing>
+</networking>
+EOY
+}
+
+# The AutoYaST networking section of an IPv6-only node. AutoYaST takes a prefix length rather
+# than a netmask for IPv6, and the default route carries the IPv6 gateway. SUSE has no static
+# handoff on the kernel command line, so a static address here is the only way an IPv6-only node
+# reaches its installer: DHCPv6 would need the client to send the DUID of the reservation.
+sub _autoyast_network6 {
+    my ($node) = @_;
+
+    my ($ipaddr, $hostname, $gateway, $prefix) =
+      xCAT::NetworkUtils->getNodeNetworkCfg6($node);
+    unless ($ipaddr && defined($prefix) && $prefix =~ /^\d+$/ && $prefix <= 128) {
+        $tmplerr = "Cannot resolve the static IPv6 network configuration of $node";
+        return;
+    }
+
+    if (defined($gateway) && length($gateway)) {
+        $gateway = xCAT::NetworkUtils->ipv6_server_for_node($node, $gateway);
+        unless ($gateway) {
+            $tmplerr = "Cannot resolve the IPv6 gateway of $node";
+            return;
+        }
+    }
+
+    my $nd     = xCAT::NetworkUtils->getNodeDomains([$node]);
+    my $domain = $nd->{$node};
+    my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$node]) };
+    my @nameserversIP = grep { defined && length }
+      map { $_ eq '<xcatmaster>' ? $gateway : $_ } split(/,/, $nameservers{$node} // '');
+
+    my $interface = {
+        'bootproto' => ['static'],
+        'startmode' => ['onboot'],
+        'device'    => ['eth0'],
+        'ipaddr'    => [$ipaddr],
+        'prefixlen' => ["$prefix"],
+    };
+    my $routing = {
+        'ip_forward' => [ { 'content' => 'false', 'config:type' => 'boolean' } ],
+    };
+    if (defined($gateway) && length($gateway)) {
+        $routing->{routes} = [
+            {
+                'route' => [
+                    {
+                        'destination' => ['default'],
+                        'gateway'     => [$gateway],
+                        'netmask'     => ['-'],
+                        'device'      => ['-'],
+                    }
+                ],
+                'config:type' => 'list',
+            }
+        ];
+    }
+
+    my $networkhash = {
+        'networking' => [
+            {
+                'dns' => [
+                    {
+                        'domain'        => ["$domain"],
+                        'dhcp_hostname' => [ { 'content' => 'false', 'config:type' => 'boolean' } ],
+                        'dhcp_resolv'   => [ { 'content' => 'false', 'config:type' => 'boolean' } ],
+                        'nameservers'   => [ { 'config:type' => 'list', 'nameserver' => [@nameserversIP] } ],
+                    }
+                ],
+                'interfaces' => [ { 'interface' => [$interface], 'config:type' => 'list' } ],
+                'routing'    => [$routing],
+            }
+        ]
+    };
+    return XML::Simple->new(KeepRoot => 1)->XMLout($networkhash);
+}
+
 sub yast2network {
     my $line;
     my $hoststab;
@@ -1278,6 +1383,13 @@ sub yast2network {
     unless ($ent and $ent->{mac}) { $tmplerr="missing mac data for $node"; return; }
     my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
     $suffix = lc($suffix);
+
+    # An IPv6-only node cannot take the IPv4 arms below: getNodeNetworkCfg returns nothing for it.
+    if (xCAT::NetworkUtils->node_is_ipv6_only($node)
+        && $::XCATSITEVALS{managedaddressmode} ne "autoula")
+    {
+        return _autoyast_network6($node);
+    }
 
     if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
 
