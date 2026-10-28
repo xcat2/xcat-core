@@ -14,6 +14,10 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 # Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
 %if !0%{?suse_version}
 BuildRequires: perl-Pod-Html
+%else
+# openSUSE installs only perl-base in a build root, and perl-base does not ship pod2man,
+# which xpod2man runs to build the man pages. The full perl package carries it.
+BuildRequires: perl
 %endif
 
 %ifos linux
