@@ -220,7 +220,8 @@ is_deeply(
 );
 
 sub exercise_setstate {
-    my ($node, $mac) = @_;
+    my ($node, $mac, $kcmdline) = @_;
+    $kcmdline //= 'inst.ks=http://example.test/autoinst/node';
     my $tftpdir = tempdir(CLEANUP => 1);
     my $bootloader_root = "$tftpdir/boot/grub2";
     make_path($bootloader_root);
@@ -235,7 +236,7 @@ sub exercise_setstate {
             {
                 kernel   => '/install/rhels10/x86_64/vmlinuz',
                 initrd   => '/install/rhels10/x86_64/initrd.img',
-                kcmdline => 'inst.ks=http://example.test/autoinst/node',
+                kcmdline => $kcmdline,
             },
         ],
     );
@@ -315,5 +316,36 @@ ok(
     -e "$v4_root/grub.cfg-01-02-00-00-00-00-41",
     'IPv4 node retains its MAC-specific GRUB config alias'
 );
+
+# ---- the !myipfn! placeholder on an IPv6-only node ------------------------------------------
+# debian.pm puts !myipfn! in the command line of a Subiquity install and grub2.pm replaces it
+# with the address of the management node that faces the node. That lookup was IPv4 only, so an
+# IPv6-only node was reported unresolvable and nodeset wrote no configuration for it:
+#   Error: The <node> can not be resolved
+#   Error: Failed to generate grub2 configurations for some node(s)
+{
+    @xCAT::NetworkUtils::legacy_facing_calls = ();
+    @xCAT::NetworkUtils::family_facing_calls = ();
+    my ( $dir, $root, $config, $rc, $message ) =
+      exercise_setstate( 'nodev6', '02:00:00:00:00:61', 'xcatd=!myipfn! quiet' );
+    is( $rc, 0, "an IPv6-only node with !myipfn! gets a configuration: $message" );
+    like( $config, qr/xcatd=2001:db8::1\b/,
+        '... and the placeholder becomes the IPv6 address of the facing management node' );
+    unlike( $config, qr/!myipfn!/, '... with no placeholder left behind' );
+    is_deeply( \@xCAT::NetworkUtils::legacy_facing_calls, [],
+        '... without using the IPv4-only lookup, which reports the node unresolvable' );
+}
+
+# An IPv4 node must keep the lookup it had: the IPv6 one would find nothing for it.
+{
+    @xCAT::NetworkUtils::legacy_facing_calls = ();
+    @xCAT::NetworkUtils::family_facing_calls = ();
+    my ( $dir, $root, $config, $rc, $message ) =
+      exercise_setstate( 'nodev4', '02:00:00:00:00:41', 'xcatd=!myipfn! quiet' );
+    is( $rc, 0, "an IPv4 node with !myipfn! still gets a configuration: $message" );
+    like( $config, qr/xcatd=192\.0\.2\.1\b/, '... and the placeholder becomes its IPv4 address' );
+    is_deeply( \@xCAT::NetworkUtils::family_facing_calls, [],
+        '... without asking for an IPv6 facing address' );
+}
 
 done_testing();
