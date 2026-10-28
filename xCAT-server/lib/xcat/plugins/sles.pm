@@ -46,6 +46,48 @@ sub rootimg_url
 
 #-------------------------------------------------------
 
+=head3 static_ipv6_boot_args
+
+    Descriptions: The linuxrc arguments that configure the installer network of an
+                  IPv6-only node.
+    Arguments: the node
+    Returns: the arguments, or an empty list when the node has no IPv6 configuration
+
+    linuxrc configures IPv4 by default, so an IPv6-only node reached no install
+    source. It is configured statically rather than with DHCPv6, for the reason
+    anaconda.pm configures EL statically: the firmware answers DHCPv6 with the
+    DUID-UUID of RFC 6355, which the reservation is keyed on, while the installer
+    builds a DUID of its own that matches no reservation.
+=cut
+
+#-------------------------------------------------------
+sub static_ipv6_boot_args
+{
+    my ($node) = @_;
+
+    my ( $ip, $hostname, $gateway, $prefix ) =
+      xCAT::NetworkUtils->getNodeNetworkCfg6($node);
+    return () unless $ip && defined($prefix) && $prefix =~ /^\d+$/ && $prefix <= 128;
+
+    my @args = ( 'ipv6only=1', "hostip=$ip/$prefix" );
+
+    if ( defined($gateway) && length($gateway) ) {
+        my $resolved = xCAT::NetworkUtils->ipv6_server_for_node( $node, $gateway );
+        push @args, "gateway=$resolved" if $resolved;
+    }
+
+    my $nameservers = xCAT::NetworkUtils->getNodeNameservers( [$node] );
+    my $servers = $nameservers ? $nameservers->{$node} : undef;
+    if ($servers) {
+        my ($first) = grep { /:/ } split( /,/, $servers );
+        push @args, "nameserver=$first" if $first;
+    }
+
+    return @args;
+}
+
+#-------------------------------------------------------
+
 =head3 autoyast_boot_args
 
     Descriptions: The autoyast= and install= arguments of a diskful SLES or Leap install.
@@ -1221,6 +1263,11 @@ sub mkinstall
             my $net_params = xCAT::NetworkUtils->gen_net_boot_params($installnic, $primarynic, $mac);
             if (defined($net_params->{netdevice})) {
                 $kcmdline .= " $net_params->{netdevice} ";
+            }
+
+            if ( xCAT::NetworkUtils->node_is_ipv6_only($node) ) {
+                my @ipv6_args = static_ipv6_boot_args($node);
+                $kcmdline .= ' ' . join( ' ', @ipv6_args ) . ' ' if @ipv6_args;
             }
 
 
