@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# Write the DHCPv6 client identifier that the xCAT reservation of this node holds.
+#
+# makedhcp builds a DUID-UUID (RFC 6355) from vpd.uuid, and a DHCPv6 host reservation carries
+# either a duid or a hw-address, never both. A client that sends any other identifier matches no
+# reservation and takes a pool address with no boot URL. No network manager derives a DUID from
+# the SMBIOS UUID in the byte order the firmware sends: NetworkManager has no such option at all,
+# and systemd-networkd's DUIDType=uuid uses the decoded product UUID, which is the other order.
+# So the value is written as a literal, for whichever renderer the node has.
+#
+# This covers a node whose installed OS speaks DHCPv6, which is a diskful or cloned node on a
+# family with no static handoff. A diskless or statelite node needs nothing: the kernel command
+# line configures its address statically and configeth writes "dhcp6: false", so its image sends
+# no DHCPv6 request at all.
+#
+# The DUID for a given UUID is the same literal as xCAT-test/bats/genesis_duid_uuid.bats and
+# genesis_openembedded_duid.bats, which hold the two Genesis images to this byte order, and as
+# the reservation in xCAT-test/unit/dhcp_kea_plugin_intent.t.
+set -u
+
+LC_ALL=C
+export LC_ALL
+
+uuid_file=${XCAT_PRODUCT_UUID_FILE:-/sys/devices/virtual/dmi/id/product_uuid}
+nm_dir=${XCAT_NM_CONF_DIR:-/etc/NetworkManager/conf.d}
+networkd_dir=${XCAT_NETWORKD_CONF_DIR:-/etc/systemd/networkd.conf.d}
+
+log() {
+    logger -t xcat-dhcpv6-duid -- "$*" 2>/dev/null || echo "xcat-dhcpv6-duid: $*"
+}
+
+if [ ! -r "$uuid_file" ]; then
+    log "no SMBIOS UUID at $uuid_file, leaving the DHCPv6 client identifier alone"
+    exit 0
+fi
+
+uuid=$(tr -d -c '[:xdigit:]' <"$uuid_file" | tr 'A-F' 'a-f')
+if [ "${#uuid}" -ne 32 ]; then
+    log "no usable SMBIOS UUID at $uuid_file, leaving the DHCPv6 client identifier alone"
+    exit 0
+fi
+
+# makedhcp refuses the nil UUID, because nodeimport writes it to every PowerKVM node, and
+# reserves the hardware address instead. A DUID built from it would match no reservation.
+case $uuid in
+    00000000000000000000000000000000)
+        log "SMBIOS UUID is the nil UUID, leaving the DHCPv6 client identifier alone"
+        exit 0
+        ;;
+esac
+
+# SMBIOS 2.6 and later store the first three UUID fields little-endian, and EDK2 copies those
+# bytes into its DUID. product_uuid prints the fields in canonical order, so the first three go
+# back into firmware order here. makedhcp, doxcat and genesis-duid do the same swap.
+octets=${uuid:6:2}:${uuid:4:2}:${uuid:2:2}:${uuid:0:2}
+octets=$octets:${uuid:10:2}:${uuid:8:2}
+octets=$octets:${uuid:14:2}:${uuid:12:2}
+for offset in 16 18 20 22 24 26 28 30; do
+    octets=$octets:${uuid:$offset:2}
+done
+
+written=0
+
+# NetworkManager takes the whole DUID, including the 00:04 type. conf.d is read in name order
+# and a later file wins, so this name sorts after the packaged defaults.
+if [ -d "$nm_dir" ] || [ -d "${nm_dir%/*}" ]; then
+    if mkdir -p "$nm_dir" 2>/dev/null &&
+       printf '%s\n' '[connection]' "ipv6.dhcp-duid=00:04:$octets" >"$nm_dir/15-xcat-dhcpv6-duid.conf"; then
+        log "NetworkManager DHCPv6 client identifier is 00:04:$octets"
+        written=$((written + 1))
+    else
+        log "unable to write $nm_dir/15-xcat-dhcpv6-duid.conf"
+    fi
+fi
+
+# systemd-networkd composes the DUID from DUIDType and DUIDRawData, so the type is named rather
+# than written: DUIDRawData carries the sixteen UUID bytes alone.
+if [ -d "$networkd_dir" ] || [ -d /run/systemd/network ] || [ -d "${networkd_dir%/*}" ]; then
+    if mkdir -p "$networkd_dir" 2>/dev/null &&
+       printf '%s\n' '[DHCPv6]' 'DUIDType=uuid' "DUIDRawData=$octets" >"$networkd_dir/15-xcat-dhcpv6-duid.conf"; then
+        log "systemd-networkd DHCPv6 client identifier is 00:04:$octets"
+        written=$((written + 1))
+    else
+        log "unable to write $networkd_dir/15-xcat-dhcpv6-duid.conf"
+    fi
+fi
+
+if [ "$written" -eq 0 ]; then
+    log "no network manager configuration directory found; the DHCPv6 client identifier is unset"
+    exit 1
+fi
+exit 0
