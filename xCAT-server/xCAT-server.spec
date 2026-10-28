@@ -57,12 +57,17 @@ Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael
 # no EPEL at all, so on EL10 ask for the module weakly -- it is installed where it exists
 # and skipped where it cannot. The dependency generator still turns that "use DB_File"
 # into a hard perl(DB_File) requirement; drop it there too, appending to any filter the
-# build root already set. Every other platform keeps the hard requirement it has today.
+# build root already set. Every other platform keeps the hard requirement, by capability
+# on openSUSE because the module ships there in perl-core-DB_File.
 %if 0%{?rhel} >= 10
 Recommends: perl-DB_File
 %global __requires_exclude %{?__requires_exclude:%{__requires_exclude}|}^perl\\(DB_File\\)$
 %else
+%if 0%{?suse_version}
+Requires: perl(DB_File)
+%else
 Requires: perl-DB_File
+%endif
 %endif
 %endif
 Obsoletes: atftp-xcat
