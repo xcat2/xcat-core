@@ -4039,6 +4039,40 @@ sub send_tcp_msg {
 =cut
 
 #-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+=head3 substitute_facing_address
+
+    Replaces every !myipfn! in a kernel command line with the facing address of
+    the management node.
+
+    Arguments:
+        $cmdline - the kernel command line
+        $address - the facing address, IPv4 or IPv6
+    Returns:
+        the command line, with the placeholder replaced.
+
+    A placeholder that a port follows is bracketed when the address is IPv6,
+    because "http://2001:db8::1:80/" cannot be split into a host and a port.
+    Every other placeholder takes the bare address: xcatd=!myipfn! names a host
+    with no port, and the postscripts read that value as it stands.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub substitute_facing_address {
+    my ($cmdline, $address) = @_;
+
+    return $cmdline unless defined($cmdline) && defined($address) && length($address);
+    if (index($address, ':') >= 0) {
+        $cmdline =~ s/!myipfn!(?=:\d)/[$address]/g;
+    }
+    $cmdline =~ s/!myipfn!/$address/g;
+    return $cmdline;
+}
+
+#-----------------------------------------------------------------------------
+
 sub uri_authority {
     my ($address, $port) = @_;
 

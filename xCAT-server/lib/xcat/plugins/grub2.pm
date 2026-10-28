@@ -225,7 +225,8 @@ sub setstate {
             }
         } else {
             $ipfn = $ipfnd[1];
-            $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
+            $kern->{kcmdline} =
+              xCAT::NetworkUtils::substitute_facing_address($kern->{kcmdline}, $ipfn);
         }
     }
 
