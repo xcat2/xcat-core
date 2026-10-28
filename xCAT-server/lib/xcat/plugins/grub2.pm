@@ -198,7 +198,13 @@ sub setstate {
     my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
-        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        # The facing address has to be looked up in the family the node has. my_ip_facing
+        # resolves with inet_aton, so an IPv6-only node is reported unresolvable and the
+        # node gets no configuration at all.
+        my @ipfnd =
+          ( ( xCAT::NetworkUtils->node_address_family($node) || 4 ) == 6 )
+          ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+          : xCAT::NetworkUtils->my_ip_facing($node);
 
         if ($ipfnd[0] ==  1) {
             return (1, $ipfnd[1]);
