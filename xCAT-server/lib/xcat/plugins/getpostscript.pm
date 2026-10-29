@@ -58,30 +58,24 @@ sub process_request
 
 
     my $client;
-    my @candidates;
     if ($::XCATSITEVALS{nodeauthentication}) { #if requiring node authentication, this request will have a certificate associated with it, use it instead of name resolution
         unless (ref $request->{username}) { return; } #TODO: log an attempt without credentials?
-        @candidates = ($request->{username}->[0]);
+        ($client) = noderange($request->{username}->[0]);
+        unless ($client) {
+            xCAT::MsgUtils->trace(0, "E", "Received getpostscript from $request->{username}->[0], which couldn't be correlated to a node (domain mismatch?)");
+            return;
+        }
     } else {
-        # The peer host and fqdn are a reverse lookup of the client socket, so both are empty when
-        # that lookup fails, however good the client credentials are.
-        # request_client_names adds the certificate name, and excludes the request's own node
-        # attribute, which the client sends and has not proved.
-        @candidates = xCAT::DiscoveryUtils::request_client_names($request);
+        my @candidates = xCAT::DiscoveryUtils::request_client_names($request);
         unless (@candidates) {
             xCAT::MsgUtils->trace(0, 'E', "Received getpostscript from a client this request does not identify: it carries no peer name and no client certificate name. Ignoring it.");
             return;
         }
-    }
-
-    foreach my $candidate (@candidates) {
-        next unless defined $candidate && $candidate ne '';
-        my ($node) = noderange($candidate);
-        if ($node) { $client = $node; last; }
-    }
-    unless ($client) {    #Not able to do identify the host in question
-        xCAT::MsgUtils->trace(0, "E", "Received getpostscript from " . join(', ', @candidates) . ", none of which could be correlated to a node (domain mismatch?)");
-        return;
+        $client = xCAT::DiscoveryUtils::request_client_node($request, \&noderange);
+        unless ($client) {    #Not able to do identify the host in question
+            xCAT::MsgUtils->trace(0, "E", "Received getpostscript from " . join(', ', @candidates) . ", none of which could be correlated to a node (domain mismatch?)");
+            return;
+        }
     }
     my $state;
     if ($request->{scripttype}) { $state = $request->{scripttype}->[0]; }

@@ -122,18 +122,38 @@ sub update_discovery_data {
 
 #-------------------------------------------------------------------------------
 
+=head3 client_certificate_name
+
+    Descriptions: The name xcatd may record as the verified client certificate of a request.
+                  becomeuser and tokens replace the authenticated name with an account name.
+                  A name that differs from the certificate CN is therefore not a certificate name.
+
+    Arguments   : $cert_cn  - the CN of the client certificate, undef when there is none
+                  $authname - the authenticated name xcatd uses for the request
+    Returns     : $cert_cn when the request is still authenticated by that certificate, else undef
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub client_certificate_name {
+    my ($cert_cn, $authname) = @_;
+    return undef unless defined $cert_cn && $cert_cn ne '';
+    return undef unless defined $authname && $authname eq $cert_cn;
+    return $cert_cn;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 request_client_names
 
     Descriptions: The names a node-initiated request offers for correlating it to a node, most
                   trustworthy first.
 
                   xcatd fills _xcat_clienthost and _xcat_clientfqdn from a reverse lookup of the
-                  peer socket, so both are empty when that lookup fails, however good the client
-                  credentials are. _xcat_authname is the name in the validated client certificate
-                  and does not depend on name resolution.
-
-                  The request's own node attribute is NOT a candidate. A client sends it, so it
-                  states what the client wants to be rather than what it proved it is.
+                  peer socket, so both are empty when that lookup fails.
+                  _xcat_certname is the CN of the validated client certificate.
+                  _xcat_authname is not a candidate: a password or a token can set it.
+                  The request's own node attribute is not a candidate: the client sends it.
 
     Arguments   : $request - the request hash xcatd built
     Returns     : the candidate names, without duplicates; an empty list when there are none
@@ -145,14 +165,53 @@ sub request_client_names {
     my ($request) = @_;
     return () unless ref($request) eq 'HASH';
     my @names;
-    foreach my $key (qw(_xcat_clienthost _xcat_clientfqdn _xcat_authname)) {
-        my $value = $request->{$key};
-        next unless ref($value) eq 'ARRAY';
-        my $name = $value->[0];
-        next unless defined $name && $name ne '';
+    foreach my $key (qw(_xcat_clienthost _xcat_clientfqdn _xcat_certname)) {
+        my $name = _first_value($request, $key);
+        next unless defined $name;
         push @names, $name unless grep { $_ eq $name } @names;
     }
     return @names;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 request_client_node
+
+    Descriptions: The node a node-initiated request comes from.
+                  A peer name is expanded as before, and the first node it gives is used.
+                  The certificate name must name exactly one node, with no group or range
+                  expansion, because xCAT signs user and node certificates with one CA.
+
+    Arguments   : $request - the request hash xcatd built
+                  $expand  - code ref that expands a noderange to a node list (noderange)
+    Returns     : the node name, or undef when no candidate names a node
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub request_client_node {
+    my ($request, $expand) = @_;
+    return undef unless ref($request) eq 'HASH' && ref($expand) eq 'CODE';
+    foreach my $key (qw(_xcat_clienthost _xcat_clientfqdn)) {
+        my $name = _first_value($request, $key);
+        next unless defined $name;
+        my ($node) = $expand->($name);
+        return $node if $node;
+    }
+    my $cert = _first_value($request, '_xcat_certname');
+    return undef unless defined $cert;
+    my @nodes = $expand->($cert);
+    return $cert if @nodes == 1 && defined $nodes[0] && $nodes[0] eq $cert;
+    return undef;
+}
+
+sub _first_value {
+    my ($request, $key) = @_;
+    my $value = $request->{$key};
+    return undef unless ref($value) eq 'ARRAY';
+    my $name = $value->[0];
+    return undef unless defined $name && $name ne '';
+    return $name;
 }
 
 1;
