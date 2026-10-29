@@ -693,4 +693,29 @@ SKIP: {
         'a value that is not an address gives no zone' );
 }
 
+# '!myipfn!' is the facing-address placeholder. pxe.pm, grub2.pm and petitboot.pm replace it
+# after the command line is built. format_host_port validated it as a host name and returned
+# undef, so the imgurl of a diskless node lost both its server and its port and read
+# "imgurl=http:////install/...". That reached every Ubuntu diskless node, not only an IPv6 one.
+{
+    is( xCAT::NetworkUtils->format_host_port('!myipfn!', 80), '!myipfn!:80',
+        'the facing-address placeholder survives being formatted with a port' );
+    is( xCAT::NetworkUtils->format_uri_host('!myipfn!'), '!myipfn!',
+        'and survives being formatted as a URI host' );
+
+    my $cmdline = 'imgurl=http://'
+      . ( xCAT::NetworkUtils->format_host_port('!myipfn!', 80) // '' )
+      . '/install/netboot/rootimg.cpio.gz';
+    is( xCAT::NetworkUtils::substitute_facing_address($cmdline, '2001:db8:147::1'),
+        'imgurl=http://[2001:db8:147::1]:80/install/netboot/rootimg.cpio.gz',
+        'an IPv6 facing address reaches the imgurl bracketed' );
+    is( xCAT::NetworkUtils::substitute_facing_address($cmdline, '192.0.2.1'),
+        'imgurl=http://192.0.2.1:80/install/netboot/rootimg.cpio.gz',
+        'and an IPv4 facing address reaches the imgurl bare' );
+
+    # The placeholder is an exception, not the removal of the check.
+    ok( !defined( xCAT::NetworkUtils->format_host_port('not a host', 80) ),
+        'a value that is neither a host nor the placeholder is still refused' );
+}
+
 done_testing();
