@@ -12,7 +12,7 @@ no warnings 'once';
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 16;
+use Test::More tests => 18;
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
 $ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
@@ -87,3 +87,9 @@ is(xCAT::Template::_autoyast_network6('cn6bad'), undef, 'an unresolvable node yi
 
 # A prefix outside the IPv6 range is refused rather than written into the profile.
 is(xCAT::Template::_autoyast_network6('cn6long'), undef, 'a prefix above 128 is refused');
+
+# dhcp_hostname is false above, because an IPv6-only node has no DHCPv4 to take a hostname
+# from. YaST then writes no hostname at all unless the profile carries one, and the installed
+# node answers "localhost": y2log recorded Y2Network::Hostname with @static=nil.
+like($xml, qr{<hostname>cn6</hostname>}, 'the profile names the node, so it does not boot as localhost');
+like($xml, qr{<search>xcat.lab</search>}, 'and a search list, so the short name of the MN resolves');
