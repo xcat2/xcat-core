@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 # vm_machine_type.sh sets machine:invalid, then a valid machine type, then clears it again.
 # lsdef and chdef are shell functions that read and write vmothersetting of node cn1 in a file.
+# virsh is a shell function that answers for the vmhost, and ssh runs the command it is given
+# so that function answers it. MACHINES is what that vmhost declares.
 
 load 'helpers/shell_source'
 
@@ -14,6 +16,17 @@ setup()
     LSDEF_FAIL=0
     CHDEF_FAIL=0
     CHDEF_CALLS=0
+    # The vmhost of cn1, and what its libvirt declares. Every plain alias is in the set, so a
+    # test that does not care which host answers gets the alias.
+    VMHOST=''
+    MACHINES='pseries pseries-10.2 pc pc-i440fx-rhel10.0.0 q35 virt virt-10.2'
+    DEFAULT_MACHINE=''
+    SSH_FAIL=0
+    VIRSH_ABSENT=0
+    SSH_TARGETS="${BATS_TEST_TMPDIR}/ssh-targets"
+    VIRSH_ARCHS="${BATS_TEST_TMPDIR}/virsh-archs"
+    : >"$SSH_TARGETS"
+    : >"$VIRSH_ARCHS"
 }
 
 # lsdef prints no line for an attribute without a value.
@@ -24,9 +37,16 @@ lsdef()
         return 1
     fi
     printf 'Object name: %s\n' "$1"
-    if [ -s "$VMOTHER" ]; then
-        printf '    vmothersetting=%s\n' "$(cat "$VMOTHER")"
-    fi
+    case "$3" in
+        vmhost)
+            [ -z "$VMHOST" ] || printf '    vmhost=%s\n' "$VMHOST"
+            ;;
+        *)
+            if [ -s "$VMOTHER" ]; then
+                printf '    vmothersetting=%s\n' "$(cat "$VMOTHER")"
+            fi
+            ;;
+    esac
 }
 
 chdef()
@@ -38,6 +58,56 @@ chdef()
         *) return 1 ;;
     esac
     CHDEF_CALLS=$((CHDEF_CALLS + 1))
+}
+
+# virsh domcapabilities, as libvirt answers it: a --machine the host does not declare is an
+# error, and the <machine> element names the default machine of the architecture.
+virsh()
+{
+    local arch='' machine=''
+
+    if [ "$VIRSH_ABSENT" -ne 0 ]; then
+        echo "bash: virsh: command not found" >&2
+        return 127
+    fi
+    [ "$1" = domcapabilities ] || return 1
+    shift
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --arch) arch="$2"; shift 2 ;;
+            --machine) machine="$2"; shift 2 ;;
+            *) return 1 ;;
+        esac
+    done
+    printf '%s\n' "$arch" >>"$VIRSH_ARCHS"
+    if [ -n "$machine" ] && ! printf '%s\n' $MACHINES | grep -qx -- "$machine"; then
+        echo "error: invalid argument: the machine '$machine' is not supported by emulator" >&2
+        return 1
+    fi
+    echo '<domainCapabilities>'
+    [ -z "$DEFAULT_MACHINE" ] || printf '  <machine>%s</machine>\n' "$DEFAULT_MACHINE"
+    echo '</domainCapabilities>'
+}
+
+# ssh records the host it was asked for and runs the command, so the virsh function above
+# answers it. Real ssh joins the command words with spaces for the remote shell.
+ssh()
+{
+    local target=''
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -o) shift 2 ;;
+            -*) shift ;;
+            *) target="$1"; shift; break ;;
+        esac
+    done
+    printf '%s\n' "$target" >>"$SSH_TARGETS"
+    if [ "$SSH_FAIL" -ne 0 ]; then
+        echo "ssh: connect to host $target port 22: No route to host" >&2
+        return 255
+    fi
+    "$@"
 }
 
 set_vmother()
@@ -69,9 +139,9 @@ assert_arch()
     [ "$CHDEF_CALLS" -eq 3 ]
 }
 
-@test "ppc64le: the case sets and clears pseries-rhel7.6.0" {
-    assert_arch ppc64le pseries-rhel7.6.0 ''
-    assert_arch ppc64le pseries-rhel7.6.0 'cpumode:host-passthrough'
+@test "ppc64le: the case sets and clears pseries" {
+    assert_arch ppc64le pseries ''
+    assert_arch ppc64le pseries 'cpumode:host-passthrough'
 }
 
 @test "x86_64: the case sets and clears pc" {
@@ -87,6 +157,84 @@ assert_arch()
 @test "aarch64: the case sets and clears virt" {
     assert_arch aarch64 virt ''
     assert_arch aarch64 virt 'cpumode:host-passthrough'
+}
+
+# The machine type comes from the vmhost, because the vmhost is what refuses the domain.
+# AlmaLinux 10 on the ppc64le vmhost declares pseries-5.0 to pseries-10.2 and no rhel machine
+# type at all, so a name from the RHEL 7.6 era is rejected at define time.
+
+@test "ppc64le: the machine type is the alias the vmhost accepts" {
+    MACHINES='pseries pseries-10.2 pseries-9.2'
+    run vm_machine_type_for_arch ppc64le 192.0.2.10
+    [ "$status" -eq 0 ]
+    [ "$output" = 'machine:pseries' ]
+}
+
+@test "ppc64le: the vmhost accepts the machine type that comes back" {
+    local machine
+    MACHINES='pseries pseries-10.0 pseries-10.1 pseries-10.2'
+    machine="$(vm_machine_type_for_arch ppc64le 192.0.2.10)"
+    [ "${machine#machine:}" != "$machine" ]
+    run virsh domcapabilities --arch ppc64 --machine "${machine#machine:}"
+    [ "$status" -eq 0 ]
+}
+
+@test "ppc64le: the libvirt default stands in when the vmhost refuses the alias" {
+    MACHINES='pseries-10.2'
+    DEFAULT_MACHINE='pseries-10.2'
+    run vm_machine_type_for_arch ppc64le 192.0.2.10
+    [ "$status" -eq 0 ]
+    [ "$output" = 'machine:pseries-10.2' ]
+}
+
+@test "ppc64le: the alias stands in when the vmhost cannot be reached" {
+    SSH_FAIL=1
+    run vm_machine_type_for_arch ppc64le 192.0.2.10
+    [ "$status" -eq 0 ]
+    [ "$output" = 'machine:pseries' ]
+}
+
+@test "ppc64le: the alias stands in when the vmhost has no virsh" {
+    VIRSH_ABSENT=1
+    run vm_machine_type_for_arch ppc64le 192.0.2.10
+    [ "$status" -eq 0 ]
+    [ "$output" = 'machine:pseries' ]
+}
+
+@test "ppc64el: the Debian architecture name gets the same machine type" {
+    MACHINES='pseries pseries-10.2'
+    run vm_machine_type_for_arch ppc64el 192.0.2.10
+    [ "$status" -eq 0 ]
+    [ "$output" = 'machine:pseries' ]
+}
+
+@test "apply asks the vmhost of the node about architecture ppc64" {
+    VMHOST=192.0.2.10
+    MACHINES='pseries pseries-10.2'
+    set_vmother ''
+    vm_machine_type_main invalid cn1
+    vm_machine_type_main apply cn1 ppc64le
+    [ "$(vmother)" = 'machine:pseries' ]
+    [ "$(sort -u "$SSH_TARGETS")" = '192.0.2.10' ]
+    [ "$(sort -u "$VIRSH_ARCHS")" = 'ppc64' ]
+}
+
+@test "apply reads the local libvirt when the node names no vmhost" {
+    MACHINES='pseries pseries-10.2'
+    set_vmother ''
+    vm_machine_type_main invalid cn1
+    vm_machine_type_main apply cn1 ppc64le
+    [ "$(vmother)" = 'machine:pseries' ]
+    [ ! -s "$SSH_TARGETS" ]
+    [ "$(sort -u "$VIRSH_ARCHS")" = 'ppc64' ]
+}
+
+@test "x86_64: the machine type stays pc, which the vmhost accepts" {
+    MACHINES='pc pc-i440fx-rhel10.0.0 q35'
+    DEFAULT_MACHINE='pc-i440fx-rhel10.0.0'
+    run vm_machine_type_for_arch x86_64 192.0.2.10
+    [ "$status" -eq 0 ]
+    [ "$output" = 'machine:pc' ]
 }
 
 # assert_round_trip <arch> <original> -- the case ends with the exact value it started with.
