@@ -10,6 +10,7 @@ use xCAT::MsgUtils;
 use Getopt::Long;
 use xCAT::Utils;
 use xCAT::HTTPUtils qw(httpport_suffix);
+use xCAT::NetworkUtils;
 require xCAT::BootUtils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
@@ -249,6 +250,17 @@ sub setstate {
     my $pxelinuxkcmdline = $kern->{kcmdline}; #track it separate, since vars differ
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn = '${next-server}';          #xCAT::Utils->my_ip_facing($node);
+
+        # next-server is a DHCPv4 field. An IPv6 node resolves it to nothing, so the script
+        # carries the facing address instead. my_ip_facing resolves with inet_aton and
+        # reports such a node unresolvable, so the lookup has to name the family.
+        my $family = xCAT::NetworkUtils->node_address_family($node) || 4;
+        if ($family == 6) {
+            my @facing = xCAT::NetworkUtils->my_ip_facing_family($node, 6);
+            my $server = $facing[0] ? undef
+              : xCAT::NetworkUtils::ipxe_script_server(6, $facing[1]);
+            $ipfn = $server if defined $server;
+        }
         $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
         $elilokcmdline =~ s/!myipfn!/%N/g;
         my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);

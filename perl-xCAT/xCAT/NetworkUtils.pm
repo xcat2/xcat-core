@@ -3976,6 +3976,34 @@ sub dracut_static_ip6 {
     return "ip=[$address]::$gw:${prefix}::${nic}:none";
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 ipxe_script_server
+
+    Descriptions: The server an iPXE boot script names for a node.
+
+                  An iPXE script normally carries ${next-server}, which iPXE
+                  fills from the DHCP offer. That field belongs to DHCPv4, so an
+                  IPv6 node resolves it to nothing and every URL in the script
+                  loses its host. Such a node carries the address instead,
+                  bracketed, because the script puts it in a URL.
+
+    Arguments:    $family the address family of the node, 4 or 6
+                  $facing the facing address of the server in that family
+    Returns:      the text to put in the script, or undef when an IPv6 node has
+                  no usable facing address
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ipxe_script_server {
+    my ($family, $facing) = @_;
+
+    return '${next-server}' unless defined($family) && $family == 6;
+    return unless defined($facing) && length($facing);
+    return xCAT::NetworkUtils->format_uri_host($facing);
+}
+
 sub gen_net_boot_params
 {
     my $class      = shift;
