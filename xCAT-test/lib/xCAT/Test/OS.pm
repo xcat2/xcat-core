@@ -49,6 +49,13 @@ sub current_os {
     if (-f "$root/etc/os-release") {
         my $text = _slurp("$root/etc/os-release") // '';
         return 'sles' if $text =~ /sles/;
+        # openSUSE answers with the SLE family whose package set it shares: sles.pm claims
+        # leap15 and xcat.org publishes the Leap dependencies under sles15. Leap's os-release
+        # says ID="opensuse-leap" and carries no SLES string, and Leap ships no
+        # /etc/SuSE-release, so without this arm the sub returns undef -- which matches no
+        # case's os: restriction, so xcattest skips every os-restricted case and reports it as
+        # "has an invalid OS option", blaming the case.
+        return 'sles' if $text =~ /opensuse/i;
         if ($text =~ /^ID\s*=\s*"?openeuler"?\s*$/mi) {
             my ($version) = $text =~ /^VERSION\s*=\s*"?([^"\n]+?)"?\s*$/mi;
             my $release = _openeuler_release($version);
