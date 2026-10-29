@@ -3972,10 +3972,13 @@ sub gen_net_boot_params
         $net_params->{mac}     = $mac;
     }
 
-    # if nicname is set and mac.mac is NOT set to <mac address>, use nicname in the boot parameters
+    # ip6 is the dracut spelling for an IPv6-only node. dracut configures the interface it
+    # needs with DHCPv4 when the command line carries no ip= at all, so such a node gets no
+    # address. either6 asks for DHCPv6 and falls back to router advertisement.
     if ($nicname && !defined($net_params->{setmac})) {
         $net_params->{ksdevice}  = "ksdevice=$nicname";
         $net_params->{ip}        = "ip=$nicname:dhcp";
+        $net_params->{ip6}       = "ip=$nicname:either6";
         $net_params->{netdev}    = "netdev=$nicname";
         $net_params->{netdevice} = "netdevice=$nicname";
         $net_params->{bootdev}   = "bootdev=$nicname";
@@ -3983,6 +3986,7 @@ sub gen_net_boot_params
         $net_params->{ksdevice}  = "ksdevice=$mac";
         $net_params->{BOOTIF}    = "BOOTIF=$mac";
         $net_params->{ip}        = "ip=dhcp";
+        $net_params->{ip6}       = "ip=either6";
         $net_params->{netdevice} = "netdevice=$mac";
     }
 
