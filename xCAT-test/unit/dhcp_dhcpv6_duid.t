@@ -13,6 +13,8 @@ use lib "$FindBin::Bin/../../xCAT-server/lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
+use File::Basename qw(dirname);
+use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use JSON ();
 use Test::More;
@@ -264,6 +266,39 @@ sub isc_hosts {
     is( $kea_none, undef, 'Kea: an xnba node gets no bootfile-url' );
     unlike( $isc6, qr/set name = "cn07"\n(?:[^\n]*\n)*?option dhcp6\.bootfile-url/,
         'ISC: an xnba node gets no bootfile-url' );
+}
+
+# ---- An ipxe node gets the UEFI loader over DHCPv6 -------------------------------------------
+# The firmware that solicits over DHCPv6 is UEFI, and the iPXE build xCAT ships reports dhcpv6
+# and ipv6 where the xnba loader does not. Without option 59 such a node takes the reserved
+# address and has nothing to load.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+
+    my $present = tempdir( CLEANUP => 1 );
+    my $loader  = 'xcat/ipxe/x86_64-sb/snponly-shim.efi';
+    make_path( dirname("$present/$loader") );
+    open( my $fh, '>', "$present/$loader" ) or die "cannot write the loader: $!";
+    print {$fh} "loader\n";
+    close($fh);
+    my $absent = tempdir( CLEANUP => 1 );
+
+    $DUIDTable::rows{noderes}{cn02} =
+      { netboot => 'ipxe', tftpserver => '2001:db8:176::1', tftpdir => $present };
+    $DUIDTable::rows{noderes}{cn03} =
+      { netboot => 'ipxe', tftpserver => '2001:db8:176::1', tftpdir => $absent };
+
+    my $config = empty_config();
+    my %kea = map { $_->{hostname} => $_ } @{ kea_reservations( $config, 'cn02', 'cn03' ) };
+
+    my ($with) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn02}{'option-data'} || [] };
+    is( $with && $with->{data}, "tftp://[2001:db8:176::1]/$loader",
+        'an ipxe node gets the UEFI loader from the bracketed IPv6 server' );
+
+    # Naming a file the TFTP server does not have costs the client a timeout it cannot
+    # diagnose, so no option is better than a wrong one.
+    my ($without) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn03}{'option-data'} || [] };
+    is( $without, undef, 'an ipxe node whose loader is not on disk gets no bootfile-url' );
 }
 
 # ---- Each backend builds the DUID that mac.duid selects --------------------------------------------

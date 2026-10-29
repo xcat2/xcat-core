@@ -4491,7 +4491,8 @@ sub dhcp6_bootfile_url_for_node
     return unless $netboot
       && ($netboot eq 'grub2'
         || $netboot eq 'grub2-http'
-        || $netboot eq 'grub2-tftp');
+        || $netboot eq 'grub2-tftp'
+        || $netboot eq 'ipxe');
 
     my $server = dhcp6_boot_server_for_node($node, $peer, $nrent);
     return unless $server;
@@ -4499,12 +4500,27 @@ sub dhcp6_bootfile_url_for_node
     my $uri_host = xCAT::NetworkUtils->format_uri_host($server);
     return unless $uri_host;
 
+    my $boot_tftpdir = ( ( $nrent && $nrent->{tftpdir} ) || $tftpdir );
+
+    if ($netboot eq 'ipxe') {
+        # The firmware that solicits over DHCPv6 is UEFI, so the UEFI loader is the only one
+        # such a client can ask for. The iPXE build xCAT ships reports dhcpv6 and ipv6, which
+        # the xnba loader does not, so xnba still gets no option 59.
+        my $loader = xCAT::DHCP::BootPolicy->x86_loader( method => 'ipxe' )->{uefi};
+        return unless $loader;
+
+        # Naming a file the TFTP server does not have costs the client a timeout it cannot
+        # diagnose, which is why the Kea client classes check the loader the same way.
+        return if defined $boot_tftpdir && !-e "$boot_tftpdir/$loader";
+        return "tftp://$uri_host/$loader";
+    }
+
     # grub2_node_loader is the one place the boot file name of a grub2 node is chosen, so
     # an aarch64 node gets the .efi name its firmware requests over IPv6 as well as IPv4.
     my $loader = xCAT::DHCP::BootPolicy->grub2_node_loader(
         node    => $node,
         arch    => $ntent && $ntent->{arch},
-        tftpdir => ( ( $nrent && $nrent->{tftpdir} ) || $tftpdir ),
+        tftpdir => $boot_tftpdir,
     );
     return "tftp://$uri_host/boot/grub2/$loader";
 }
