@@ -1363,8 +1363,15 @@ sub _autoyast_network6 {
     my $nd     = xCAT::NetworkUtils->getNodeDomains([$node]);
     my $domain = $nd->{$node};
     my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$node]) };
-    my @nameserversIP = grep { defined && length }
+    # site.nameservers holds one list for the cluster, so the node can be given the IPv4
+    # resolver of another network. An IPv6-only node cannot reach it, and an unreachable
+    # server in resolv.conf makes every lookup wait for its timeout. The gateway is the
+    # management node, which answers.
+    my @nameserversIP = grep { index($_, ':') >= 0 }
+      grep { defined && length }
       map { $_ eq '<xcatmaster>' ? $gateway : $_ } split(/,/, $nameservers{$node} // '');
+    @nameserversIP = ($gateway)
+      if !@nameserversIP && defined($gateway) && length($gateway);
 
     my $interface = {
         'bootproto' => ['static'],
