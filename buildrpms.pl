@@ -61,7 +61,8 @@ use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildi
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir
                         package_skip_reason
-                        mock_config_text acquire_lock_dir);
+                        mock_config_text acquire_lock_dir
+                        start_build_worker detach_build_workers);
 use POSIX ();                   # WNOHANG, for the non-blocking waitpid in abort_builds()
 use Getopt::Long qw(GetOptions);
 use POSIX qw(strftime);
@@ -1050,6 +1051,9 @@ sub main {
     $pm->run_on_finish(sub {
         my ($pid, $exit_code, $ident, $exit_signal, $core_dump) = @_;
         delete $MOCK_INFLIGHT{$pid};
+        # The builder's record stays on the build lock until it is reaped, so a parent killed
+        # between two sh() calls leaves a lock that a later build refuses.
+        detach_build_workers($pid);
         remove_build_sources_dir($SOURCES_BASE, $pid);
         # A child that die()s exits non-zero; one killed by a SIGNAL (SIGKILL / OOM-killer) is reaped
         # with $exit_code==0 but $exit_signal!=0 (and maybe $core_dump). Checking $exit_code alone
@@ -1062,7 +1066,7 @@ sub main {
         my ($pkg, $target) = $pair->@*;
         my $ext = $opts{mock_uniqueext} ? "-$opts{mock_uniqueext}" : "";
         my $chroot = "$pkg-$target$ext";              # matches buildspkgs/buildpkgs `-r`
-        $pm->start($chroot) and next;
+        start_build_worker(sub { $pm->start($chroot) }) and next;
         $SIG{INT} = $SIG{TERM} = 'DEFAULT';           # child: die on signal; the parent cleans up
 
         buildall($pkg, $target);
@@ -1079,7 +1083,7 @@ sub main {
     }
 
     for my $target ($opts{targets}->@*) {
-        $pm->start and next;                          # no chroot ident: update_repo runs no mock
+        start_build_worker(sub { $pm->start }) and next;  # no chroot ident: update_repo runs no mock
         $SIG{INT} = $SIG{TERM} = 'DEFAULT';
 
         update_repo($target);

@@ -35,7 +35,7 @@ our @EXPORT_OK = qw(
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
     lock_id_for take_build_lock acquire_lock_dir
-    attach_build_workers detach_build_workers
+    attach_build_workers detach_build_workers start_build_worker
     build_sources_base build_sources_dir prepare_build_sources_dir
     remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir
     sh_quote clean_debian_residue git_revision
@@ -142,7 +142,9 @@ sub sh {
     POSIX::sigprocmask(POSIX::SIG_BLOCK(), $blocked, $oldmask)
         or die "Cannot block build cancellation signals: $!\n";
 
-    my $pid = fork();
+    # The child runs nothing until every held lock records its group, which happens while the
+    # signal mask is still blocked, so a cancellation cannot land between fork and record.
+    my ($pid, $registered) = start_build_worker();
     unless (defined $pid) {
         my $error = "$!";
         POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
@@ -152,24 +154,20 @@ sub sh {
     }
     unless ($pid) {
         $SIG{INT} = $SIG{TERM} = 'DEFAULT';
-        POSIX::setpgid(0, 0) or POSIX::_exit(127);
         POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
             or POSIX::_exit(127);
         exec('/bin/sh', '-c', $cmd) or POSIX::_exit(127);
     }
 
     local $CURRENT_CHILD = $pid;  # also the command's process-group ID
-    # Recorded on every held lock BEFORE the signal mask comes back, so a cancellation cannot
-    # land between the fork and the record. A lock whose owner dies is recoverable; a lock with
-    # a group still in it is not, and this is what tells the two apart.
-    attach_build_workers($pid);
-    # Both sides set the group, so neither depends on which side runs first.
-    # EACCES means the child already exec'd, after setting its group; ESRCH
-    # means it has already gone away.
-    unless (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) {
-        warn "FATAL: cannot create build process group $pid: $!; retaining locks\n";
-        kill 'KILL', $pid;
-        POSIX::_exit(127);
+    unless ($registered) {
+        warn "FATAL: cannot record build process group $pid on the build lock; not running $cmd\n";
+        kill 'KILL', -$pid, $pid;
+        my $got;
+        do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
+        detach_build_workers($pid);
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask);
+        return 127;
     }
     POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask) or do {
         warn "FATAL: cannot restore signal mask: $!\n";
@@ -737,8 +735,72 @@ sub release_build_locks {
 # lock has to name the group rather than only the wrapper that started it.
 sub attach_build_workers {
     my ($pgid) = @_;
-    for my $l (@LIVE_LOCKS) { $l->attach($pgid) if defined $l }
-    return;
+    my $all = 1;
+    for my $l (@LIVE_LOCKS) {
+        next unless defined $l;
+        $all = 0 unless $l->attach($pgid);
+    }
+    return $all;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 start_build_worker
+
+Descriptions:
+    Fork a process in its own process group, and let it run only after every held build lock
+    records that group.
+
+    A lock whose owner is dead is recoverable unless it records a live group. A worker that
+    runs before its record exists can therefore outlive a killed parent while a second build
+    takes the lock. The child waits on a pipe. It continues only when the parent writes to the
+    pipe, which the parent does after every attach succeeds. When the parent dies first, the
+    child reads end-of-file and exits.
+
+Arguments:
+    $fork - optional coderef that forks, with the return value of fork(). Default: fork().
+            Parallel::ForkManager callers pass sub { $pm->start($ident) }.
+Returns:
+    In the parent, in list context: ($pid, 1) when the worker may run, ($pid, 0) when the record
+    failed and the worker exits with status 127, and () when the fork failed. In scalar
+    context: the pid, or undef.
+    In the child: 0, after the parent released it. The child never returns otherwise.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub start_build_worker {
+    my ($fork) = @_;
+    require POSIX;
+    $fork //= sub { fork() };
+    pipe(my $gate_r, my $gate_w) or return;
+    my $pid = $fork->();
+    unless (defined $pid) {
+        my $error = $!;
+        close($gate_r);
+        close($gate_w);
+        $! = $error;
+        return;
+    }
+    unless ($pid) {
+        close($gate_w);
+        POSIX::setpgid(0, 0) or POSIX::_exit(127);
+        my ($got, $go) = (undef, '');
+        do { $got = sysread($gate_r, $go, 1) } while (!defined($got) && $!{EINTR});
+        POSIX::_exit(127) unless $got && $go eq 'g';
+        close($gate_r);
+        return 0;
+    }
+    close($gate_r);
+    # Both sides set the group, so the record never names a pid that is not yet a group leader.
+    # ESRCH means the child has already gone away.
+    my $ok = (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) ? 1 : 0;
+    $ok = attach_build_workers($pid) if $ok;
+    $ok = 0 if $ok && (syswrite($gate_w, 'g') // 0) != 1;
+    close($gate_w);
+    # Scalar context gives the pid, so `start_build_worker(...) and next` keeps the meaning of
+    # `$pm->start and next` whether or not the record succeeded.
+    return wantarray ? ($pid, $ok) : $pid;
 }
 
 # detach_build_workers: drop that record. Called once the group is reaped, and from
