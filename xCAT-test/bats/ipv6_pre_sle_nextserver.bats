@@ -91,3 +91,46 @@ nextserver_for()
     run nextserver_for "$SLES" 'ro autoyast=http://192.0.2.1:80/install/autoinst/node01'
     [ "$output" = '192.0.2.1' ]
 }
+
+# substitute_for <script> <install server> -- run the script's own profile substitution
+# with nullglob on, the way the SUSE installer runs it, and print the profile it wrote.
+#
+# nullglob is what makes this worth measuring: "[2001:db8::1]" is a glob that matches no
+# file, so an unquoted expansion removes the sed script and empties the profile. AutoYaST
+# then falls back to the unmodified profile and reports the disk XCATPARTITIONHOOK.
+substitute_for()
+{
+    local script="$1" server="$2"
+    local snippet="${BATS_TEST_TMPDIR}/substitute.sh"
+    local in="${BATS_TEST_TMPDIR}/modified1.xml"
+    local out="${BATS_TEST_TMPDIR}/modified.xml"
+
+    printf '%s\n' \
+      '<media_url>http://XCATNEXTSERVERHOOK:80/install/leap15.6/x86_64/1</media_url>' >"$in"
+    extract_shell_function "$script" substitute_nextserver >"$snippet" || return 1
+
+    (
+        cd "$BATS_TEST_TMPDIR" || exit 1
+        shopt -s nullglob
+        # shellcheck disable=SC1090
+        . "$snippet" >/dev/null 2>&1
+        substitute_nextserver "$server" "$in" "$out" >/dev/null 2>&1
+    )
+    cat "$out"
+}
+
+@test "pre.sle writes an IPv6 install server into the media_url" {
+    run substitute_for "$SLE" '[2001:db8::1]'
+    [ "$status" -eq 0 ]
+    [ "$output" = '<media_url>http://[2001:db8::1]:80/install/leap15.6/x86_64/1</media_url>' ]
+}
+
+@test "pre.sle leaves the profile non-empty for an IPv6 install server" {
+    run substitute_for "$SLE" '[2001:db8::1]'
+    [ -n "$output" ]
+}
+
+@test "pre.sle writes an IPv4 install server into the media_url" {
+    run substitute_for "$SLE" '192.0.2.1'
+    [ "$output" = '<media_url>http://192.0.2.1:80/install/leap15.6/x86_64/1</media_url>' ]
+}

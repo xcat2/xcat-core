@@ -240,8 +240,17 @@ url_host_literal()
 
 NEXTSERVER_URL="$(grep -oE 'autoyast=https?://(\[[^]]+\]|[^[:space:]/:]+)(:[0-9]+)?' /proc/cmdline | head -n 1)"
 export nextserver="$(url_host_literal "$(extract_url_host "$NEXTSERVER_URL")")"
+
+# substitute_nextserver <host> <in> <out> -- write the install server into the profile.
+# nullglob is on, and an IPv6 host in brackets is a glob that matches no file, so an
+# unquoted expansion deletes the sed script and leaves the profile empty.
+substitute_nextserver()
+{
+    sed -e "s!XCATNEXTSERVERHOOK!$1!" "$2" > "$3"
+}
+
 cp /tmp/profile/modified.xml /tmp/profile/modified1.xml
-sed -e 's!XCATNEXTSERVERHOOK!'$nextserver'!' /tmp/profile/modified1.xml > /tmp/profile/modified.xml
+substitute_nextserver "$nextserver" /tmp/profile/modified1.xml /tmp/profile/modified.xml
 
 
 
