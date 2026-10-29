@@ -64,7 +64,8 @@ case "$1" in
           a2enmod -q headers >/dev/null 2>&1 || :
       fi
 
-      if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+      if [ -f /proc/cmdline ] &&
+         [ "$(stat -c '%d:%i' /)" = "$(stat -c '%d:%i' /proc/1/root/. 2>/dev/null)" ]; then
 	 if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
 	    systemctl start xcatd.service
 	 elif [ -x /etc/init.d/xcatd ]; then

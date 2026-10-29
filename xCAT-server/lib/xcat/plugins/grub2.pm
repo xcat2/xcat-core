@@ -5,6 +5,7 @@ use Sys::Syslog;
 use xCAT::Scope;
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::DHCP::BootPolicy;
 use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
@@ -186,27 +187,9 @@ sub setstate {
         return (1, "Cannot determine current state for this node");
     }
 
-    # remove the old boot configuration files and create a new one, but only if not offline directive
-    system("find $bootloader_root/ -inum \$(stat --printf \%i $bootloader_root/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
-
-    my $pcfg;
-    if ($cref->{currstate} ne "offline") {
-        open($pcfg, '>', "$bootloader_root/" . $node);
-        print $pcfg "#" . $cref->{currstate} . "\n";
-
-        if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
-            print $pcfg "set debug=all\n";
-        }
-
-        print $pcfg "set timeout=5\n";
-    }
-
-    if ($cref->{currstate} eq "boot") {
-        close($pcfg);
-    } elsif ($kern and $kern->{kernel}) {
-
-        #It's time to set grub configuration for this node to boot the kernel..
-        #get tftpserver
+    my $serverip;
+    my $grub2protocol = "tftp";
+    if ($cref->{currstate} ne "boot" and $kern and $kern->{kernel}) {
         my $tftpserver;
         if (defined($nrhash{$node}->[0]) && $nrhash{$node}->[0]->{'tftpserver'}) {
             $tftpserver = $nrhash{$node}->[0]->{'tftpserver'};
@@ -215,8 +198,6 @@ sub setstate {
         } else {
             $tftpserver = "<xcatmaster>";
         }
-
-        my $serverip;
 
         if($tftpserver eq "<xcatmaster>"){
             my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
@@ -238,19 +219,52 @@ sub setstate {
         }
 
         unless($serverip){
-            close($pcfg);
             return (1, "Unable to determine the tftpserver for $node");
         }
-        my $grub2protocol = "tftp";
         if (defined($nrhash{$node}->[0]) && $nrhash{$node}->[0]->{'netboot'}
             && ($nrhash{$node}->[0]->{'netboot'} =~ /grub2-(.*)/)) {
             $grub2protocol = $1;
         }
 
         unless ($grub2protocol =~ /^(http|tftp)$/) {
-            close($pcfg);
             return (1, "Invalid netboot method, please check noderes.netboot for $node");
         }
+    }
+
+    unless ($nodearch) {
+        return (1, "No archictecture defined in nodetype table for the node.");
+    }
+    if ($nodearch =~ /ppc64/i) {
+        $nodearch = "ppc"
+    }
+    my $grub2bin = "$bootloader_root/grub2." . $nodearch;
+    unless (-e "$grub2bin") {
+        return (1, "Stop grub2 configuration for this node, \"$grub2bin\" does not exits.");
+    }
+
+    my $ip = xCAT::NetworkUtils->getipaddr($node);
+    unless ($ip) {
+        return (1, "xCAT unable to resolve IP in grub2 plugin");
+    }
+
+    # Keep the previous configuration until the requested boot inputs pass validation.
+    system("find $bootloader_root/ -inum \$(stat --printf \%i $bootloader_root/$node 2>/dev/null) -exec rm -f {} \\; 2>/dev/null");
+
+    my $pcfg;
+    if ($cref->{currstate} ne "offline") {
+        open($pcfg, '>', "$bootloader_root/" . $node);
+        print $pcfg "#" . $cref->{currstate} . "\n";
+
+        if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
+            print $pcfg "set debug=all\n";
+        }
+
+        print $pcfg "set timeout=5\n";
+    }
+
+    if ($cref->{currstate} eq "boot") {
+        close($pcfg);
+    } elsif ($kern and $kern->{kernel}) {
 
         # write entries to boot config file, but only if not offline directive
         if ($cref and $cref->{currstate} ne "offline") {
@@ -300,20 +314,14 @@ sub setstate {
         close($pcfg);
     }
 
-    unless ($nodearch) {
-        return (1, "No archictecture defined in nodetype table for the node.");
-    }
-    if ($nodearch =~ /ppc64/i) {
-        $nodearch = "ppc"
-    }
-    my $grub2bin    = "$bootloader_root/grub2." . $nodearch;
-    unless (-e "$grub2bin") {
-        return (1, "Stop grub2 configuration for this node, \"$grub2bin\" does not exits.");
-    }
+    # grub2-<node> stays for DHCP configurations that makedhcp did not write.
+    my @loaders = ("grub2-$node");
+    my $dhcp_loader = xCAT::DHCP::BootPolicy->grub2_node_loader(node => $node, arch => $nodearch);
+    push @loaders, $dhcp_loader if ($dhcp_loader ne $loaders[0]);
 
     chdir("$bootloader_root");
     if ($cref->{currstate} eq "offline" or $cref->{currstate} eq "boot") {
-        unlink("grub2-$node");
+        unlink(@loaders);
     } elsif ($cref->{currstate} eq "standby" and $nodeos =~ /^sle/i) {
         my $os_version = $nodeos;
         $os_version =~ s/sles//i; # Strip sles if there
@@ -321,16 +329,14 @@ sub setstate {
         if ($os_version >= "15") {
             # Make sure for SLES15 or higher can still boot 
             # from disk in "standby" state
-            unlink("grub2-$node");
+            unlink(@loaders);
         }
-    } elsif (! -e "grub2-$node") {
-        symlink("grub2." . $nodearch, "grub2-$node");
+    } else {
+        foreach my $loader (grep { !-e $_ } @loaders) {
+            symlink("grub2." . $nodearch, $loader);
+        }
     }
 
-    my $ip = xCAT::NetworkUtils->getipaddr($node);
-    unless ($ip) {
-        return (1, "xCAT unable to resolve IP in grub2 plugin");
-    }
     #my $mactab = xCAT::Table->new('mac');
     my %ipaddrs;
     my $macstring;

@@ -60,6 +60,7 @@ use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildi
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir
+                        package_skip_reason
                         mock_config_text);
 use POSIX ();                   # EEXIST, for the directory build lock (see main())
 use Getopt::Long qw(GetOptions);
@@ -136,6 +137,7 @@ my @PACKAGES = qw(
     xCAT-openbmc-py
     xCAT-probe
     xCAT-rmc
+    xCAT-selinux
     xCAT-server
     xCAT-test
     xCAT-vlan
@@ -676,9 +678,10 @@ sub setup_local_repos {
 #
 # Nothing this project ships reads the sqlite metadata. dnf on el8+ and zypper both read the XML.
 sub createrepo_dir {
-    my ($dir, $extra) = @_;
+    my ($dir, $extra, $fresh) = @_;
     $extra //= '';
-    sh_or_die(qq(createrepo_c --update )
+    my $update = $fresh ? '' : '--update';
+    sh_or_die(qq(createrepo_c $update )
        . qq(--revision "$SOURCE_DATE_EPOCH" --set-timestamp-to-revision $extra "$dir"),
         "Failed to createrepo_c $dir\n");
 }
@@ -689,12 +692,12 @@ sub createrepo_dir {
 # top-level strays; then index the binaries EXCLUDING the SRPMS/ subdir so no
 # src.rpm enters the binary repomd, and index the SRPMS repo separately.
 sub index_repo {
-    my ($repodir) = @_;
+    my ($repodir, $fresh) = @_;
     my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
 
     # The stable bootstrap filename is a direct-download convenience, not a
     # second package. Keep it out of repository metadata.
-    unlink $alias if -f $alias;
+    unlink $alias if !$opts{source_only} && -f $alias;
     say "Creating repository $repodir";
     # Drop the top-level stray src.rpm and the mock logs (build.log/root.log/...)
     # that mock leaves in the resultdir, so the dir is directly deployable (upstream
@@ -705,9 +708,9 @@ sub index_repo {
     # replace good metadata with metadata for an empty repo -- publishing a repo that
     # resolves nothing. Leave it exactly as the last binary build left it and index
     # only the srpms.
-    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'")
+    createrepo_dir($repodir, "--excludes 'SRPMS/*' --excludes '*.src.rpm'", $fresh)
         unless $opts{source_only};
-    createrepo_dir("$repodir/SRPMS") if -d "$repodir/SRPMS";
+    createrepo_dir("$repodir/SRPMS", '', $fresh) if -d "$repodir/SRPMS";
 }
 
 sub update_repo {
@@ -717,6 +720,7 @@ sub update_repo {
 
 sub write_release_alias {
     my ($repodir) = @_;
+    return if $opts{source_only};
     my $alias = "$repodir/xCAT-release-latest.noarch.rpm";
 
     # glob() returns a wildcard-free pattern verbatim even when the file does not exist, so
@@ -735,14 +739,12 @@ sub sign_rpms {
     sign_repo_dir("dist/$target/rpms", $opts{gpg_key_name});
 }
 
-# Sign every rpm in a core repo dir -- the top-level binaries AND SRPMS/*.src.rpm --
-# then re-index (signing rewrites the rpms, invalidating checksums) and detach-sign
-# + export the key into BOTH the binary and the SRPMS repodata dirs.
+# Source-only runs sign and index only SRPMS; normal runs also update the binary repository.
 sub sign_repo_dir {
     my ($repodir, $key_name) = @_;
 
     say "Signing RPMs in $repodir";
-    my @bin = glob("$repodir/*.rpm");
+    my @bin = $opts{source_only} ? () : glob("$repodir/*.rpm");
     if (@bin) {
         sh_or_die(qq(rpmsign --define "%_gpg_name $key_name" --addsign )
            . join(" ", map { qq("$_") } @bin),
@@ -755,10 +757,10 @@ sub sign_repo_dir {
         "Failed to sign SRPMs in $repodir/SRPMS");
     }
 
-    # Regenerate both indexes (binary + SRPMS) after signing, before signing repomd.
-    index_repo($repodir);
+    # Signing can change RPM bytes without changing the size or timestamp used by the metadata cache.
+    index_repo($repodir, 1);
 
-    for my $rd ("$repodir/repodata",
+    for my $rd (($opts{source_only} ? () : ("$repodir/repodata")),
                 (-d "$repodir/SRPMS/repodata" ? ("$repodir/SRPMS/repodata") : ())) {
         my $repomd = "$rd/repomd.xml";
         next unless -f $repomd;
@@ -863,10 +865,7 @@ sub merge_core_repos {
         "Failed to rsync '$in' into '$out'\n");
     }
 
-    # Index, sign (when --gpg-sign), write the final repository metadata, then create the
-    # xCAT-release-latest stable bootstrap alias. The alias MUST be created AFTER the final
-    # metadata pass so write_release_alias can unlink it before createrepo and keep it out of
-    # the repository index.
+    # Create the bootstrap alias after the final index pass so it does not enter repository metadata.
     index_repo($out);
     if ($opts{gpg_sign}) {
         $ENV{GNUPGHOME} = $opts{gpg_home} if $opts{gpg_home};
@@ -1027,7 +1026,18 @@ sub main {
     # A builder killed with SIGKILL together with this parent leaves its directory behind.
     sweep_build_sources_dirs($SOURCES_BASE);
 
-    my @rpms = product($opts{packages}, $opts{targets});
+    my @rpms;
+    for my $pair (product($opts{packages}, $opts{targets})) {
+        my $why = package_skip_reason($pair->@*);
+        $why ? print "Skipping $pair->[0] for $pair->[1]: $why\n" : push @rpms, $pair;
+    }
+    # An empty plan is the plan, not a failure. The dep pipeline asks for
+    # xCAT-genesis-base alone, and no openSUSE target builds it.
+    if (!@rpms) {
+        print "Nothing to build: every requested package is out of scope for the"
+            . " requested targets\n";
+        return;
+    }
     my $pm = Parallel::ForkManager->new($opts{nproc});
 
     # Track which mock chroot each live child is building so abort_builds can scrub it.
@@ -1185,11 +1195,10 @@ C<--rebuild> is skipped.
   ./buildrpms.pl --target alma+epel-9-x86_64 --source-only
 
 The srpms land in C<dist/E<lt>targetE<gt>/rpms/SRPMS/> and that index is regenerated.
-The binary metadata under C<dist/E<lt>targetE<gt>/rpms/> is deliberately left as the
-last binary build wrote it: re-indexing a directory with no binaries in it would
-replace working metadata with metadata for an empty repository. For the same reason
-no C<.repo> file or buildinfo is emitted, since both describe an installable binary
-repo that this mode does not produce. With C<--gpg-sign> the srpms are signed.
+Repository finalization leaves existing binary RPMs, metadata, signatures,
+public keys and the bootstrap alias unchanged. No C<.repo> file or buildinfo is
+emitted, since both describe an installable binary repo that this mode does not
+produce. With C<--gpg-sign>, the source RPMs and their repository metadata are signed.
 
 Cannot be combined with C<--merge-core-repos>, which assembles already-built
 per-arch binary trees.
@@ -1298,11 +1307,13 @@ Builds all selected package/target combinations.
 
 =item 2.
 
-Runs C<createrepo --update> for each selected target under C<dist/>.
+Indexes repositories for each selected target under C<dist/>. With C<--source-only>,
+only the SRPM repository is indexed.
 
 =item 3.
 
 If C<--gpg-sign> is set, signs RPMs and C<repomd.xml> for each target.
+With C<--source-only>, only source RPMs and their repository metadata are signed.
 
 =item 4.
 
