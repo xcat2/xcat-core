@@ -117,12 +117,13 @@ local $::XCATSITEVALS{managedaddressmode} = 'dhcp';
 local $::XCATSITEVALS{xcatdebugmode} = '0';
 
 sub render_minimal_template {
-    my ($node, $master) = @_;
+    my ($node, $master, $body) = @_;
+    $body //= "#KICKSTARTNET#\n#INSTALL_SOURCES_IN_PRE#\n";
     my $tmpdir = tempdir(CLEANUP => 1);
     my $input = "$tmpdir/input.tmpl";
     my $output = "$tmpdir/output";
     open(my $template, '>', $input) or die "Unable to write template: $!";
-    print {$template} "#KICKSTARTNET#\n#INSTALL_SOURCES_IN_PRE#\n";
+    print {$template} $body;
     close($template);
 
     my $error = xCAT::Template->subvars(
@@ -192,5 +193,25 @@ like(
     'IPv4 repository URL retains the original NEXTSERVER expression'
 );
 is($ENV{MASTER_IP}, '192.0.2.1', 'IPv4 template keeps legacy master resolution');
+
+# post.sles.common rewrites the interface configuration with BOOTPROTO=dhcp unless
+# MANAGEDADDRESSMODE reads static, which undoes the static IPv6 configuration the
+# AutoYaST profile carries for an IPv6-only node. The site attribute describes the
+# cluster, so it cannot answer for a node that has no IPv4 address to ask for.
+{
+    my $v6_mode =
+      render_minimal_template('nodev6', 'master6.example.test', "#MANAGEDADDRESSMODE#\n");
+    like($v6_mode, qr/^static$/m,
+        'an IPv6-only node reports the static address mode whatever the site says');
+
+    my $v4_mode =
+      render_minimal_template('nodev4', 'master4.example.test', "#MANAGEDADDRESSMODE#\n");
+    like($v4_mode, qr/^dhcp$/m, 'an IPv4 node keeps the site address mode');
+
+    my $dual_mode =
+      render_minimal_template('nodedual', 'master4.example.test', "#MANAGEDADDRESSMODE#\n");
+    like($dual_mode, qr/^dhcp$/m,
+        'a dual-stack node keeps the site address mode, since it can still use DHCP');
+}
 
 done_testing();
