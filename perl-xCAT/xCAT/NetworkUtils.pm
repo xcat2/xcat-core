@@ -3020,6 +3020,12 @@ sub format_uri_host
     }
 
     return unless defined($host) && length($host);
+
+    # '!myipfn!' is the facing-address placeholder, not a host. pxe.pm, grub2.pm and
+    # petitboot.pm replace it after the command line is built, and
+    # substitute_facing_address brackets it there when the address is IPv6.
+    return $host if $host eq '!myipfn!';
+
     if ($host =~ /^\[([^\]]+)\]$/)
     {
         my $address = $1;
