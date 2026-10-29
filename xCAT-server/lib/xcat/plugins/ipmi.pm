@@ -7657,11 +7657,7 @@ sub initsdr_withrepinfo {
         return (1);        #bail, do not try to continue
     }
 
-    if ($sessdata->{sdr_info}->{resv_sdr} != 1) {
-        xCAT::SvrUtils::sendmsg([ 1, "SDR reservation unsupported." ], $callback, $sessdata->{node}, %allerrornodes);
-        return 1;
-    }
-
+    # Some BMCs grant a reservation that Get SDR Repository Info does not advertise.
     $sessdata->{ipmisession}->subcmd(netfn => 0x0a, command => 0x22, data => [], callback => \&reserved_sdr_repo, callback_args => $sessdata);
 }
 
@@ -8127,7 +8123,9 @@ sub reserved_sdr_repo {
 
         if ($code != 0x00) {
             my $text = $codes{$code};
-            if (!$text) {
+            if ($code == 0xc1 && !$sessdata->{sdr_info}->{resv_sdr}) {
+                $text = "SDR reservation unsupported.";
+            } elsif (!$text) {
                 $text = sprintf("unknown response %02x", $code);
             }
             xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
