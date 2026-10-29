@@ -7653,12 +7653,12 @@ sub initsdr_withrepinfo {
 
 
     if ($sessdata->{sdr_info}->{version} != 0x51) {
-        sendoutput(1, "SDR version unsupported.");
+        xCAT::SvrUtils::sendmsg([ 1, "SDR version unsupported." ], $callback, $sessdata->{node}, %allerrornodes);
         return (1);        #bail, do not try to continue
     }
 
     if ($sessdata->{sdr_info}->{resv_sdr} != 1) {
-        sendoutput(1, "SDR reservation unsupported.");
+        xCAT::SvrUtils::sendmsg([ 1, "SDR reservation unsupported." ], $callback, $sessdata->{node}, %allerrornodes);
         return 1;
     }
 
@@ -7695,7 +7695,7 @@ sub start_sdr_record {
     my $rsp      = shift;
     my $sessdata = shift;
     if ($rsp->{error}) {
-        sendoutput(1, $rsp->{error});
+        xCAT::SvrUtils::sendmsg([ 1, $rsp->{error} ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
     my $resv_id_ls = shift @{ $sessdata->{sdr_fetch_args} };
@@ -7709,7 +7709,7 @@ sub start_sdr_record {
         if (!$text) {
             $text = sprintf("unknown response %02x", $code);
         }
-        sendoutput(1, $text);
+        xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
     $sessdata->{sdr_nrid_ls} = $returnd[1];
@@ -7763,7 +7763,7 @@ sub add_sdr_data {
     my $numbytes = $sessdata->{sdr_fetch_args}->[5];
     my $offset   = $sessdata->{sdr_offset};            #shorten typing a little
     if ($rsp->{error}) {
-        sendoutput([ 1, $rsp->{error} ]);
+        xCAT::SvrUtils::sendmsg([ 1, $rsp->{error} ], $callback, $sessdata->{node}, %allerrornodes);
         return;                                        #give up
     }
     my @returnd = ($rsp->{code}, @{ $rsp->{data} });
@@ -7773,7 +7773,7 @@ sub add_sdr_data {
         if (!$text) {
             $text = sprintf("unknown response %02x", $code);
         }
-        sendoutput([ 1, $text ]);
+        xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
         return;                                        #abort the whole mess
     }
     push @{ $sessdata->{sdr_data} }, @returnd[ 3 .. @returnd - 1 ];
@@ -7996,7 +7996,7 @@ sub gotdevid {
     my $text;
 
     if ($rsp->{error}) {
-        sendoutput([ 1, $rsp->{error} ]);
+        xCAT::SvrUtils::sendmsg([ 1, $rsp->{error} ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
     else {
@@ -8007,7 +8007,7 @@ sub gotdevid {
             if (!$text) {
                 $text = sprintf("unknown response %02x", $code);
             }
-            sendoutput([ 1, $text ]);
+            xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
             return;
         }
     }
@@ -8093,7 +8093,7 @@ sub got_sdr_rep_info {
     my $sessdata = shift;
 
     if ($rsp->{error}) {
-        sendoutput([ 1, $rsp->{error} ]);
+        xCAT::SvrUtils::sendmsg([ 1, $rsp->{error} ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
     else {
@@ -8104,7 +8104,7 @@ sub got_sdr_rep_info {
             if (!$text) {
                 $text = sprintf("unknown response %02x", $code);
             }
-            sendoutput(1, $text);
+            xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
             return;
         }
     }
@@ -8119,7 +8119,7 @@ sub reserved_sdr_repo {
     my $rsp      = shift;
     my $sessdata = shift;
     if ($rsp->{error}) {
-        sendoutput([ 1, $rsp->{error} ]);
+        xCAT::SvrUtils::sendmsg([ 1, $rsp->{error} ], $callback, $sessdata->{node}, %allerrornodes);
         return;
     }
     else {
@@ -8130,7 +8130,8 @@ sub reserved_sdr_repo {
             if (!$text) {
                 $text = sprintf("unknown response %02x", $code);
             }
-            sendoutput([ 1, $text ]);
+            xCAT::SvrUtils::sendmsg([ 1, $text ], $callback, $sessdata->{node}, %allerrornodes);
+            return;
         }
     }
     my @returnd = @{ $rsp->{data} };
