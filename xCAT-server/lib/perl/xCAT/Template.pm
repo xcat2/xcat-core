@@ -501,7 +501,7 @@ sub subvars {
         $inc =~ s/#WINDNSCFG#/windows_dns_cfg()/eg;
         $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
         $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
-        $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
+        $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode($node)/eg;
         $inc =~ s/#HOSTNAME#/$node/g;
         $inc =~ s/#SHORTNAME#/$shortname/g;
         $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
@@ -1042,6 +1042,15 @@ sub get_win_prodkey {
 }
 
 sub managed_address_mode {
+    my ($node) = @_;
+
+    # An IPv6-only node has no IPv4 address to ask a DHCP server for, and both the Kickstart
+    # and the AutoYaST profile configure it statically. The site attribute describes the
+    # cluster, so it cannot answer for such a node: post.sles.common reads this value and
+    # rewrites the interface with BOOTPROTO=dhcp for anything but static.
+    return 'static'
+      if defined($node) && xCAT::NetworkUtils->node_is_ipv6_only($node);
+
     return $::XCATSITEVALS{managedaddressmode};
 }
 
