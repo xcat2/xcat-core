@@ -12,7 +12,7 @@ no warnings 'once';
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 14;
+use Test::More tests => 16;
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
 $ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
@@ -27,12 +27,18 @@ my %cfg = (
     cn6nogw => [ '2001:db8:2::50', 'cn6nogw', '',               64 ],
     cn6bad  => [ undef,            undef,     undef,            undef ],
     cn6long => [ '2001:db8:3::50', 'cn6long', '2001:db8:3::fe',  129 ],
+    cn6v4ns => [ '2001:db8:4::50', 'cn6v4ns', '2001:db8:4::fe', 64 ],
 );
 no warnings 'redefine';
 *xCAT::NetworkUtils::getNodeNetworkCfg6   = sub { my $n = $_[-1]; return @{ $cfg{$n} || [] } };
 *xCAT::NetworkUtils::ipv6_server_for_node = sub { return $_[-1] };
 *xCAT::NetworkUtils::getNodeDomains       = sub { return { map { $_ => 'xcat.lab' } @{ $_[-1] } } };
-*xCAT::NetworkUtils::getNodeNameservers   = sub { return { map { $_ => '2001:db8:1::fe' } @{ $_[-1] } } };
+# site.nameservers holds one list for the cluster, so an IPv6-only node can be given the
+# IPv4 resolver of an IPv4 network.
+my %resolvers = ( cn6v4ns => '192.0.2.53,198.51.100.53' );
+*xCAT::NetworkUtils::getNodeNameservers   = sub {
+    return { map { $_ => ( $resolvers{$_} // '2001:db8:1::fe' ) } @{ $_[-1] } };
+};
 use warnings 'redefine';
 
 my $template = File::Spec->catfile($repo_root, 'xCAT-server/lib/perl/xCAT/Template.pm');
@@ -46,6 +52,14 @@ like($xml, qr{<prefixlen>64</prefixlen>}, 'and a prefix length, which is what Au
 unlike($xml, qr{<netmask>(?!-)}, 'no IPv4 netmask is emitted for the interface');
 like($xml, qr{<gateway>\Q2001:db8:1::fe\E</gateway>}, 'the default route carries the IPv6 gateway');
 like($xml, qr{<nameserver>\Q2001:db8:1::fe\E</nameserver>}, 'and the resolver is the IPv6 one');
+
+# An IPv4 resolver cannot be reached from an IPv6-only node, and an unreachable server in
+# resolv.conf makes every lookup wait for its timeout before the next one is tried.
+my $v4ns = xCAT::Template::_autoyast_network6('cn6v4ns');
+unlike($v4ns, qr{<nameserver>\Q192.0.2.53\E</nameserver>},
+    'an IPv4 resolver is not given to an IPv6-only node');
+like($v4ns, qr{<nameserver>\Q2001:db8:4::fe\E</nameserver>},
+    'the gateway stands in when the node is configured with no IPv6 resolver');
 
 # dhcp_resolv says whether DHCP may overwrite resolv.conf. The AutoYaST schema of Leap 15.6
 # does not accept it, and one invalid element makes YaST reject the whole profile: it reports
