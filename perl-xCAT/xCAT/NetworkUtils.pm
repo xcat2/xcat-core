@@ -4004,6 +4004,66 @@ sub ipxe_script_server {
     return xCAT::NetworkUtils->format_uri_host($facing);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 radvd_config
+
+    Descriptions: The radvd configuration for the IPv6 networks xCAT serves.
+
+                  makedhcp writes the DHCPv6 reservations and nothing announces
+                  the prefix or the route. A client that follows RFC 4861 sends a
+                  router solicitation and uses DHCPv6 only when an advertisement
+                  sets the managed flag, so iPXE reports "No configuration
+                  methods succeeded" and never solicits. A client that does
+                  solicit gets one address with a prefix length of 128 and no
+                  route, because the prefix and the route come from the
+                  advertisement.
+
+                  The advertisement therefore sets the managed flag, and the
+                  prefix is on-link but not autonomous: the address still comes
+                  from DHCPv6, which holds the reservations.
+
+    Arguments:    $nets an array of hashes, each with an interface and a prefix
+    Returns:      the configuration text, or undef when there is no IPv6 network
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub radvd_config {
+    my ($nets) = @_;
+
+    return unless ref($nets) eq 'ARRAY';
+    my %prefixes;
+    my @order;
+    foreach my $net (@$nets) {
+        next unless ref($net) eq 'HASH';
+        my $interface = $net->{interface};
+        my $prefix    = $net->{prefix};
+        next unless defined($interface) && length($interface);
+        next unless defined($prefix) && $prefix =~ m{\A[0-9a-fA-F:]+/\d+\z};
+        push @order, $interface unless $prefixes{$interface};
+        next if grep { $_ eq $prefix } @{ $prefixes{$interface} || [] };
+        push @{ $prefixes{$interface} }, $prefix;
+    }
+    return unless @order;
+
+    my $text = '';
+    foreach my $interface (@order) {
+        $text .= "interface $interface\n{\n";
+        $text .= "    AdvSendAdvert on;\n";
+        $text .= "    AdvManagedFlag on;\n";
+        $text .= "    AdvOtherConfigFlag on;\n";
+        foreach my $prefix (@{ $prefixes{$interface} }) {
+            $text .= "    prefix $prefix\n    {\n";
+            $text .= "        AdvOnLink on;\n";
+            $text .= "        AdvAutonomous off;\n";
+            $text .= "    };\n";
+        }
+        $text .= "};\n";
+    }
+    return $text;
+}
+
 sub gen_net_boot_params
 {
     my $class      = shift;

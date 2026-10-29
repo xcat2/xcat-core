@@ -2743,6 +2743,7 @@ sub process_request
     if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp6 and $^O ne 'aix') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: restart dhcp6 service");
         restart_dhcpd6();
+        configure_router_advertisements($callback);
     }
     flock($dhcplockfd, LOCK_UN);
     umask $oldmask;
@@ -2974,6 +2975,7 @@ sub kea_process_request
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
     }
+    configure_router_advertisements($callback) if $using_dhcp6;
 
     flock($dhcplockfd, LOCK_UN);
 }
@@ -4981,6 +4983,80 @@ sub restart_dhcpd
 # Restart the ISC DHCPv6 daemon. It is a second service, so restarting dhcpd leaves it
 # with the previous configuration -- or stopped, which grants no address at all.
 # restartservice answers -1 where the name does not resolve, as on Debian.
+#-------------------------------------------------------------------------------
+
+=head3 configure_router_advertisements
+
+    Descriptions: Announce the prefix and the route of every IPv6 network xCAT
+                  serves DHCPv6 on.
+
+                  makedhcp writes the reservations and nothing else announces
+                  the network. A client that follows RFC 4861 uses DHCPv6 only
+                  when an advertisement sets the managed flag, so iPXE answers
+                  "No configuration methods succeeded" and never solicits, and a
+                  client that does solicit gets one address with a prefix length
+                  of 128 and no route.
+
+    Arguments:    $callback the request callback, for a warning
+    Returns:      nothing
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub configure_router_advertisements
+{
+    my ($callback) = @_;
+
+    return if $::XCATSITEVALS{externaldhcpservers};
+
+    my $nettab = xCAT::Table->new('networks');
+    return unless $nettab;
+    my @nets = $nettab->getAllAttribs('net', 'mask', 'mgtifname');
+    $nettab->close();
+
+    my @wanted;
+    foreach my $entry (@nets) {
+        next unless $entry->{net} && $entry->{net} =~ /:/;
+        next unless $entry->{mgtifname};
+        my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($entry->{net}, $entry->{mask});
+        next unless defined $prefix;
+        my $net = $entry->{net};
+        $net =~ s{/\d+\z}{};
+        push @wanted, { interface => $entry->{mgtifname}, prefix => "$net/$prefix" };
+    }
+
+    my $config = xCAT::NetworkUtils::radvd_config(\@wanted);
+    return unless defined $config;
+
+    # radvd sends nothing on an interface that does not forward.
+    foreach my $net (@wanted) {
+        system("sysctl -q -w net.ipv6.conf.$net->{interface}.forwarding=1");
+    }
+
+    my $file = '/etc/radvd.conf';
+    my $current = '';
+    if (open(my $fh, '<', $file)) {
+        local $/;
+        $current = <$fh>;
+        close($fh);
+    }
+    return if defined($current) && $current eq $config;
+
+    unless (open(my $fh, '>', $file)) {
+        $callback->({ warning => ["Cannot write $file, so the IPv6 networks announce no route: $!"] });
+        return;
+    }
+    else {
+        print {$fh} $config;
+        close($fh);
+    }
+
+    if (xCAT::Utils->restartservice('radvd') < 0) {
+        $callback->({ warning => ['radvd is not installed, so the IPv6 networks announce no prefix and no route. A node that follows RFC 4861 then has no route, and iPXE does not start DHCPv6 at all.'] });
+    }
+    return;
+}
+
 sub restart_dhcpd6
 {
     return xCAT::Utils->restartservice("dhcp6");
