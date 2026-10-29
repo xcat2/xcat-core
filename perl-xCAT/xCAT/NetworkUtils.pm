@@ -3940,6 +3940,42 @@ sub get_all_nicips {
 
 #-------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
+
+=head3 dracut_static_ip6
+
+    Descriptions: The dracut ip= parameter that configures an interface statically
+                  for IPv6.
+
+                  DHCPv6 assigns one address, with a prefix length of 128 and no
+                  route, and an xCAT provision network sends no router
+                  advertisement. A node configured with either6 therefore has an
+                  address and cannot reach its server: the dracut hook reports
+                  "Network is unreachable" for the root image. The prefix length is
+                  what gives the node its on-link route.
+
+    Arguments:    $address the IPv6 address of the node
+                  $gateway the IPv6 gateway, which may be empty
+                  $prefix the prefix length
+                  $nicname the interface name, which may be empty
+    Returns:      the ip= parameter, or undef when there is nothing to configure
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub dracut_static_ip6 {
+    my ($address, $gateway, $prefix, $nicname) = @_;
+
+    return unless defined($address) && length($address);
+    return unless defined($prefix) && $prefix =~ /\A\d+\z/ && $prefix <= 128;
+
+    # dracut reads a literal only in brackets, and takes the fields as
+    # client:peer:gateway:prefix:hostname:interface:autoconf.
+    my $gw = (defined($gateway) && length($gateway)) ? "[$gateway]" : '';
+    my $nic = defined($nicname) ? $nicname : '';
+    return "ip=[$address]::$gw:${prefix}::${nic}:none";
+}
+
 sub gen_net_boot_params
 {
     my $class      = shift;

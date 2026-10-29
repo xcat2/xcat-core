@@ -1966,9 +1966,18 @@ sub mknetboot
 
         # dracut reads no ip= from the parameters above, and with none it uses DHCPv4. An
         # IPv6-only node then has no address and cannot fetch the root image.
-        if (defined($net_params->{ip6})
-            && xCAT::NetworkUtils->node_is_ipv6_only($node)) {
-            $kcmdline .= "$net_params->{ip6} ";
+        #
+        # The static form is preferred over either6: DHCPv6 carries one address with a
+        # prefix length of 128 and no route, and the provision network sends no router
+        # advertisement, so a node that takes the DHCPv6 answer alone cannot reach its
+        # server.
+        if (xCAT::NetworkUtils->node_is_ipv6_only($node)) {
+            my ($v6addr, undef, $v6gateway, $v6prefix) =
+              xCAT::NetworkUtils->getNodeNetworkCfg6($node);
+            my $ip6 = xCAT::NetworkUtils::dracut_static_ip6(
+                $v6addr, $v6gateway, $v6prefix, $net_params->{nicname})
+              || $net_params->{ip6};
+            $kcmdline .= "$ip6 " if $ip6;
         }
 
         my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
