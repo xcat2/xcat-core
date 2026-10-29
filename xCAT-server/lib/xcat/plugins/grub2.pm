@@ -8,6 +8,7 @@ use xCAT::TableUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
+use xCAT::BootUtils;
 use xCAT::MsgUtils;
 use File::Path;
 use Socket;
@@ -354,20 +355,20 @@ sub setstate {
                 $protocolrootdir = $tftpdir;
             }
 
-            my $efi = "";
-            if ($nodearch =~ /x86/i) {
-                $efi = "efi";
-            }
+            # The commands come from the image served to this node, not from its
+            # architecture: an image built from upstream grub has no linuxefi.
+            my ($kernelcmd, $initrdcmd) =
+              xCAT::BootUtils::grub2_kernel_commands($grub2bin);
 
             if ($kern and $kern->{kcmdline}) {
                 my $kcmdline = quote_kcmdline($kern->{kcmdline});
-                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} $kcmdline BOOTIF=\$net_default_mac\n";
+                print $pcfg "    $kernelcmd $protocolrootdir/$kern->{kernel} $kcmdline BOOTIF=\$net_default_mac\n";
             } else {
-                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
+                print $pcfg "    $kernelcmd $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
             }
             print $pcfg "    echo Loading initial ramdisk ...\n";
             if ($kern and $kern->{initrd}) {
-                print $pcfg "    initrd$efi $protocolrootdir/$kern->{initrd}\n";
+                print $pcfg "    $initrdcmd $protocolrootdir/$kern->{initrd}\n";
             }
 
             print $pcfg "}";
