@@ -2838,6 +2838,7 @@ sub kea_process_request
         if ($restart->{error}) {
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
+        configure_router_advertisements($callback) if $using_dhcp6;
         flock($dhcplockfd, LOCK_UN);
         return;
     }
