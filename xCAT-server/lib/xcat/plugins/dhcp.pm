@@ -4504,8 +4504,14 @@ sub dhcp6_bootfile_url_for_node
 
     if ($netboot eq 'ipxe') {
         # The firmware that solicits over DHCPv6 is UEFI, so the UEFI loader is the only one
-        # such a client can ask for. The iPXE build xCAT ships reports dhcpv6 and ipv6, which
-        # the xnba loader does not, so xnba still gets no option 59.
+        # such a client can ask for. xnba still gets no option 59.
+        #
+        # The loader this names cannot finish the boot yet. Measured on ipxe-xcat 2.0.0:
+        # the firmware fetches the shim over IPv6 and starts iPXE, and iPXE then answers
+        # "No configuration methods succeeded" on a network whose only DHCP server is
+        # DHCPv6. The option is still correct for xCAT to send, and the node fails at the
+        # same place without it, but netboot=ipxe over IPv6 needs an iPXE built with
+        # NET_PROTO_IPV6 before it can work.
         my $loader = xCAT::DHCP::BootPolicy->x86_loader( method => 'ipxe' )->{uefi};
         return unless $loader;
 
