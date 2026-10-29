@@ -15,7 +15,7 @@ jobs:
       - name: Install lifecycle test dependencies
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl apache2 curl
       - name: Test Debian package lifecycle
-        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t
+        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/debian_chroot_services.t xCAT-test/native/debian_management_recovery.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t
       - name: Test optional statelite host keys
         if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/statelite_optional_hostkey.t
@@ -49,6 +49,7 @@ jobs:
           sudo cp -R xCAT-test xCAT-server perl-xCAT xCAT "$workdir/"
           status=0
           sudo sh -c 'cd "$1" && bats xCAT-test/native/getinstdisk_selection.bats' sh "$workdir" || status=1
+          sudo sh -c 'cd "$1" && bats xCAT-test/native/syslog_log_directory.bats' sh "$workdir" || status=1
           sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_installer.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t xCAT-test/native/remoteshell_credentials.t' sh "$workdir" || status=1
           exit "$status"
       - name: Prepare xCAT syslog directory
@@ -102,7 +103,7 @@ jobs:
         run: |
           log=$(mktemp)
           trap 'rm -f -- "$log"' EXIT
-          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
+          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
           ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04
@@ -123,11 +124,35 @@ jobs:
       - name: Install lifecycle test dependencies
         run: |
           dnf install -y epel-release
-          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap systemd chkconfig initscripts tar gzip bzip2 which diffutils httpd curl procps-ng openssl
+          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap dash systemd chkconfig initscripts tar gzip bzip2 which diffutils httpd curl procps-ng openssl
       - name: Enable lifecycle test namespaces
         run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Test RPM package lifecycle
-        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t'
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/xcatd_rpm_lifecycle.t xCAT-test/native/xcatd_relocated_startup.t xCAT-test/native/apache_rpm_configuration.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t'
       - name: Test FIPS package artifacts
         if: ${{ !cancelled() }}
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/fips_package_payload.t'
+      - name: Test netboot postinstall profiles
+        if: ${{ !cancelled() }}
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/netboot_profile_postinstall.t'
+
+  selinux_policy_test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      image: almalinux:10
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install policy test dependencies
+        run: |
+          dnf install -y epel-release
+          dnf --enablerepo=crb install -y make selinux-policy-devel selinux-policy-targeted libselinux-utils policycoreutils policycoreutils-python-utils attr perl perl-Capture-Tiny perl-Test-Simple perl-Test-Harness
+      - name: Look up and relabel the xCAT file contexts
+        run: |
+          mkdir -p /mnt/labels
+          mount -t tmpfs -o size=1g tmpfs /mnt/labels
+          TMPDIR=/mnt/labels prove -v xCAT-test/native/selinux_file_contexts.t
+      - name: Repair a published artifact and keep the guest labels
+        if: ${{ !cancelled() }}
+        run: TMPDIR=/mnt/labels prove -v xCAT-test/native/selinux_image_repair.t

@@ -38,6 +38,11 @@ skip. The CI takes a copy of the checkout before the build for this reason; see
 
 ## Running commands from Perl tests
 
+`syncfiles_consumer_identity.t` also requires `/usr/bin/rsync` on Linux. The
+real copy parser checks that executable before the test intercepts copy
+execution. Install rsync with the test dependencies; this test does not run it
+or connect to another node. The CI management-node install already includes it.
+
 Use `XCAT::Test::Process` when a test needs a command's exit code and combined
 standard output and standard error:
 

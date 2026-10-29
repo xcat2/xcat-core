@@ -21,7 +21,8 @@ xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
 
 case "$1" in
     remove)
-       if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+       if [ -f /proc/cmdline ] &&
+          [ "$(stat -c '%d:%i' /)" = "$(stat -c '%d:%i' /proc/1/root/. 2>/dev/null)" ]; then
             if "$xcatd_init_compat" can-use-systemctl; then
                 systemctl stop xcatd.service
                 systemctl disable --now xcat-uftp-listener.service >/dev/null 2>&1 || true
@@ -32,6 +33,7 @@ case "$1" in
        if "$xcatd_init_compat" uses-systemd --explicit-target; then
            if command -v systemctl >/dev/null 2>&1; then
                systemctl disable xcatd.service
+               systemctl disable xcat-uftp-listener.service >/dev/null 2>&1 || true
            fi
        else
            if command -v update-rc.d >/dev/null 2>&1; then

@@ -830,9 +830,11 @@ sub nextdestiny {
 
     my $node;
     my $noupdate_flag = 0;
+    my @enactnodes;
     $chaintab = xCAT::Table->new('chain');
     my $chainents = $chaintab->getNodesAttribs(\@nodes, [qw(currstate currchain chain)]);
     foreach $node (@nodes) {
+        my $enact = 1;
         unless ($chaintab) {
             syslog("local4|err", "ERROR: $node requested destiny update, no chain table");
             return;    #nothing to do...
@@ -845,7 +847,10 @@ sub nextdestiny {
         unless ($ref->{currchain}) {    #If no current chain, copy the default
             $ref->{currchain} = $ref->{chain};
         } elsif ($ref->{currchain} !~ /[,;]/){
-            if ($ref->{currstate} and ($ref->{currchain} =~ /$ref->{currstate}/)) {
+            my $completed_state = $ref->{currchain};
+            # setdestiny records ondiscover without its command arguments.
+            $completed_state = 'ondiscover' if $completed_state =~ /^ondiscover=/;
+            if ($ref->{currstate} and $completed_state eq $ref->{currstate}) {
                 # 'boot' is the steady state a completed provision leaves behind,
                 # set by setdestiny once the install or netboot destiny is applied.
                 # Some installers advance the destiny more than once, so it has to
@@ -854,7 +859,7 @@ sub nextdestiny {
                 unless ($ref->{currchain} eq 'boot') {
                     $ref->{currchain} = 'standby';
                 }
-                $callnodeset = 0;
+                $enact = 0;
             }
         }
         my @chain = split /[,;]/, $ref->{currchain};
@@ -873,12 +878,13 @@ sub nextdestiny {
         {
             my @items = split /[:]/, $ref->{currstate};
             $requ{arg} = \@items;
-            $noupdate_flag = 1;
+            $noupdate_flag = 1 if $enact;
         }
         setdestiny(\%requ, $flag + 1);
+        push @enactnodes, $node if $enact;
     }
 
-    if ($callnodeset) {
+    if ($callnodeset and @enactnodes) {
         my $args;
         if ($noupdate_flag)
         {
@@ -889,7 +895,7 @@ sub nextdestiny {
             $args = ['enact'];
         }
         $subreq->({ command => ['nodeset'],
-                node => \@nodes,
+                node => \@enactnodes,
                 arg  => $args });
     }
 
