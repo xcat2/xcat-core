@@ -358,7 +358,7 @@ sub setstate {
             # The commands come from the image served to this node, not from its
             # architecture: an image built from upstream grub has no linuxefi.
             my ($kernelcmd, $initrdcmd) =
-              xCAT::BootUtils::grub2_kernel_commands($grub2bin);
+              xCAT::BootUtils::grub2_kernel_commands($grub2bin, $nodearch);
 
             if ($kern and $kern->{kcmdline}) {
                 my $kcmdline = quote_kcmdline($kern->{kcmdline});

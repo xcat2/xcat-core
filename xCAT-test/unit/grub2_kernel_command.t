@@ -13,7 +13,7 @@ use warnings;
 use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
-use Test::More tests => 8;
+use Test::More tests => 9;
 
 use lib "$FindBin::Bin/../../perl-xCAT";
 use xCAT::BootUtils;
@@ -36,19 +36,19 @@ sub write_image {
 my $downstream = write_image('grub2.downstream', qw(linux linuxefi initrd initrdefi));
 my $upstream   = write_image('grub2.upstream',   qw(linux initrd));
 
-is_deeply( [ xCAT::BootUtils::grub2_kernel_commands($downstream) ],
+is_deeply( [ xCAT::BootUtils::grub2_kernel_commands($downstream, 'x86_64') ],
     [ 'linuxefi', 'initrdefi' ],
     'an image that carries linuxefi is given linuxefi and initrdefi' );
 
-is_deeply( [ xCAT::BootUtils::grub2_kernel_commands($upstream) ],
+is_deeply( [ xCAT::BootUtils::grub2_kernel_commands($upstream, 'x86_64') ],
     [ 'linux', 'initrd' ],
     'an image built from upstream grub is given linux and initrd' );
 
 # A missing or unreadable image must not produce a command the node cannot run. linux is
 # carried by every grub2 image, so it is the safe answer.
-is_deeply( [ xCAT::BootUtils::grub2_kernel_commands( File::Spec->catfile($dir, 'absent') ) ],
+is_deeply( [ xCAT::BootUtils::grub2_kernel_commands( File::Spec->catfile($dir, 'absent'), 'x86_64' ) ],
     [ 'linux', 'initrd' ], 'a missing image is given linux and initrd' );
-is_deeply( [ xCAT::BootUtils::grub2_kernel_commands(undef) ],
+is_deeply( [ xCAT::BootUtils::grub2_kernel_commands(undef, 'x86_64') ],
     [ 'linux', 'initrd' ], 'an undefined image is given linux and initrd' );
 
 ok( xCAT::BootUtils::grub2_image_provides($downstream, 'linuxefi'),
@@ -62,3 +62,8 @@ ok( xCAT::BootUtils::grub2_image_provides($upstream, 'linux'),
 # would look downstream.
 ok( !xCAT::BootUtils::grub2_image_provides( write_image('grub2.efionly', 'linuxefi'), 'linux' ),
     'a longer command name does not satisfy a shorter one' );
+
+# linuxefi loads an EFI binary, and a ppc loader is not one. The image is irrelevant there.
+is_deeply( [ xCAT::BootUtils::grub2_kernel_commands($downstream, 'ppc64le') ],
+    [ 'linux', 'initrd' ],
+    'a ppc node takes linux even from an image that carries linuxefi' );

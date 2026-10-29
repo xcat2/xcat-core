@@ -56,14 +56,18 @@ sub volatile_addkcmdline {
                   "can't find command `linuxefi'" and never asks for the kernel.
 
     Arguments:    $image the path of the grub2 image served to the node
+                  $arch the architecture of the node
     Returns:      the kernel command and the initial ramdisk command
 
 =cut
 
 #-------------------------------------------------------------------------------
 sub grub2_kernel_commands {
-    my ($image) = @_;
+    my ($image, $arch) = @_;
 
+    # linuxefi loads an EFI binary. x86 is the architecture whose grub2 loader is one, so
+    # a ppc node takes linux whatever its image carries.
+    return ('linux', 'initrd') unless defined($arch) && $arch =~ /x86/i;
     return ('linux', 'initrd') unless grub2_image_provides($image, 'linuxefi');
     return ('linuxefi', 'initrdefi');
 }
