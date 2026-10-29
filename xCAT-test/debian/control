@@ -8,12 +8,9 @@ Homepage: https://xcat.org/
 
 Package: xcat-test
 Architecture: all
-Depends: ${perl:Depends}
-# Only blackboxtest's DHCP steps need scapy, and dhcp.py imports it inside scapy_module(),
-# which raises UnsupportedError naming this package when the import fails. So xcat-test
-# installs and every other step runs without it, which is why xCAT-test.spec has only ever
-# recommended it. A hard Depends: also pulls scapy's own recommends -- matplotlib, scipy and
-# ipython3, about 255 MB over 54 packages -- into a CI step capped at 1200 seconds.
+Depends: ${perl:Depends}, python3
+# blackboxtest needs python3. Only its DHCP steps need scapy, and dhcp.py reports a missing
+# scapy itself. A hard Depends: on scapy also installs about 255 MB of its Recommends.
 Recommends: python3-scapy
 Description: xCAT automated test tool
  Provides automated test tool and buckets to help test xCAT commands

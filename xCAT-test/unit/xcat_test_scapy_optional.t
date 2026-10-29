@@ -47,6 +47,9 @@ like($recommends // '', qr/python3-scapy/,
      'python3-scapy is Recommended instead');
 # The perl dependency is what makes the package work at all and must survive the change.
 like($depends // '', qr/\$\{perl:Depends\}/, 'the perl dependency is still a Depends');
+# blackboxtest is a python3 program. Without scapy, nothing else pulls in the interpreter.
+my @hard = map { s/^\s+|\s+$//gr } split /,/, $depends // '';
+ok((grep { /^python3(?:\s|$)/ } @hard), 'python3 is a hard Depends of xcat-test');
 
 # PARITY. The two packagings answer the same question, so they must answer it the same way: the
 # spec has recommended it since the tool was added, and the asymmetry is what this fixes.
