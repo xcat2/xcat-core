@@ -20,11 +20,20 @@ BuildRequires: perl perl-DBI perl-JSON
 %if 0%{?suse_version}
 Requires: perl(JSON) perl(Expect) perl(SNMP) perl(HTML::Form)
 %endif
-# xCAT::SLP, xCAT::Client and xCAT::NetworkUtils reach IPv6 only through these two, and
-# each one loads them with eval { require ... }. perl-generators reads a use statement, not
-# a require inside an eval, so no family derives them. A missing module is not an error: the
-# guard variable stays false and the IPv6 branch is never taken.
-Requires: perl(Socket6) perl(IO::Socket::INET6)
+# xCAT::SLP, xCAT::Client and xCAT::NetworkUtils reach IPv6 only through Socket6 and
+# IO::Socket::INET6. Each one loads them with eval { require ... }, and perl-generators
+# reads a use statement, not a require inside an eval, so no family derives them.
+# A recommendation is enough where the package manager installs one. The openSUSE
+# Minimal-VM image sets solver.onlyRequires = true, so zypper installs no recommended
+# package and both modules stay absent, which leaves every IPv6 branch unreachable.
+%if 0%{?suse_version}
+Requires: perl(Socket6)
+Requires: perl(IO::Socket::INET6)
+%endif
+%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?openEuler}
+Recommends: perl(Socket6)
+Recommends: perl(IO::Socket::INET6)
+%endif
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
 #Requires: perl-SOAP-Lite
 %endif
