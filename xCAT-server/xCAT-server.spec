@@ -52,6 +52,10 @@ Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 pe
 # Time::HiRes and Text::Balanced) are not pulled in transitively by perl-xCAT
 # either. List them here or the affected subcommands die at load time.
 Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael
+# xCAT::IPMI and the dhcp, nodestat and credentials plugins reach IPv6 only through these
+# two, and each one loads them with eval { require ... }, so a missing module leaves IPMI
+# over IPv6 and the IPv6 half of node status silently off.
+Requires: perl(Socket6) perl(IO::Socket::INET6)
 %if 0%{?suse_version}
 # xcatd.pm uses Date::Parse. openSUSE has no perl-generators, so nothing derives this
 # from the source and xcatd exits before it opens its socket.

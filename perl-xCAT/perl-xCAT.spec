@@ -20,6 +20,11 @@ BuildRequires: perl perl-DBI perl-JSON
 %if 0%{?suse_version}
 Requires: perl(JSON) perl(Expect) perl(SNMP) perl(HTML::Form)
 %endif
+# xCAT::SLP, xCAT::Client and xCAT::NetworkUtils reach IPv6 only through these two, and
+# each one loads them with eval { require ... }. perl-generators reads a use statement, not
+# a require inside an eval, so no family derives them. A missing module is not an error: the
+# guard variable stays false and the IPv6 branch is never taken.
+Requires: perl(Socket6) perl(IO::Socket::INET6)
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
 #Requires: perl-SOAP-Lite
 %endif
