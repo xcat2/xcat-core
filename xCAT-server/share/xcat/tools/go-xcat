@@ -950,6 +950,9 @@ function check_repo_version_apt()
 	type apt-cache >/dev/null 2>&1 || return 255
 	local name=""
 	local ver=""
+	local policy=""
+	local rc=0
+	policy="$(apt-cache policy "$@" 2>/dev/null)" || rc="$?"
 	while read -r name ver
 	do
 		if [[ "${name}" =~ ^[a-z] ]]
@@ -966,13 +969,13 @@ function check_repo_version_apt()
 			echo "$ver"
 			shift
 		fi
-	done < <(apt-cache policy "$@" 2>/dev/null)
+	done <<<"${policy}"
 	while [[ -n "$1" ]]
 	do
 		echo "(not found)"
 		shift
 	done
-	return 0
+	return "${rc}"
 }
 
 function check_repo_version()
@@ -1989,7 +1992,27 @@ function install_packages_apt()
 	type apt-get >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	apt-get --allow-unauthenticated install "${yes[@]}" "$@"
+	local -a available=()
+	local package="" ver="" versions=""
+	versions="$(LC_ALL=C check_repo_version_apt "$@")"
+	warn_if_bad "$?" "query apt package candidates failed" || return 1
+	# As with dnf --setopt=strict=0, a package the repositories lack must not stop the install.
+	for package in "$@"
+	do
+		read -r ver
+		case "${ver}" in
+		"(none)"|"(not found)")
+			# The xcat metapackage depends on every package a management node needs.
+			[[ "${package}" = "xcat" ]] &&
+				{ warn_if_bad 1 "xcat: the repositories do not provide it"; return 1; }
+			warn_if_bad 1 "${package}: the repositories do not provide it, skipped"
+			;;
+		*)
+			available+=("${package}")
+			;;
+		esac
+	done <<<"${versions}"
+	apt-get --allow-unauthenticated install "${yes[@]}" "${available[@]}"
 }
 
 function install_packages()
