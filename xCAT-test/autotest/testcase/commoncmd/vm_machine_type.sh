@@ -33,23 +33,92 @@ vm_machine_type_private_dir()
     fi
 }
 
-# vm_machine_type_for_arch <arch> [<vmothersetting>] -- the machine type to apply.
-# An x86_64 node that asks for a UEFI firmware takes q35: every x86_64 OVMF descriptor targets
-# pc-q35-*, and libvirt refuses firmware efi on i440fx.
-vm_machine_type_for_arch()
+# alias <arch> [<vmothersetting>] -- the machine name qemu keeps pointed at the newest machine
+# of a family. An x86_64 node that asks for a UEFI firmware takes q35: every x86_64 OVMF
+# descriptor targets pc-q35-*, and libvirt refuses firmware efi on i440fx.
+vm_machine_type_alias()
 {
     case "$1" in
-        ppc64*)  echo 'machine:pseries-rhel7.6.0' ;;
+        ppc64*)  echo 'pseries' ;;
         x86_64)
-            case ";$2" in
-                *';firmware:efi'*) echo 'machine:q35' ;;
-                *)                 echo 'machine:pc' ;;
+            case ";${2-}" in
+                *';firmware:efi'*) echo 'q35' ;;
+                *)                 echo 'pc' ;;
             esac
             ;;
-        riscv64) echo 'machine:virt' ;;
-        aarch64) echo 'machine:virt' ;;
+        riscv64) echo 'virt' ;;
+        aarch64) echo 'virt' ;;
         *)       return 1 ;;
     esac
+}
+
+# libvirt and qemu call the ppc64le guest architecture ppc64. A node on an
+# Ubuntu cell names it ppc64el.
+vm_machine_type_libvirt_arch()
+{
+    case "$1" in
+        ppc64*)  echo 'ppc64' ;;
+        x86_64)  echo 'x86_64' ;;
+        riscv64) echo 'riscv64' ;;
+        aarch64) echo 'aarch64' ;;
+        *)       return 1 ;;
+    esac
+}
+
+# virsh on <host>, or here when <host> is empty. kvm.pm reaches the vmhost over
+# qemu+ssh://root@<host>/system, so root can ssh there from this node.
+vm_machine_type_virsh()
+{
+    local host="$1"
+    shift
+    if [ -n "$host" ]; then
+        ssh -o BatchMode=yes -o ConnectTimeout=10 -n "$host" virsh "$@"
+    else
+        virsh "$@"
+    fi
+}
+
+# supported <host> <arch> <machine> -- whether libvirt on <host> accepts <machine>.
+vm_machine_type_supported()
+{
+    vm_machine_type_virsh "$1" domcapabilities --arch "$2" --machine "$3" >/dev/null 2>&1
+}
+
+# default <host> <arch> -- the machine type libvirt on <host> uses for <arch>.
+vm_machine_type_default()
+{
+    vm_machine_type_virsh "$1" domcapabilities --arch "$2" 2>/dev/null |
+        sed -n 's|.*<machine>\(.*\)</machine>.*|\1|p' | head -n 1
+}
+
+# for_arch <arch> [<vmhost>] [<vmothersetting>] -- the machine type to write, as
+# "machine:<name>".
+#
+# The vmhost is what refuses the domain, so its libvirt picks the name: the plain
+# alias when that libvirt accepts it, its own default when it does not, and the
+# alias again when the vmhost cannot be asked. A versioned name does not survive
+# a host upgrade -- no qemu on AlmaLinux 10 has a pseries-rhel machine type.
+# q35 does not fall back to the default: the x86_64 default is i440fx, which UEFI cannot use.
+vm_machine_type_for_arch()
+{
+    local arch="$1" vmhost="${2-}" generic libvirt_arch name
+
+    generic="$(vm_machine_type_alias "$arch" "${3-}")" || return 1
+    libvirt_arch="$(vm_machine_type_libvirt_arch "$arch")" || return 1
+    if [ "$generic" = q35 ] ||
+        vm_machine_type_supported "$vmhost" "$libvirt_arch" "$generic"; then
+        printf 'machine:%s\n' "$generic"
+        return
+    fi
+    name="$(vm_machine_type_default "$vmhost" "$libvirt_arch")"
+    printf 'machine:%s\n' "${name:-$generic}"
+}
+
+# vmhost <node> -- the host whose libvirt runs the guest, empty when unset.
+vm_machine_type_vmhost()
+{
+    lsdef "$1" -i vmhost 2>/dev/null |
+        sed -n 's/^[[:space:]]*vmhost=//p' | head -n 1
 }
 
 vm_machine_type_get()
@@ -117,7 +186,7 @@ vm_machine_type_apply()
         chdef "$node" "vmothersetting=$original"
         return
     fi
-    if ! machine="$(vm_machine_type_for_arch "$arch" "$original")"; then
+    if ! machine="$(vm_machine_type_for_arch "$arch" "$(vm_machine_type_vmhost "$node")" "$original")"; then
         echo "vm_machine_type.sh: no machine type for arch '$arch'" >&2
         return 1
     fi

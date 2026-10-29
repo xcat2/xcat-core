@@ -10,8 +10,11 @@ setup_doxcat()
     fips=$(repo_path xCAT-genesis-scripts/usr/lib/xcat/fips.sh)
     [ -r "$fips" ]
     mkdir -p "$fixture"/{etc/ssh,etc/pki/tls,real,links,addrs}
+    # chmod is in this list because doxcat runs it: the sandbox has no /usr/bin on PATH, so a
+    # command that is missing here is a command that silently does nothing under test. doxcat's
+    # chmod of the sshd privilege separation directory was not exercised until it was added.
     for utility in bash sh cat cp awk grep sed sort tr tail rm wc cut head uname \
-        timeout env ls mkdir touch readlink basename sleep; do
+        timeout env ls mkdir touch readlink basename sleep chmod; do
         cp -L "$(PATH=/usr/bin:/bin type -P "$utility")" "$fixture/bin/$utility"
     done
     if [ -x /usr/bin/coreutils ]; then
