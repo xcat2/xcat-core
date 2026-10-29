@@ -12,7 +12,7 @@ no warnings 'once';
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 18;
+use Test::More tests => 19;
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
 $ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
@@ -93,3 +93,7 @@ is(xCAT::Template::_autoyast_network6('cn6long'), undef, 'a prefix above 128 is 
 # node answers "localhost": y2log recorded Y2Network::Hostname with @static=nil.
 like($xml, qr{<hostname>cn6</hostname>}, 'the profile names the node, so it does not boot as localhost');
 like($xml, qr{<search>xcat.lab</search>}, 'and a search list, so the short name of the MN resolves');
+# The AutoYaST schema gives searchlist the LIST type, as it does nameservers. Without the
+# attribute the whole profile is refused with only "Element profile failed to validate
+# content", and YaST then reports that no profile could be retrieved.
+like($xml, qr{<searchlist config:type="list">}, 'the search list is a typed list, which the schema requires');

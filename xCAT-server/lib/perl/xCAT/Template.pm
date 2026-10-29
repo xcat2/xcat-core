@@ -1410,7 +1410,10 @@ sub _autoyast_network6 {
                         # take a hostname from. YaST writes none at all without this one, and
                         # the installed node answers "localhost".
                         'hostname'   => [$hostname],
-                        'searchlist' => [ { 'search' => [$domain] } ],
+                        # searchlist takes config:type="list" in the AutoYaST schema, the
+                        # way nameservers below does. Without it YaST validates nothing and
+                        # reports only "Element profile failed to validate content".
+                        'searchlist' => [ { 'config:type' => 'list', 'search' => [$domain] } ],
                         # dhcp_resolv says whether DHCP may overwrite resolv.conf. The
                         # AutoYaST schema of Leap 15.6 refuses it, and one element it
                         # refuses makes YaST reject the whole profile. This section is
