@@ -814,11 +814,9 @@ sub load_config_file {
             $type = "Varible";
         } elsif ($type eq "Table") {
             ##TABLE BLOCK##
-            # The value class carries ':' and '/' so an IPv6 network reaches the table. Without
-            # them "net=2001:db8:176::" matched "2001" and the row was written with that value.
-            if ($line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/) {
-                $attr  = $1;
-                $value = $2;
+            if ( my ($a, $v) = xCAT::Test::OS::parse_conf_assignment($line) ) {
+                $attr  = $a;
+                $value = $v;
                 if ($name && ($$config_ref{table}{$sub_type}{$name}{__KEY__} ne $attr)) {
                     $$config_ref{table}{$sub_type}{$name}{$attr} = $value;
                 } else {
@@ -828,9 +826,9 @@ sub load_config_file {
             }
         } elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-            if ($line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/) {
-                $attr  = $1;
-                $value = $2;
+            if ( my ($a, $v) = xCAT::Test::OS::parse_conf_assignment($line) ) {
+                $attr  = $a;
+                $value = $v;
                 if ($attr eq "Name") {
                     $name = $value;
                 } elsif (!defined($name)) {
@@ -1601,13 +1599,13 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{table}) {
         foreach my $type (keys %{ $$config_ref{table} }) {
             foreach my $name (keys %{ $$config_ref{table}{$type} }) {
-                $cmd = "chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
-                foreach my $attr (sort keys %{ $$config_ref{table}{$type}{$name} }) {
-                    if ($attr ne '__KEY__') {
-                        $cmd = $cmd . " $type.$attr="
-                          . xCAT::Test::OS::shell_quote( $$config_ref{table}{$type}{$name}{$attr} );
-                    }
-                }
+                # Every argument is quoted, the row selector with them. See
+                # table_row_command: a conf value can carry shell syntax.
+                $cmd = xCAT::Test::OS::table_row_command(
+                    $type,
+                    $$config_ref{table}{$type}{$name}{__KEY__},
+                    $name,
+                    $$config_ref{table}{$type}{$name} );
                 log_this($running_log_fd, "$cmd");
                 &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
