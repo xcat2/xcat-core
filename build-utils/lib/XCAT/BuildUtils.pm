@@ -793,8 +793,9 @@ sub start_build_worker {
     }
     close($gate_r);
     # Both sides set the group, so the record never names a pid that is not yet a group leader.
-    # ESRCH means the child has already gone away.
-    my $ok = (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) ? 1 : 0;
+    # ESRCH means the pid is not a child of this process. A record of that group can keep the
+    # lock forever, and the gated child has not run, so record nothing.
+    my $ok = (POSIX::setpgid($pid, $pid) || $!{EACCES}) ? 1 : 0;
     $ok = attach_build_workers($pid) if $ok;
     $ok = 0 if $ok && (syswrite($gate_w, 'g') // 0) != 1;
     close($gate_w);
