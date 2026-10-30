@@ -125,6 +125,36 @@ sub chdef_command {
 
 #-------------------------------------------------------------------------------
 
+=head3 chtab_command
+
+    Descriptions:
+        The chtab command that applies one row of a [Table_*] block.
+
+        The assignments are sorted, so one conf builds one command.
+    Arguments:
+        $table - the table name, as the section name spells it
+        $key - the key column of the row
+        $name - the value of the key column
+        $attrs - a hash reference of column to value
+    Returns:
+        the command
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub chtab_command {
+    my ($table, $key, $name, $attrs) = @_;
+    my @words = ("$key=$name");
+    foreach my $attr (sort keys %$attrs) {
+        next if $attr eq '__KEY__';
+        my $value = defined $attrs->{$attr} ? $attrs->{$attr} : '';
+        push @words, "$table.$attr=$value";
+    }
+    return join ' ', 'chtab', @words;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 _quote
 
     Descriptions:
