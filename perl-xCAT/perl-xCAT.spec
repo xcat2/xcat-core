@@ -16,6 +16,15 @@ BuildArch: noarch
 BuildRequires: perl perl-DBI perl-JSON
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
 #Requires: perl-SOAP-Lite
+# openSUSE has no perl-generators, so no perl(...) requirement is generated here and nothing
+# installs the modules this code loads. xcatd stays inactive without them: xCAT::Table dies
+# loading JSON. EL and openEuler generate these automatically and need no list.
+%if 0%{?suse_version}
+Requires: perl(Expect)
+Requires: perl(HTML::Form)
+Requires: perl(JSON)
+Requires: perl(SNMP)
+%endif
 %endif
 
 %description

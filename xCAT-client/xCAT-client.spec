@@ -31,6 +31,12 @@ BuildArch: noarch
 
 Requires: perl-xCAT = 4:%{version}-%{release}
 Requires: cpio
+# openSUSE has no perl-generators, so no perl(...) requirement is generated here and nothing
+# installs the modules this code loads. xcatd stays inactive without them: xCAT::Table dies
+# loading JSON. EL and openEuler generate these automatically and need no list.
+%if 0%{?suse_version}
+Requires: perl(Expect)
+%endif
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux

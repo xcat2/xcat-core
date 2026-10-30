@@ -46,7 +46,8 @@ for my $platform (@platforms) {
         like($requires, qr/^perl\(Digest::SHA\)$/m, "$name server s390x=$s390 requires Digest::SHA");
         next if $s390;
         my $recommends = query('xCAT-server', 'x86_64', $macro, '--recommends');
-        is(scalar(grep { $_ eq 'perl-DB_File' } split /\n/, $requires), $name eq 'EL10' ? 0 : 1,
+        my $db_file = $name =~ /^SLES/ ? 'perl(DB_File)' : 'perl-DB_File';
+        is(scalar(grep { $_ eq $db_file } split /\n/, $requires), $name eq 'EL10' ? 0 : 1,
             "$name server hard DB_File dependency");
         is(scalar(grep { $_ eq 'perl-DB_File' } split /\n/, $recommends), $name eq 'EL10' ? 1 : 0,
             "$name server weak DB_File dependency");
