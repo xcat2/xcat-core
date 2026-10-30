@@ -4186,10 +4186,11 @@ sub send_tcp_msg {
     Returns:
         the command line, with the placeholder replaced.
 
-    A placeholder that a port follows is bracketed when the address is IPv6,
-    because "http://2001:db8::1:80/" cannot be split into a host and a port.
-    Every other placeholder takes the bare address: xcatd=!myipfn! names a host
-    with no port, and the postscripts read that value as it stands.
+    A placeholder that a port or an NFS path follows is bracketed when the
+    address is IPv6, because neither "http://2001:db8::1:80/" nor
+    "root=nfs:2001:db8::1:/install" can be split at the right colon. Every other
+    placeholder takes the bare address: xcatd=!myipfn! names a host with no port,
+    and the postscripts read that value as it stands.
 
 =cut
 
@@ -4199,7 +4200,12 @@ sub substitute_facing_address {
 
     return $cmdline unless defined($cmdline) && defined($address) && length($address);
     if (index($address, ':') >= 0) {
+        # A port follows the placeholder, as in "http://!myipfn!:80/". Without the brackets
+        # the port cannot be told from the last group of the address.
         $cmdline =~ s/!myipfn!(?=:\d)/[$address]/g;
+        # An NFS path follows it, as in "root=nfs:!myipfn!:/install". dracut reads the
+        # server up to the last colon, so an unbracketed address loses its last group.
+        $cmdline =~ s{!myipfn!(?=:/)}{[$address]}g;
     }
     $cmdline =~ s/!myipfn!/$address/g;
     return $cmdline;

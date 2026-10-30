@@ -718,4 +718,23 @@ SKIP: {
         'a value that is neither a host nor the placeholder is still refused' );
 }
 
+# An NFS root carries the server between two colons: "root=nfs:<server>:/install". dracut
+# reads the server up to the last colon, so an unbracketed IPv6 address lost its last group
+# and a statelite node could not mount its root.
+is( xCAT::NetworkUtils::substitute_facing_address('root=nfs:!myipfn!:/install/netboot', '2001:db8::1'),
+    'root=nfs:[2001:db8::1]:/install/netboot',
+    'an NFS server is bracketed before its path' );
+is( xCAT::NetworkUtils::substitute_facing_address('root=nfs:!myipfn!:/install/netboot', '192.0.2.1'),
+    'root=nfs:192.0.2.1:/install/netboot',
+    'an IPv4 NFS server is left alone' );
+is( xCAT::NetworkUtils::substitute_facing_address('imgurl=http://!myipfn!:80/x root=nfs:!myipfn!:/y', '2001:db8::1'),
+    'imgurl=http://[2001:db8::1]:80/x root=nfs:[2001:db8::1]:/y',
+    'a port and an NFS path are both bracketed in one command line' );
+is( xCAT::NetworkUtils::substitute_facing_address('xcatd=!myipfn!', '2001:db8::1'),
+    'xcatd=2001:db8::1',
+    'a placeholder with nothing after it still takes the bare address' );
+is( xCAT::NetworkUtils::substitute_facing_address('path=!myipfn!/install', '2001:db8::1'),
+    'path=2001:db8::1/install',
+    'a slash that no colon precedes does not bracket' );
+
 done_testing();
