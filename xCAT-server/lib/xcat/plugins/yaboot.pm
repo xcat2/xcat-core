@@ -25,6 +25,62 @@ my %usage = (
 "nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline]",
 );
 
+#-----------------------------------------------------------------------------
+
+=head3 yaboot_facing_address
+
+    Finds the address of the management node that faces one node.
+
+    Arguments:
+        $node - the node name
+    Returns:
+        the (code, value) pair that my_ip_facing returns.
+
+    my_ip_facing resolves with inet_aton, so it reports an IPv6-only node
+    unresolvable and the node gets no configuration at all. The family of the
+    node decides which helper answers.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub yaboot_facing_address {
+    my ($node) = @_;
+
+    return ((xCAT::NetworkUtils->node_address_family($node) || 4) == 6)
+      ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+      : xCAT::NetworkUtils->my_ip_facing($node);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 yaboot_config_name
+
+    Builds the name of the configuration file that yaboot asks for.
+
+    Arguments:
+        $ip - one address of the node
+    Returns:
+        the name, or undef when the address is not IPv4.
+
+    The name is the four octets of the IPv4 address in hexadecimal. An IPv6
+    address has no four octets, and sprintf then reads the first field as a
+    number and fills the rest with zeroes. The node has one name for each
+    address in the mac table, so a dual-stack node got a correct name and a
+    name that no firmware asks for.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub yaboot_config_name {
+    my ($ip) = @_;
+
+    return unless defined($ip);
+    my @octets = split(/\./, $ip);
+    return unless scalar(@octets) == 4;
+    return unless grep({ /\A\d+\z/ && $_ <= 255 } @octets) == 4;
+    return sprintf("%02x%02x%02x%02x", @octets);
+}
+
 sub handled_commands {
     return {
         nodeset => "noderes:netboot"
@@ -99,7 +155,7 @@ sub setstate {
     my $kern = $bphash{$node}->[0];
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
-        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        my @ipfnd = yaboot_facing_address($node);
 
         if ($ipfnd[0] == 1) {
             $::YABOOT_callback->(
@@ -131,6 +187,8 @@ sub setstate {
                     }
                 }
             } else {
+                my @myself = xCAT::NetworkUtils->determinehostname();
+                my $myname = $myself[ (scalar @myself) - 1 ];
                 $::YABOOT_callback->(
                     {
                         error => [
@@ -143,7 +201,8 @@ sub setstate {
             }
         } else {
             $ipfn = $ipfnd[1];
-            $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
+            $kern->{kcmdline} =
+              xCAT::NetworkUtils::substitute_facing_address($kern->{kcmdline}, $ipfn);
         }
     }
 
@@ -320,11 +379,21 @@ sub setstate {
 
         # Do not use symbolic link, p5 does not support symbolic link in /tftpboot
         #  my $hassymlink = eval { symlink("",""); 1 };
+        my $linked = 0;
         foreach $ip (keys %ipaddrs) {
-            my @ipa = split(/\./, $ip);
-            my $pname = sprintf("%02x%02x%02x%02x", @ipa);
+            my $pname = yaboot_config_name($ip);
+            next unless defined $pname;
             unlink($tftpdir . "/etc/" . $pname);
             link($tftpdir . "/etc/" . $node, $tftpdir . "/etc/" . $pname);
+            $linked++;
+        }
+        unless ($linked) {
+            $::YABOOT_callback->(
+                {
+                    error => ["yaboot names its configuration file after the IPv4 address of $node, so an IPv6-only node has no name to use. Give the node an IPv4 address, or use netboot=grub2."],
+                    errorcode => [1]
+                });
+            return;
         }
 
         if ($macstring) {
