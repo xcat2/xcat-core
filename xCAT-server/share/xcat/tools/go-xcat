@@ -952,7 +952,7 @@ function check_repo_version_apt()
 	local ver=""
 	local policy=""
 	local rc=0
-	policy="$(apt-cache policy "$@" 2>/dev/null)" || rc="$?"
+	policy="$(LC_ALL="C" apt-cache policy "$@" 2>/dev/null)" || rc="$?"
 	while read -r name ver
 	do
 		if [[ "${name}" =~ ^[a-z] ]]
@@ -1994,7 +1994,7 @@ function install_packages_apt()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
 	local -a available=()
 	local package="" ver="" versions=""
-	versions="$(LC_ALL=C check_repo_version_apt "$@")"
+	versions="$(check_repo_version_apt "$@")"
 	warn_if_bad "$?" "query apt package candidates failed" || return 1
 	# As with dnf --setopt=strict=0, a package the repositories lack must not stop the install.
 	for package in "$@"
