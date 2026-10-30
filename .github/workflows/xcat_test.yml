@@ -104,7 +104,7 @@ jobs:
         run: |
           log=$(mktemp)
           trap 'rm -f -- "$log"' EXIT
-          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
+          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t xCAT-test/native/kickstart_pre_install_log.t | tee "$log"
           ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04

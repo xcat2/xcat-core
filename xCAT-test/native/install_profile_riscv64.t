@@ -170,7 +170,8 @@ for my $rendered (@rendered_profiles) {
         my $root = installed_root(1, sandbox_root());
         make_path("$root/etc/systemd/system/multi-user.target.wants", "$root/etc/yum.repos.d");
         write_text("$root/etc/yum.repos.d/rocky.repo", "[baseos]\nname=BaseOS\nenabled=1\n");
-        write_text("$root/tmp/pre-install.log", "pre-install fixture diagnostic\n");
+        make_path("$root/installer-tmp");
+        write_text("$root/installer-tmp/pre-install.log", "pre-install fixture diagnostic\n");
         copy(repo_path('xCAT/postscripts/xcatlib.sh'), "$root/xcatlib.sh") or die $!;
         write_text("$root/mypostscript.node", "#!/bin/bash\nMASTER=192.0.2.1\ntouch /fixture/postscript-ran\n");
         for my $name (qw(uname findmnt lsblk efibootmgr)) {
@@ -187,10 +188,11 @@ for my $rendered (@rendered_profiles) {
             $interpreter //= '/bin/sh';
             write_text("$root/post.sh", $post->[1]);
             my %options = (env => {XCAT_EFI_LOG => '/fixture/efi.log'});
-            # anaconda runs a --nochroot block in the installer, with the installed system at /mnt/sysimage
+            # anaconda runs a --nochroot block in the installer, which has its own /tmp and the installed system at /mnt/sysimage
             if ($post->[0] =~ /(?:^|\s)--nochroot(?:\s|$)/) {
-                $options{writable} = {map { ("$root/$_->[0]" => "/mnt/sysimage/$_->[1]") }
-                    ['boot', 'boot'], ['etc', 'etc'], ['log', 'var/log']};
+                $options{writable} = {map { ("$root/$_->[0]" => $_->[1]) }
+                    ['installer-tmp', '/tmp'], ['boot', '/mnt/sysimage/boot'],
+                    ['etc', '/mnt/sysimage/etc'], ['log', '/mnt/sysimage/var/log']};
             }
             my ($rc, $log) = sandbox_run($root, \%options, 'timeout', '30', $interpreter, '/fixture/post.sh');
             is($rc, 0, 'post block ' . ++$index . ' completes')
