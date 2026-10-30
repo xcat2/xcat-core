@@ -12,7 +12,7 @@ no warnings 'once';
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 19;
+use Test::More tests => 24;
 
 my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
 $ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
@@ -31,7 +31,15 @@ my %cfg = (
 );
 no warnings 'redefine';
 *xCAT::NetworkUtils::getNodeNetworkCfg6   = sub { my $n = $_[-1]; return @{ $cfg{$n} || [] } };
-*xCAT::NetworkUtils::ipv6_server_for_node = sub { return $_[-1] };
+# The management node, which runs named. It is deliberately not any node's gateway: a
+# cluster whose gateway is a separate router would otherwise be handed a resolver that
+# answers nothing, and the test could not tell the two apart.
+our $master6 = '2001:db8:ff::1';
+*xCAT::NetworkUtils::ipv6_server_for_node = sub {
+    my $server = $_[-1];
+    return $master6 if !defined($server) || $server eq '<xcatmaster>' || $server eq '!myipfn!';
+    return $server;
+};
 *xCAT::NetworkUtils::getNodeDomains       = sub { return { map { $_ => 'xcat.lab' } @{ $_[-1] } } };
 # site.nameservers holds one list for the cluster, so an IPv6-only node can be given the
 # IPv4 resolver of an IPv4 network.
@@ -58,8 +66,10 @@ like($xml, qr{<nameserver>\Q2001:db8:1::fe\E</nameserver>}, 'and the resolver is
 my $v4ns = xCAT::Template::_autoyast_network6('cn6v4ns');
 unlike($v4ns, qr{<nameserver>\Q192.0.2.53\E</nameserver>},
     'an IPv4 resolver is not given to an IPv6-only node');
-like($v4ns, qr{<nameserver>\Q2001:db8:4::fe\E</nameserver>},
-    'the gateway stands in when the node is configured with no IPv6 resolver');
+like($v4ns, qr{<nameserver>\Q2001:db8:ff::1\E</nameserver>},
+    'the management node stands in when the node has no IPv6 resolver');
+unlike($v4ns, qr{<nameserver>\Q2001:db8:4::fe\E</nameserver>},
+    'and the gateway does not, because a separate router need not serve DNS');
 
 # dhcp_resolv says whether DHCP may overwrite resolv.conf. The AutoYaST schema of Leap 15.6
 # does not accept it, and one invalid element makes YaST reject the whole profile: it reports
@@ -97,3 +107,28 @@ like($xml, qr{<search>xcat.lab</search>}, 'and a search list, so the short name 
 # attribute the whole profile is refused with only "Element profile failed to validate
 # content", and YaST then reports that no profile could be retrieved.
 like($xml, qr{<searchlist config:type="list">}, 'the search list is a typed list, which the schema requires');
+
+# ---- '<xcatmaster>' in site.nameservers is the management node, not the gateway --------
+# The gateway can be a separate router that serves no DNS, and a cluster with no gateway
+# would have been given no resolver at all.
+{
+    local $resolvers{cn6} = '<xcatmaster>';
+    my $x = xCAT::Template::_autoyast_network6('cn6');
+    like( $x, qr{<nameserver>\Q2001:db8:ff::1\E</nameserver>},
+        'the placeholder resolves to the management node' );
+    unlike( $x, qr{<nameserver>\Q2001:db8:1::fe\E</nameserver>},
+        '... and not to the gateway of the node' );
+}
+{
+    local $resolvers{cn6nogw} = '<xcatmaster>';
+    my $x = xCAT::Template::_autoyast_network6('cn6nogw');
+    like( $x, qr{<nameserver>\Q2001:db8:ff::1\E</nameserver>},
+        'a node with no gateway still gets the management node as its resolver' );
+}
+{
+    # Nothing that is not an address reaches the profile.
+    local $resolvers{cn6} = '';
+    local $master6 = '<xcatmaster>';
+    my $x = xCAT::Template::_autoyast_network6('cn6');
+    unlike( $x, qr{<nameserver>[^<]*xcatmaster}, 'an unresolved placeholder is not written' );
+}

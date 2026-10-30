@@ -1365,13 +1365,19 @@ sub _autoyast_network6 {
     my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$node]) };
     # site.nameservers holds one list for the cluster, so the node can be given the IPv4
     # resolver of another network. An IPv6-only node cannot reach it, and an unreachable
-    # server in resolv.conf makes every lookup wait for its timeout. The gateway is the
-    # management node, which answers.
+    # server in resolv.conf makes every lookup wait for its timeout.
+    #
+    # '<xcatmaster>' is the management node, which runs named. It is not the gateway: a
+    # cluster whose gateway is a separate router would be given a resolver that answers
+    # nothing, and a cluster with no gateway would be given none at all.
+    my $master6 = xCAT::NetworkUtils->ipv6_server_for_node($node, '<xcatmaster>');
     my @nameserversIP = grep { index($_, ':') >= 0 }
       grep { defined && length }
-      map { $_ eq '<xcatmaster>' ? $gateway : $_ } split(/,/, $nameservers{$node} // '');
-    @nameserversIP = ($gateway)
-      if !@nameserversIP && defined($gateway) && length($gateway);
+      map { $_ eq '<xcatmaster>' ? $master6 : $_ } split(/,/, $nameservers{$node} // '');
+    @nameserversIP = ($master6)
+      if !@nameserversIP
+      && defined($master6)
+      && index($master6, ':') >= 0;
 
     my $interface = {
         'bootproto' => ['static'],
