@@ -511,6 +511,10 @@ sub subvars {
         $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
         $inc =~ s/#GETPRINICMAC:([^#]+)#/xCAT::Utils::parseMacTabEntry(tabdb("mac",$1,"mac"),$1)/eg;
         $inc =~ s/#COLONHTTPPORT#/$httpportsuffix/eg;
+        # The master as a URI host: bracketed when it is an IPv6 literal, so a URL built in a
+        # template can carry it. #XCATVAR:XCATMASTER# is the bare value and stays that way,
+        # because bash reads /dev/tcp/<host>/<port> with no brackets.
+        $inc =~ s/#MASTERURIHOST#/$master_uri_host/eg;
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
             $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#//g;

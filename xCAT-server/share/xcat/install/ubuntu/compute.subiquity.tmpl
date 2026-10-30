@@ -53,12 +53,12 @@ autoinstall:
       ip addr show
       ip route show
       echo "=== disk detection ==="
-      wget -T 30 -O /tmp/getinstdisk http://#XCATVAR:XCATMASTER##COLONHTTPPORT#/install/autoinst/getinstdisk
+      wget -T 30 -O /tmp/getinstdisk http://#MASTERURIHOST##COLONHTTPPORT#/install/autoinst/getinstdisk
       test -s /tmp/getinstdisk
       chmod u+x /tmp/getinstdisk
       /tmp/getinstdisk
       echo "=== pre-install script ==="
-      wget -T 30 -O /tmp/pre.sh http://#XCATVAR:XCATMASTER##COLONHTTPPORT#/install/autoinst/#HOSTNAME#.pre
+      wget -T 30 -O /tmp/pre.sh http://#MASTERURIHOST##COLONHTTPPORT#/install/autoinst/#HOSTNAME#.pre
       test -s /tmp/pre.sh
       chmod u+x /tmp/pre.sh
       /tmp/pre.sh
@@ -107,7 +107,7 @@ autoinstall:
     printf ''%s\n'' ''GRUB_CMDLINE_LINUX="#TABLEBLANKOKAY:bootparams:$NODE:kcmdline#"'' >>/target/etc/default/grub;
     curtin in-target --target /target update-grub2;
     echo "Running late_command Installation script...";
-    wget -T 30 http://#XCATVAR:XCATMASTER##COLONHTTPPORT#/install/autoinst/#HOSTNAME#.post;
+    wget -T 30 http://#MASTERURIHOST##COLONHTTPPORT#/install/autoinst/#HOSTNAME#.post;
     chmod u+x #HOSTNAME#.post;
     cp ./#HOSTNAME#.post /target/root/post.script;
     curtin in-target --target /target /root/post.script;
