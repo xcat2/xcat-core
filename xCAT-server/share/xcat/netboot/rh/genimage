@@ -2167,6 +2167,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
     close($cfgfile);
 
     imgutils::write_nic_profiles($rootimg_dir, $osver, $prinic, $othernics);
+    imgutils::disable_auto_profiles($rootimg_dir, $osver);
 
     # securetty not needed on s390x
     if ($arch ne "s390x") {

@@ -223,6 +223,19 @@ sub write_nic_profiles {
     return;
 }
 
+# NetworkManager otherwise makes a DHCP profile for every Ethernet port without one.
+sub disable_auto_profiles {
+    my ($rootimg_dir, $osver) = @_;
+    my $major = el_major_version($osver);
+    my $confdir = "$rootimg_dir/etc/NetworkManager/conf.d";
+    return unless defined($major) && $major >= 10 && -d $confdir;
+    my $file = "$confdir/xcat.conf";
+    my $fh;
+    open($fh, '>', $file) && print($fh "[main]\nno-auto-default=*\n") && close($fh)
+      or die("Error: cannot write $file: $!\n");
+    return;
+}
+
 sub varsubinline{
     my $line=shift;
     my $refvardict=shift;
