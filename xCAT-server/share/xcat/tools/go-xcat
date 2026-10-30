@@ -2277,7 +2277,8 @@ function list_xcat_packages()
 	warn_if_bad "$?" "Failed to get package list from repository \`xcat-dep'."  || return 1
 
 	local -i cols
-	cols="$(type tput >/dev/null 2>&1 && tput cols)"
+	# The tput of ncurses 5 reads the width through stderr, so only the terminal type check is silenced.
+	cols="$(type tput >/dev/null 2>&1 && tput longname >/dev/null 2>&1 && tput cols)"
 	[[ "${cols}" -lt 80 ]] && cols=80
 	[[ "${cols}" -gt 90 ]] && cols=90
 	[[ -t 1 ]] || cols=90
