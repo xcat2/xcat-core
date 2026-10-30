@@ -90,6 +90,22 @@ sub gone_within {
     ok(!-e $marker, 'and it never ran the command');
 }
 
+# ---- a pid that is not a child of this process is never recorded ----------------------
+# A recorded group that is always alive, such as group 1, makes the lock unrecoverable. The
+# release_repository.t schedule stub returns 1 from Parallel::ForkManager::start.
+{
+    my @attached;
+    # No child holds the read end of the gate, so a write to it raises SIGPIPE.
+    local $SIG{PIPE} = "IGNORE";
+    my ($pid, $ok) = do {
+        local @XCAT::BuildUtils::LIVE_LOCKS = (FakeLock->new(sub { push @attached, @_; 1 }));
+        XCAT::BuildUtils::start_build_worker(sub { getppid() });
+    };
+    is($pid, getppid(), 'control: start_build_worker returns the pid the fork gave');
+    is($ok, 0, 'start_build_worker reports no record for a pid that is not its child');
+    is_deeply(\@attached, [], 'and no held lock records that group');
+}
+
 # ---- the record exists before the worker runs -----------------------------------------
 {
     my $ckout = '/opt/builds/record-first/xcat-core';
