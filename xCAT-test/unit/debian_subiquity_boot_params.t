@@ -125,7 +125,7 @@ my $resolver = sub { $_[0] eq 'mn.cluster' ? '10.0.0.1' : undef };
         '/install/ubuntu24.04/x86_64', '80', 'cn6', $resolver, $ipv6_only );
     ok( !defined $kcmdline, 'an IPv6-only node gets no Subiquity command line' );
     like( $err, qr/\bcn6\b/, '... and the refusal names the node' );
-    like( $err, qr/klibc/, '... and says which component has no IPv6 support' );
+    like( $err, qr/nfsmount/, '... and names nfsmount, the one component that has no IPv6' );
 }
 
 # A node that has an IPv4 address is unaffected, whatever the management node also has.
