@@ -65,6 +65,11 @@ my @cases = (
     ['a disk script', [['s:d:', $diskscript]], '/dev/disk/by-id/scripted'],
     ['a layout file', [['', $layout]], '/dev/disk/by-id/custom'],
     ['a layout script', [['s:', $writer]], '/dev/disk/by-id/custom'],
+    ['a layout file after a layout script', [['s:', "#!/bin/sh\nexit 0\n"], ['', $layout]], '/dev/disk/by-id/custom'],
+    ['a disk file after a disk script', [['s:d:', "#!/bin/sh\nexit 0\n"], ['d:', "/dev/disk/by-id/nvme-pinned\n"]],
+        '/dev/disk/by-id/nvme-pinned'],
+    ['a layout file before a disk script', [['', $layout], ['s:d:', $diskscript]], '/dev/disk/by-id/custom'],
+    ['a layout script before a disk file', [['s:', $writer], ['d:', "/dev/disk/by-id/nvme-pinned\n"]], '/dev/disk/by-id/custom'],
 );
 for my $case (@cases) {
     my ($label, $entries, $expected) = @$case;
@@ -82,4 +87,16 @@ for my $case (@cases) {
         is($config, $layout, 'the administrator layout replaces the default one') if $expected eq '/dev/disk/by-id/custom';
     };
 }
+
+# The debian-installer path renders the same entries into pre.ubuntu, under a shell with read -n.
+subtest 'a debian-installer recipe file after a recipe script' => sub {
+    my $part = render_part('pre.ubuntu', qr/(^base64decode\(\)\n.*?^exit 0$)/ms,
+        ['s:', "#!/bin/sh\nexit 0\n"], ['', "recipe ::\n    .\n"]);
+    ok($part, 'the rendered script defines base64decode before the recipe') or return;
+    my $root = installer_root();
+    write_text("$root/part.sh", $part);
+    my ($rc, $output) = sandbox_run($root, '/bin/bash', '/fixture/part.sh');
+    is($rc, 0, 'the recipe step runs') or diag($output);
+    is(storage_config($root), "recipe ::\n    .\n", 'the later recipe file replaces the default recipe');
+};
 done_testing();
