@@ -750,6 +750,40 @@ sub copycd
 
 #-------------------------------------------------------------------------------
 
+=head3 static_ip6_boot_arg
+
+    The dracut ip= argument that gives an IPv6-only node a static address.
+
+    networks.gateway holds what the administrator wrote, and '<xcatmaster>' is the common
+    value. Unresolved it reaches the boot argument as "[<xcatmaster>]", and the node has no
+    route to a server off its own link. A gateway that does not resolve is dropped: an
+    address with no route still reaches an image server on the same link.
+
+    Arguments:
+        $node     the node being installed
+        $nicname  the name of the provisioning NIC
+        $cfg6     optional coderef, for tests; defaults to getNodeNetworkCfg6
+        $resolve  optional coderef, for tests; defaults to ipv6_server_for_node
+    Returns:
+        the argument, or undef when the node has no usable address
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub static_ip6_boot_arg {
+    my ($node, $nicname, $cfg6, $resolve) = @_;
+
+    $cfg6    ||= sub { return xCAT::NetworkUtils->getNodeNetworkCfg6($_[0]); };
+    $resolve ||= sub { return xCAT::NetworkUtils->ipv6_server_for_node($_[0], $_[1]); };
+
+    my ($address, undef, $gateway, $prefix) = $cfg6->($node);
+    $gateway = $resolve->($node, $gateway)
+      if defined($gateway) && length($gateway);
+    return xCAT::NetworkUtils::dracut_static_ip6($address, $gateway, $prefix, $nicname);
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 install_iso_name
 
     The name the install ISO takes inside the install tree.
@@ -2118,10 +2152,7 @@ sub mknetboot
         # advertisement, so a node that takes the DHCPv6 answer alone cannot reach its
         # server.
         if (xCAT::NetworkUtils->node_is_ipv6_only($node)) {
-            my ($v6addr, undef, $v6gateway, $v6prefix) =
-              xCAT::NetworkUtils->getNodeNetworkCfg6($node);
-            my $ip6 = xCAT::NetworkUtils::dracut_static_ip6(
-                $v6addr, $v6gateway, $v6prefix, $net_params->{nicname})
+            my $ip6 = static_ip6_boot_arg($node, $net_params->{nicname})
               || $net_params->{ip6};
             $kcmdline .= "$ip6 " if $ip6;
         }
