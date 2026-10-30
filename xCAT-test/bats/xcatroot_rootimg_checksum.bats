@@ -174,7 +174,7 @@ run_xcatroot()
     done
     # genimage puts the helper in every initial ramdisk that can receive the root image over UFTP.
     [ -n "$NO_UFTP_HELPER" ] || sandbox+=(--ro-bind "$(repo_path xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-fetch.sh)" /lib/xcat-rootimg-fetch.sh)
-    echo "imgurl=$URL XCAT=192.0.2.1:3001 nonodestatus $CMDLINE $UFTP" >"$FX/cmdline"
+    echo "imgurl=$URL XCAT=192.0.2.1:3001 nonodestatus $CMDLINE $UFTP $KERNEL_ARGS" >"$FX/cmdline"
     echo "$IMAGE_PLAN" >"$FX/image.plan"
     echo "$CHECKSUM_PLAN" >"$FX/checksum.plan"
     echo "${MAXWAITS:-100}" >"$FX/maxwaits"
@@ -308,4 +308,12 @@ check_each_script()
     rm "$FX/served/rootimg.cpio.gz.sha256"
     CMDLINE= SCRIPTS=$UFTP_SCRIPTS UFTP="xcat.uftp=1045 xcat.uftpfp=$FP"
     check_each_script 'packed image' "$URL " 0 'Cannot receive .*rootimg.cpio.gz over UFTP'
+}
+
+@test 'the EL10 initial ramdisk copies no dhclient lease and writes no ifcfg file' {
+    SCRIPTS='xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash'
+    KERNEL_ARGS='ifname=eth0:52:54:00:12:34:56'
+    check_each_script 'packed image' "$URL.sha256 $URL $URL.sha256 " 0 ''
+    run grep -E 'dhclient|network-scripts' "$FX/console"
+    [ "$status" -eq 1 ] || { echo "$output"; return 1; }
 }
