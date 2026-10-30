@@ -132,6 +132,7 @@ my $lsblk = fake_command('lsblk', <<'SH');
 case "$*" in
     *PKNAME*) printf "vda\n" ;;
     *PARTN*) printf "1\n" ;;
+    *PARTUUID*) printf "0b8f4c1e-6a51-4b4e-9d7e-2f3a1c5d7e90\n" ;;
 esac
 SH
 my $efibootmgr = fake_command('efibootmgr', <<'SH');
@@ -139,8 +140,8 @@ printf '%s\n' "$*" >> "$XCAT_EFI_LOG"
 case "$*" in
     '') exit 0 ;;
     '-v')
-        printf 'Boot0001* Rocky HD(1,GPT,...)/File(\\EFI\\rocky\\shimx64.efi)\n'
-        printf 'Boot0002* OldRiscv HD(1,GPT,...)/File(\\EFI\\rocky\\grubriscv64.efi)\n'
+        printf 'Boot0001* Rocky Linux\tHD(1,GPT,0b8f4c1e-6a51-4b4e-9d7e-2f3a1c5d7e90,0x800,0x80000)/File(\\EFI\\rocky\\shimx64.efi)\n'
+        printf 'Boot0002* Rocky Linux\tHD(1,GPT,0B8F4C1E-6A51-4B4E-9D7E-2F3A1C5D7E90,0x800,0x80000)/File(\\EFI\\rocky\\grubriscv64.efi)\n'
         printf 'Boot0003* Network PXE\n'
         exit 0
         ;;
