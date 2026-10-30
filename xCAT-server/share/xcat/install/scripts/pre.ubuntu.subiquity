@@ -150,7 +150,9 @@ rm -f /tmp/diskscript.enc
 [ -e /tmp/xcat.install_disk ] && mv /tmp/xcat.install_disk /tmp/xcat.install_disk.detected
 #XCA_PARTMAN_DISK_SCRIPT#
 override_rc=$?
+disk_entry=""
 if [ -e /tmp/diskscript.enc ]; then
+        disk_entry=1
         # Falling back to the detected disk could wipe the disk the entry protects.
         if [ "$override_rc" -ne 0 ] || [ -z "$(awk 'NF {print $1; exit}' /tmp/xcat.install_disk 2>/dev/null)" ]; then
                 logger -t $log_label -p "err" "The partitionfile disk entry selected no disk, stopping the install"
@@ -353,7 +355,9 @@ EOF
 fi
 
 # Keep only a storage section that holds a config or a layout, rewritten as one YAML fragment
-# for autoinstall.yaml. Subiquity puts LVM on the largest disk when that section is missing.
+# for autoinstall.yaml. Subiquity puts LVM on the largest disk when that section is missing,
+# and a layout without a match goes to the largest disk too, so it gets the disk in $2, if any.
+# Some Subiquity releases ignore match in use_gap mode, so such a layout is refused with $2.
 normalize_storage_layout()
 {
         python3 -c 'import sys, yaml
@@ -361,7 +365,12 @@ s = yaml.safe_load(open(sys.argv[1]))
 t = s.get("storage") if isinstance(s, dict) else None
 if not (isinstance(t, dict) and (t.get("config") or t.get("layout"))):
     sys.exit(1)
-open(sys.argv[1], "w").write(yaml.safe_dump({"storage": t}, default_flow_style=False, sort_keys=False))' "$1" 2>/dev/null
+l = t.get("layout")
+if sys.argv[2] and isinstance(l, dict):
+    if l.get("mode") == "use_gap":
+        sys.exit(1)
+    l.setdefault("match", {"path": sys.argv[2]})
+open(sys.argv[1], "w").write(yaml.safe_dump({"storage": t}, default_flow_style=False, sort_keys=False))' "$1" "$2" 2>/dev/null
 }
 
 # A partitionfile layout or s: script must come after the default layout, which it replaces.
@@ -371,8 +380,8 @@ mv /tmp/partitionfile /tmp/partitionfile.default
 override_rc=$?
 if [ -e /tmp/partscript.enc ]; then
         # Keeping the default layout could wipe a disk the administrator layout protects.
-        if [ "$override_rc" -ne 0 ] || ! normalize_storage_layout /tmp/partitionfile; then
-                logger -t $log_label -p "err" "The partitionfile layout entry wrote no layout, stopping the install"
+        if [ "$override_rc" -ne 0 ] || ! normalize_storage_layout /tmp/partitionfile "${disk_entry:+$INSTALL_DISK}"; then
+                logger -t $log_label -p "err" "The partitionfile layout entry wrote no usable layout, stopping the install"
                 rm -f /tmp/partitionfile
                 exit 1
         fi
