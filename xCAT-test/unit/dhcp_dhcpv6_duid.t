@@ -132,7 +132,23 @@ my $getipaddr = sub {
 };
 no warnings 'redefine';
 local *xCAT::Table::new = sub { return DUIDTable->new( $_[1] ); };
-local *xCAT::TableUtils::get_site_attribute = sub { return; };
+# dhcpinterfaces decides which interfaces makedhcp answers on, and the router
+# advertisements follow the same selection. Without it the set is discovered from the
+# interfaces of the host the suite runs on, and the branch under test would be whichever
+# those happen to be.
+our $dhcpinterfaces = 'eth0';
+# The interface of the IPv6 network under test. isc_commands localizes the networks
+# table itself, so a caller cannot override it from outside.
+our $ra_mgtifname = 'eth0';
+# Whether radvd is reported running. A start that failed leaves the configuration
+# already correct, so the service has to be examined on every call.
+our $radvd_running = 1;
+local *xCAT::TableUtils::get_site_attribute = sub {
+    my ($class, $attribute) = @_;
+    $attribute = $class unless defined($attribute);
+    return $dhcpinterfaces if $attribute eq 'dhcpinterfaces';
+    return;
+};
 local *xCAT::MsgUtils::trace = sub { return; };
 local *xCAT_plugin::dhcp::getipaddr = $getipaddr;
 local *xCAT::NetworkUtils::getipaddr = $getipaddr;
@@ -189,13 +205,16 @@ sub isc_commands {
         push @restarted, $_[0];
         return 0;
     };
-    local @DUIDTable::networks = ( { net => '2001:db8:176::', mask => '/64', mgtifname => 'eth0' } );
+    local @DUIDTable::networks = ( { net => '2001:db8:176::', mask => '/64', mgtifname => $ra_mgtifname } );
     local *xCAT::DHCP::Backend::new_backend = sub { return bless {}, 'DUIDISCBackend'; };
     local *xCAT::Utils::osver = sub { return $osver; };
     local *xCAT::Utils::isServiceNode = sub { return 0; };
     local *xCAT::Utils::isLinux = sub { return 1; };
     local *xCAT::Utils::isFIPS = sub { return 0; };
-    local *xCAT::Utils::checkservicestatus = sub { return 0; };
+    local *xCAT::Utils::checkservicestatus = sub {
+        return $radvd_running ? 0 : 3;
+    };
+    local *xCAT::Utils::enableservice = sub { return 0; };
     local *xCAT::NetworkUtils::determinehostname = sub { return ('mn'); };
     local *xCAT::NetworkUtils::nodeonmynet = sub { return 1; };
     local *xCAT::DBobjUtils::getnodetype = sub { return {}; };
@@ -711,6 +730,115 @@ sub isc_hosts {
         'the prefix of the network is announced' );
     is_deeply( \@forwarded, ['eth0'],
         'forwarding is turned on, because radvd sends nothing on an interface that does not forward' );
+}
+
+# ---- the advertisement follows the interface selection -----------------------------------
+# site.dhcpinterfaces names the interfaces this server answers on. An advertisement on any
+# other interface offers this host as a router to a LAN the administrator kept it off.
+is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', { eth1 => 1 } ), 0,
+    'an interface DHCP does not serve gets no advertisement' );
+is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth1', { eth1 => 1 } ), 1,
+    'an interface DHCP serves does' );
+is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', {} ), 1,
+    'an empty set is no restriction' );
+is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', undef ), 1,
+    'and neither is an absent one' );
+is( xCAT_plugin::dhcp::ra_interface_is_served( '', { eth1 => 1 } ), 0,
+    'a network with no mgtifname is skipped' );
+
+# ---- radvd is examined on every call -----------------------------------------------------
+# The configuration was the only trigger, so a start that failed left the file already
+# correct and a later makedhcp never tried again while the service stayed down.
+is( xCAT_plugin::dhcp::radvd_needs_restart( 1, 1 ), 1, 'a changed file restarts radvd' );
+is( xCAT_plugin::dhcp::radvd_needs_restart( 1, 0 ), 1, 'and so does a changed file with the service down' );
+is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 0 ), 1, 'an unchanged file with the service down restarts it' );
+is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with the service up leaves it alone' );
+
+# configure_router_advertisements is driven directly, because process_request reaches it
+# only on some paths and the question here is what the sub itself does on a repeat call.
+{
+    my $file = "$dir/radvd-direct.conf";
+    unlink($file);
+    local $xCAT_plugin::dhcp::radvdconffile = $file;
+    local @DUIDTable::networks =
+      ( { net => '2001:db8:176::', mask => '/64', mgtifname => 'eth0' } );
+
+    my @restarts;
+    my @enabled;
+    my $up = 0;
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub { return DUIDTable->new( $_[1] ); };
+    local *xCAT_plugin::dhcp::enable_ipv6_forwarding = sub { return; };
+    local *xCAT::Utils::enableservice = sub { push @enabled, $_[1]; return 0; };
+    local *xCAT::Utils::checkservicestatus = sub { return $up ? 0 : 3; };
+    local *xCAT::Utils::restartservice = sub { push @restarts, $_[1]; $up = 1; return 0; };
+    use warnings 'redefine';
+    local $::XCATSITEVALS{externaldhcpservers};
+    my @warn;
+    my $cb = sub { push @warn, @{ $_[0]->{warning} || [] } };
+
+    xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
+    is_deeply( \@restarts, ['radvd'], 'the first call writes the file and starts radvd' );
+    ok( -s $file, '... and the configuration is on disk' );
+    is_deeply( \@enabled, ['radvd'], '... with the service enabled' );
+
+    @restarts = ();
+    xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
+    is_deeply( \@restarts, [],
+        'an unchanged configuration with radvd up does not restart it' );
+
+    # The service goes down with the configuration already correct, which is what a failed
+    # first start leaves behind. The old code returned on the file alone and never retried.
+    $up = 0;
+    @restarts = ();
+    xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
+    is_deeply( \@restarts, ['radvd'],
+        'an unchanged configuration with radvd down starts it again' );
+    is_deeply( \@warn, [], 'and none of the three calls warned' );
+}
+
+# restartservice answers -1 when the service is not installed, and the exit status of the
+# command otherwise. Only the -1 was reported, so a radvd that failed to start was silent.
+{
+    my $file = "$dir/radvd-rc.conf";
+    unlink($file);
+    local $xCAT_plugin::dhcp::radvdconffile = $file;
+    local @DUIDTable::networks =
+      ( { net => '2001:db8:176::', mask => '/64', mgtifname => 'eth0' } );
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub { return DUIDTable->new( $_[1] ); };
+    local *xCAT_plugin::dhcp::enable_ipv6_forwarding = sub { return; };
+    local *xCAT::Utils::enableservice = sub { return 0; };
+    local *xCAT::Utils::checkservicestatus = sub { return 3; };
+    our $restart_rc = 1;
+    local *xCAT::Utils::restartservice = sub { return $restart_rc };
+    use warnings 'redefine';
+    local $::XCATSITEVALS{externaldhcpservers};
+
+    my @warn;
+    my $cb = sub { push @warn, @{ $_[0]->{warning} || [] } };
+    xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
+    is( scalar(@warn), 1, 'a radvd that exits nonzero is reported' );
+    like( $warn[0], qr/\bexit 1\b/, '... with the status it exited with' );
+    unlike( $warn[0], qr/not installed/, '... and not as a missing package' );
+
+    @warn = ();
+    { local $restart_rc = -1;
+      xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } ); }
+    is( scalar(@warn), 1, 'a radvd that is not installed is still reported' );
+    like( $warn[0], qr/not installed/, '... as a missing package' );
+}
+
+# The whole path: a network on an interface DHCP does not serve writes no advertisement.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+    local $ra_mgtifname  = 'eth9';
+    local $dhcpinterfaces = 'eth0';
+    my $file = "$dir/radvd.conf";
+    unlink($file);
+    isc_commands('cn01');
+    ok( !-e $file || -z $file,
+        'a network on an unserved interface announces nothing' );
 }
 
 done_testing();

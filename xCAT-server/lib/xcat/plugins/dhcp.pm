@@ -2744,8 +2744,12 @@ sub process_request
     if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp6 and $^O ne 'aix') {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: restart dhcp6 service");
         restart_dhcpd6();
-        configure_router_advertisements($callback);
     }
+    # Outside the restart branch, because radvd can be down while its configuration is
+    # already correct. A call that reached this only when dhcpd6 restarted could never try
+    # a failed start again. The sub writes nothing when the file matches, and restarts
+    # nothing when the service is up.
+    configure_router_advertisements($callback, \%activenics) if $^O ne 'aix';
     flock($dhcplockfd, LOCK_UN);
     umask $oldmask;
 }
@@ -2839,7 +2843,7 @@ sub kea_process_request
         if ($restart->{error}) {
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
-        configure_router_advertisements($callback) if $using_dhcp6;
+        configure_router_advertisements($callback, $activenics) if $using_dhcp6;
         flock($dhcplockfd, LOCK_UN);
         return;
     }
@@ -2977,7 +2981,7 @@ sub kea_process_request
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
     }
-    configure_router_advertisements($callback) if $using_dhcp6;
+    configure_router_advertisements($callback, $activenics) if $using_dhcp6;
 
     flock($dhcplockfd, LOCK_UN);
 }
@@ -5029,9 +5033,60 @@ sub enable_ipv6_forwarding {
 }
 
 #-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+=head3 ra_interface_is_served
+
+    Says whether router advertisements belong on one interface.
+
+    Arguments:
+        $interface - the mgtifname of a network
+        $activenics - the interfaces DHCP serves, as a hash reference, or undef
+    Returns:
+        1 when the interface is served, 0 when it is not.
+
+    site.dhcpinterfaces names the interfaces this server answers on. An
+    advertisement on any other interface would offer this host as a router to a
+    LAN the administrator kept it off. An empty or absent set is no restriction.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub ra_interface_is_served {
+    my ($interface, $activenics) = @_;
+
+    return 0 unless defined($interface) && length($interface);
+    return 1 unless ref($activenics) eq 'HASH' && scalar(keys %$activenics);
+    return $activenics->{$interface} ? 1 : 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 radvd_needs_restart
+
+    Says whether radvd has to be restarted.
+
+    Arguments:
+        $changed - whether the configuration file was written
+        $running - whether the service is running
+    Returns:
+        1 when a restart is needed, 0 when it is not.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub radvd_needs_restart {
+    my ($changed, $running) = @_;
+
+    return 1 if $changed;
+    return $running ? 0 : 1;
+}
+
+#-----------------------------------------------------------------------------
+
 sub configure_router_advertisements
 {
-    my ($callback) = @_;
+    my ($callback, $activenics) = @_;
 
     return if $::XCATSITEVALS{externaldhcpservers};
 
@@ -5044,6 +5099,7 @@ sub configure_router_advertisements
     foreach my $entry (@nets) {
         next unless $entry->{net} && $entry->{net} =~ /:/;
         next unless $entry->{mgtifname};
+        next unless ra_interface_is_served($entry->{mgtifname}, $activenics);
         my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($entry->{net}, $entry->{mask});
         next unless defined $prefix;
         my $net = $entry->{net};
@@ -5065,19 +5121,34 @@ sub configure_router_advertisements
         $current = <$fh>;
         close($fh);
     }
-    return if defined($current) && $current eq $config;
+    my $changed = !(defined($current) && $current eq $config);
 
-    unless (open(my $fh, '>', $file)) {
-        $callback->({ warning => ["Cannot write $file, so the IPv6 networks announce no route: $!"] });
-        return;
+    if ($changed) {
+        unless (open(my $fh, '>', $file)) {
+            $callback->({ warning => ["Cannot write $file, so the IPv6 networks announce no route: $!"] });
+            return;
+        }
+        else {
+            print {$fh} $config;
+            close($fh);
+        }
+    }
+
+    # The service is examined on every call, not only when the file changed. A start that
+    # failed leaves the configuration already correct, so a later makedhcp that returned
+    # here on the file alone would never try again while the service stayed down.
+    xCAT::Utils->enableservice('radvd');
+    my $status = xCAT::Utils->checkservicestatus('radvd');
+    my $running = defined($status) && !ref($status) && $status == 0;
+    return unless radvd_needs_restart($changed, $running);
+
+    my $rc = xCAT::Utils->restartservice('radvd');
+    return if $rc == 0;
+    if ($rc < 0) {
+        $callback->({ warning => ['radvd is not installed, so the IPv6 networks announce no prefix and no route. A node that follows RFC 4861 then has no route, and iPXE does not start DHCPv6 at all.'] });
     }
     else {
-        print {$fh} $config;
-        close($fh);
-    }
-
-    if (xCAT::Utils->restartservice('radvd') < 0) {
-        $callback->({ warning => ['radvd is not installed, so the IPv6 networks announce no prefix and no route. A node that follows RFC 4861 then has no route, and iPXE does not start DHCPv6 at all.'] });
+        $callback->({ warning => ["radvd did not start (exit $rc), so the IPv6 networks announce no prefix and no route."] });
     }
     return;
 }
