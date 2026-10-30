@@ -16,9 +16,9 @@ Operating System & Hardware Support Matrix
 +-----------+---------------+---------+----------+-----------+
 | Ubuntu    | 22.04         | yes     | yes      | no        |
 +-----------+---------------+---------+----------+-----------+
-| Ubuntu    | 24.04         | yes     | yes      | no        |
+| Ubuntu    | 24.04         | yes     | yes      | yes       |
 +-----------+---------------+---------+----------+-----------+
-| Ubuntu    | 26.04         | yes     | yes      | no        |
+| Ubuntu    | 26.04         | yes     | yes      | yes       |
 +-----------+---------------+---------+----------+-----------+
 | openEuler | 20.03 LTS SP4 | yes     | no       | no        |
 +-----------+---------------+---------+----------+-----------+
@@ -34,7 +34,7 @@ Operating System & Hardware Support Matrix
    openEuler support covers the management node, installed and diskless service nodes, and
    stateful and stateless compute nodes.
 
-riscv64 support covers EL 10 (Rocky Linux 10 and the RHEL 10 RISC-V developer preview), on nodes
-that boot through UEFI firmware and grub2. Both stateful and stateless nodes are supported, and
-the management node itself can run on riscv64. See
+riscv64 support covers EL 10 (Rocky Linux 10 and the RHEL 10 RISC-V developer preview) and
+Ubuntu 24.04 and 26.04, on nodes that boot through UEFI firmware and grub2. Both stateful and
+stateless nodes are supported, and the management node itself can run on riscv64. See
 :doc:`/guides/admin-guides/manage_clusters/riscv64/index` for details.
