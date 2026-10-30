@@ -80,9 +80,19 @@ my @cases = (
     ['a layout file with an empty storage section', [['', "storage:\n"]], undef],
     ['a layout file with a null storage section', [['', "storage: null\n"]], undef],
     ['a layout file that starts a YAML document', [['', "---\n$layout"]], '/dev/disk/by-id/custom'],
+    ['a layout without a match after a disk file', [['', "storage:\n  layout:\n    name: direct\n"],
+        ['d:', "FIXTURE/dev/disk/by-id/nvme-link\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n    match:\n      path: FIXTURE/dev/nvme7n1\n"],
+    ['a layout with its own match after a disk file', [['', "storage:\n  layout:\n    name: direct\n    match:\n      ssd: true\n"],
+        ['d:', "FIXTURE/dev/disk/by-id/nvme-link\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n    match:\n      ssd: true\n"],
+    ['a layout without a match and no disk entry', [['', "storage:\n  layout:\n    name: direct\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n"],
+    ['a use_gap layout after a disk file', [['', "storage:\n  layout:\n    name: direct\n    mode: use_gap\n"],
+        ['d:', "FIXTURE/dev/disk/by-id/nvme-link\n"]], undef],
 );
 for my $case (@cases) {
-    my ($label, $entries, $expected) = @$case;
+    my ($label, $entries, $expected, $expected_layout) = @$case;
     subtest $label => sub {
         my $fixture = tempdir(DIR => $tmp, CLEANUP => 1);
         make_path("$fixture/tmp", "$fixture/sys/firmware/efi", "$fixture/dev/disk/by-id");
@@ -90,6 +100,7 @@ for my $case (@cases) {
         write_file("$fixture/dev/nvme7n1", '');
         symlink('../../nvme7n1', "$fixture/dev/disk/by-id/nvme-link") or die $!;
         $expected =~ s/FIXTURE/$fixture/ if defined $expected;
+        $expected_layout =~ s/FIXTURE/$fixture/ if defined $expected_layout;
         my @partitionfile;
         for my $n (0 .. $#$entries) {
             my ($prefix, $contents) = @{ $entries->[$n] };
@@ -107,6 +118,11 @@ for my $case (@cases) {
         write_file("$fixture/part.sh", $part);
         local %ENV = (%ENV, PATH => "$tmp/bin:/usr/bin:/bin", XCAT_DISK_FIXTURE => $fixture);
         my $output = `$shell $fixture/part.sh 2>&1`;
+        if (defined $expected_layout) {
+            is($?, 0, "the partitioning runs under $shell") or diag($output);
+            is(read_file("$fixture/tmp/partitionfile"), $expected_layout, 'the storage config is the expected layout');
+            return;
+        }
         if (!defined $expected) {
             isnt($?, 0, "the pre-install script fails under $shell");
             ok(!-e "$fixture/tmp/partitionfile", 'and leaves no storage config to inject');
