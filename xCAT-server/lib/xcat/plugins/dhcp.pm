@@ -61,6 +61,7 @@ my $localonly;     # flag for running only on local server - needs to be global
 # place of the caller's response handler.
 our $callback;
 our $kea_ddns_key_path = '/etc/xcat/ddns.key';
+our $radvdconffile = '/etc/radvd.conf';
 my $restartdhcp;
 my $restartdhcp6;
 my $sitenameservers;
@@ -5004,6 +5005,30 @@ sub restart_dhcpd
 =cut
 
 #-------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+=head3 enable_ipv6_forwarding
+
+    Turns IPv6 forwarding on for one interface.
+
+    Arguments:
+        $interface - the name of the interface
+    Returns:
+        nothing.
+
+    radvd sends nothing on an interface that does not forward.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub enable_ipv6_forwarding {
+    my ($interface) = @_;
+
+    system("sysctl -q -w net.ipv6.conf.$interface.forwarding=1");
+    return;
+}
+
+#-----------------------------------------------------------------------------
 sub configure_router_advertisements
 {
     my ($callback) = @_;
@@ -5029,12 +5054,11 @@ sub configure_router_advertisements
     my $config = xCAT::NetworkUtils::radvd_config(\@wanted);
     return unless defined $config;
 
-    # radvd sends nothing on an interface that does not forward.
     foreach my $net (@wanted) {
-        system("sysctl -q -w net.ipv6.conf.$net->{interface}.forwarding=1");
+        enable_ipv6_forwarding($net->{interface});
     }
 
-    my $file = '/etc/radvd.conf';
+    my $file = $radvdconffile;
     my $current = '';
     if (open(my $fh, '<', $file)) {
         local $/;

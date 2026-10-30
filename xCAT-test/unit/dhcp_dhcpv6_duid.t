@@ -172,6 +172,7 @@ print {$fh} "#xCAT generated dhcp configuration\n",
   "} # 192.0.2.0/255.255.255.0 subnet_end\n";
 close($fh) or die "Cannot close $conf: $!";
 our @restarted;
+our @forwarded;
 # The OS that makedhcp believes it runs on. Without this the sysconfig decisions follow the
 # host the suite runs on, and the branch under test is whichever that host happens to take.
 our $osver = 'rhels9.4';
@@ -180,7 +181,7 @@ sub isc_commands {
     my (@wanted) = @_;
     my @sessions;
     @errors = @warnings = ();
-    @restarted = ();
+    @restarted = @forwarded = ();
     no warnings 'redefine';
     # Without this the test restarts the dhcp services of the host it runs on.
     local *xCAT::Utils::restartservice = sub {
@@ -211,6 +212,12 @@ sub isc_commands {
     local *xCAT_plugin::dhcp::_close_omshell_writer = sub { close( $_[0] ); return; };
     local $::XCATSITEVALS{externaldhcpservers};
     local $xCAT_plugin::dhcp::dhcpconffile = $conf;
+    # Without these two the test writes the host's /etc/radvd.conf and sets its sysctls.
+    local $xCAT_plugin::dhcp::radvdconffile = "$dir/radvd.conf";
+    local *xCAT_plugin::dhcp::enable_ipv6_forwarding = sub {
+        push @forwarded, $_[0];
+        return;
+    };
     local $xCAT_plugin::dhcp::distro = 'rhels9.4';
     use warnings 'redefine';
 
@@ -680,6 +687,30 @@ sub isc_hosts {
     is( scalar(@mixed_urls), scalar(@mixed_hosts) - 1, 'ISC: an xnba node gets no DHCPv6 boot file URL' );
     unlike( join( '', @mixed_urls ), qr/\Q$nodes[0]\E/,
         'ISC: the URL that is left belongs to the grub2 nodes' );
+}
+
+# ---- the IPv6 networks announce a prefix and a route --------------------------------------
+# A client that follows RFC 4861 uses DHCPv6 only when a router advertisement sets the managed
+# flag, and the on-link prefix and the default route come from the advertisement, not from the
+# DHCPv6 lease. So makedhcp has to configure radvd, and the interface has to forward.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+    my $file = "$dir/radvd.conf";
+    unlink($file);
+    isc_commands('cn01');
+
+    ok( -e $file, 'makedhcp writes the radvd configuration' );
+    my $written = do { local ( @ARGV, $/ ) = ($file); <> };
+    like( $written, qr/^interface eth0$/m,
+        'the configuration names the interface of the IPv6 network' );
+    like( $written, qr/AdvSendAdvert\s+on;/,
+        'the interface sends advertisements' );
+    like( $written, qr/AdvManagedFlag\s+on;/,
+        'the managed flag is set, so a client starts DHCPv6' );
+    like( $written, qr{\Qprefix 2001:db8:176::/64\E},
+        'the prefix of the network is announced' );
+    is_deeply( \@forwarded, ['eth0'],
+        'forwarding is turned on, because radvd sends nothing on an interface that does not forward' );
 }
 
 done_testing();
