@@ -9,6 +9,8 @@ By default, xCAT will attempt to determine the first physical disk and use a gen
 
 .. warning:: **partition  definition script** has only been verified on RedHat and Ubuntu, use at your own risk for SLES.
 
+.. note:: Ubuntu 20.04 and later install with Subiquity. There the partition definition file, or the file the partition definition script writes to ``/tmp/partitionfile``, holds a curtin ``storage:`` section with a ``config`` or ``layout`` entry instead of a partman recipe. The installer keeps only that section, and it replaces the default layout. With a partition disk file or script as well, a ``layout`` without a ``match`` is restricted to the disk it selects, and a ``use_gap`` layout is refused. A layout or disk entry that fails, or that writes no layout or disk, stops the install before it partitions. The additional preseed configuration applies to the debian-installer only.
+
 .. END_Overview
 
 
@@ -480,13 +482,14 @@ If not specified, the default value will be used.
     nodeset <nodename> osimage=<osimage>
 
 - the ``d:`` preceding the filename tells nodeset that this is a partition disk file.
-- For Ubuntu, when nodeset runs and generates the ``/install/autoinst`` file for a node, it will generate a script to write the content of the partition disk file to ``/tmp/install_disk``, this context to run the script will replace the ``#XCA_PARTMAN_DISK_SCRIPT#`` directive in ``/install/autoinst/<node>.pre``.
+- For Ubuntu, when nodeset runs and generates the ``/install/autoinst`` file for a node, it will generate a script to write the content of the partition disk file to ``/tmp/xcat.install_disk``, this context to run the script will replace the ``#XCA_PARTMAN_DISK_SCRIPT#`` directive in ``/install/autoinst/<node>.pre``.
+- A Subiquity install partitions only the first disk the file names. Use a ``/dev/disk/by-id/`` name when the kernel can enumerate the disks in a different order at each boot.
 
 .. END_Partition_Disk_File_ubuntu_only
 
 .. BEGIN_Partition_Disk_Script_ubuntu_only
 
-The disk script contains a script to generate a partitioning disk file named ``/tmp/install_disk``. for example: ::
+The disk script contains a script to generate a partitioning disk file named ``/tmp/xcat.install_disk``. for example: ::
 
     rm /tmp/devs-with-boot 2>/dev/null || true;
     for d in $(list-devices partition); do
@@ -499,12 +502,12 @@ The disk script contains a script to generate a partitioning disk file named ``/
         fi
     done;
     if [[ -e /tmp/devs-with-boot ]]; then
-        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/install_disk;
+        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/xcat.install_disk;
         rm /tmp/devs-with-boot 2>/dev/null || true;
     else
         DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`;
         if [[ "$DEV" == "" ]]; then DEV="sda"; fi;
-        echo "/dev/$DEV" > /tmp/install_disk;
+        echo "/dev/$DEV" > /tmp/xcat.install_disk;
     fi;
 
 If not specified, the default value will be used.
@@ -516,6 +519,7 @@ If not specified, the default value will be used.
 
 - the ``s:`` prefix tells ``nodeset`` that is a script, the ``s:d:`` preceding the filename tells ``nodeset`` that this is a script to generate the partition disk file.
 - For Ubuntu, when nodeset runs and generates the ``/install/autoinst`` file for a node, this context to run the script will replace the ``#XCA_PARTMAN_DISK_SCRIPT#`` directive in ``/install/autoinst/<node>.pre``.
+- A Subiquity install runs the script in the live installer system, under ``dash`` unless its first line names another interpreter. ``list-devices``, which the example uses, exists only in the debian-installer.
 
 .. END_Partition_Disk_Script_ubuntu_only
 

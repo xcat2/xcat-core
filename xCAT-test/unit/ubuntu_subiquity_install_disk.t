@@ -1,0 +1,161 @@
+#!/usr/bin/env perl
+# The storage config a Subiquity install receives for each linuximage.partitionfile form.
+#
+# The node's pre-install script is rendered through the production Template entry point,
+# as debian.pm renders <node>.pre, and its part from base64decode to the end is executed.
+# Subiquity runs that script under dash, so dash runs it here when it is installed.
+use strict;
+use warnings;
+no warnings 'once';
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
+use File::Path qw(make_path);
+use File::Temp qw(tempdir);
+use Test::More;
+use XCAT::Test::File qw(repo_path);
+
+plan skip_all => 'pre-install scripts require Linux' unless $^O eq 'linux';
+plan skip_all => 'requires python3 with PyYAML, as the Subiquity live system has'
+    if system('python3 -c "import yaml" >/dev/null 2>&1');
+my ($shell) = grep { -x $_ } qw(/usr/bin/dash /bin/dash /bin/sh);
+my $tmp = tempdir(CLEANUP => 1);
+make_path("$tmp/db", "$tmp/bin");
+$ENV{XCATROOT} = repo_path('xCAT-server');
+$ENV{XCATCFG} = "SQLite:$tmp/db";
+require xCAT::Table;
+require xCAT::Template;
+%::XCATSITEVALS = (xcatdebugmode => 0, nodestatus => 0, httpport => 80, xcatiport => 3002);
+my $site = xCAT::Table->new('site', -create => 1);
+for my $key (keys %::XCATSITEVALS) {
+    $site->setAttribs({key => $key}, {value => $::XCATSITEVALS{$key}});
+}
+$site->close();
+
+sub write_file {
+    my ($path, $contents) = @_;
+    open(my $fh, '>', $path) or die "$path: $!";
+    print {$fh} $contents;
+    close($fh) or die "$path: $!";
+}
+sub read_file {
+    my ($path) = @_;
+    open(my $fh, '<', $path) or die "$path: $!";
+    local $/;
+    return <$fh> // '';
+}
+write_file("$tmp/bin/logger", "#!/bin/sh\nexit 0\n");
+write_file("$tmp/bin/uname", "#!/bin/sh\necho x86_64\n");
+chmod 0755, "$tmp/bin/logger", "$tmp/bin/uname";
+
+# Written as PyYAML writes it, so it reads the same before and after the pre-script rewrites it.
+my $layout = "storage:\n  version: 1\n  config:\n  - id: custom-disk\n    type: disk\n    path: /dev/disk/by-id/custom\n";
+my $writer = "#!/bin/sh\ncat > \"\$XCAT_DISK_FIXTURE/tmp/partitionfile\" <<'EOF'\n${layout}EOF\n";
+
+# Each case: label, the partitionfile entries as [prefix, file contents], and the disk the
+# storage config must name, or undef when the entry fails and the install must stop before
+# a storage config exists. FIXTURE stands for the case's fixture directory. getinstdisk has
+# already chosen /dev/sdz in every case.
+my $diskscript = "#!/bin/sh\necho /dev/disk/by-id/scripted > \"\$XCAT_DISK_FIXTURE/tmp/xcat.install_disk\"\n";
+my @cases = (
+    ['no partitionfile', [], '/dev/sdz'],
+    ['a disk file', [['d:', "/dev/disk/by-id/nvme-pinned /dev/sdb\n"]], '/dev/disk/by-id/nvme-pinned'],
+    ['a disk file naming a link', [['d:', "FIXTURE/dev/disk/by-id/nvme-link\n"]], 'FIXTURE/dev/nvme7n1'],
+    ['a disk script', [['s:d:', $diskscript]], '/dev/disk/by-id/scripted'],
+    ['a layout file', [['', $layout]], '/dev/disk/by-id/custom'],
+    ['a layout script', [['s:', $writer]], '/dev/disk/by-id/custom'],
+    ['a layout file after a layout script', [['s:', "#!/bin/sh\nexit 0\n"], ['', $layout]], '/dev/disk/by-id/custom'],
+    ['a disk file after a disk script', [['s:d:', "#!/bin/sh\nexit 0\n"], ['d:', "/dev/disk/by-id/nvme-pinned\n"]],
+        '/dev/disk/by-id/nvme-pinned'],
+    ['a layout file before a disk script', [['', $layout], ['s:d:', $diskscript]], '/dev/disk/by-id/custom'],
+    ['a layout script before a disk file', [['s:', $writer], ['d:', "/dev/disk/by-id/nvme-pinned\n"]], '/dev/disk/by-id/custom'],
+    ['a disk script that fails', [['s:d:', "#!/bin/sh\nexit 42\n"]], undef],
+    ['a disk script that selects no disk', [['s:d:', "#!/bin/sh\nexit 0\n"]], undef],
+    ['a layout script that fails', [['s:', "#!/bin/sh\nexit 42\n"]], undef],
+    ['a layout script that writes no layout', [['s:', "#!/bin/sh\nexit 0\n"]], undef],
+    ['a layout file with only blank lines', [['', "\n   \n"]], undef],
+    ['a layout file with only comments', [['', "# no layout yet\n"]], undef],
+    ['a disk file with only blank lines', [['d:', "  \n\n"]], undef],
+    ['a layout file with an empty storage section', [['', "storage:\n"]], undef],
+    ['a layout file with a null storage section', [['', "storage: null\n"]], undef],
+    ['a layout file that starts a YAML document', [['', "---\n$layout"]], '/dev/disk/by-id/custom'],
+    ['a layout without a match after a disk file', [['', "storage:\n  layout:\n    name: direct\n"],
+        ['d:', "FIXTURE/dev/disk/by-id/nvme-link\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n    match:\n      path: FIXTURE/dev/nvme7n1\n"],
+    ['a layout with its own match after a disk file', [['', "storage:\n  layout:\n    name: direct\n    match:\n      ssd: true\n"],
+        ['d:', "FIXTURE/dev/disk/by-id/nvme-link\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n    match:\n      ssd: true\n"],
+    ['a layout without a match and no disk entry', [['', "storage:\n  layout:\n    name: direct\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n"],
+    ['a use_gap layout after a disk file', [['', "storage:\n  layout:\n    name: direct\n    mode: use_gap\n"],
+        ['d:', "FIXTURE/dev/disk/by-id/nvme-link\n"]], undef],
+);
+for my $case (@cases) {
+    my ($label, $entries, $expected, $expected_layout) = @$case;
+    subtest $label => sub {
+        my $fixture = tempdir(DIR => $tmp, CLEANUP => 1);
+        make_path("$fixture/tmp", "$fixture/sys/firmware/efi", "$fixture/dev/disk/by-id");
+        write_file("$fixture/tmp/xcat.install_disk", "/dev/sdz\n");
+        write_file("$fixture/dev/nvme7n1", '');
+        symlink('../../nvme7n1', "$fixture/dev/disk/by-id/nvme-link") or die $!;
+        $expected =~ s/FIXTURE/$fixture/ if defined $expected;
+        $expected_layout =~ s/FIXTURE/$fixture/ if defined $expected_layout;
+        my @partitionfile;
+        for my $n (0 .. $#$entries) {
+            my ($prefix, $contents) = @{ $entries->[$n] };
+            $contents =~ s/FIXTURE/$fixture/g;
+            write_file("$fixture/partition-$n", $contents);
+            push @partitionfile, "$prefix$fixture/partition-$n";
+        }
+        my $partitionfile = join(',', @partitionfile);
+        my $error = xCAT::Template->subvars(repo_path('xCAT-server/share/xcat/install/scripts/pre.ubuntu.subiquity'),
+            "$fixture/node.pre", 'node', '', '', '', $partitionfile, {xcatmaster => '192.0.2.1'});
+        ok(!$error, 'renders through the production Template entry point') or diag($error);
+        my ($part) = read_file("$fixture/node.pre") =~ /(^base64decode\(\)\n.*^exit 0$)/ms;
+        ok($part, 'the rendered script defines base64decode before the partitioning') or return;
+        $part =~ s{(?<![[:alnum:]_/])/(tmp|sys)(?=/)}{$fixture/$1}g;
+        write_file("$fixture/part.sh", $part);
+        local %ENV = (%ENV, PATH => "$tmp/bin:/usr/bin:/bin", XCAT_DISK_FIXTURE => $fixture);
+        my $output = `$shell $fixture/part.sh 2>&1`;
+        if (defined $expected_layout) {
+            is($?, 0, "the partitioning runs under $shell") or diag($output);
+            is(read_file("$fixture/tmp/partitionfile"), $expected_layout, 'the storage config is the expected layout');
+            return;
+        }
+        if (!defined $expected) {
+            isnt($?, 0, "the pre-install script fails under $shell");
+            ok(!-e "$fixture/tmp/partitionfile", 'and leaves no storage config to inject');
+            return;
+        }
+        is($?, 0, "the partitioning runs under $shell") or diag($output);
+        my $config = read_file("$fixture/tmp/partitionfile");
+        my ($disk) = $config =~ /^\s+type: disk\n(?:\s+\S+:.*\n)*?\s+path: (\S+)$/m;
+        is($disk, $expected, "the storage config partitions $expected");
+        is($config, $layout, 'the administrator layout replaces the default one') if $expected eq '/dev/disk/by-id/custom';
+        # The early command appends the storage config to Subiquity's autoinstall.yaml.
+        write_file("$fixture/autoinstall.yaml", "version: 1\nidentity:\n  hostname: node\n$config");
+        is(system('python3', '-c', 'import sys, yaml; sys.exit("storage" not in yaml.safe_load(open(sys.argv[1])))',
+            "$fixture/autoinstall.yaml"), 0, 'autoinstall.yaml stays one YAML document with a storage section');
+    };
+}
+
+# The debian-installer path renders the same entries into pre.ubuntu, under a shell with read -n.
+subtest 'a debian-installer recipe file after a recipe script' => sub {
+    my $fixture = tempdir(DIR => $tmp, CLEANUP => 1);
+    make_path("$fixture/tmp", "$fixture/sys/firmware");
+    write_file("$fixture/old", "#!/bin/sh\nexit 0\n");
+    write_file("$fixture/new", "recipe ::\n    .\n");
+    my $error = xCAT::Template->subvars(repo_path('xCAT-server/share/xcat/install/scripts/pre.ubuntu'),
+        "$fixture/node.pre", 'node', '', '', '', "s:$fixture/old,$fixture/new", {xcatmaster => '192.0.2.1'});
+    ok(!$error, 'renders through the production Template entry point') or diag($error);
+    my ($part) = read_file("$fixture/node.pre") =~ /(^base64decode\(\)\n.*?^exit 0$)/ms;
+    ok($part, 'the rendered script defines base64decode before the recipe') or return;
+    $part =~ s{(?<![[:alnum:]_/])/(tmp|sys)(?=/)}{$fixture/$1}g;
+    write_file("$fixture/part.sh", $part);
+    local %ENV = (%ENV, PATH => "$tmp/bin:/usr/bin:/bin");
+    my $output = `/bin/bash $fixture/part.sh 2>&1`;
+    is($?, 0, 'the recipe step runs') or diag($output);
+    is(read_file("$fixture/tmp/partitionfile"), "recipe ::\n    .\n", 'the later recipe file replaces the default recipe');
+};
+done_testing();

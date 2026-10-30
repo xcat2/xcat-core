@@ -139,63 +139,29 @@ chmod 755 /tmp/foo.sh
 
 /tmp/foo.sh >/tmp/foo.log 2>&1 &
 
+# Subiquity runs this script under dash, which has no read -n, and its live system ships coreutils.
 base64decode()
 {
-	h0="0";  h1="1";  h2="2";  h3="3";  h4="4";  h5="5";  h6="6";  h7="7";
-	h8="8";  h9="9"; h10="A"; h11="B"; h12="C"; h13="D"; h14="E"; h15="F";
-
-	while :
-	do
-		i=0
-		while [ "$i" -lt 4 ]
-		do
-			read -n 1 c || return
-	
-			case "${c}" in
-			"A") d=0  ;; "B") d=1  ;; "C") d=2  ;; "D") d=3  ;;
-			"E") d=4  ;; "F") d=5  ;; "G") d=6  ;; "H") d=7  ;;
-			"I") d=8  ;; "J") d=9  ;; "K") d=10 ;; "L") d=11 ;;
-			"M") d=12 ;; "N") d=13 ;; "O") d=14 ;; "P") d=15 ;;
-			"Q") d=16 ;; "R") d=17 ;; "S") d=18 ;; "T") d=19 ;;
-			"U") d=20 ;; "V") d=21 ;; "W") d=22 ;; "X") d=23 ;;
-			"Y") d=24 ;; "Z") d=25 ;; "a") d=26 ;; "b") d=27 ;;
-			"c") d=28 ;; "d") d=29 ;; "e") d=30 ;; "f") d=31 ;;
-			"g") d=32 ;; "h") d=33 ;; "i") d=34 ;; "j") d=35 ;;
-			"k") d=36 ;; "l") d=37 ;; "m") d=38 ;; "n") d=39 ;;
-			"o") d=40 ;; "p") d=41 ;; "q") d=42 ;; "r") d=43 ;;
-			"s") d=44 ;; "t") d=45 ;; "u") d=46 ;; "v") d=47 ;;
-			"w") d=48 ;; "x") d=49 ;; "y") d=50 ;; "z") d=51 ;;
-			"0") d=52 ;; "1") d=53 ;; "2") d=54 ;; "3") d=55 ;;
-			"4") d=56 ;; "5") d=57 ;; "6") d=58 ;; "7") d=59 ;;
-			"8") d=60 ;; "9") d=61 ;; "+") d=62 ;; "/") d=63 ;;
-			"=") d=0  ;;
-			*) continue ;;
-			esac
-	
-			eval "a${i}=${c}"
-			eval "b${i}=${d}"
-
-			i=$(( i + 1 ))
-		done
-	
-		o0=$(( ((b0 << 2) | (b1 >> 4)) & 0xff ))
-		o1=$(( ((b1 << 4) | (b2 >> 2)) & 0xff ))
-		o2=$(( ((b2 << 6) | b3) & 0xff ))
-	
-		[ "${a2}" == "=" ] &&
-			eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
-				))}\"" &&
-			return
-		[ "${a3}" == "=" ] &&
-			eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
-				))}\\x\${h$(( o1 / 16 ))}\${h$(( o1 % 16
-				))}\"" &&
-			return
-		eval "printf \"\\x\${h$(( o0 / 16 ))}\${h$(( o0 % 16
-			))}\\x\${h$(( o1 / 16 ))}\${h$(( o1 % 16
-			))}\\x\${h$(( o2 / 16 ))}\${h$(( o2 % 16 ))}\""
-	done
+	base64 -d
 }
+
+# A d: or s:d: entry in linuximage.partitionfile replaces the disk getinstdisk chose.
+rm -f /tmp/diskscript.enc
+[ -e /tmp/xcat.install_disk ] && mv /tmp/xcat.install_disk /tmp/xcat.install_disk.detected
+#XCA_PARTMAN_DISK_SCRIPT#
+override_rc=$?
+disk_entry=""
+if [ -e /tmp/diskscript.enc ]; then
+        disk_entry=1
+        # Falling back to the detected disk could wipe the disk the entry protects.
+        if [ "$override_rc" -ne 0 ] || [ -z "$(awk 'NF {print $1; exit}' /tmp/xcat.install_disk 2>/dev/null)" ]; then
+                logger -t $log_label -p "err" "The partitionfile disk entry selected no disk, stopping the install"
+                exit 1
+        fi
+elif [ -e /tmp/xcat.install_disk.detected ]; then
+        mv /tmp/xcat.install_disk.detected /tmp/xcat.install_disk
+fi
+
 # Note that the subiquity/curtin installation config is fairly picky about
 # the order in which things are specified - you have to specify all the
 # partitions before you can specify any filesystems, which means this is
@@ -211,7 +177,10 @@ base64decode()
 # to this unwrapped file and must start at column 0.
 logger -t $log_label -p "info" "Generate partition file..."
 if [ -e /tmp/xcat.install_disk ]; then
-        INSTALL_DISK=$(cat /tmp/xcat.install_disk)
+        # The layout uses one disk, the first one the disk file names.
+        INSTALL_DISK=$(awk 'NF {print $1; exit}' /tmp/xcat.install_disk)
+        # Subiquity matches the disk path literally, so resolve a link such as /dev/disk/by-id/.
+        INSTALL_DISK=$(readlink -f "$INSTALL_DISK" || echo "$INSTALL_DISK")
 else
         logger -t $log_label -p "err" "Failed to find partition file - getinstdisk must be run first"
         logger -t $log_label -p "err" "Using fallback default disk /dev/sda"
@@ -385,8 +354,40 @@ storage:
 EOF
 fi
 
+# Keep only a storage section that holds a config or a layout, rewritten as one YAML fragment
+# for autoinstall.yaml. Subiquity puts LVM on the largest disk when that section is missing,
+# and a layout without a match goes to the largest disk too, so it gets the disk in $2, if any.
+# Some Subiquity releases ignore match in use_gap mode, so such a layout is refused with $2.
+normalize_storage_layout()
+{
+        python3 -c 'import sys, yaml
+s = yaml.safe_load(open(sys.argv[1]))
+t = s.get("storage") if isinstance(s, dict) else None
+if not (isinstance(t, dict) and (t.get("config") or t.get("layout"))):
+    sys.exit(1)
+l = t.get("layout")
+if sys.argv[2] and isinstance(l, dict):
+    if l.get("mode") == "use_gap":
+        sys.exit(1)
+    l.setdefault("match", {"path": sys.argv[2]})
+open(sys.argv[1], "w").write(yaml.safe_dump({"storage": t}, default_flow_style=False, sort_keys=False))' "$1" "$2" 2>/dev/null
+}
+
+# A partitionfile layout or s: script must come after the default layout, which it replaces.
+rm -f /tmp/partscript.enc
+mv /tmp/partitionfile /tmp/partitionfile.default
 #XCA_PARTMAN_RECIPE_SCRIPT#
-#XCA_PARTMAN_DISK_SCRIPT#
+override_rc=$?
+if [ -e /tmp/partscript.enc ]; then
+        # Keeping the default layout could wipe a disk the administrator layout protects.
+        if [ "$override_rc" -ne 0 ] || ! normalize_storage_layout /tmp/partitionfile "${disk_entry:+$INSTALL_DISK}"; then
+                logger -t $log_label -p "err" "The partitionfile layout entry wrote no usable layout, stopping the install"
+                rm -f /tmp/partitionfile
+                exit 1
+        fi
+else
+        mv /tmp/partitionfile.default /tmp/partitionfile
+fi
 #XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT#
 exit 0
 
