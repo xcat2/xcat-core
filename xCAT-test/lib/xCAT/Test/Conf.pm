@@ -130,6 +130,9 @@ sub chdef_command {
     Descriptions:
         The chtab command that applies one row of a [Table_*] block.
 
+        xcattest runs every command through /bin/bash -c, so each word is quoted, the row
+        selector too. A vm.othersettings value carries a semicolon.
+
         The assignments are sorted, so one conf builds one command.
     Arguments:
         $table - the table name, as the section name spells it
@@ -150,7 +153,7 @@ sub chtab_command {
         my $value = defined $attrs->{$attr} ? $attrs->{$attr} : '';
         push @words, "$table.$attr=$value";
     }
-    return join ' ', 'chtab', @words;
+    return join ' ', 'chtab', map { _quote($_) } @words;
 }
 
 #-------------------------------------------------------------------------------
