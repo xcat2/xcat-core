@@ -57,7 +57,8 @@ my $writer = "#!/bin/sh\ncat >/tmp/partitionfile <<'EOF'\n${layout}EOF\n";
 my $diskscript = "#!/bin/sh\necho /dev/disk/by-id/scripted >/tmp/xcat.install_disk\n";
 
 # Each case: label, the partitionfile entries as [prefix, file contents], and the disk the storage
-# config must name, or undef when the install must stop before a storage config exists.
+# config must name, or undef when the install must stop before a storage config exists. A fourth
+# value is the whole storage config of a layout.
 my @cases = (
     ['no partitionfile', [], '/dev/sdz'],
     ['a disk file', [['d:', "/dev/disk/by-id/nvme-pinned /dev/sdb\n"]], '/dev/disk/by-id/nvme-pinned'],
@@ -80,9 +81,19 @@ my @cases = (
     ['a layout file with an empty storage section', [['', "storage:\n"]], undef],
     ['a layout file with a null storage section', [['', "storage: null\n"]], undef],
     ['a layout file that starts a YAML document', [['', "---\n$layout"]], '/dev/disk/by-id/custom'],
+    ['a layout without a match after a disk file', [['', "storage:\n  layout:\n    name: direct\n"],
+        ['d:', "/dev/disk/by-id/nvme-link\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n    match:\n      path: /dev/nvme7n1\n"],
+    ['a layout with its own match after a disk file', [['', "storage:\n  layout:\n    name: direct\n    match:\n      ssd: true\n"],
+        ['d:', "/dev/disk/by-id/nvme-link\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n    match:\n      ssd: true\n"],
+    ['a layout without a match and no disk entry', [['', "storage:\n  layout:\n    name: direct\n"]], undef,
+        "storage:\n  layout:\n    name: direct\n"],
+    ['a use_gap layout after a disk file', [['', "storage:\n  layout:\n    name: direct\n    mode: use_gap\n"],
+        ['d:', "/dev/disk/by-id/nvme-link\n"]], undef],
 );
 for my $case (@cases) {
-    my ($label, $entries, $expected) = @$case;
+    my ($label, $entries, $expected, $expected_layout) = @$case;
     subtest $label => sub {
         my $part = render_part('pre.ubuntu.subiquity', qr/(^base64decode\(\)\n.*^exit 0$)/ms, @$entries);
         ok($part, 'the rendered script defines base64decode before the partitioning') or return;
@@ -90,6 +101,11 @@ for my $case (@cases) {
         write_text("$root/part.sh", $part);
         my ($rc, $output) = sandbox_run($root, {read_only => {"$root/efi" => '/sys/firmware/efi',
             "$root/by-id" => '/dev/disk/by-id', "$root/nvme7n1" => '/dev/nvme7n1'}}, $shell, '/fixture/part.sh');
+        if (defined $expected_layout) {
+            is($rc, 0, "the partitioning runs under $shell") or diag($output);
+            is(storage_config($root), $expected_layout, 'the storage config is the expected layout');
+            return;
+        }
         if (!defined $expected) {
             isnt($rc, 0, "the pre-install script fails under $shell");
             ok(!-e "$root/tmp/partitionfile", 'and leaves no storage config to inject');
