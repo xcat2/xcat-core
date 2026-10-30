@@ -873,8 +873,14 @@ sub subiquity_iso_url {
     Build the kernel command line for a Subiquity install that fetches its ISO
     over HTTP, which is how an IPv6-only node reaches its root.
 
+    ip=off: casper calls configure_networking only inside
+    "if [ -n "$STATICIP" -a "$STATICIP" != frommedia ]", and STATICIP comes from
+    ip=. Leaving ip= out therefore skips the whole networking stage, and wget
+    answers "Cannot assign requested address" because no interface has an
+    address. The value 'off' takes the branch while asking for no IPv4:
+    configure_networking reads ip= into IP and treats off as already done.
+
     ip6=dhcp: casper reads ip6= and configures the interface with dhcpcd -6.
-    ip= is left out, so casper treats the IPv4 half as already done.
 
     netboot=url: do_urlmount downloads the ISO with casper's own wget, which
     speaks IPv6, and loop-mounts it. nfsroot= is left out, because klibc
@@ -899,7 +905,7 @@ sub subiquity_url_kcmdline {
     my ($base, $isourl, $authority, $node) = @_;
 
     my $kcmdline = $base;
-    $kcmdline .= " autoinstall ip6=dhcp boot=casper netboot=url url=${isourl}";
+    $kcmdline .= " autoinstall ip=off ip6=dhcp boot=casper netboot=url url=${isourl}";
     $kcmdline .= " ds=nocloud-net;s=http://${authority}/install/autoinst/${node}/";
     $kcmdline .= " ---";
 

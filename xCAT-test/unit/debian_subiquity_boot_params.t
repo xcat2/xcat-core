@@ -159,6 +159,10 @@ my $resolver = sub { $_[0] eq 'mn.cluster' ? '10.0.0.1' : undef };
         '... from the bracketed install server, so the port can still be read'
     );
     like( $kcmdline, qr{\bip6=dhcp\b}, '... with ip6=, which casper gives to dhcpcd -6' );
+    # casper calls configure_networking only when ip= is set, whatever the value. Without it
+    # the whole networking stage is skipped and wget has no source address.
+    like( $kcmdline, qr{\bip=off\b},
+        '... and with ip=, which is what makes casper configure the interface at all' );
     unlike( $kcmdline, qr{\bnfsroot=}, '... and no nfsroot, which klibc nfsmount cannot use' );
     unlike( $kcmdline, qr{\btoram\b},
         '... and no toram, because do_urlmount already holds the ISO in tmpfs' );
