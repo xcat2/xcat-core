@@ -224,15 +224,16 @@ sub subvars {
             $filepath   = $1;
         }
 
+        # The last entry of each kind wins, with its own s: prefix.
         if ($filepath =~ /^d:(.*)/) {
-            $diskfile = $1;
-            if ($scriptflag) { $diskscriptflag = 1; }
+            $diskfile       = $1;
+            $diskscriptflag = $scriptflag;
         } elsif ($filepath =~ /^c:(.*)/) {
-            $configfile = $1;
-            if ($scriptflag) { $configscriptflag = 1; }
+            $configfile       = $1;
+            $configscriptflag = $scriptflag;
         } elsif ($filepath) {
-            $partitionfile = $filepath;
-            if ($scriptflag) { $partscriptflag = 1; }
+            $partitionfile  = $filepath;
+            $partscriptflag = $scriptflag;
         }
     }
 
@@ -483,7 +484,7 @@ sub subvars {
 
                     # Put the base64 coded partitionfile into %pre part
                     $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
-                    if ($scriptflag) {
+                    if ($partscriptflag) {
 
                         # Put the code to decode preseed script and run it to generate pressed recipe file
                         #$partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
