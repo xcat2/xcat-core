@@ -422,13 +422,14 @@ prove xCAT-test/native/install_profile_riscv64.t \
       xCAT-test/native/netboot_profile_riscv64.t \
       xCAT-test/native/netboot_profile_postinstall.t \
       xCAT-test/native/builddebs_riscv64.t \
-      xCAT-test/native/ubuntu_subiquity_template.t
+      xCAT-test/native/ubuntu_subiquity_template.t \
+      xCAT-test/native/ubuntu_subiquity_install_disk.t
 ```
 
 The renderers need the system Perl with the xCAT dependencies, XML::Simple,
 DBD::SQLite, Capture::Tiny, and File::Slurper. The sandbox clears the environment
-and does not mount perlbrew or local::lib directories. The Subiquity case also
-needs /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
+and does not mount perlbrew or local::lib directories. The Subiquity cases also
+need /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
 The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
 on non-Debian hosts. Each case creates its own temporary files and database.
 The temporary directory must allow execution; set TMPDIR if /tmp is noexec.
