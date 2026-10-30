@@ -113,7 +113,10 @@ my $tmpl = xCAT::SvrUtils::get_tmpl_file_name($SHARE . '/rh', $SN{profile}, $SN{
 ok(defined $tmpl && length $tmpl, 'the EL service profile resolves a template at all')
     or diag('no template for ' . join(' ', @SN{qw(profile osver arch)}));
 like($tmpl, qr{/service[^/]*\.tmpl$}, '... and it is the service profile, not compute');
-unlike($tmpl, qr{subiquity}, '... and not a Subiquity template, which no EL node can boot');
+# The basename, not the whole path: the path carries the checkout directory, and a checkout
+# named for the thing under test made this match itself.
+unlike(( $tmpl =~ m{([^/]+)$} )[0] // $tmpl, qr{subiquity},
+    '... and not a Subiquity template, which no EL node can boot');
 
 # ---------------------------------------------------------------------------
 # 3. The NFS export. A service node with nfsserver=1 serves files. With site.installloc set it
