@@ -1657,7 +1657,7 @@ sub envvar
     return ($ENV{$envvar});
 }
 
-sub crydb
+sub crypt_field
 {
     my ($table, $key, $field) = @_;
     my @fields = [$field, 'cryptmethod'];
@@ -1681,10 +1681,19 @@ sub crydb
     return xCAT::PasswordUtils::crypt_system_password($table, $kp, \@fields);
 }
 
+sub crydb
+{
+    my ( $table, $key, $field ) = @_;
+    my $crypted = crypt_field( $table, $key, $field );
+    return $crypted if defined($crypted) && length($crypted);
+    $tmplerr = "Unable to find requested field <$field> from table <$table>, with key <$key>";
+    return "";
+}
+
 sub crydb_or_locked
 {
     my ( $table, $key, $field ) = @_;
-    my $crypted = crydb( $table, $key, $field );
+    my $crypted = crypt_field( $table, $key, $field );
     return $crypted if defined($crypted) && length($crypted);
     return '*';
 }
