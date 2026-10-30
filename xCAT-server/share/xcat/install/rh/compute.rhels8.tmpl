@@ -47,9 +47,13 @@ echo "Running Kickstart Pre-installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rhels8#
 } &>>/tmp/pre-install.log
 %end
+# The pre-installation log is in the installer's /tmp, which a chroot %post cannot read.
+%post --nochroot --interpreter=/bin/bash
+mkdir -p /mnt/sysimage/var/log/xcat/
+cat /tmp/pre-install.log >>/mnt/sysimage/var/log/xcat/xcat.log
+%end
 %post --interpreter=/bin/bash
 mkdir -p /var/log/xcat/
-cat /tmp/pre-install.log >>/var/log/xcat/xcat.log
 {
 echo "Running Kickstart Post-installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat.ng#
