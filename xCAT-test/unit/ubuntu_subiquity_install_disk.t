@@ -54,7 +54,8 @@ my $layout = "storage:\n  version: 1\n  config:\n  - id: custom-disk\n    type: 
 my $writer = "#!/bin/sh\ncat > \"\$XCAT_DISK_FIXTURE/tmp/partitionfile\" <<'EOF'\n${layout}EOF\n";
 
 # Each case: label, the partitionfile entries as [prefix, file contents], and the disk the
-# storage config must name. FIXTURE stands for the case's fixture directory. getinstdisk has
+# storage config must name, or undef when the entry fails and the install must stop before
+# a storage config exists. FIXTURE stands for the case's fixture directory. getinstdisk has
 # already chosen /dev/sdz in every case.
 my $diskscript = "#!/bin/sh\necho /dev/disk/by-id/scripted > \"\$XCAT_DISK_FIXTURE/tmp/xcat.install_disk\"\n";
 my @cases = (
@@ -69,6 +70,16 @@ my @cases = (
         '/dev/disk/by-id/nvme-pinned'],
     ['a layout file before a disk script', [['', $layout], ['s:d:', $diskscript]], '/dev/disk/by-id/custom'],
     ['a layout script before a disk file', [['s:', $writer], ['d:', "/dev/disk/by-id/nvme-pinned\n"]], '/dev/disk/by-id/custom'],
+    ['a disk script that fails', [['s:d:', "#!/bin/sh\nexit 42\n"]], undef],
+    ['a disk script that selects no disk', [['s:d:', "#!/bin/sh\nexit 0\n"]], undef],
+    ['a layout script that fails', [['s:', "#!/bin/sh\nexit 42\n"]], undef],
+    ['a layout script that writes no layout', [['s:', "#!/bin/sh\nexit 0\n"]], undef],
+    ['a layout file with only blank lines', [['', "\n   \n"]], undef],
+    ['a layout file with only comments', [['', "# no layout yet\n"]], undef],
+    ['a disk file with only blank lines', [['d:', "  \n\n"]], undef],
+    ['a layout file with an empty storage section', [['', "storage:\n"]], undef],
+    ['a layout file with a null storage section', [['', "storage: null\n"]], undef],
+    ['a layout file that starts a YAML document', [['', "---\n$layout"]], '/dev/disk/by-id/custom'],
 );
 for my $case (@cases) {
     my ($label, $entries, $expected) = @$case;
@@ -78,7 +89,7 @@ for my $case (@cases) {
         write_file("$fixture/tmp/xcat.install_disk", "/dev/sdz\n");
         write_file("$fixture/dev/nvme7n1", '');
         symlink('../../nvme7n1', "$fixture/dev/disk/by-id/nvme-link") or die $!;
-        $expected =~ s/FIXTURE/$fixture/;
+        $expected =~ s/FIXTURE/$fixture/ if defined $expected;
         my @partitionfile;
         for my $n (0 .. $#$entries) {
             my ($prefix, $contents) = @{ $entries->[$n] };
@@ -96,11 +107,20 @@ for my $case (@cases) {
         write_file("$fixture/part.sh", $part);
         local %ENV = (%ENV, PATH => "$tmp/bin:/usr/bin:/bin", XCAT_DISK_FIXTURE => $fixture);
         my $output = `$shell $fixture/part.sh 2>&1`;
+        if (!defined $expected) {
+            isnt($?, 0, "the pre-install script fails under $shell");
+            ok(!-e "$fixture/tmp/partitionfile", 'and leaves no storage config to inject');
+            return;
+        }
         is($?, 0, "the partitioning runs under $shell") or diag($output);
         my $config = read_file("$fixture/tmp/partitionfile");
         my ($disk) = $config =~ /^\s+type: disk\n(?:\s+\S+:.*\n)*?\s+path: (\S+)$/m;
         is($disk, $expected, "the storage config partitions $expected");
         is($config, $layout, 'the administrator layout replaces the default one') if $expected eq '/dev/disk/by-id/custom';
+        # The early command appends the storage config to Subiquity's autoinstall.yaml.
+        write_file("$fixture/autoinstall.yaml", "version: 1\nidentity:\n  hostname: node\n$config");
+        is(system('python3', '-c', 'import sys, yaml; sys.exit("storage" not in yaml.safe_load(open(sys.argv[1])))',
+            "$fixture/autoinstall.yaml"), 0, 'autoinstall.yaml stays one YAML document with a storage section');
     };
 }
 
