@@ -42,7 +42,9 @@ my $idir;
 my $node;
 my $master;
 my $master_uri_host;
-my $node_ipv6_only;
+# 'our', not 'my', so a test can set it: the subiquity netplan helpers below read it and
+# nothing else in this file needs it to be lexical.
+our $node_ipv6_only;
 my $template_os;
 my $httpportsuffix;
 my %loggedrealms;
@@ -477,6 +479,8 @@ sub subvars {
         $inc =~ s/^((?:[ \t]*- [^\n]*\n)*)([ \t]*)- #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL#[ \t]*\n/$1 . ubuntu_autoinstall_items($2, $1, \@autoinstall)/meg;
         $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
         $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
+        $inc =~ s/#SUBIQUITYDHCP:(\d+)#/subiquity_dhcp_keys($1)/eg;
+        $inc =~ s/#SUBIQUITYTARGETDHCP#/subiquity_target_dhcp_keys()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
         $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
         $inc =~ s/#CRYPTORLOCKED:([^:]+):([^:]+):([^#]+)#/crydb_or_locked($1,$2,$3)/eg;
@@ -2019,6 +2023,57 @@ sub subiquity_install_netcfg_for_node {
         tabdb('mac',     '$NODE', 'mac'),
         $node);
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 subiquity_dhcp_keys
+
+    The netplan keys that tell the Subiquity installer how to address the
+    provisioning NIC.
+
+    An IPv6-only node has no DHCPv4 server to answer, and netplan brings the
+    interface up with no address at all when it is told to use DHCPv4 only. The
+    installer then cannot reach its package source and falls back to asking at
+    the console, which on a serial console waits forever.
+
+    Arguments:
+        $indent how many spaces each key is indented by
+    Returns:
+        the keys, one per line, indented as asked.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub subiquity_dhcp_keys {
+    my ($indent) = @_;
+
+    my $pad = ' ' x (defined($indent) ? $indent : 8);
+    return "${pad}dhcp4: true" unless $node_ipv6_only;
+    return "${pad}dhcp6: true\n${pad}dhcp4: false";
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 subiquity_target_dhcp_keys
+
+    The same keys for the netplan that the late command writes into the
+    installed system, as printf arguments.
+
+    Returns:
+        the arguments, each already quoted and indented for netplan.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub subiquity_target_dhcp_keys {
+
+    unless ($node_ipv6_only) {
+        return '"      dhcp4: true" "      dhcp4-overrides:" "        use-domains: true"';
+    }
+    return '"      dhcp6: true" "      dhcp4: false" "      dhcp6-overrides:" "        use-domains: true"';
+}
+
+#-----------------------------------------------------------------------------
 
 sub subiquity_install_nic {
     my ($setname) = subiquity_install_netcfg_for_node();
