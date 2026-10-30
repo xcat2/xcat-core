@@ -4,6 +4,7 @@ use warnings;
 
 use FindBin;
 use File::Copy qw(copy);
+use File::Basename qw(basename);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use Test::More;
@@ -31,8 +32,12 @@ sub run_harness {
     make_path("$root/bin", "$root/cases", "$root/lib/perl/xCAT/Test");
     copy($program, "$root/bin/xcattest") or die("copy xcattest: $!");
     chmod 0755, "$root/bin/xcattest";
-    copy("$FindBin::Bin/../lib/xCAT/Test/OS.pm", "$root/lib/perl/xCAT/Test/OS.pm")
-        or die("copy xCAT/Test/OS.pm: $!");
+    # Every module under xCAT-test/lib/xCAT, because xcattest loads them from lib/perl beside
+    # its own directory and a missing one stops it before the first case.
+    foreach my $module (glob("$FindBin::Bin/../lib/xCAT/Test/*.pm")) {
+        my $name = basename($module);
+        copy($module, "$root/lib/perl/xCAT/Test/$name") or die("copy xCAT/Test/$name: $!");
+    }
 
     open(my $case_fh, '>', "$root/cases/fixture") or die("write the fixture case: $!");
     print $case_fh $case_text;
