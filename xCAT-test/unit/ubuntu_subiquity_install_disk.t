@@ -64,6 +64,11 @@ my @cases = (
     ['a disk script', [['s:d:', $diskscript]], '/dev/disk/by-id/scripted'],
     ['a layout file', [['', $layout]], '/dev/disk/by-id/custom'],
     ['a layout script', [['s:', $writer]], '/dev/disk/by-id/custom'],
+    ['a layout file after a layout script', [['s:', "#!/bin/sh\nexit 0\n"], ['', $layout]], '/dev/disk/by-id/custom'],
+    ['a disk file after a disk script', [['s:d:', "#!/bin/sh\nexit 0\n"], ['d:', "/dev/disk/by-id/nvme-pinned\n"]],
+        '/dev/disk/by-id/nvme-pinned'],
+    ['a layout file before a disk script', [['', $layout], ['s:d:', $diskscript]], '/dev/disk/by-id/custom'],
+    ['a layout script before a disk file', [['s:', $writer], ['d:', "/dev/disk/by-id/nvme-pinned\n"]], '/dev/disk/by-id/custom'],
 );
 for my $case (@cases) {
     my ($label, $entries, $expected) = @$case;
@@ -98,4 +103,23 @@ for my $case (@cases) {
         is($config, $layout, 'the administrator layout replaces the default one') if $expected eq '/dev/disk/by-id/custom';
     };
 }
+
+# The debian-installer path renders the same entries into pre.ubuntu, under a shell with read -n.
+subtest 'a debian-installer recipe file after a recipe script' => sub {
+    my $fixture = tempdir(DIR => $tmp, CLEANUP => 1);
+    make_path("$fixture/tmp", "$fixture/sys/firmware");
+    write_file("$fixture/old", "#!/bin/sh\nexit 0\n");
+    write_file("$fixture/new", "recipe ::\n    .\n");
+    my $error = xCAT::Template->subvars(repo_path('xCAT-server/share/xcat/install/scripts/pre.ubuntu'),
+        "$fixture/node.pre", 'node', '', '', '', "s:$fixture/old,$fixture/new", {xcatmaster => '192.0.2.1'});
+    ok(!$error, 'renders through the production Template entry point') or diag($error);
+    my ($part) = read_file("$fixture/node.pre") =~ /(^base64decode\(\)\n.*?^exit 0$)/ms;
+    ok($part, 'the rendered script defines base64decode before the recipe') or return;
+    $part =~ s{(?<![[:alnum:]_/])/(tmp|sys)(?=/)}{$fixture/$1}g;
+    write_file("$fixture/part.sh", $part);
+    local %ENV = (%ENV, PATH => "$tmp/bin:/usr/bin:/bin");
+    my $output = `/bin/bash $fixture/part.sh 2>&1`;
+    is($?, 0, 'the recipe step runs') or diag($output);
+    is(read_file("$fixture/tmp/partitionfile"), "recipe ::\n    .\n", 'the later recipe file replaces the default recipe');
+};
 done_testing();
