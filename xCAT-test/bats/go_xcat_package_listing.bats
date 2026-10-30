@@ -2,7 +2,7 @@
 #
 # go-xcat check, install and update print a table of the xCAT packages, with the installed version
 # and the version that the repositories offer. On apt, the table must show the candidates that a
-# translated apt reports.
+# translated apt reports. A terminal type that tput does not know must not add tput errors to it.
 
 load 'helpers/go_xcat'
 load 'helpers/go_xcat_apt'
@@ -56,4 +56,20 @@ offers_every_package()
     LANG=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8 run list_packages
     [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
     offers_every_package "$output" || { printf '%s\n' "$output"; return 1; }
+}
+
+@test "an unknown terminal type adds no tput error to the package table" {
+    command -v tput >/dev/null || skip "tput is required"
+    TERM=xcat-unknown-terminal run list_packages
+    [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+    offers_every_package "$output" || { printf '%s\n' "$output"; return 1; }
+    if grep -F 'tput' <<<"$output"; then return 1; fi
+}
+
+@test "an empty TERM adds no tput error to the package table" {
+    command -v tput >/dev/null || skip "tput is required"
+    TERM= run list_packages
+    [ "$status" -eq 0 ] || { printf '%s\n' "$output"; return 1; }
+    offers_every_package "$output" || { printf '%s\n' "$output"; return 1; }
+    if grep -F 'tput' <<<"$output"; then return 1; fi
 }
