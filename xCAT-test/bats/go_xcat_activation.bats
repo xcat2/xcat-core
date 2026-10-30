@@ -33,7 +33,14 @@ SH
 #!/bin/sh
 if grep -Fxq "$3" /run/fixture/installed; then printf 'install ok installed'; else exit 1; fi
 SH
-    printf '#!/bin/sh\nexit 0\n' >"$fixture/tools/apt-cache"
+    cat >"$fixture/tools/apt-cache" <<'SH'
+#!/bin/sh
+[ "$1" = policy ] || exit 0
+shift
+for package do
+    printf '%s:\n  Installed: (none)\n  Candidate: 1\n' "$package"
+done
+SH
     printf '#!/bin/sh\nexit 22\n' >"$fixture/bin/curl"
     chmod +x "$fixture/bin/curl" "$fixture/tools/"*
     : >"$fixture/installed"

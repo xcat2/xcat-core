@@ -185,6 +185,7 @@ function version()
 
 GO_XCAT_DEFAULT_BASE_URL="http://xcat.org/files/xcat/repos"
 GO_XCAT_DEFAULT_INSTALL_PATH="/install/xcat"
+GO_XCAT_APT_KEY_FILE="/etc/apt/trusted.gpg.d/xcat.gpg"
 
 # The package list of xcat-core
 GO_XCAT_CORE_PACKAGE_LIST=()
@@ -949,6 +950,9 @@ function check_repo_version_apt()
 	type apt-cache >/dev/null 2>&1 || return 255
 	local name=""
 	local ver=""
+	local policy=""
+	local rc=0
+	policy="$(apt-cache policy "$@" 2>/dev/null)" || rc="$?"
 	while read -r name ver
 	do
 		if [[ "${name}" =~ ^[a-z] ]]
@@ -965,13 +969,13 @@ function check_repo_version_apt()
 			echo "$ver"
 			shift
 		fi
-	done < <(apt-cache policy "$@" 2>/dev/null)
+	done <<<"${policy}"
 	while [[ -n "$1" ]]
 	do
 		echo "(not found)"
 		shift
 	done
-	return 0
+	return "${rc}"
 }
 
 function check_repo_version()
@@ -1646,7 +1650,17 @@ function add_xcat_core_repo_apt()
 		local tmp="${TMP_DIR}/tmp_xcat.key"
 		download_file "${url}" "${tmp}"
 		warn_if_bad "$?" "download xcat apt key failed" || return 1
-		apt-key add "${tmp}"
+		# apt 3 has no apt-key, and apt before 1.4 reads only binary keyrings, which start with 0x98, 0x99 or 0xc6.
+		# A truncated download has a block without its END line, so it is refused.
+		awk '/^-----BEGIN PGP PUBLIC KEY BLOCK-----$/ { o = h = 1; b = 0; next }
+			/^-----END PGP PUBLIC KEY BLOCK-----$/ { if (!o) bad = 1; o = h = b = 0; n++; next }
+			h && /^$/ { h = 0; b = 1; next }
+			b && /^=/ { b = 0; next }
+			b { print }
+			END { exit (bad || o || !n) }' "${tmp}" >"${tmp}.b64" &&
+			base64 -d "${tmp}.b64" >"${tmp}.gpg" 2>/dev/null &&
+			od -An -tx1 -N1 "${tmp}.gpg" | grep -qE '^ (98|99|c6)$' &&
+			install -D -m 0644 "${tmp}.gpg" "${GO_XCAT_APT_KEY_FILE}"
 		warn_if_bad "$?" "import xcat apt key failed" || return 1
 		case "${ver}" in
 		"devel")
@@ -1978,7 +1992,27 @@ function install_packages_apt()
 	type apt-get >/dev/null 2>&1 || return 255
 	local -a yes=()
 	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	apt-get --allow-unauthenticated install "${yes[@]}" "$@"
+	local -a available=()
+	local package="" ver="" versions=""
+	versions="$(LC_ALL=C check_repo_version_apt "$@")"
+	warn_if_bad "$?" "query apt package candidates failed" || return 1
+	# As with dnf --setopt=strict=0, a package the repositories lack must not stop the install.
+	for package in "$@"
+	do
+		read -r ver
+		case "${ver}" in
+		"(none)"|"(not found)")
+			# The xcat metapackage depends on every package a management node needs.
+			[[ "${package}" = "xcat" ]] &&
+				{ warn_if_bad 1 "xcat: the repositories do not provide it"; return 1; }
+			warn_if_bad 1 "${package}: the repositories do not provide it, skipped"
+			;;
+		*)
+			available+=("${package}")
+			;;
+		esac
+	done <<<"${versions}"
+	apt-get --allow-unauthenticated install "${yes[@]}" "${available[@]}"
 }
 
 function install_packages()
@@ -2194,6 +2228,7 @@ function trash_xcat()
 	rm -rf /etc/xcat
 	rm -rf /etc/xcatdockerca
 	rm -f  /etc/apt/sources.list.d/xcat-{core,dep}.list
+	rm -f  "${GO_XCAT_APT_KEY_FILE}"
 	rm -f  /etc/yum.repos.d/xCAT-{core,dep,dep-common}.repo{,.nouse}
 	rm -f  /etc/yum.repos.d/xcat-{core,dep,dep-common}.repo
 	rm -f  /etc/zypp/repos.d/xCAT-{core,dep,dep-common}.repo{,.nouse}
