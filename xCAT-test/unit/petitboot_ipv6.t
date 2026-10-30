@@ -141,4 +141,31 @@ is(
     'an IPv4 node does not reach the family helper'
 );
 
+# petitboot_config_name builds the name that petitboot asks for, from the IPv4 address.
+is(
+    xCAT_plugin::petitboot::petitboot_config_name('192.0.2.50'),
+    'C0000232',
+    'an IPv4 address gives the four octets in hexadecimal'
+);
+is(
+    xCAT_plugin::petitboot::petitboot_config_name('10.0.0.1'),
+    '0A000001',
+    'each octet takes two digits'
+);
+is(
+    xCAT_plugin::petitboot::petitboot_config_name('2001:db8:156::10'),
+    undef,
+    'an IPv6 address has no name, rather than one that no firmware asks for'
+);
+is(
+    xCAT_plugin::petitboot::petitboot_config_name('::1'),
+    undef,
+    'the IPv6 loopback has no name either'
+);
+is(
+    xCAT_plugin::petitboot::petitboot_config_name(undef),
+    undef,
+    'an address that was not resolved has no name'
+);
+
 done_testing();
