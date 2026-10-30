@@ -186,9 +186,13 @@ for my $rendered (@rendered_profiles) {
             my ($interpreter) = $post->[0] =~ /--interpreter=(\S+)/;
             $interpreter //= '/bin/sh';
             write_text("$root/post.sh", $post->[1]);
-            my ($rc, $log) = sandbox_run($root, {
-                env => {XCAT_EFI_LOG => '/fixture/efi.log'},
-            }, 'timeout', '30', $interpreter, '/fixture/post.sh');
+            my %options = (env => {XCAT_EFI_LOG => '/fixture/efi.log'});
+            # anaconda runs a --nochroot block in the installer, with the installed system at /mnt/sysimage
+            if ($post->[0] =~ /(?:^|\s)--nochroot(?:\s|$)/) {
+                $options{writable} = {map { ("$root/$_->[0]" => "/mnt/sysimage/$_->[1]") }
+                    ['boot', 'boot'], ['etc', 'etc'], ['log', 'var/log']};
+            }
+            my ($rc, $log) = sandbox_run($root, \%options, 'timeout', '30', $interpreter, '/fixture/post.sh');
             is($rc, 0, 'post block ' . ++$index . ' completes')
                 or diag($log, read_text("$root/log/xcat/xcat.log"));
         }
