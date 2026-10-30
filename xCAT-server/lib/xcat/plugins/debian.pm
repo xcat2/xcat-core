@@ -792,6 +792,14 @@ sub link_install_iso {
     return 0 unless defined($isopath) && length($isopath);
     return 0 unless -f $isopath;
     my $link = "$treedir/" . install_iso_name();
+
+    # copycds can be given the ISO that is already in the tree, or the link to it. The
+    # unlink below would then delete the media and leave a link pointing at nothing, so
+    # the two are compared by device and inode first, which also follows the link.
+    my @from = stat($isopath);
+    my @to   = stat($link);
+    return 1 if @from && @to && $from[0] == $to[0] && $from[1] == $to[1];
+
     unlink($link);
     unless (symlink($isopath, $link)) {
         $callback->({ warning => ["Cannot link $isopath to $link, so an IPv6-only node cannot install from this media: $!"] })

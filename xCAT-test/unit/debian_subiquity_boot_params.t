@@ -219,4 +219,37 @@ my $resolver = sub { $_[0] eq 'mn.cluster' ? '10.0.0.1' : undef };
     is_deeply( \@warnings, [], 'neither case is a warning, because neither is an error' );
 }
 
+# copycds can be handed the ISO that is already in the tree, or the link to it. unlink
+# then symlink would delete the media and leave a link pointing at nothing.
+{
+    my $dir  = tempdir( CLEANUP => 1 );
+    my $tree = "$dir/tree";
+    mkdir $tree;
+    my $at_destination = "$tree/install.iso";
+    open my $fh, '>', $at_destination or die "cannot create $at_destination: $!";
+    print {$fh} "REAL ISO PAYLOAD";
+    close $fh;
+
+    is( T::link_install_iso( $tree, $at_destination, undef ), 1,
+        'an ISO already at the destination needs no link' );
+    ok( !-l $at_destination, '... and it is left as a file, not replaced by a link' );
+    is( -s $at_destination, 16, '... with its contents intact' );
+
+    # The same call again, now that the ISO really is a link to media elsewhere.
+    my $media = "$dir/media.iso";
+    open my $mh, '>', $media or die; print {$mh} "ELSEWHERE"; close $mh;
+    unlink $at_destination;
+    symlink( $media, $at_destination ) or die "cannot link: $!";
+    is( T::link_install_iso( $tree, $at_destination, undef ), 1,
+        'the link to the media resolves to the same file, so it is kept' );
+    is( readlink($at_destination), $media, '... still pointing at the media' );
+    ok( -e $at_destination, '... and it is not dangling' );
+
+    # A different ISO replaces the link.
+    my $other = "$dir/other.iso";
+    open my $oh, '>', $other or die; print {$oh} "OTHER"; close $oh;
+    is( T::link_install_iso( $tree, $other, undef ), 1, 'a different ISO is linked' );
+    is( readlink($at_destination), $other, '... replacing the previous link' );
+}
+
 done_testing();
