@@ -57,7 +57,7 @@ my $writer = "#!/bin/sh\ncat >/tmp/partitionfile <<'EOF'\n${layout}EOF\n";
 my $diskscript = "#!/bin/sh\necho /dev/disk/by-id/scripted >/tmp/xcat.install_disk\n";
 
 # Each case: label, the partitionfile entries as [prefix, file contents], and the disk the storage
-# config must name.
+# config must name, or undef when the install must stop before a storage config exists.
 my @cases = (
     ['no partitionfile', [], '/dev/sdz'],
     ['a disk file', [['d:', "/dev/disk/by-id/nvme-pinned /dev/sdb\n"]], '/dev/disk/by-id/nvme-pinned'],
@@ -70,6 +70,16 @@ my @cases = (
         '/dev/disk/by-id/nvme-pinned'],
     ['a layout file before a disk script', [['', $layout], ['s:d:', $diskscript]], '/dev/disk/by-id/custom'],
     ['a layout script before a disk file', [['s:', $writer], ['d:', "/dev/disk/by-id/nvme-pinned\n"]], '/dev/disk/by-id/custom'],
+    ['a disk script that fails', [['s:d:', "#!/bin/sh\nexit 42\n"]], undef],
+    ['a disk script that selects no disk', [['s:d:', "#!/bin/sh\nexit 0\n"]], undef],
+    ['a layout script that fails', [['s:', "#!/bin/sh\nexit 42\n"]], undef],
+    ['a layout script that writes no layout', [['s:', "#!/bin/sh\nexit 0\n"]], undef],
+    ['a layout file with only blank lines', [['', "\n   \n"]], undef],
+    ['a layout file with only comments', [['', "# no layout yet\n"]], undef],
+    ['a disk file with only blank lines', [['d:', "  \n\n"]], undef],
+    ['a layout file with an empty storage section', [['', "storage:\n"]], undef],
+    ['a layout file with a null storage section', [['', "storage: null\n"]], undef],
+    ['a layout file that starts a YAML document', [['', "---\n$layout"]], '/dev/disk/by-id/custom'],
 );
 for my $case (@cases) {
     my ($label, $entries, $expected) = @$case;
@@ -80,11 +90,20 @@ for my $case (@cases) {
         write_text("$root/part.sh", $part);
         my ($rc, $output) = sandbox_run($root, {read_only => {"$root/efi" => '/sys/firmware/efi',
             "$root/by-id" => '/dev/disk/by-id', "$root/nvme7n1" => '/dev/nvme7n1'}}, $shell, '/fixture/part.sh');
+        if (!defined $expected) {
+            isnt($rc, 0, "the pre-install script fails under $shell");
+            ok(!-e "$root/tmp/partitionfile", 'and leaves no storage config to inject');
+            return;
+        }
         is($rc, 0, "the partitioning runs under $shell") or diag($output);
         my $config = storage_config($root);
         my ($disk) = $config =~ /^\s+type: disk\n(?:\s+\S+:.*\n)*?\s+path: (\S+)$/m;
         is($disk, $expected, "the storage config partitions $expected");
         is($config, $layout, 'the administrator layout replaces the default one') if $expected eq '/dev/disk/by-id/custom';
+        # The early command appends the storage config to Subiquity's autoinstall.yaml.
+        write_text("$root/autoinstall.yaml", "version: 1\nidentity:\n  hostname: node\n$config");
+        is(system('/usr/bin/python3', '-I', '-c', 'import sys, yaml; sys.exit("storage" not in yaml.safe_load(open(sys.argv[1])))',
+            "$root/autoinstall.yaml"), 0, 'autoinstall.yaml stays one YAML document with a storage section');
     };
 }
 
