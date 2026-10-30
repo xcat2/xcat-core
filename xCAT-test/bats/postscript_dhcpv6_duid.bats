@@ -106,3 +106,75 @@ DUIDRawData=$RAW" ]
     [ "$status" -eq 1 ]
     grep -F 'the DHCPv6 client identifier is unset' "$XCAT_TEST_LOG"
 }
+
+# ---- mac.duid decides the identifier, the same way makedhcp decides it -------------------
+# The script always derived the firmware order. A node whose reservation holds a
+# canonical-order or a literal DUID matched nothing, took a pool address and had no boot URL.
+# mypostscript exports the attribute as DHCP6DUID.
+
+CANONICAL=00:04:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff
+
+@test "an unset attribute keeps the firmware order" {
+    unset DHCP6DUID
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=$DUID" ]
+}
+
+@test "firmware asks for the order the firmware sends" {
+    export DHCP6DUID=firmware
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=$DUID" ]
+}
+
+@test "canonical keeps the order product_uuid prints" {
+    export DHCP6DUID=canonical
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=$CANONICAL" ]
+}
+
+@test "canonical gives systemd-networkd the same sixteen bytes" {
+    export DHCP6DUID=canonical
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nd_file)" = "[DHCPv6]
+DUIDType=uuid
+DUIDRawData=00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff" ]
+}
+
+@test "a literal UUID DUID is written as it stands" {
+    export DHCP6DUID=00:04:de:ad:be:ef:00:01:02:03:04:05:06:07:08:09
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=00:04:de:ad:be:ef:00:01:02:03:04:05:06:07:08:09" ]
+    [ "$(nd_file)" = "[DHCPv6]
+DUIDType=uuid
+DUIDRawData=de:ad:be:ef:00:01:02:03:04:05:06:07:08:09" ]
+}
+
+@test "a literal DUID of another type goes to NetworkManager alone" {
+    export DHCP6DUID=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11" ]
+    # systemd-networkd composes a DUID from a named type, and only the UUID type can be
+    # expressed that way, so writing one of another type there would send the wrong value.
+    [ ! -e "$XCAT_NETWORKD_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
+    grep -q 'not a UUID DUID' "$XCAT_TEST_LOG"
+}
+
+@test "an attribute that is neither keyword nor DUID writes nothing" {
+    export DHCP6DUID=garbage-value
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ ! -e "$XCAT_NM_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
+    [ ! -e "$XCAT_NETWORKD_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
+    grep -q 'is not firmware, canonical, or a DUID' "$XCAT_TEST_LOG"
+}

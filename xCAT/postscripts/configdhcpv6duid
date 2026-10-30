@@ -50,15 +50,52 @@ case $uuid in
         ;;
 esac
 
+# mac.duid decides the identifier, the same way makedhcp decides it, and mypostscript exports
+# it as DHCP6DUID. A node whose reservation holds a canonical-order or a literal DUID would
+# match nothing if this script always derived the firmware order.
+duid_setting=${DHCP6DUID:-firmware}
+case $duid_setting in
+    ''|firmware|canonical) ;;
+    *)
+        # A literal DUID is reserved verbatim, so it is written verbatim.
+        if ! printf '%s' "$duid_setting" | grep -qiE '^[0-9a-f]{2}(:[0-9a-f]{2}){2,129}$'; then
+            log "the duid attribute is '$duid_setting', which is not firmware, canonical, or a DUID of colon-separated hexadecimal octets; leaving the DHCPv6 client identifier alone"
+            exit 0
+        fi
+        literal=$(printf '%s' "$duid_setting" | tr 'A-F' 'a-f')
+        ;;
+esac
+
 # SMBIOS 2.6 and later store the first three UUID fields little-endian, and EDK2 copies those
 # bytes into its DUID. product_uuid prints the fields in canonical order, so the first three go
-# back into firmware order here. makedhcp, doxcat and genesis-duid do the same swap.
-octets=${uuid:6:2}:${uuid:4:2}:${uuid:2:2}:${uuid:0:2}
-octets=$octets:${uuid:10:2}:${uuid:8:2}
-octets=$octets:${uuid:14:2}:${uuid:12:2}
+# back into firmware order here. makedhcp, doxcat and genesis-duid do the same swap. The
+# canonical setting keeps the order product_uuid printed.
+if [ "$duid_setting" = canonical ]; then
+    octets=${uuid:0:2}:${uuid:2:2}:${uuid:4:2}:${uuid:6:2}
+    octets=$octets:${uuid:8:2}:${uuid:10:2}
+    octets=$octets:${uuid:12:2}:${uuid:14:2}
+else
+    octets=${uuid:6:2}:${uuid:4:2}:${uuid:2:2}:${uuid:0:2}
+    octets=$octets:${uuid:10:2}:${uuid:8:2}
+    octets=$octets:${uuid:14:2}:${uuid:12:2}
+fi
 for offset in 16 18 20 22 24 26 28 30; do
     octets=$octets:${uuid:$offset:2}
 done
+
+# A literal replaces the derived value. NetworkManager takes a whole DUID, so it takes the
+# literal as it stands. systemd-networkd composes one from a named type plus raw data, and only
+# the UUID type (00:04) can be expressed that way, so a literal of any other type is written
+# for NetworkManager alone.
+duid=00:04:$octets
+networkd_octets=$octets
+if [ -n "${literal:-}" ]; then
+    duid=$literal
+    case $literal in
+        00:04:*) networkd_octets=${literal#00:04:} ;;
+        *)       networkd_octets= ;;
+    esac
+fi
 
 written=0
 
@@ -66,8 +103,8 @@ written=0
 # and a later file wins, so this name sorts after the packaged defaults.
 if [ -d "$nm_dir" ] || [ -d "${nm_dir%/*}" ]; then
     if mkdir -p "$nm_dir" 2>/dev/null &&
-       printf '%s\n' '[connection]' "ipv6.dhcp-duid=00:04:$octets" >"$nm_dir/15-xcat-dhcpv6-duid.conf"; then
-        log "NetworkManager DHCPv6 client identifier is 00:04:$octets"
+       printf '%s\n' '[connection]' "ipv6.dhcp-duid=$duid" >"$nm_dir/15-xcat-dhcpv6-duid.conf"; then
+        log "NetworkManager DHCPv6 client identifier is $duid"
         written=$((written + 1))
     else
         log "unable to write $nm_dir/15-xcat-dhcpv6-duid.conf"
@@ -76,10 +113,12 @@ fi
 
 # systemd-networkd composes the DUID from DUIDType and DUIDRawData, so the type is named rather
 # than written: DUIDRawData carries the sixteen UUID bytes alone.
-if [ -d "$networkd_dir" ] || [ -d /run/systemd/network ] || [ -d "${networkd_dir%/*}" ]; then
+if [ -z "$networkd_octets" ]; then
+    log "the reserved DUID $duid is not a UUID DUID, which systemd-networkd cannot express; only NetworkManager is configured"
+elif [ -d "$networkd_dir" ] || [ -d /run/systemd/network ] || [ -d "${networkd_dir%/*}" ]; then
     if mkdir -p "$networkd_dir" 2>/dev/null &&
-       printf '%s\n' '[DHCPv6]' 'DUIDType=uuid' "DUIDRawData=$octets" >"$networkd_dir/15-xcat-dhcpv6-duid.conf"; then
-        log "systemd-networkd DHCPv6 client identifier is 00:04:$octets"
+       printf '%s\n' '[DHCPv6]' 'DUIDType=uuid' "DUIDRawData=$networkd_octets" >"$networkd_dir/15-xcat-dhcpv6-duid.conf"; then
+        log "systemd-networkd DHCPv6 client identifier is $duid"
         written=$((written + 1))
     else
         log "unable to write $networkd_dir/15-xcat-dhcpv6-duid.conf"
