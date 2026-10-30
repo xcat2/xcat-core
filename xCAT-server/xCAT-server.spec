@@ -52,17 +52,32 @@ Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 pe
 # Time::HiRes and Text::Balanced) are not pulled in transitively by perl-xCAT
 # either. List them here or the affected subcommands die at load time.
 Requires: perl-Net-Telnet perl-Net-DNS perl-Crypt-CBC perl-Crypt-Rijndael
+# openSUSE has no perl-generators, so no perl(...) requirement is generated here and nothing
+# installs the modules this code loads. xcatd stays inactive without them: xCAT::Table dies
+# loading JSON. EL and openEuler generate these automatically and need no list.
+%if 0%{?suse_version}
+Requires: perl(Date::Parse)
+Requires: perl(Expect)
+Requires: perl(JSON)
+Requires: perl(SNMP)
+%endif
 # DB_File is only used by the Confluent client (lib/xcat/Confluent/Client.pm). EL10
 # dropped libdb: EPEL still carries perl-DB_File for x86_64 and ppc64le, but riscv64 has
 # no EPEL at all, so on EL10 ask for the module weakly -- it is installed where it exists
 # and skipped where it cannot. The dependency generator still turns that "use DB_File"
 # into a hard perl(DB_File) requirement; drop it there too, appending to any filter the
 # build root already set. Every other platform keeps the hard requirement it has today.
+# openSUSE has no package of that name: Leap 15.6 calls it perl-core-DB_File and 42.3 has
+# neither, but both provide the capability, so ask for the capability there.
 %if 0%{?rhel} >= 10
 Recommends: perl-DB_File
 %global __requires_exclude %{?__requires_exclude:%{__requires_exclude}|}^perl\\(DB_File\\)$
 %else
+%if 0%{?suse_version}
+Requires: perl(DB_File)
+%else
 Requires: perl-DB_File
+%endif
 %endif
 %endif
 Obsoletes: atftp-xcat
@@ -182,6 +197,11 @@ done
 cp -hpR share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
 %endif
+
+# Debian scripts must remain self-contained when copied from an installed package.
+rm -f $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/debian/xCAT/ProfileUtils.pm
+cp share/xcat/netboot/imgutils/xCAT/ProfileUtils.pm $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/debian/xCAT/ProfileUtils.pm
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/debian/xCAT/ProfileUtils.pm $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/imgutils/xCAT/ProfileUtils.pm
 
 %ifos linux
 # pwd

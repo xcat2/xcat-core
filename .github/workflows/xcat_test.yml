@@ -15,7 +15,7 @@ jobs:
       - name: Install lifecycle test dependencies
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl apache2 curl
       - name: Test Debian package lifecycle
-        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t
+        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/debian_chroot_services.t xCAT-test/native/debian_management_recovery.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t
       - name: Test optional statelite host keys
         if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/statelite_optional_hostkey.t
@@ -62,6 +62,7 @@ jobs:
           xCAT-test/native/ubuntu_genimage_debootstrap_arch.t
           xCAT-test/native/ubuntu_genimage_apt_mirror.t
           xCAT-test/native/ubuntu_genimage_resolver_libs.t
+          xCAT-test/native/debian_genimage_profile_assets.t
       - name: Exercise the liteimg ramdisk archive
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/liteimg_ramdisk_archive.t

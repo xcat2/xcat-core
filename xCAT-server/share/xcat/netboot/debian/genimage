@@ -11,6 +11,9 @@ use File::Copy;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
+use FindBin;
+use lib "$FindBin::Bin";
+use xCAT::ProfileUtils;
 
 #use strict;
 Getopt::Long::Configure("bundling");
@@ -1302,21 +1305,8 @@ sub get_profile_def_filename {
     my $ext    = shift;
     my $dotpos = rindex($osver, ".");
     my $osbase = substr($osver, 0, $dotpos);
-    if (-r "$base/$profile.$osver.$arch.$ext") {
-        return "$base/$profile.$osver.$arch.$ext";
-    } elsif (-r "$base/$profile.$osbase.$arch.$ext") {
-        return "$base/$profile.$osbase.$arch.$ext";
-    } elsif (-r "$base/$profile.$arch.$ext") {
-        return "$base/$profile.$arch.$ext";
-    } elsif (-r "$base/$profile.$osver.$ext") {
-        return "$base/$profile.$osver.$ext";
-    } elsif (-r "$base/$profile.$osbase.$ext") {
-        return "$base/$profile.$osbase.$ext";
-    } elsif (-r "$base/$profile.$ext") {
-        return "$base/$profile.$ext";
-    }
-
-    return "";
+    return xCAT::ProfileUtils::find_profile_asset(
+        $base, $profile, $arch, $ext, $osver, $osbase);
 }
 
 

@@ -45,6 +45,15 @@ packages, execute target-architecture binaries or prove that the generated image
 
 ## Other native tests
 
+`debian_genimage_profile_assets.t` runs the Debian genimage command in an
+isolated filesystem. It checks custom and shipped package lists,
+extra-package lists and postinstall scripts. Package tools and postinstall
+scripts stop with deliberate failures after recording the selected input.
+Only the Debian script directory is copied, with no installed xCAT libraries.
+Source-checkout copies follow symlinks. An optional directory argument checks
+a package payload without following symlinks.
+It does not install packages or build an initrd.
+
 The pull-request workflow runs these packaging cases explicitly as an ordinary
 user:
 
@@ -62,6 +71,12 @@ removes its agent. These checks inspect real packages and repository output;
 they do not qualify package installation on every target architecture. On EL8,
 install both `python36` and `python3-rpm` to provide the interpreter and its RPM
 bindings.
+
+The release case also runs source-only finalization with unsigned and signed
+binary RPMs, empty binary trees, and absent, retained and standalone aliases.
+It checks that binary files and aliases retain their bytes, modes and timestamps
+while source RPMs and metadata use a different signing key. This covers cached
+source RPMs; it does not run mock or publish a repository.
 
 The Debian probe permission test has a separate pull-request CI step. It needs
 Debian build tools, BATS, bubblewrap, fakeroot, reprepro and

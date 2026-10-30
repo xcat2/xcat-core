@@ -4,7 +4,8 @@ use warnings;
 use Digest::SHA qw(sha256_hex);
 use File::Basename qw(dirname);
 use File::Copy qw(copy);
-use File::Path qw(make_path);
+use File::Find qw(find);
+use File::Path qw(make_path remove_tree);
 use File::Slurper qw(read_binary write_text);
 use File::Temp qw(tempdir);
 use FindBin;
@@ -117,6 +118,73 @@ my $schedule = command("$root/work", 'unshare', '--user', '--map-root-user', '--
 is(scalar(grep { $_ eq "scheduled xCAT-release-$target" } split /\n/, $schedule), 1,
     'default build schedules the release package once');
 
+command($root, 'gpg', '--batch', '--pinentry-mode', 'loopback', '--passphrase', '',
+    '--quick-generate-key', 'Source Test <source@example.test>', 'rsa2048', 'sign', '0');
+my $source_key = command($root, 'gpg', '--armor', '--export', 'source@example.test');
+write_text("$root/source.key", $source_key);
+command($root, 'rpm', '--dbpath', "$root/source-rpmdb", '--import', "$root/source.key");
+command($root, 'gpg', '--output', "$root/source-keyring.gpg", '--export', 'source@example.test');
+for my $state (qw(empty unsigned signed no-alias alias-only)) {
+    subtest "source-only with $state binaries" => sub {
+        remove_tree($cached);
+        make_path("$cached/SRPMS");
+        copy("$root/SRPMS/$srpm", "$cached/SRPMS/$srpm") or die $!;
+        if ($state ne 'empty' && $state ne 'alias-only') {
+            command($root, 'cp', '-a', "$root/output/.", $cached);
+            copy("$root/SRPMS/$srpm", "$cached/SRPMS/$srpm") or die $!;
+            if ($state eq 'unsigned') {
+                copy("$root/RPMS/noarch/$rpm", "$cached/$rpm") or die $!;
+                command($root, 'createrepo_c', '--excludes', 'SRPMS/*',
+                    '--excludes', 'xCAT-release-latest.noarch.rpm', $cached);
+                command($root, 'gpg', '--batch', '--yes', '--armor', '--detach-sign',
+                    '--default-key', 'package@example.test', "$cached/repodata/repomd.xml");
+            }
+            check_package_index($cached, $rpm, 'initial binary repository');
+        }
+        if ($state eq 'no-alias') {
+            unlink "$cached/xCAT-release-latest.noarch.rpm" or die $!;
+        } elsif ($state ne 'empty') {
+            # Keep an older alias to detect replacement even when the versioned RPM still exists.
+            copy("$root/RPMS/noarch/$rpm", "$cached/xCAT-release-latest.noarch.rpm") or die $!;
+            chmod 0600, "$cached/xCAT-release-latest.noarch.rpm" or die $!;
+            utime 1600000000, 1600000000, "$cached/xCAT-release-latest.noarch.rpm" or die $!;
+        }
+        my $before = binary_snapshot($cached);
+        for my $attempt (0, 1, 2) {
+            my $signed = $attempt > 0 ? 1 : 0;
+            my $label = "$state source-only signed=$signed run=$attempt";
+            my ($rc, $out, $err) = run_in("$root/work", 'unshare', '--user', '--map-root-user', '--mount',
+                'bash', repo_path('xCAT-test/native/fixtures/buildrpms-namespace.sh'),
+                'sh', '-c', 'trap \'gpgconf --homedir "$GNUPGHOME" --kill gpg-agent\' EXIT; "$@"',
+                'source-test', $^X, 'buildrpms.pl', '--package', 'xCAT-release', '--target', $target,
+                '--release', '1', '--nproc', '1', '--source-only',
+                $signed ? ('--gpg-sign', '--gpg-key-name', 'source@example.test') : ());
+            unless (is($rc, 0, "$label completes")) {
+                diag($out, $err);
+                return;
+            }
+            is_deeply(binary_snapshot($cached), $before,
+                "$label preserves all binary file bytes, modes and mtimes");
+            check_package_index("$cached/SRPMS", $srpm, $label);
+            if ($signed) {
+                my $signature = command($root, 'rpmkeys', '--dbpath', "$root/source-rpmdb",
+                    '--checksig', "$cached/SRPMS/$srpm");
+                like($signature, qr/\bsignatures OK\b/, "$label verifies the source RPM signature");
+                command($root, 'gpgv', '--keyring', "$root/source-keyring.gpg",
+                    "$cached/SRPMS/repodata/repomd.xml.asc",
+                    "$cached/SRPMS/repodata/repomd.xml");
+                is(read_binary("$cached/SRPMS/repodata/repomd.xml.key"), $source_key,
+                    "$label exports the source signing key");
+                isnt(read_binary("$cached/SRPMS/$srpm"), read_binary("$root/SRPMS/$srpm"),
+                    "$label signs the source RPM");
+            } else {
+                is(read_binary("$cached/SRPMS/$srpm"), read_binary("$root/SRPMS/$srpm"),
+                    "$label leaves the source RPM unsigned");
+            }
+        }
+    };
+}
+
 unlink "$root/input/$rpm" or die $!;
 command("$root/work", $^X, 'buildrpms.pl', '--merge-core-repos',
     '--target', $target, '--release', '1', '--output-dir', "$root/output",
@@ -156,6 +224,35 @@ sub package_stats {
     return {map { $_ => [(stat("$directory/$_"))[7, 9]] } ($rpm, "SRPMS/$srpm")};
 }
 
+sub binary_snapshot {
+    my ($directory) = @_;
+    my %files;
+    find({no_chdir => 1, wanted => sub {
+        if ($File::Find::name eq "$directory/SRPMS") {
+            $File::Find::prune = 1;
+            return;
+        }
+        return unless -f $File::Find::name;
+        my $relative = substr($File::Find::name, length($directory) + 1);
+        $files{$relative} = [sha256_hex(read_binary($File::Find::name)), (stat($File::Find::name))[2, 9]];
+    }}, $directory);
+    return \%files;
+}
+
+sub check_package_index {
+    my ($repo, $filename, $label) = @_;
+    my @indexed = primary_packages($repo);
+    is(scalar(@indexed), 1, "$label indexes one $filename");
+    for my $package (@indexed) {
+        my ($location) = $package->findnodes('./*[local-name()="location"]');
+        is($location->getAttribute('href'), $filename, "$label locates $filename");
+        my ($checksum) = $package->findnodes('./*[local-name()="checksum"]');
+        is($checksum->getAttribute('type'), 'sha256', "$label uses SHA256 for $filename");
+        is($checksum->textContent, sha256_hex(read_binary("$repo/$filename")),
+            "$label metadata matches final $filename bytes");
+    }
+}
+
 sub check_repository {
     my ($directory, $signed, $label, $before) = @_;
     is_deeply(package_stats($directory), $before, "$label signing preserves package sizes and mtimes")
@@ -165,17 +262,7 @@ sub check_repository {
     is(read_binary($alias), read_binary("$directory/$rpm"), "$label alias has final RPM bytes");
     is((stat($alias))[2] & 0777, 0644, "$label alias is readable");
     for my $entry ([$directory, $rpm], ["$directory/SRPMS", $srpm]) {
-        my ($repo, $filename) = @$entry;
-        my @indexed = primary_packages($repo);
-        is(scalar(@indexed), 1, "$label indexes one $filename");
-        for my $package (@indexed) {
-            my ($location) = $package->findnodes('./*[local-name()="location"]');
-            is($location->getAttribute('href'), $filename, "$label locates $filename");
-            my ($checksum) = $package->findnodes('./*[local-name()="checksum"]');
-            is($checksum->getAttribute('type'), 'sha256', "$label uses SHA256 for $filename");
-            is($checksum->textContent, sha256_hex(read_binary("$repo/$filename")),
-                "$label metadata matches final $filename bytes");
-        }
+        check_package_index(@$entry, $label);
     }
     if ($signed) {
         for my $repo ($directory, "$directory/SRPMS") {
