@@ -33,12 +33,19 @@ vm_machine_type_private_dir()
     fi
 }
 
-# alias -- the machine name qemu keeps pointed at the newest machine of a family.
+# alias <arch> [<vmothersetting>] -- the machine name qemu keeps pointed at the newest machine
+# of a family. An x86_64 node that asks for a UEFI firmware takes q35: every x86_64 OVMF
+# descriptor targets pc-q35-*, and libvirt refuses firmware efi on i440fx.
 vm_machine_type_alias()
 {
     case "$1" in
         ppc64*)  echo 'pseries' ;;
-        x86_64)  echo 'pc' ;;
+        x86_64)
+            case ";${2-}" in
+                *';firmware:efi'*) echo 'q35' ;;
+                *)                 echo 'pc' ;;
+            esac
+            ;;
         riscv64) echo 'virt' ;;
         aarch64) echo 'virt' ;;
         *)       return 1 ;;
@@ -84,19 +91,22 @@ vm_machine_type_default()
         sed -n 's|.*<machine>\(.*\)</machine>.*|\1|p' | head -n 1
 }
 
-# for_arch <arch> [<vmhost>] -- the machine type to write, as "machine:<name>".
+# for_arch <arch> [<vmhost>] [<vmothersetting>] -- the machine type to write, as
+# "machine:<name>".
 #
 # The vmhost is what refuses the domain, so its libvirt picks the name: the plain
 # alias when that libvirt accepts it, its own default when it does not, and the
 # alias again when the vmhost cannot be asked. A versioned name does not survive
 # a host upgrade -- no qemu on AlmaLinux 10 has a pseries-rhel machine type.
+# q35 does not fall back to the default: the x86_64 default is i440fx, which UEFI cannot use.
 vm_machine_type_for_arch()
 {
     local arch="$1" vmhost="${2-}" generic libvirt_arch name
 
-    generic="$(vm_machine_type_alias "$arch")" || return 1
+    generic="$(vm_machine_type_alias "$arch" "${3-}")" || return 1
     libvirt_arch="$(vm_machine_type_libvirt_arch "$arch")" || return 1
-    if vm_machine_type_supported "$vmhost" "$libvirt_arch" "$generic"; then
+    if [ "$generic" = q35 ] ||
+        vm_machine_type_supported "$vmhost" "$libvirt_arch" "$generic"; then
         printf 'machine:%s\n' "$generic"
         return
     fi
@@ -176,7 +186,7 @@ vm_machine_type_apply()
         chdef "$node" "vmothersetting=$original"
         return
     fi
-    if ! machine="$(vm_machine_type_for_arch "$arch" "$(vm_machine_type_vmhost "$node")")"; then
+    if ! machine="$(vm_machine_type_for_arch "$arch" "$(vm_machine_type_vmhost "$node")" "$original")"; then
         echo "vm_machine_type.sh: no machine type for arch '$arch'" >&2
         return 1
     fi

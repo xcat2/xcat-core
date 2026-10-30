@@ -19,6 +19,7 @@ use xCAT::MsgUtils;
 use xCAT::SvrUtils;
 use xCAT::UFTP;
 use xCAT::Yum;
+use xCAT::MediaPerms;
 use xCAT::SELinux;
 
 use Getopt::Long;
@@ -2627,6 +2628,11 @@ sub copycd
     #my $rc = system("cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch");
     #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
     chmod 0755, "$path";
+
+    # The media carries its own modes, and EL media ships the EFI binaries of its boot loader
+    # mode 0700. xCAT serves the install directory over HTTP, so the web server answers 403 for
+    # one, and a node with Secure Boot on cannot fetch the shim that verifies its kernel.
+    xCAT::MediaPerms::make_readable($path);
 
     #append the fingerprint to the .fingerprint file to indicate that the os media has been copied in
     unless ($disccopiedin)
