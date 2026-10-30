@@ -81,6 +81,11 @@ Requires: /usr/bin/killall
 Requires: (chrony or ntp)
 # openEuler's system-release version does not identify an EL release.
 Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
+# makedhcp writes /etc/radvd.conf for every IPv6 network in the networks table. A client that
+# follows RFC 4861 starts DHCPv6 only when an advertisement sets the managed flag, and its
+# on-link prefix and default route come from the advertisement rather than from the lease. So
+# without radvd an IPv6-only node gets one address with a prefix length of 128 and no route.
+Requires: radvd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %if %nots390x
