@@ -129,9 +129,11 @@ my $findmnt = fake_command('findmnt', <<'SH');
 printf '/dev/vda1\n'
 SH
 my $lsblk = fake_command('lsblk', <<'SH');
+[ -n "$XCAT_TEST_NO_PARTUUID" ] && case "$*" in *PARTUUID*) exit 0 ;; esac
 case "$*" in
     *PKNAME*) printf "vda\n" ;;
     *PARTN*) printf "1\n" ;;
+    *PARTUUID*) printf "0b8f4c1e-6a51-4b4e-9d7e-2f3a1c5d7e90\n" ;;
 esac
 SH
 my $efibootmgr = fake_command('efibootmgr', <<'SH');
@@ -139,9 +141,10 @@ printf '%s\n' "$*" >> "$XCAT_EFI_LOG"
 case "$*" in
     '') exit 0 ;;
     '-v')
-        printf 'Boot0001* Rocky HD(1,GPT,...)/File(\\EFI\\rocky\\shimx64.efi)\n'
-        printf 'Boot0002* OldRiscv HD(1,GPT,...)/File(\\EFI\\rocky\\grubriscv64.efi)\n'
+        printf 'Boot0001* Rocky Linux\tHD(1,GPT,0b8f4c1e-6a51-4b4e-9d7e-2f3a1c5d7e90,0x800,0x80000)/File(\\EFI\\rocky\\shimx64.efi)\n'
+        printf 'Boot0002* Rocky Linux\tHD(1,GPT,0B8F4C1E-6A51-4B4E-9D7E-2F3A1C5D7E90,0x800,0x80000)/File(\\EFI\\rocky\\grubriscv64.efi)\n'
         printf 'Boot0003* Network PXE\n'
+        printf 'Boot0004* Ubuntu\tHD(1,GPT,5d2e8a47-0c3b-4f19-8e6a-91b7c4d2f063,0x800,0x100000)/\\EFI\\ubuntu\\grubriscv64.efi\n'
         exit 0
         ;;
     *'-c'*) exit "${XCAT_EFI_CREATE_RC:-0}" ;;
@@ -239,6 +242,7 @@ my $efi_calls = read_text($efi_log);
 like($efi_calls, qr/^-q -b 0001 -B$/m, 'the invalid x86 boot entry is removed');
 like($efi_calls, qr/^-q -b 0002 -B$/m, 'the prior RISC-V boot entry is removed');
 unlike($efi_calls, qr/0003/, 'unrelated firmware entries are retained');
+unlike($efi_calls, qr/-b 0004 /, 'the boot entry of a system on another disk is retained');
 like(
     $efi_calls,
     qr/^-q -c -d \/dev\/vda -p 1 -L Rocky Linux -l \\EFI\\rocky\\grubriscv64\.efi$/m,
@@ -261,5 +265,12 @@ unlink($efi_log);
 ($status, $output) = run_post($root, XCAT_EFI_CREATE_RC => 1);
 is($status, 0, 'an efibootmgr create failure remains nonfatal');
 like($output, qr/firmware will use \\EFI\\BOOT\\BOOTRISCV64\.EFI/, 'the fallback path is reported after an efibootmgr failure');
+
+unlink($efi_log);
+($status, $output) = run_post($root, XCAT_TEST_NO_PARTUUID => 1);
+is($status, 0, 'the fix-up completes when lsblk reports no ESP partition GUID');
+my $unknown_calls = read_text($efi_log);
+unlike($unknown_calls, qr/ -B$/m, 'no boot entry is removed when the ESP partition GUID is unknown');
+like($unknown_calls, qr/^-q -c -d \/dev\/vda -p 1 -L Rocky Linux /m, 'the boot entry is still registered without the ESP partition GUID');
 
 done_testing();
