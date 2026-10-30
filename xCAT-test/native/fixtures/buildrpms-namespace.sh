@@ -5,7 +5,8 @@ mount --make-rslave /
 export PYTHONPATH="$(dirname "$0")${PYTHONPATH:+:$PYTHONPATH}"
 etc="$BUILD_FIXTURE/etc"
 mkdir -p "$etc/mock" "$etc/yum.repos.d"
-for file in passwd group nsswitch.conf ld.so.cache; do
+# machine-id as well: the build lock is an XCAT::NFSLock, and its ownership identity needs one.
+for file in passwd group nsswitch.conf ld.so.cache machine-id; do
     [ ! -f "/etc/$file" ] || /bin/cp "/etc/$file" "$etc/$file"
 done
 /bin/cp "$BUILD_FIXTURE/os-release" "$etc/os-release"

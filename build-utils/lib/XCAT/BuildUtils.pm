@@ -34,7 +34,8 @@ our @EXPORT_OK = qw(
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
     reprepro_distributions reprepro_options
-    lock_id_for take_build_lock
+    lock_id_for take_build_lock acquire_lock_dir
+    attach_build_workers detach_build_workers start_build_worker
     build_sources_base build_sources_dir prepare_build_sources_dir
     remove_build_sources_dir sweep_build_sources_dirs share_build_sources_dir
     sh_quote clean_debian_residue git_revision
@@ -126,7 +127,7 @@ sub rewrite_file {
 our $CURRENT_CHILD;
 
 # Locks this process holds, weakly. Released by a signal handler or at exit, because
-# _BuildLock::DESTROY does not run when a signal ends the process.
+# DESTROY does not run when a signal ends the process.
 our @LIVE_LOCKS;
 END { release_build_locks() }
 
@@ -141,7 +142,9 @@ sub sh {
     POSIX::sigprocmask(POSIX::SIG_BLOCK(), $blocked, $oldmask)
         or die "Cannot block build cancellation signals: $!\n";
 
-    my $pid = fork();
+    # The child runs nothing until every held lock records its group, which happens while the
+    # signal mask is still blocked, so a cancellation cannot land between fork and record.
+    my ($pid, $registered) = start_build_worker();
     unless (defined $pid) {
         my $error = "$!";
         POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
@@ -151,20 +154,20 @@ sub sh {
     }
     unless ($pid) {
         $SIG{INT} = $SIG{TERM} = 'DEFAULT';
-        POSIX::setpgid(0, 0) or POSIX::_exit(127);
         POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask)
             or POSIX::_exit(127);
         exec('/bin/sh', '-c', $cmd) or POSIX::_exit(127);
     }
 
     local $CURRENT_CHILD = $pid;  # also the command's process-group ID
-    # Both sides set the group, so neither depends on which side runs first.
-    # EACCES means the child already exec'd, after setting its group; ESRCH
-    # means it has already gone away.
-    unless (POSIX::setpgid($pid, $pid) || $!{EACCES} || $!{ESRCH}) {
-        warn "FATAL: cannot create build process group $pid: $!; retaining locks\n";
-        kill 'KILL', $pid;
-        POSIX::_exit(127);
+    unless ($registered) {
+        warn "FATAL: cannot record build process group $pid on the build lock; not running $cmd\n";
+        kill 'KILL', -$pid, $pid;
+        my $got;
+        do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
+        detach_build_workers($pid);
+        POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask);
+        return 127;
     }
     POSIX::sigprocmask(POSIX::SIG_SETMASK(), $oldmask) or do {
         warn "FATAL: cannot restore signal mask: $!\n";
@@ -175,6 +178,7 @@ sub sh {
     my $got;
     do { $got = waitpid($pid, 0) } while ($got == -1 && $!{EINTR});
     my $status = $?;
+    detach_build_workers($pid);
     return 127 if $got == -1;
     return ($status & 127) ? 128 + ($status & 127) : $status >> 8;
 }
@@ -647,32 +651,58 @@ sub lock_path_for {
     return "$dir/xcatbld-" . lock_id_for($path) . ".lock";
 }
 
-# take_build_lock: take the checkout's lock, or die.
-# Returns the open handle -- the lock is held for as long as the caller keeps it.
-sub take_build_lock {
-    my ($path, $dir) = @_;
-    require POSIX;
-    # A directory, not an flock. A build tree can live on an NFS re-export, where the kernel
-    # refuses locks outright: every attempt answers errno 524. mkdir(2) is arbitrated by the
-    # server and needs no lock daemon.
-    my $lockdir = lock_path_for($path, $dir) . '.d';
-    unless (mkdir $lockdir) {
-        die "FATAL: cannot take $lockdir: $!\n" unless $! == POSIX::EEXIST();
-        my $who = ''; if (open(my $h, '<', "$lockdir/owner")) { local $/; $who = <$h> // ''; close $h }
-        chomp $who;
-        die "FATAL: another build of $path already holds $lockdir"
-          . ($who ? " (held by [$who])" : "") . "\n";
+# acquire_lock_dir: take one named lock, or die.
+#
+# XCAT::NFSLock, not an flock and not a bare mkdir. Its protocol recovers a lock whose owner is
+# provably dead, which is the whole point here: a build killed by SIGKILL or the OOM-killer runs
+# no handler, and a lock with no recovery then fails every later build of the same target until
+# an operator removes it by hand.
+#
+# The lock lives in /var/lock, which is local. What it guards is host-local too --
+# /etc/mock/<cfg>.cfg, /var/lib/mock/<cfg>/ and its buildroot.lock -- so the scope is one host
+# and one target. A lock on the shared checkout would serialise the per-arch builds of one
+# checkout that run on two hosts, which share nothing.
+#
+# $held is the advice printed when another build still holds the lock. $what names what contends,
+# so the two callers keep their own wording -- a checkout for builddebs.pl, a mock target for
+# buildrpms.pl -- while the protocol lives in one place.
+sub acquire_lock_dir {
+    my ($lockdir, $what, $held) = @_;
+    require XCAT::NFSLock;
+    $what = $lockdir unless defined $what;
+    $held = ''       unless defined $held;
+
+    # Three attempts. A take-over needs one; the budget leaves two for a contended lock, where
+    # another build is superseding the same dead owner. Builds must fail fast rather than queue.
+    my $lock = eval {
+        XCAT::NFSLock->acquire($lockdir, retries => 2, label => $what, quiet => 1);
+    };
+    unless ($lock) {
+        my $why = $@ // '';
+        $why =~ s/\s+\z//;
+        $why =~ s/^/       /mg;
+        # NFSLock says which failure it was. Only an exhausted retry budget means something else
+        # holds the lock; a mkdir that failed outright is a different problem, and every failure
+        # used to be reported as a concurrent build.
+        my $contended = $why =~ /\bstill held after [0-9]+ retr/;
+        die "FATAL: cannot take the build lock for $what\n"
+          . ($contended ? "       another build still holds $lockdir\n" : '')
+          . "$why\n"
+          . ($contended ? $held : '');
     }
-    if (open(my $ow, '>', "$lockdir/owner")) { print {$ow} "pid=$$\n"; close $ow }
-    # The caller keeps the returned value; release is by pid so a fork cannot free the parent's.
-    my $owner = $$;
-    my $lock = XCAT::BuildUtils::_BuildLock->new($lockdir, $owner);
+    push @LIVE_LOCKS, $lock;
     # Registered weakly, so holding it here does not keep the lock alive past its caller's
     # scope. The registry exists only so a signal can release what DESTROY will not.
     require Scalar::Util;
-    push @LIVE_LOCKS, $lock;
     Scalar::Util::weaken($LIVE_LOCKS[-1]);
     return $lock;
+}
+
+# take_build_lock: take the checkout's lock, or die.
+# Returns the guard object -- the lock is held for as long as the caller keeps it.
+sub take_build_lock {
+    my ($path, $dir) = @_;
+    return acquire_lock_dir(lock_path_for($path, $dir) . '.d', $path);
 }
 
 #-------------------------------------------------------------------------------
@@ -697,6 +727,88 @@ Returns:
 #-------------------------------------------------------------------------------
 sub release_build_locks {
     for my $l (@LIVE_LOCKS) { $l->release if defined $l }
+    return;
+}
+
+# attach_build_workers: record a process group on every lock this process holds. A build lock
+# protects a checkout and a mock target, and sh() runs each command in its own group, so the
+# lock has to name the group rather than only the wrapper that started it.
+sub attach_build_workers {
+    my ($pgid) = @_;
+    my $all = 1;
+    for my $l (@LIVE_LOCKS) {
+        next unless defined $l;
+        $all = 0 unless $l->attach($pgid);
+    }
+    return $all;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 start_build_worker
+
+Descriptions:
+    Fork a process in its own process group, and let it run only after every held build lock
+    records that group.
+
+    A lock whose owner is dead is recoverable unless it records a live group. A worker that
+    runs before its record exists can therefore outlive a killed parent while a second build
+    takes the lock. The child waits on a pipe. It continues only when the parent writes to the
+    pipe, which the parent does after every attach succeeds. When the parent dies first, the
+    child reads end-of-file and exits.
+
+Arguments:
+    $fork - optional coderef that forks, with the return value of fork(). Default: fork().
+            Parallel::ForkManager callers pass sub { $pm->start($ident) }.
+Returns:
+    In the parent, in list context: ($pid, 1) when the worker may run, ($pid, 0) when the record
+    failed and the worker exits with status 127, and () when the fork failed. In scalar
+    context: the pid, or undef.
+    In the child: 0, after the parent released it. The child never returns otherwise.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub start_build_worker {
+    my ($fork) = @_;
+    require POSIX;
+    $fork //= sub { fork() };
+    pipe(my $gate_r, my $gate_w) or return;
+    my $pid = $fork->();
+    unless (defined $pid) {
+        my $error = $!;
+        close($gate_r);
+        close($gate_w);
+        $! = $error;
+        return;
+    }
+    unless ($pid) {
+        close($gate_w);
+        POSIX::setpgid(0, 0) or POSIX::_exit(127);
+        my ($got, $go) = (undef, '');
+        do { $got = sysread($gate_r, $go, 1) } while (!defined($got) && $!{EINTR});
+        POSIX::_exit(127) unless $got && $go eq 'g';
+        close($gate_r);
+        return 0;
+    }
+    close($gate_r);
+    # Both sides set the group, so the record never names a pid that is not yet a group leader.
+    # ESRCH means the pid is not a child of this process. A record of that group can keep the
+    # lock forever, and the gated child has not run, so record nothing.
+    my $ok = (POSIX::setpgid($pid, $pid) || $!{EACCES}) ? 1 : 0;
+    $ok = attach_build_workers($pid) if $ok;
+    $ok = 0 if $ok && (syswrite($gate_w, 'g') // 0) != 1;
+    close($gate_w);
+    # Scalar context gives the pid, so `start_build_worker(...) and next` keeps the meaning of
+    # `$pm->start and next` whether or not the record succeeded.
+    return wantarray ? ($pid, $ok) : $pid;
+}
+
+# detach_build_workers: drop that record. Called once the group is reaped, and from
+# cancel_build once kill(0, -pgid) answers ESRCH.
+sub detach_build_workers {
+    my ($pgid) = @_;
+    for my $l (@LIVE_LOCKS) { $l->detach($pgid) if defined $l }
     return;
 }
 
@@ -777,13 +889,16 @@ sub cancel_build {
                 # The shell exiting is not enough: its workers may still exist.
                 if (!kill(0, -$pgid) && $!{ESRCH}) {
                     $CURRENT_CHILD = undef;
+                    detach_build_workers($pgid);
                     release_build_locks();
                     return;
                 }
                 select undef, undef, undef, 0.1;
             }
         }
-        # Never let END/DESTROY unlock a checkout whose workers may still run.
+        # Never let END/DESTROY unlock a checkout whose workers may still run. The group is
+        # still recorded on the lock, because it was not detached, so a later build reads that
+        # record and refuses the lock instead of recovering it from a dead owner.
         warn "FATAL: build process group $pgid has not disappeared; retaining locks\n";
         POSIX::_exit(1);
     }
@@ -791,21 +906,6 @@ sub cancel_build {
     return;
 }
 
-{   package XCAT::BuildUtils::_BuildLock;
-    sub new { my ($c,$d,$p)=@_; return bless { dir=>$d, pid=>$p, released=>0 }, $c }
-    # Idempotent: a signal handler and then DESTROY both reach here, and the second must not
-    # remove a directory a LATER build has since taken.
-    sub release {
-        my $s = shift;
-        return if $s->{released};
-        $s->{released} = 1;
-        return unless $$ == $s->{pid};
-        unlink "$s->{dir}/owner";
-        rmdir $s->{dir};
-        return;
-    }
-    sub DESTROY { shift->release }
-}
 
 # The packages a target does not build, and why. A rule names either the target
 # prefixes that do NOT build the package, or, with `only`, the pattern of the

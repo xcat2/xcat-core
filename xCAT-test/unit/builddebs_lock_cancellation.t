@@ -4,7 +4,8 @@
 # The build lock is released in DESTROY, and perl does not run DESTROY when a signal ends the
 # process. So a cancelled build left its lock directory behind, and the next build of that
 # checkout died on
-#     FATAL: another build of <path> already holds <dir> (held by [pid=NNNN])
+#     FATAL: cannot take the build lock for <path>
+#            another build still holds <dir>
 # naming a pid that had already exited. One such directory blocked an openSUSE target across
 # three consecutive runs before anyone looked at it.
 #
@@ -36,7 +37,10 @@ my $ckout   = tempdir(CLEANUP => 1);
     ok(-d $path, 'the lock directory exists while it is held');
     my $second = eval { XCAT::BuildUtils::take_build_lock($ckout, $lockdir) };
     ok(!$second, 'a second build of the same checkout is refused');
-    like($@, qr/already holds/, 'and told which lock is held');
+    my $refusal = $@ // '';
+    like($refusal, qr/another build still holds/, 'and reported contention');
+    like($refusal, qr/still held after [0-9]+ retr\w+ by pid $$\b/,
+        'naming the pid that holds it, not the same sentence for every failure');
     undef $l;
     ok(!-d $path, 'releasing it removes the directory');
 }
