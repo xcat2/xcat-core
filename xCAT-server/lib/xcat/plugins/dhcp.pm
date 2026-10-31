@@ -61,6 +61,7 @@ my $localonly;     # flag for running only on local server - needs to be global
 # place of the caller's response handler.
 our $callback;
 our $kea_ddns_key_path = '/etc/xcat/ddns.key';
+our $radvdconffile = '/etc/radvd.conf';
 my $restartdhcp;
 my $restartdhcp6;
 my $sitenameservers;
@@ -68,22 +69,25 @@ my $sitentpservers;
 my $sitelogservers;
 my $nrhash;
 my $machash;
-my $vpdhash;
+my $dhcp6duids;
 my $iscsients;
 my $nodetypeents;
 my $chainents;
 my $tftpdir = xCAT::TableUtils->getTftpDir();
+my $kea_disjoint_reservations = 0;
+my $kea_local_dynamic_dhcp_owner = 0;
+my %kea_effective_service_owners;
+my %kea_local_server_cache;
 our $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf';
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
-my %netcfgs;
+our %netcfgs;
 our $distro = xCAT::Utils->osver();
 my $checkdomain=0;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
-my $dhcp6conffile;
+our $dhcp6conffile;
 if ($^O ne 'aix' and not -e $dhcpconffile and -d "/etc/dhcp") {
-    $dhcpconffile  = '/etc/dhcp/dhcpd.conf';
-    $dhcp6conffile = '/etc/dhcp/dhcpd6.conf';
+    $dhcpconffile = '/etc/dhcp/dhcpd.conf';
 }
 my $usingipv6;
 
@@ -100,6 +104,33 @@ if ($distro =~ /ubuntu.*/) {
         $dhcpconffile = '/etc/dhcp3/dhcpd.conf';
     }
 }
+
+#-------------------------------------------------------
+
+=head3 dhcp6_conf_file_for
+
+    Descriptions: The DHCPv6 configuration file that belongs beside a DHCPv4 one.
+                  ISC serves the two families from two files in the same directory,
+                  and the directory differs per distro: openSUSE keeps
+                  /etc/dhcpd.conf, dhcp 4.x uses /etc/dhcp/dhcpd.conf.
+    Arguments: the DHCPv4 configuration file
+    Returns: the DHCPv6 configuration file, or undef where there is no ISC v6 file
+=cut
+
+#-------------------------------------------------------
+sub dhcp6_conf_file_for
+{
+    my ($conffile) = @_;
+    return undef unless defined $conffile;
+    return undef unless $conffile =~ /dhcpd\.conf$/;
+    $conffile =~ s/dhcpd\.conf$/dhcpd6.conf/;
+    return $conffile;
+}
+
+# Derived from the v4 file, which every branch above may have changed. Deriving it inside one
+# of those branches left it undef on openSUSE, where /etc/dhcpd.conf already exists, so
+# makedhcp wrote no IPv6 configuration at all and dhcpd6 had no subnet6 to serve.
+$dhcp6conffile = dhcp6_conf_file_for($dhcpconffile);
 
 sub check_uefi_support {
     my $ntent     = shift;
@@ -777,16 +808,17 @@ sub delnode
 
 sub addnode6 {
 
-    #omshell to add host dynamically
-    my $node = shift;
-    unless ($vpdhash) {
-        $callback->({ node => [ { name => [$node], warning => ["Skipping DHCPv6 setup due to missing vpd.uuid information."] } ] });
-        return;
-    }
-    my $ent = $vpdhash->{$node}->[0];    #tab->getNodeAttribs($node, [qw(mac)]);
-    unless ($ent and $ent->{uuid})
-    {
-        $callback->({ node => [ { name => [$node], warning => ["Skipping DHCPv6 setup due to missing vpd.uuid information."] } ] });
+    # The omshell commands that add the host, or nothing when the node is skipped.
+    my ( $node, $identity ) = @_;
+    $identity ||= {};
+    my $ip = getipaddr($node);
+    if ( $identity->{error} ) {
+        # A node without an IPv6 address needs no reserved address, so its DUID cannot fail the request.
+        if ( $ip and $ip =~ /:/ ) {
+            $callback->({ node => [ { name => [$node], error => [ $identity->{error} ], errorcode => [1] } ] });
+        } else {
+            $callback->({ node => [ { name => [$node], warning => [ "Skipping DHCPv6 setup: $identity->{error}" ] } ] });
+        }
         return;
     }
 
@@ -798,53 +830,73 @@ sub addnode6 {
     #don't think dhclient is smart enough to assemble advertised domain with it's own name and then
     #request FQDN update
     #goal is simple enough, we want `hostname` to look sane *and* we want DNS to look right
-    my $uuid = $ent->{uuid};
-    $uuid =~ s/-//g;
-    $uuid =~ s/(..)/$1:/g;
-    $uuid =~ s/:\z//;
-    $uuid =~ s/^/00:04:/;
-    my $ip = getipaddr($node);
+    my $duid = $identity->{duid};
+    unless ($duid) {
+        my $warning;
+        if ( !$identity->{uuid} ) {
+            $warning = 'Skipping DHCPv6 setup due to missing vpd.uuid information.';
+        } elsif ( dhcp6_uuid_is_placeholder( $identity->{uuid} ) ) {
+            $warning = 'Skipping DHCPv6 setup: vpd.uuid is the nil UUID, a placeholder that every node shares.';
+        } else {
+            $warning = 'Skipping DHCPv6 setup: vpd.uuid is not a UUID.';
+        }
+        $callback->({ node => [ { name => [$node], warning => [$warning] } ] });
+        return;
+    }
+    if ( $identity->{warning} ) {
+        $callback->({ node => [ { name => [$node], warning => [ $identity->{warning} ] } ] });
+    }
     if ( $ip and $ip =~ /:/ and _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
         return;
     }
+    my $commands = '';
     if ($ip and $ip =~ /:/) {
         $ip = getipaddr($ip, GetNumber => 1);
         $ip = $ip->as_hex;
         $ip =~ s/^0x//;
         $ip =~ s/(..)/$1:/g;
         $ip =~ s/:\z//;
-        print $omshell6 "set ip-address = $ip\n";
+        $commands .= "set ip-address = $ip\n";
     } else {
         $ip = 0;
     }
-    print $omshell6 "new host\n";
-    print $omshell6 "set name = \"$node\"\n";    #Find and destroy conflict name
-    print $omshell6 "open\n";
-    print $omshell6 "remove\n";
-    print $omshell6 "close\n";
+    $commands .= "new host\n";
+    $commands .= "set name = \"$node\"\n";    #Find and destroy conflict name
+    $commands .= "open\n";
+    $commands .= "remove\n";
+    $commands .= "close\n";
     if ($ip) {
-        print $omshell6 "new host\n";
-        print $omshell6 "set ip-address = $ip\n";  #find and destroy ip conflict
-        print $omshell6 "open\n";
-        print $omshell6 "remove\n";
-        print $omshell6 "close\n";
+        $commands .= "new host\n";
+        $commands .= "set ip-address = $ip\n";  #find and destroy ip conflict
+        $commands .= "open\n";
+        $commands .= "remove\n";
+        $commands .= "close\n";
     }
-    print $omshell6 "new host\n";
-    print $omshell6 "set dhcp-client-identifier = " . $uuid . "\n"; #find and destroy DUID-UUID conflict
-    print $omshell6 "open\n";
-    print $omshell6 "remove\n";
-    print $omshell6 "close\n";
-    print $omshell6 "new host\n";
-    print $omshell6 "set name = \"$node\"\n";
-    print $omshell6 "set dhcp-client-identifier = $uuid\n";
-    print $omshell6 'set statements = "ddns-hostname \"' . $node . '\";";' . "\n";
+    $commands .= "new host\n";
+    $commands .= "set dhcp-client-identifier = " . $duid . "\n"; #find and destroy DUID-UUID conflict
+    $commands .= "open\n";
+    $commands .= "remove\n";
+    $commands .= "close\n";
+    $commands .= "new host\n";
+    $commands .= "set name = \"$node\"\n";
+    $commands .= "set dhcp-client-identifier = $duid\n";
+
+    # RFC 5970 option 59. Without it the firmware takes the reserved address and has nothing
+    # to load, so EDK2 reports "PXE-E21: Remote boot cancelled" and tries the next boot entry.
+    my $nrent        = $nrhash       ? $nrhash->{$node}->[0]       : undef;
+    my $ntent        = $nodetypeents ? $nodetypeents->{$node}->[0] : undef;
+    my $bootfile_url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent );
+    my $statements6  = 'ddns-hostname \"' . $node . '\";';
+    $statements6 .= ' option dhcp6.bootfile-url \"' . $bootfile_url . '\";' if $bootfile_url;
+    $commands .= 'set statements = "' . $statements6 . '";' . "\n";
 
     if ($ip) {
-        print $omshell6 "set ip-address = $ip\n";
+        $commands .= "set ip-address = $ip\n";
     }
-    print $omshell6 "create\n";
-    print $omshell6 "close\n";
+    $commands .= "create\n";
+    $commands .= "close\n";
 
+    return $commands;
 }
 
 sub _infiniband_twin_mac
@@ -2367,10 +2419,6 @@ sub process_request
                 if ($missingfiles{dhcpd}) {
                     $callback->({ error => ["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"] });
                 }
-            } else {
-                if ($missingfiles{dhcpd6}) {
-                    $callback->({ error => ["The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"] });
-                }
             }
         }
         if ($missingfiles{dhcpd}) {
@@ -2645,8 +2693,7 @@ sub process_request
             );
             return;
         }
-        my $vpdtab = xCAT::Table->new('vpd');
-        $vpdhash = $vpdtab->getNodesAttribs($req->{node}, ['uuid']);
+        my $duids = $usingipv6 ? dhcp6_client_duids($req->{node}) : {};
         my ($unchanged, $external_error) = ({});
         if ($omapi_settings and not $opt{d}) {
             ($unchanged, $external_error) = _isc_external_ipxe_check($req->{node}, $nrhash, $omapi_settings, $omapi_secret);
@@ -2674,7 +2721,8 @@ sub process_request
                 next if $unchanged->{$_};
                 addnode $_;
                 if ($usingipv6) {
-                    addnode6 $_;
+                    my $commands = addnode6($_, $duids->{$_});
+                    print $omshell6 $commands if $commands;
                 }
             }
         }
@@ -2693,6 +2741,15 @@ sub process_request
             print "xx";
         }
     }
+    if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp6 and $^O ne 'aix') {
+        xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: restart dhcp6 service");
+        restart_dhcpd6();
+    }
+    # Outside the restart branch, because radvd can be down while its configuration is
+    # already correct. A call that reached this only when dhcpd6 restarted could never try
+    # a failed start again. The sub writes nothing when the file matches, and restarts
+    # nothing when the service is up.
+    configure_router_advertisements($callback, \%activenics) if $^O ne 'aix';
     flock($dhcplockfd, LOCK_UN);
     umask $oldmask;
 }
@@ -2786,6 +2843,7 @@ sub kea_process_request
         if ($restart->{error}) {
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
+        configure_router_advertisements($callback, $activenics) if $using_dhcp6;
         flock($dhcplockfd, LOCK_UN);
         return;
     }
@@ -2847,6 +2905,8 @@ sub kea_process_request
 
     my @deleted4;
     my @deleted6;
+    my @replaced4;
+    my @replaced6;
     my $reservations4 = [];
     my $reservations6 = [];
     my $client_classes_changed = 0;
@@ -2866,11 +2926,11 @@ sub kea_process_request
             return;
         }
         $reservations4 = kea_build_node_reservations($backend, $loaded4, $nodes);
-        $backend->upsert_reservations($loaded4, $reservations4);
+        $backend->upsert_reservations($loaded4, $reservations4, \@replaced4);
         $client_classes_changed = kea_sync_node_client_classes($loaded4, $nodes);
         if ($loaded6) {
             $reservations6 = kea_build_node_reservations6($backend, $loaded6, $nodes);
-            $backend->upsert_reservations($loaded6, $reservations6);
+            $backend->upsert_reservations($loaded6, $reservations6, \@replaced6);
         }
     }
 
@@ -2893,12 +2953,20 @@ sub kea_process_request
     if (kea_control_agent_live_enabled($backend)) {
         my $live4 = $opt->{d}
           ? $backend->live_delete_reservations(\@deleted4, service => ['dhcp4'])
-          : $backend->live_upsert_reservations($reservations4, service => ['dhcp4']);
+          : $backend->live_upsert_reservations(
+              $reservations4,
+              service            => ['dhcp4'],
+              stale_reservations => \@replaced4,
+          );
         my $live6 = { ok => 1 };
         if ($loaded6) {
             $live6 = $opt->{d}
               ? $backend->live_delete_reservations(\@deleted6, service => ['dhcp6'])
-              : $backend->live_upsert_reservations($reservations6, service => ['dhcp6']);
+              : $backend->live_upsert_reservations(
+                  $reservations6,
+                  service            => ['dhcp6'],
+                  stale_reservations => \@replaced6,
+              );
         }
         $live_ok = !$live4->{error} && !$live6->{error};
         if (!$live_ok) {
@@ -2913,6 +2981,7 @@ sub kea_process_request
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
     }
+    configure_router_advertisements($callback, $activenics) if $using_dhcp6;
 
     flock($dhcplockfd, LOCK_UN);
 }
@@ -3047,7 +3116,7 @@ sub kea_build_dhcp6_intent
     my $nettab = xCAT::Table->new("networks");
     return { error => "Unable to open networks table, please run makenetworks" } unless $nettab;
 
-    my @vnets = $nettab->getAllAttribs('net', 'mgtifname', 'mask', 'dynamicrange', 'nameservers', 'ddnsdomain', 'domain');
+    my @vnets = $nettab->getAllAttribs('net', 'mgtifname', 'mask', 'dynamicrange', 'nameservers', 'ddnsdomain', 'domain', 'dhcpserver');
     my @subnets;
     my $id = 10001;
     foreach my $entry (@vnets) {
@@ -3098,35 +3167,112 @@ sub kea_subnet6_intent
     my ( $entry, $interface, $remote, $id ) = @_;
 
     my $net = $entry->{net};
-    my $prefix;
-    if ($net =~ m{^(.+)/(\d+)$}) {
-        $prefix = $2;
-    } elsif (defined $entry->{mask} && $entry->{mask} =~ /^(\d+)$/) {
-        $prefix = $1;
-        $net = "$net/$prefix";
-    } else {
+    # getIPv6PrefixLength reads the prefix from the net value or from the mask
+    # column, in either the "64" or the "/64" spelling the networks table uses.
+    my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($net, $entry->{mask});
+    unless (defined $prefix) {
         return { error => "IPv6 network $net must include a prefix length for Kea DHCPv6." };
     }
+    $net = "$net/$prefix" unless $net =~ m{/\d+$};
 
     my $domain = $entry->{domain} || $site_domain;
     my @option_data;
     if ($domain) {
         push @option_data, { name => 'domain-search', data => $domain };
     }
-    my $nameservers = $entry->{nameservers} || $sitenameservers;
-    if ($nameservers && $nameservers =~ /:/) {
+    my $nameservers = kea_ipv6_nameservers(
+        $net,
+        $entry->{nameservers} || $sitenameservers
+    );
+    if ($nameservers) {
         push @option_data, { name => 'dns-servers', data => $nameservers };
+    }
+
+    my $dynamicrange = $entry->{dynamicrange};
+    if ( $dynamicrange && $entry->{dhcpserver} && xCAT::NetworkUtils->thishostisnot( $entry->{dhcpserver} ) ) {
+        $dynamicrange = undef;
     }
 
     my %subnet = (
         id           => $id,
         subnet       => $net,
-        dynamicrange => $entry->{dynamicrange},
+        dynamicrange => $dynamicrange,
         option_data  => \@option_data,
     );
     $subnet{interface} = $interface unless $remote || $interface eq '*';
 
     return \%subnet;
+}
+
+sub kea_ipv6_nameservers
+{
+    my ( $network, $nameservers ) = @_;
+    return unless $nameservers;
+
+    my $peer = $network || '';
+    $peer =~ s{/.*$}{};
+    my ( @resolved, %seen );
+    foreach my $server (split /,/, $nameservers) {
+        $server =~ s/^\s+|\s+$//g;
+        next unless length($server);
+
+        my $ip = xCAT::NetworkUtils->ipv6_server_for_node($peer, $server);
+        next unless $ip
+          && $ip =~ /:/
+          && xCAT::NetworkUtils->isValidIp($ip)
+          && !$seen{$ip}++;
+        push @resolved, $ip;
+    }
+
+    return @resolved ? join(', ', @resolved) : undef;
+}
+
+sub kea_resolve_ddns_target
+{
+    my ($target) = @_;
+    return unless $target && $target ne '<xcatmaster>';
+
+    my $ip = xCAT::NetworkUtils->isValidIp($target)
+      ? $target
+      : getipaddr($target);
+    return $ip && xCAT::NetworkUtils->isValidIp($ip) ? $ip : undef;
+}
+
+sub kea_ddns_update_target
+{
+    my ( $network, $nameservers ) = @_;
+
+    my @servers = grep { length($_) }
+      map {
+        my $server = $_;
+        $server =~ s/^\s+|\s+$//g;
+        $server;
+      } split /,/, ( $nameservers || '' );
+    return unless @servers;
+
+    return kea_resolve_ddns_target($servers[0])
+      unless $servers[0] eq '<xcatmaster>';
+
+    if (xCAT::Utils->isServiceNode()) {
+        my $fallback = kea_resolve_ddns_target($servers[1]);
+        return $fallback if $fallback;
+
+        my @masters = xCAT::TableUtils->get_site_attribute('master');
+        return unless $masters[0];
+        return kea_resolve_ddns_target($masters[0]);
+    }
+
+    my $peer = $network || '';
+    $peer =~ s{/.*$}{};
+    if ($peer =~ /:/) {
+        my $target = xCAT::NetworkUtils->ipv6_server_for_node(
+            $peer, '<xcatmaster>'
+        );
+        return kea_resolve_ddns_target($target);
+    }
+
+    my @myipd = xCAT::NetworkUtils->my_ip_facing($peer);
+    return $myipd[0] ? undef : kea_resolve_ddns_target($myipd[1]);
 }
 
 sub kea_build_ddns_intent
@@ -3155,21 +3301,11 @@ sub kea_build_ddns_intent
 
     my ( %forward_seen, %reverse_seen, @forward, @reverse );
     foreach my $entry (@vnets) {
-        my $dns = $entry->{nameservers} || $sitenameservers || '';
-        $dns =~ s/,.*//;
+        my $dns = kea_ddns_update_target(
+            $entry->{net},
+            $entry->{nameservers} || $sitenameservers || ''
+        );
         next unless $dns;
-
-        # networks.nameservers / site.nameservers default to the <xcatmaster>
-        # placeholder.  Kea D2 validates dns-servers[].ip-address as a real IP,
-        # so resolve <xcatmaster> to the management IP facing this network the
-        # same way kea_subnet4_intent does for DHCP options.  Skip the network's
-        # DDNS domains if we can't resolve a real IP rather than emit an invalid one.
-        if ($dns =~ /<xcatmaster>/) {
-            my @myipd = xCAT::NetworkUtils->my_ip_facing($entry->{net});
-            my $myip = $myipd[0] ? undef : $myipd[1];
-            $dns =~ s/<xcatmaster>/$myip/g if $myip;
-        }
-        next if (!$dns || $dns =~ /<xcatmaster>/);
 
         my $domain = $entry->{ddnsdomain} || $entry->{domain} || $site_domain;
         if ($domain) {
@@ -3179,8 +3315,7 @@ sub kea_build_ddns_intent
             }
         }
 
-        my $zone_mask = $entry->{net} =~ /:/ ? undef : $entry->{mask};
-        foreach my $zone (getzonesfornet($entry->{net}, $zone_mask)) {
+        foreach my $zone (getzonesfornet($entry->{net}, $entry->{mask})) {
             $zone .= '.' unless $zone =~ /\.$/;
             if (!$reverse_seen{$zone}++) {
                 push @reverse, kea_ddns_domain($zone, $dns);
@@ -3703,6 +3838,8 @@ sub kea_build_node_reservations
 {
     my ( $backend, $config, $nodes ) = @_;
 
+    kea_prepare_reservation_ownership($nodes);
+
     my $nrtab    = xCAT::Table->new('noderes');
     my $chaintab = xCAT::Table->new('chain');
     my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
@@ -3728,13 +3865,16 @@ sub kea_build_node_reservations6
 {
     my ( $backend, $config, $nodes ) = @_;
 
+    kea_prepare_reservation_ownership($nodes);
+
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
-    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
+    my $nodetypetab = xCAT::Table->new('nodetype', -create => 0);
 
-    $nrhash = $nrtab ? $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'xcatmaster', 'servicenode' ]) : undef;
+    $nrhash = $nrtab ? $nrtab->getNodesAttribs($nodes, [ 'tftpserver', 'netboot', 'xcatmaster', 'servicenode', 'tftpdir' ]) : undef;
     $machash = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
-    $vpdhash = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
+    $nodetypeents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, ['arch']) : undef;
+    $dhcp6duids = dhcp6_client_duids($nodes);
 
     my @reservations;
     foreach my $node (@$nodes) {
@@ -3742,6 +3882,75 @@ sub kea_build_node_reservations6
     }
 
     return \@reservations;
+}
+
+sub kea_prepare_reservation_ownership
+{
+    my ($nodes) = @_;
+
+    $kea_disjoint_reservations = 0;
+    $kea_local_dynamic_dhcp_owner = 0;
+    %kea_effective_service_owners = ();
+    %kea_local_server_cache = ();
+
+    my @settings = xCAT::TableUtils->get_site_attribute('disjointdhcps');
+    return unless defined($settings[0]) && $settings[0] eq '1';
+    my @dhcp_servers = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
+    return unless @dhcp_servers;
+    $kea_disjoint_reservations = 1;
+
+    my $owners = xCAT::ServiceNodeUtils->getSNformattedhash($nodes, 'xcat', 'MN');
+    if (ref($owners) eq 'HASH') {
+        foreach my $owner (keys %$owners) {
+            foreach my $node (@{ $owners->{$owner} || [] }) {
+                push @{ $kea_effective_service_owners{$node} }, $owner;
+            }
+        }
+    }
+
+    my $nettab = xCAT::Table->new('networks');
+    return unless $nettab;
+    foreach my $entry ($nettab->getAllAttribs('net', 'mask', 'dynamicrange', 'dhcpserver')) {
+        next unless $entry->{dynamicrange} && $entry->{dhcpserver};
+        if (kea_server_list_is_local($entry->{dhcpserver})) {
+            $kea_local_dynamic_dhcp_owner = 1;
+            last;
+        }
+    }
+    $nettab->close();
+}
+
+sub kea_server_list_is_local
+{
+    my ($servers) = @_;
+    return 0 unless $servers;
+
+    foreach my $server (split /,/, $servers) {
+        $server =~ s/^\s+|\s+$//g;
+        next unless length($server);
+        if (!exists($kea_local_server_cache{$server})) {
+            $kea_local_server_cache{$server} =
+              xCAT::NetworkUtils->thishostisnot($server) ? 0 : 1;
+        }
+        return 1 if $kea_local_server_cache{$server};
+    }
+
+    return 0;
+}
+
+sub kea_reservation_is_local
+{
+    my ( $node, $ip ) = @_;
+    return 1 unless $kea_disjoint_reservations;
+    return 1 if $kea_local_dynamic_dhcp_owner;
+
+    my $owners = $kea_effective_service_owners{$node};
+    if ($owners && @$owners) {
+        return 1 if kea_server_list_is_local(join(',', @$owners));
+        return 0;
+    }
+
+    return 1;
 }
 
 sub kea_node_reservations
@@ -3759,7 +3968,9 @@ sub kea_node_reservations
         return [];
     }
 
-    my ( $nxtsrv, $tftpserver ) = next_server_for_node($node, $nrent);
+    # Resolved on first use. next_server_for_node reports an unresolvable
+    # tftpserver, and an IPv6-only node leaves this loop before it needs one.
+    my ( $nxtsrv, $tftpserver, $next_server_resolved );
     my @reservations;
     my @macs = split(/\|/, $macent->{mac});
     foreach my $mace (@macs) {
@@ -3771,6 +3982,12 @@ sub kea_node_reservations
         # address to reserve, and trying to resolve "*NOIP*" would otherwise be
         # treated as an unresolved reservation. This mirrors the ISC path.
         next if $hname eq '*NOIP*';
+
+        # An IPv6-only node has no DHCPv4 reservation to write. Skip it before
+        # the mac column is read: a DHCPv6 client is identified by DUID, so its
+        # mac entry would be reported as an invalid address.
+        next if xCAT::NetworkUtils->node_is_ipv6_only($hname);
+
         my $normalized_mac = kea_normalize_mac($mac);
         unless ($normalized_mac) {
             $callback->({ error => ["Invalid mac address $mac for $node"], errorcode => [1] });
@@ -3778,11 +3995,17 @@ sub kea_node_reservations
         }
         $mac = $normalized_mac;
 
+        unless ($next_server_resolved) {
+            ( $nxtsrv, $tftpserver ) = next_server_for_node($node, $nrent);
+            $next_server_resolved = 1;
+        }
+
         my $ip = getipaddr($hname, OnlyV4 => 1);
         unless ($ip) {
             $callback->({ warning => ["The hostname $hname of node $node could not be resolved."] });
             next;
         }
+        next unless kea_reservation_is_local($node, $ip);
 
         if ( _reject_dynamic_node_ip( $node, $ip, 'IPv4', $callback ) ) {
             next;
@@ -4009,6 +4232,8 @@ sub kea_node_client_classes_for_nodes
 {
     my ($nodes) = @_;
 
+    kea_prepare_reservation_ownership($nodes);
+
     my $nrtab = xCAT::Table->new('noderes');
     my $mactab = xCAT::Table->new('mac');
     return { classes => [], noip => [], localboot => [] } unless $nrtab && $mactab;
@@ -4049,15 +4274,31 @@ sub kea_node_client_classes_for_nodes
         my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
 
-        my ( $nxtsrv ) = next_server_for_node($node, $nrent);
+        # Resolved on FIRST USE, not here. next_server_for_node reports an unresolvable
+        # tftpserver, and an IPv6-only node leaves the loop below before it needs one -- so
+        # resolving up front made makedhcp exit 1 on a node whose DHCPv6 reservation and
+        # bootfile-url it had just written correctly. 6f171a22b made the same call lazy in
+        # kea_node_reservations and missed this second site.
+        my ( $nxtsrv, $next_server_resolved );
 
         my $ient = $ients && $ients->{$node} ? $ients->{$node}->[0] : undef;
         my $iname = ( $ient and $ient->{server} and $ient->{target} ) ? $ient->{iname} : undef;
 
         foreach my $mace (split(/\|/, $macent->{mac})) {
             my ( $mac, $hname ) = split(/!/, $mace);
+            # An IPv6-only node gets no DHCPv4 class, not even the DROP class
+            # a *NOIP* alias would otherwise produce. *NOIP* is a sentinel and
+            # not a name, so the node's own name answers the family question.
+            my $family_name =
+              ( defined($hname) and $hname ne '*NOIP*' ) ? $hname : $node;
+            next if xCAT::NetworkUtils->node_is_ipv6_only($family_name);
+            next unless kea_reservation_is_local($node);
             $mac = kea_normalize_mac($mac);
             next unless $mac;
+            unless ($next_server_resolved) {
+                ( $nxtsrv ) = next_server_for_node($node, $nrent);
+                $next_server_resolved = 1;
+            }
             my %record = ( node => $node, mac => $mac );
 
             # Marked as having no address on purpose. ISC answers it with
@@ -4171,14 +4412,18 @@ sub kea_node_reservations6
 {
     my ( $backend, $config, $node ) = @_;
 
+    my $nrent = $nrhash && $nrhash->{$node} ? $nrhash->{$node}->[0] : undef;
     my $macent = $machash && $machash->{$node} ? $machash->{$node}->[0] : undef;
-    my $vpdent = $vpdhash && $vpdhash->{$node} ? $vpdhash->{$node}->[0] : undef;
+    my $ntent = $nodetypeents && $nodetypeents->{$node} ? $nodetypeents->{$node}->[0] : undef;
+    my $identity = $dhcp6duids && $dhcp6duids->{$node} ? $dhcp6duids->{$node} : {};
+
     unless ($macent and $macent->{mac}) {
         $callback->({ warning => ["Unable to find mac address for $node"] });
         return [];
     }
 
-    my $duid = kea_duid_from_uuid($vpdent ? $vpdent->{uuid} : undef);
+    my $duid = $identity->{duid};
+    my $warned_order = 0;
     my @reservations;
     foreach my $mace (split(/\|/, $macent->{mac})) {
         my ( $mac, $hname ) = split(/!/, $mace);
@@ -4198,6 +4443,7 @@ sub kea_node_reservations6
 
         my $ip = getipaddr($hname, OnlyV6 => 1);
         next unless $ip;
+        next unless kea_reservation_is_local($node, $ip);
 
         if ( _reject_dynamic_node_ip( $node, $ip, 'IPv6', $callback ) ) {
             next;
@@ -4207,6 +4453,15 @@ sub kea_node_reservations6
         unless ($subnet_id) {
             $callback->({ warning => ["Unable to find a Kea DHCPv6 subnet for $node ($ip), skipping DHCPv6 reservation"] });
             next;
+        }
+        if ( $identity->{error} ) {
+            $callback->({ error => [ $identity->{error} ], errorcode => [1] });
+            return [];
+        }
+        # Once for the node, not once for each of its NICs.
+        if ( $identity->{warning} and not $warned_order ) {
+            $warned_order = 1;
+            $callback->({ node => [ { name => [$node], warning => [ $identity->{warning} ] } ] });
         }
 
         my %reservation = (
@@ -4219,6 +4474,16 @@ sub kea_node_reservations6
         } else {
             $reservation{'hw-address'} = $mac;
         }
+        my $bootfile_url = dhcp6_bootfile_url_for_node($node, $hname, $nrent, $ntent);
+        if ($bootfile_url) {
+            $reservation{'option-data'} = [
+                {
+                    name          => 'bootfile-url',
+                    data          => $bootfile_url,
+                    'always-send' => JSON::true,
+                },
+            ];
+        }
 
         push @reservations, \%reservation;
     }
@@ -4226,16 +4491,200 @@ sub kea_node_reservations6
     return \@reservations;
 }
 
-sub kea_duid_from_uuid
+sub dhcp6_bootfile_url_for_node
+{
+    my ( $node, $peer, $nrent, $ntent ) = @_;
+
+    my $netboot = $nrent ? $nrent->{netboot} : undef;
+    return unless $netboot
+      && ($netboot eq 'grub2'
+        || $netboot eq 'grub2-http'
+        || $netboot eq 'grub2-tftp'
+        || $netboot eq 'ipxe');
+
+    my $server = dhcp6_boot_server_for_node($node, $peer, $nrent);
+    return unless $server;
+
+    my $uri_host = xCAT::NetworkUtils->format_uri_host($server);
+    return unless $uri_host;
+
+    my $boot_tftpdir = ( ( $nrent && $nrent->{tftpdir} ) || $tftpdir );
+
+    if ($netboot eq 'ipxe') {
+        # The firmware that solicits over DHCPv6 is UEFI, so the UEFI loader is the only one
+        # such a client can ask for. xnba still gets no option 59.
+        #
+        # The loader this names cannot finish the boot yet. Measured on ipxe-xcat 2.0.0:
+        # the firmware fetches the shim over IPv6 and starts iPXE, and iPXE then answers
+        # "No configuration methods succeeded" on a network whose only DHCP server is
+        # DHCPv6. The option is still correct for xCAT to send, and the node fails at the
+        # same place without it, but netboot=ipxe over IPv6 needs an iPXE built with
+        # NET_PROTO_IPV6 before it can work.
+        my $loader = xCAT::DHCP::BootPolicy->x86_loader( method => 'ipxe' )->{uefi};
+        return unless $loader;
+
+        # Naming a file the TFTP server does not have costs the client a timeout it cannot
+        # diagnose, which is why the Kea client classes check the loader the same way.
+        return if defined $boot_tftpdir && !-e "$boot_tftpdir/$loader";
+        return "tftp://$uri_host/$loader";
+    }
+
+    # grub2_node_loader is the one place the boot file name of a grub2 node is chosen, so
+    # an aarch64 node gets the .efi name its firmware requests over IPv6 as well as IPv4.
+    my $loader = xCAT::DHCP::BootPolicy->grub2_node_loader(
+        node    => $node,
+        arch    => $ntent && $ntent->{arch},
+        tftpdir => $boot_tftpdir,
+    );
+    return "tftp://$uri_host/boot/grub2/$loader";
+}
+
+sub dhcp6_boot_server_for_node
+{
+    my ( $node, $peer, $nrent ) = @_;
+
+    my $configured_server;
+    if ($nrent && $nrent->{tftpserver} && $nrent->{tftpserver} ne '<xcatmaster>') {
+        $configured_server = $nrent->{tftpserver};
+    } elsif ($nrent && $nrent->{xcatmaster} && $nrent->{xcatmaster} ne '<xcatmaster>') {
+        $configured_server = $nrent->{xcatmaster};
+    }
+
+    my $configured_v6;
+    if ($configured_server) {
+        $configured_v6 = xCAT::NetworkUtils->ipv6_server_for_node(
+            $peer, $configured_server
+        );
+    }
+
+    my ( $facing_v6, $reason );
+    unless ($configured_v6) {
+        my @facing = xCAT::NetworkUtils->my_ip_facing_family($peer, 6);
+        if ( @facing && !$facing[0] ) {
+            $facing_v6 = $facing[1];
+        } elsif ( @facing > 1 ) {
+            $reason = $facing[1];
+        }
+    }
+
+    my ( $server, $warning ) = xCAT::DHCP::BootPolicy->dhcp6_boot_server(
+        configured    => $configured_server,
+        configured_v6 => $configured_v6,
+        facing_v6     => $facing_v6,
+        reason        => $reason,
+    );
+
+    # A warning comes with a server when the configured one was substituted, so it is reported
+    # before the server is returned. The reservation keeps its address and its identifier and
+    # loses only the boot URL; an error would fail makedhcp for a node that boots over IPv4.
+    $callback->({ node => [ { name => [$node], warning => [$warning] } ] }) if $warning;
+    return $server;
+}
+
+sub dhcp6_uuid_is_placeholder
 {
     my ($uuid) = @_;
 
+    return 0 unless defined($uuid);
+    $uuid =~ s/[^0-9a-fA-F]//g;
+    return ( length($uuid) == 32 and $uuid =~ /\A0{32}\z/ ) ? 1 : 0;
+}
+
+sub dhcp6_uuid_looks_byte_swapped
+{
+    my ($uuid) = @_;
+
+    return 0 unless defined($uuid);
+    $uuid = lc($uuid);
+    $uuid =~ s/[^0-9a-f]//g;
+    return 0 unless length($uuid) == 32;
+    # A swap of the first three fields moves the RFC 4122 version nibble from the first nibble of
+    # the third field to the third one. Nothing else in the value moves, so a version that is only
+    # valid in the swapped position is the one tell a single row carries.
+    return 0 if substr( $uuid, 12, 1 ) =~ /\A[1-8]\z/;
+    return substr( $uuid, 14, 1 ) =~ /\A[1-8]\z/ ? 1 : 0;
+}
+
+sub dhcp6_uuid_order_warning
+{
+    my ($uuid) = @_;
+
+    return unless dhcp6_uuid_looks_byte_swapped($uuid);
+    return 'vpd.uuid looks byte-swapped, so the DHCPv6 reservation may not match the client.'
+      . ' Set vpd.uuid to the UUID that the node reports, or set the duid attribute.';
+}
+
+sub kea_duid_from_uuid
+{
+    my ( $uuid, $order ) = @_;
+
     return unless $uuid;
+    # nodeimport writes the nil UUID to vpd.uuid for every PowerKVM node it creates, so one DUID
+    # made from it would cover all of them and each reservation would replace the one before it.
+    return if dhcp6_uuid_is_placeholder($uuid);
     $uuid =~ s/[^0-9a-fA-F]//g;
     return unless length($uuid) == 32;
-    $uuid =~ s/(..)/$1:/g;
-    $uuid =~ s/:$//;
-    return "00:04:$uuid";
+    my @octets = unpack('(A2)16', lc($uuid));
+    # SMBIOS 2.6 and later store the first three UUID fields little-endian, and EDK2 copies those bytes into its DUID.
+    if ( defined($order) && $order eq 'firmware' ) {
+        @octets = (
+            reverse(@octets[0 .. 3]),
+            reverse(@octets[4 .. 5]),
+            reverse(@octets[6 .. 7]),
+            @octets[8 .. 15],
+        );
+    }
+    return '00:04:' . join(':', @octets);
+}
+
+sub dhcp6_client_duid
+{
+    my ( $setting, $uuid ) = @_;
+
+    my $choice = lc( defined($setting) ? $setting : '' );
+    $choice =~ s/^\s+|\s+$//g;
+    # The third value is a warning about the stored vpd.uuid, and only the two orders read it.
+    # The warning is reported only when no duid attribute is set. Setting one is the remedy it
+    # asks for, so firmware and canonical must silence it as a literal DUID already does.
+    if ( $choice eq '' ) {
+        my $duid = kea_duid_from_uuid( $uuid, 'firmware' );
+        return ( $duid, undef, dhcp6_uuid_order_warning($uuid) );
+    }
+    if ( $choice eq 'firmware' ) {
+        return ( kea_duid_from_uuid( $uuid, 'firmware' ), undef, undef );
+    }
+    if ( $choice eq 'canonical' ) {
+        return ( kea_duid_from_uuid($uuid), undef, undef );
+    }
+    return $choice if $choice =~ /\A[0-9a-f]{2}(?::[0-9a-f]{2}){2,129}\z/;
+    return ( undef, "only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported" );
+}
+
+sub dhcp6_client_duids
+{
+    my ($nodes) = @_;
+
+    my $mactab = xCAT::Table->new('mac');
+    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
+    my $settings = $mactab ? $mactab->getNodesAttribs($nodes, ['duid']) : undef;
+    my $uuids    = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
+
+    my %duids;
+    foreach my $node (@$nodes) {
+        my $macent  = $settings && $settings->{$node} ? $settings->{$node}->[0] : undef;
+        my $vpdent  = $uuids && $uuids->{$node} ? $uuids->{$node}->[0] : undef;
+        my $setting = $macent ? $macent->{duid} : undef;
+        my $uuid    = $vpdent ? $vpdent->{uuid} : undef;
+        my ( $duid, $error, $warning ) = dhcp6_client_duid( $setting, $uuid );
+        $duids{$node} = {
+            duid    => $duid,
+            uuid    => $uuid,
+            error   => $error ? "The duid attribute of $node is '$setting', but $error." : undef,
+            warning => $warning,
+        };
+    }
+
+    return \%duids;
 }
 
 sub kea_reservation_matches_for_nodes
@@ -4244,8 +4693,7 @@ sub kea_reservation_matches_for_nodes
 
     my $mactab = xCAT::Table->new('mac');
     my $machash_local = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
-    my $vpdtab = xCAT::Table->new('vpd', -create => 0);
-    my $vpdhash_local = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
+    my $duids = dhcp6_client_duids($nodes);
     my @matches;
 
     foreach my $node (@$nodes) {
@@ -4254,8 +4702,7 @@ sub kea_reservation_matches_for_nodes
         push @matches, { 'ip-address' => $ip } if $ip;
         my $ip6 = getipaddr($node, OnlyV6 => 1);
         push @matches, { 'ip-address' => $ip6 } if $ip6;
-        my $vpdent = $vpdhash_local && $vpdhash_local->{$node} ? $vpdhash_local->{$node}->[0] : undef;
-        my $duid = kea_duid_from_uuid($vpdent ? $vpdent->{uuid} : undef);
+        my $duid = $duids->{$node}{duid};
         push @matches, { duid => $duid } if $duid;
         my $macent = $machash_local && $machash_local->{$node} ? $machash_local->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
@@ -4338,6 +4785,9 @@ sub next_server_for_node
     #check the value of inet_ntoa(inet_aton("")),if the hostname cannot be resolved,
     #the value of inet_ntoa() will be "undef", which will cause fatal error
     if ( $nrent and $nrent->{tftpserver} and $nrent->{tftpserver} ne '<xcatmaster>' ) {
+        # An IPv6 boot server is named in the DHCPv6 reservation, not in a
+        # DHCPv4 next-server, so there is no answer to give and nothing wrong.
+        return if xCAT::NetworkUtils->isIpv6addr( $nrent->{tftpserver} );
         my $tmp_name = inet_aton( $nrent->{tftpserver} );
         unless ($tmp_name) {
 
@@ -4350,6 +4800,7 @@ sub next_server_for_node
     }
 
     if ( $nrent and $nrent->{xcatmaster} ) {
+        return if xCAT::NetworkUtils->isIpv6addr( $nrent->{xcatmaster} );
         my $tmp_server = inet_aton( $nrent->{xcatmaster} );
         unless ($tmp_server) {
             $callback->({ error => ["Unable to resolve the tftpserver for $node, verify \"xcatmaster\" is set correctly"], errorcode => [1] });
@@ -4535,6 +4986,178 @@ sub restart_dhcpd
     return xCAT::Utils->restartservice("dhcp");
 }
 
+# Restart the ISC DHCPv6 daemon. It is a second service, so restarting dhcpd leaves it
+# with the previous configuration -- or stopped, which grants no address at all.
+# restartservice answers -1 where the name does not resolve, as on Debian.
+#-------------------------------------------------------------------------------
+
+=head3 configure_router_advertisements
+
+    Descriptions: Announce the prefix and the route of every IPv6 network xCAT
+                  serves DHCPv6 on.
+
+                  makedhcp writes the reservations and nothing else announces
+                  the network. A client that follows RFC 4861 uses DHCPv6 only
+                  when an advertisement sets the managed flag, so iPXE answers
+                  "No configuration methods succeeded" and never solicits, and a
+                  client that does solicit gets one address with a prefix length
+                  of 128 and no route.
+
+    Arguments:    $callback the request callback, for a warning
+    Returns:      nothing
+
+=cut
+
+#-------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+=head3 enable_ipv6_forwarding
+
+    Turns IPv6 forwarding on for one interface.
+
+    Arguments:
+        $interface - the name of the interface
+    Returns:
+        nothing.
+
+    radvd sends nothing on an interface that does not forward.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub enable_ipv6_forwarding {
+    my ($interface) = @_;
+
+    system("sysctl -q -w net.ipv6.conf.$interface.forwarding=1");
+    return;
+}
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+=head3 ra_interface_is_served
+
+    Says whether router advertisements belong on one interface.
+
+    Arguments:
+        $interface - the mgtifname of a network
+        $activenics - the interfaces DHCP serves, as a hash reference, or undef
+    Returns:
+        1 when the interface is served, 0 when it is not.
+
+    site.dhcpinterfaces names the interfaces this server answers on. An
+    advertisement on any other interface would offer this host as a router to a
+    LAN the administrator kept it off. An empty or absent set is no restriction.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub ra_interface_is_served {
+    my ($interface, $activenics) = @_;
+
+    return 0 unless defined($interface) && length($interface);
+    return 1 unless ref($activenics) eq 'HASH' && scalar(keys %$activenics);
+    return $activenics->{$interface} ? 1 : 0;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 radvd_needs_restart
+
+    Says whether radvd has to be restarted.
+
+    Arguments:
+        $changed - whether the configuration file was written
+        $running - whether the service is running
+    Returns:
+        1 when a restart is needed, 0 when it is not.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub radvd_needs_restart {
+    my ($changed, $running) = @_;
+
+    return 1 if $changed;
+    return $running ? 0 : 1;
+}
+
+#-----------------------------------------------------------------------------
+
+sub configure_router_advertisements
+{
+    my ($callback, $activenics) = @_;
+
+    return if $::XCATSITEVALS{externaldhcpservers};
+
+    my $nettab = xCAT::Table->new('networks');
+    return unless $nettab;
+    my @nets = $nettab->getAllAttribs('net', 'mask', 'mgtifname');
+    $nettab->close();
+
+    my @wanted;
+    foreach my $entry (@nets) {
+        next unless $entry->{net} && $entry->{net} =~ /:/;
+        next unless $entry->{mgtifname};
+        next unless ra_interface_is_served($entry->{mgtifname}, $activenics);
+        my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($entry->{net}, $entry->{mask});
+        next unless defined $prefix;
+        my $net = $entry->{net};
+        $net =~ s{/\d+\z}{};
+        push @wanted, { interface => $entry->{mgtifname}, prefix => "$net/$prefix" };
+    }
+
+    my $config = xCAT::NetworkUtils::radvd_config(\@wanted);
+    return unless defined $config;
+
+    foreach my $net (@wanted) {
+        enable_ipv6_forwarding($net->{interface});
+    }
+
+    my $file = $radvdconffile;
+    my $current = '';
+    if (open(my $fh, '<', $file)) {
+        local $/;
+        $current = <$fh>;
+        close($fh);
+    }
+    my $changed = !(defined($current) && $current eq $config);
+
+    if ($changed) {
+        unless (open(my $fh, '>', $file)) {
+            $callback->({ warning => ["Cannot write $file, so the IPv6 networks announce no route: $!"] });
+            return;
+        }
+        else {
+            print {$fh} $config;
+            close($fh);
+        }
+    }
+
+    # The service is examined on every call, not only when the file changed. A start that
+    # failed leaves the configuration already correct, so a later makedhcp that returned
+    # here on the file alone would never try again while the service stayed down.
+    xCAT::Utils->enableservice('radvd');
+    my $status = xCAT::Utils->checkservicestatus('radvd');
+    my $running = defined($status) && !ref($status) && $status == 0;
+    return unless radvd_needs_restart($changed, $running);
+
+    my $rc = xCAT::Utils->restartservice('radvd');
+    return if $rc == 0;
+    if ($rc < 0) {
+        $callback->({ warning => ['radvd is not installed, so the IPv6 networks announce no prefix and no route. A node that follows RFC 4861 then has no route, and iPXE does not start DHCPv6 at all.'] });
+    }
+    else {
+        $callback->({ warning => ["radvd did not start (exit $rc), so the IPv6 networks announce no prefix and no route."] });
+    }
+    return;
+}
+
+sub restart_dhcpd6
+{
+    return xCAT::Utils->restartservice("dhcp6");
+}
+
 # Restart dhcpd on aix
 sub restart_dhcpd_aix
 {
@@ -4561,36 +5184,11 @@ sub getzonesfornet {
     my $net   = shift;
     my $mask  = shift;
     my @zones = ();
-    if ($net =~ /:/) { #ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
-        $net =~ s/\/(.*)//;
-        my $maskbits = $1;
-        if ($mask) {
-            die "Not supporting having a mask like $mask on an ipv6 network like $net";
-        }
-        my $netnum = getipaddr($net, GetNumber => 1);
-        unless ($netnum) { return (); }
-        $netnum->brsft(128 - $maskbits);
-        my $prefix = $netnum->as_hex();
-        my $nibbs  = $maskbits / 4;
-        $prefix =~ s/^0x//;
-        my $rev;
-
-        foreach (reverse(split //, $prefix)) {
-            $rev .= $_ . ".";
-            $nibbs--;
-        }
-        if ($nibbs < 0) {
-            # a sub-nibble (not 4-bit-aligned) IPv6 mask leaves $nibbs negative;
-            # bail rather than spin forever in the loop below. $nibbs == 0 is the
-            # normal nibble-aligned case (e.g. a /64) and must still emit a zone.
-            return ();
-        }
-        while ($nibbs > 0) {
-            $rev .= "0.";
-            $nibbs--;
-        }
-        $rev .= "ip6.arpa.";
-        return ($rev);
+    if ($net =~ /:/) {
+        # A reverse zone is delegated on a nibble, so a network whose prefix is not a multiple of
+        # 4 is covered by several zones of the next nibble. The IPv4 arm below splits a /22 into
+        # its /24 zones the same way.
+        return ( @zones, xCAT::NetworkUtils->getIPv6ReverseZones( $net, $mask ) );
     }
 
     #return all in-addr reverse zones for a given mask and net
@@ -4665,6 +5263,34 @@ sub putmyselffirst {
         $srvlist = join(', ', @reordered);
     }
     return $srvlist;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 dynamic_range_for
+
+    Descriptions: The dynamic range of a subnet, as ISC writes it.
+    Arguments: the subnet, as the DHCP configuration names it
+    Returns: the range, or undef when the subnet has none.
+
+    addrangedetection keys the ranges on networks.net, which carries no prefix
+    length, while addnet6 names a subnet "<net>/<prefix>". A lookup under the
+    long form found nothing, so an IPv6 subnet never got a range6 and any client
+    whose DUID does not match a reservation received no address at all.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub dynamic_range_for
+{
+    my ($net) = @_;
+
+    return unless defined $net;
+    my $cfg = $netcfgs{$net};
+    return $cfg->{range} if $cfg and $cfg->{range};
+    (my $bare = $net) =~ s{/.*$}{};
+    $cfg = $netcfgs{$bare};
+    return $cfg ? $cfg->{range} : undef;
 }
 
 sub addnet6
@@ -4770,8 +5396,9 @@ sub addnet6
         key_name   => $settings ? $settings->{key_name} : undef,
         zones      => [ getzonesfornet($net) ],
     );
-    if ($netcfgs{$net}->{range}) {
-        push @netent, "    range6 " . $netcfgs{$net}->{range} . ";\n";
+    my $dynamic_range = dynamic_range_for($net);
+    if ($dynamic_range) {
+        push @netent, "    range6 " . $dynamic_range . ";\n";
     } else {
         $callback->({ warning => ["No dynamic range specified for $net. Hosts with no static address will receive no addresses on this subnet."] });
     }

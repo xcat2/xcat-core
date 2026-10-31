@@ -238,7 +238,12 @@ qq{ link,ro - The file is readonly, and will be placed in tmpfs on the booted no
           PCI passthrough:
              PCI devices can be assigned to a virtual machine for exclusive usage, e.g., 'devpassthrough:pci_0001_01_00_0,pci_0000_03_00_0'. A PCI device can also be expressed as 'devpassthrough:0001:01:00.1'. The devices are put in a comma-delimited list. The PCI device names can be obtained by running B<virsh nodedev-list> on the host.
           VM machine type:
-             Specify a machine type for VM creation on the host, e.g., 'machine:pc'. Typical machine types are pc, q35, and pseries.",
+             Specify a machine type for VM creation on the host, e.g., 'machine:pc'. Typical machine types are pc, q35, and pseries.
+          VMware firmware and hardware version:
+             Specify the firmware and the hardware version of a VMware guest, e.g.,
+             'firmware=efi;virtualHW.version=17'. mkvm passes both to vSphere as fields of the
+             VirtualMachineConfigSpec, not as extraConfig, because extraConfig does not apply them.
+             They also decide the byte order of config.uuid, so that the guest reports vpd.uuid.",
 'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
 'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
 'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
@@ -484,7 +489,7 @@ passed as argument rather than by table value',
         },
     },
     mac => {
-        cols       => [qw(node interface mac comments disable)],
+        cols       => [qw(node interface mac duid comments disable)],
         keys       => [qw(node)],
         tablespace => 'XCATTBS16K',
         table_desc => "The MAC address of the node's install adapter.  Normally this table is populated by getmacs or node discovery, but you can also add entries to it manually.",
@@ -492,6 +497,7 @@ passed as argument rather than by table value',
             node => 'The node name or group name.',
             interface => 'The adapter interface name that will be used to install and manage the node. E.g. eth0 (for linux) or en0 (for AIX).)',
             mac => 'The mac address or addresses for which xCAT will manage static bindings for this node.  This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").  This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:04:05:0F!node6-eth1"). If there are multiple nics connected to Management Network(usually for bond), in order to make sure the OS deployment finished successfully, the macs of those nics must be able to resolve to same IP address. First, users have to create alias of the node for each mac in the Management Network through either: 1. adding the alias into /etc/hosts for the node directly or: 2. setting the alias to the "hostnames" attribute and then run "makehost" against the node. Then, configure the "mac" attribute of the node like "mac1!node|mac2!node-alias". For the first mac address (mac1 in the example) set in "mac" attribute, do not need to set a "node name" string for it since the nodename of the node will be used for it by default.',
+            duid => 'The DHCPv6 client identifier (DUID) that the IPv6 reservations of the node match. Valid values are firmware, canonical, or a DUID. firmware (the default): the DUID-UUID that UEFI firmware built on EDK2 sends, which holds vpd.uuid with its first three fields in the little-endian order that SMBIOS 2.6 and later use. canonical: the DUID-UUID with vpd.uuid in RFC 4122 network byte order, which a client sends when it encodes the UUID that the operating system reports. A DUID: the identifier itself, as colon-separated hexadecimal octets, for example 00:01:00:01:2e:4f:61:a0:02:00:00:00:00:61. Like a MAC address, a DUID identifies one client: when two nodes have the same DUID, the reservation belongs to the node that makedhcp updated last. A reservation matches one DUID. When the firmware and the operating system send different identifiers, set the identifier of the client that must get the reserved address.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1447,7 +1453,7 @@ passed as argument rather than by table value',
             mtm => 'The machine type and model number of the node.  E.g. 7984-6BU',
             side => '<BPA>-<port> or <FSP>-<port>. The side information for the BPA/FSP. The side attribute refers to which BPA/FSP, A or B, which is determined by the slot value returned from lsslp command. It also lists the physical port within each BPA/FSP which is determined by the IP address order from the lsslp response. This information is used internally when communicating with the BPAs/FSPs',
             asset => 'A field for administrators to use to correlate inventory numbers they may have to accommodate',
-            uuid     => 'The UUID applicable to the node',
+            uuid     => 'The system UUID of the node as the operating system reports it, for example in /sys/class/dmi/id/product_uuid.',
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -2323,6 +2329,10 @@ my @nodeattrs = (
     },
     { attr_name => 'mac',
         tabentry        => 'mac.mac',
+        access_tabentry => 'mac.node=attr:node',
+    },
+    { attr_name => 'duid',
+        tabentry        => 'mac.duid',
         access_tabentry => 'mac.node=attr:node',
     },
 ##################

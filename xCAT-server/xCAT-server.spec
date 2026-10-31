@@ -107,6 +107,26 @@ Requires: chkconfig
 Requires: openssl
 %endif
 
+# IO::Socket::INET6 and Socket6 carry the AF_INET6 constants the discovery
+# callbacks use. Every caller loads them with an eval and keeps working on
+# IPv4 when they are absent, so a hard Requires would state a dependency the
+# code does not have. Recommends installs them by default and still lets xCAT
+# install where they are missing.
+# Both are in EL AppStream and in openEuler 24.03 everything.
+# Recommends needs rpm 4.12, so the guard names the distributions that have both the tag and the
+# packages. EL7 carries rpm 4.11 and cannot parse the tag at all.
+%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?openEuler}
+Recommends: perl-IO-Socket-INET6
+Recommends: perl-Socket6
+%endif
+# The openSUSE Minimal-VM image sets solver.onlyRequires = true in /etc/zypp/zypp.conf, so
+# zypper installs no recommended package. A recommendation leaves both modules absent, and
+# xCAT::IPMI and the dhcp, nodestat and credentials plugins then take no IPv6 branch at all.
+%if 0%{?suse_version}
+Requires: perl(Socket6)
+Requires: perl(IO::Socket::INET6)
+%endif
+
 %if %fsm
 # nothing needed here
 %else

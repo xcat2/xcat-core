@@ -6,6 +6,7 @@ package xCAT::KVMUtils;
 
 use strict;
 use warnings;
+use XML::LibXML;
 
 #-------------------------------------------------------
 
@@ -130,7 +131,7 @@ sub guest_arch_profile {
         $profile{bios}         = 0;
         $profile{sound}        = 0;
     }
-    if (defined($firmware) and $firmware eq 'efi' and not defined $profile{firmware}) {
+    if (defined($firmware) and $firmware =~ /^efi\b/ and not defined $profile{firmware}) {
         $profile{firmware} = 'efi';
         if ($profile{x86_features}) {
             $profile{machine}    = 'q35';
@@ -468,8 +469,83 @@ sub requested_firmware {
 #-------------------------------------------------------
 sub firmware_error {
     my ($firmware, $node) = @_;
-    return undef if !defined($firmware) or $firmware eq 'efi';
-    return "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi.";
+    return undef if !defined($firmware);
+    return undef if $firmware eq 'efi' or defined secure_boot_request($firmware);
+    return "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node."
+      . " Use firmware:efi, firmware:efi-secureboot or firmware:efi-insecure.";
+}
+
+#-------------------------------------------------------
+
+=head3 secure_boot_request
+
+    Descriptions:
+        What the firmware: setting of a node asks of Secure Boot.
+
+        firmware:efi asks nothing and leaves the choice to libvirt firmware
+        autoselection, which picks a descriptor by host policy. A node that must load
+        the unsigned grub2 image xCAT serves asks for efi-insecure, and a node that
+        must enforce Secure Boot asks for efi-secureboot.
+    Arguments:
+        $firmware - the value from requested_firmware, or undef
+    Returns:
+        'yes', 'no', or undef when the node asks nothing
+
+=cut
+
+#-------------------------------------------------------
+
+sub secure_boot_request {
+    my ($firmware) = @_;
+    return undef unless defined $firmware;
+    return 'yes' if $firmware eq 'efi-secureboot';
+    return 'no'  if $firmware eq 'efi-insecure';
+    return undef;
+}
+
+#-------------------------------------------------------
+
+=head3 with_firmware_features
+
+    Descriptions:
+        The guest XML with the <firmware> element that states what the node asks of
+        Secure Boot. A node that asks nothing, or a guest that does not ask for EFI,
+        gets its XML back unchanged.
+
+        enrolled-keys follows secure-boot: libvirt refuses a guest whose keys are
+        enrolled while Secure Boot is disabled.
+    Arguments:
+        $xml - the guest XML
+        $firmware - the value from requested_firmware, or undef
+    Returns:
+        the guest XML
+
+=cut
+
+#-------------------------------------------------------
+
+sub with_firmware_features {
+    my ($xml, $firmware) = @_;
+
+    my $secure_boot = secure_boot_request($firmware);
+    return $xml unless defined $secure_boot;
+
+    my $doc = eval { XML::LibXML->load_xml(string => $xml) } or return $xml;
+    my ($os) = $doc->findnodes('/domain/os');
+    return $xml unless $os and $os->getAttribute('firmware');
+
+    foreach my $stale ($os->findnodes('./firmware')) {
+        $os->removeChild($stale);
+    }
+    my $element = $doc->createElement('firmware');
+    foreach my $name (qw(secure-boot enrolled-keys)) {
+        my $feature = $doc->createElement('feature');
+        $feature->setAttribute('enabled', $secure_boot);
+        $feature->setAttribute('name',    $name);
+        $element->appendChild($feature);
+    }
+    $os->appendChild($element);
+    return $doc->toString();
 }
 
 #-------------------------------------------------------
@@ -511,6 +587,37 @@ sub guest_os {
     delete $os{bios} unless $profile->{bios};
     $os{type}->{machine} = $args{machine} if defined $args{machine};
     return \%os;
+}
+
+#-------------------------------------------------------
+
+=head3 guest_uuid
+
+    Descriptions:
+        Converts between the UUID of a libvirt domain and the UUID that its guest reports.
+        vpd.uuid holds the UUID that the guest reports.
+
+        QEMU stores the domain UUID as SMBIOS 2.6 specifies, so the guest reports it
+        unchanged. Machine types pc-i440fx-2.1, pc-q35-2.1, the RHEL pc-i440fx-rhel7.1.0 and
+        the Ubuntu pc-i440fx-utopic are the exception: they store the UUID bytes in text order
+        behind an SMBIOS 2.8 entry point, so the guest reports the first three fields swapped.
+        Older machine types store the same bytes in SMBIOS 2.4 tables, which the guest reads
+        unswapped. The swap is its own inverse, so one sub converts both ways.
+    Arguments:
+        $uuid - a domain UUID or a guest UUID, or undef
+        $machine - the machine type of the domain, or undef for the libvirt default
+    Returns:
+        the UUID on the other side
+
+=cut
+
+#-------------------------------------------------------
+sub guest_uuid {
+    my ($uuid, $machine) = @_;
+    return $uuid
+      unless defined($uuid) and defined($machine) and $machine =~ /\A(?:pc-(?:i440fx|q35)-2\.1|pc-i440fx-(?:rhel7\.1\.0|utopic))\z/;
+    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+    return $uuid;
 }
 
 #-------------------------------------------------------

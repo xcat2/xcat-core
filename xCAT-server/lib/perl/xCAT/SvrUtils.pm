@@ -2244,6 +2244,80 @@ sub parseosver
 
 #-------------------------------------------------------------------------------
 
+=head3   is_el10_os
+
+    Returns 1 when the xCAT OS version names an Enterprise Linux 10 family
+    distribution, otherwise 0.
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
+
+=head3   uses_static_ipv6_boot
+
+    Description:
+        Whether the installer of this OS takes a static IPv6 address from the kernel command
+        line instead of asking DHCPv6 for one.
+
+        The firmware and the install initrd of a node send different DHCPv6 identifiers, and a
+        reservation matches one. An OS whose initrd honours "ip=<ip>::<gw>:<prefix>:<host>:<if>:none"
+        is given the address of the node directly, so only the firmware stage speaks DHCPv6.
+
+    Arguments:
+        osver
+    Returns:
+        1 when the OS takes the static address, 0 otherwise.
+    Example:
+        if (xCAT::SvrUtils->uses_static_ipv6_boot($osver)) { ... }
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub uses_static_ipv6_boot
+{
+    my $osver = shift;
+    if (defined($osver) && $osver eq __PACKAGE__)
+    {
+        $osver = shift;
+    }
+
+    return 0 unless defined($osver);
+    my ($basename, $majorversion) = xCAT::SvrUtils::parseosver($osver);
+    return 0 unless defined($basename) && defined($majorversion);
+
+    # openEuler reaches the same kickstart and dracut code as EL through #KICKSTARTNET#.
+    return 1 if $basename =~ /^openeuler$/i;
+    # EL 10 is where xCAT implemented and tested this, not where the installer gained the
+    # option: EL 9 already takes "--noipv4 --ipv6=dhcp" from the same template. Extending it
+    # downwards is untested rather than impossible. The comparison is not an equality so that
+    # a later release keeps it; is_el10_os tested for 10 exactly and left EL 11 on DHCPv6.
+    return 1
+      if $basename =~ /^(?:rh\w*|centos|alma|rocky|ol)$/i
+      && $majorversion =~ /^\d+$/
+      && $majorversion >= 10;
+    return 0;
+}
+
+sub is_el10_os
+{
+    my $osver = shift;
+    if (defined($osver) && $osver eq __PACKAGE__)
+    {
+        $osver = shift;
+    }
+
+    return 0 unless defined($osver);
+    my ($basename, $majorversion) = xCAT::SvrUtils::parseosver($osver);
+    return defined($basename)
+      && defined($majorversion)
+      && $majorversion eq '10'
+      && $basename =~ /^(?:rh\w*|centos|alma|rocky|ol)$/i ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 update_osdistro_table
        This function is called after copycds. It will update the osdistro table with
        given osver and arch
@@ -2539,8 +2613,14 @@ sub build_statelite_nfsroot_parameter {
     my ($additional_mount_options, $error) = _parse_statelite_nfsroot_options($additional_options);
     return (undef, $error) if $error;
 
+    # root=nfs: separates the server, the directory and the options with colons, so an IPv6
+    # server has to be bracketed or the directory cannot be told from the address. dracut and
+    # mount.nfs both read the bracketed form. All three netboot plugins build it here.
+    my $authority = xCAT::NetworkUtils->format_uri_host($server);
+    return (undef, "Unable to render the NFS root server $server") unless defined($authority);
+
     my @mount_options = ('ro', @{$additional_mount_options});
-    return ('root=nfs:' . $server . ':' . $rootdir . ':' . join(',', @mount_options), undef);
+    return ('root=nfs:' . $authority . ':' . $rootdir . ':' . join(',', @mount_options), undef);
 }
 
 #--------------------------------------------------------------------------------------------------------

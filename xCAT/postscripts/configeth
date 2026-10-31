@@ -352,6 +352,138 @@ write_netplan_param(){
     fi
     _netplan_render "$nic"
 }
+# Capture the active IPv6 configuration of an install NIC before replacing the
+# installer-created NetworkManager connection.  DHCPv6 leases are not recorded
+# in the legacy dhclient lease format used by the IPv4 path below, so use the
+# kernel and NetworkManager runtime state as the source of truth.
+function discover_install_nic_ipv6(){
+    local str_if_name=$1
+    local str_preferred_addr=${2:-}
+    local str_addr_cidr
+
+    str_addr_cidr=`ip -6 -o addr show dev "$str_if_name" scope global 2>/dev/null | awk -v preferred="$str_preferred_addr" '
+        $3 == "inet6" {
+            unusable = 0
+            for (i = 5; i <= NF; i++) {
+                if ($i == "temporary" || $i == "tentative" ||
+                    $i == "deprecated" || $i == "dadfailed") {
+                    unusable = 1
+                }
+            }
+            if (!unusable) {
+                split($4, addr, "/")
+                if (preferred && addr[1] == preferred) {
+                    print $4
+                    found = 1
+                    exit
+                }
+                if (!candidate) candidate = $4
+            }
+        }
+        END { if (!found && candidate) print candidate }'`
+
+    [ -z "$str_addr_cidr" ] && return 1
+
+    str_inst_ipv6=${str_addr_cidr%/*}
+    str_inst_ipv6_prefix=${str_addr_cidr##*/}
+    str_inst_ipv6_gateway=`ip -6 route show default dev "$str_if_name" 2>/dev/null | awk '$1 == "default" && $2 == "via" { print $3; exit }'`
+    str_inst_mtu=`ip -o link show dev "$str_if_name" 2>/dev/null | awk '{ for (i = 1; i <= NF; i++) if ($i == "mtu") { print $(i + 1); exit } }'`
+
+    if command -v nmcli >/dev/null 2>&1; then
+        if [ -z "$str_inst_ipv6_gateway" ]; then
+            str_inst_ipv6_gateway=`nmcli --escape no -g IP6.GATEWAY device show "$str_if_name" 2>/dev/null | awk 'NF && $0 != "--" { print; exit }'`
+        fi
+        str_inst_ipv6_dns=`nmcli --escape no -g IP6.DNS device show "$str_if_name" 2>/dev/null | awk '
+            NF && $0 != "--" && index($0, ":") {
+                if (dns) dns = dns "," $0
+                else dns = $0
+            }
+            END { print dns }'`
+        str_inst_ipv6_dns_search=`nmcli --escape no -g IP6.SEARCHES device show "$str_if_name" 2>/dev/null | awk '
+            NF && $0 != "--" {
+                if (search) search = search "," $0
+                else search = $0
+            }
+            END { print search }'`
+    fi
+
+    # NetworkManager's runtime resolv.conf is a useful fallback when the device
+    # did not receive DNS information directly (for example, DNS supplied by a
+    # local resolver or another RA/DHCPv6 component).
+    if [ -z "$str_inst_ipv6_dns" ] && [ -f /var/run/NetworkManager/resolv.conf ]; then
+        str_inst_ipv6_dns=`awk '
+            $1 == "nameserver" && index($2, ":") {
+                if (dns) dns = dns "," $2
+                else dns = $2
+            }
+            END { print dns }' /var/run/NetworkManager/resolv.conf`
+    fi
+    if [ -z "$str_inst_ipv6_dns_search" ] && [ -f /var/run/NetworkManager/resolv.conf ]; then
+        str_inst_ipv6_dns_search=`awk '$1 == "search" { $1 = ""; sub(/^ /, ""); gsub(/ +/, ","); print; exit }' /var/run/NetworkManager/resolv.conf`
+    fi
+
+    return 0
+}
+
+# Build the install NIC connection once, then either apply it to the running
+# NetworkManager instance or render the equivalent keyfile for a target root.
+function configure_install_nic_ipv6_connection(){
+    local str_con_name=$1
+    local str_if_name=$2
+    local str_v6ip=$3
+    local str_v6prefix=$4
+    local str_v6gateway=$5
+    local str_v6dns=$6
+    local str_v6dns_search=$7
+    local str_nic_mtu=$8
+    local str_keyfile=$9
+    local -a nm_args=(
+        con add type ethernet
+        con-name "$str_con_name"
+        ifname "$str_if_name"
+        ipv4.method disabled
+        ipv6.method manual
+        ipv6.addresses "${str_v6ip}/${str_v6prefix}"
+        connection.autoconnect yes
+        connection.autoconnect-priority 9
+    )
+
+    [ -n "$str_v6gateway" ] && nm_args+=(ipv6.gateway "$str_v6gateway")
+    [ -n "$str_v6dns" ] && nm_args+=(ipv6.dns "$str_v6dns")
+    [ -n "$str_v6dns_search" ] && nm_args+=(ipv6.dns-search "$str_v6dns_search")
+    [ -n "$str_nic_mtu" ] && nm_args+=(802-3-ethernet.mtu "$str_nic_mtu")
+
+    if [ -z "$str_keyfile" ]; then
+        nmcli "${nm_args[@]}"
+        return $?
+    fi
+
+    # During Anaconda's chrooted %post, NetworkManager is running but nmcli
+    # cannot persist a connection in the target root. Render it offline.
+    local str_keyfile_dir=${str_keyfile%/*}
+    local str_tmp_keyfile="${str_keyfile}.xcat.$$"
+
+    mkdir -p "$str_keyfile_dir" || return $?
+    (
+        umask 077
+        LC_ALL=C nmcli --offline "${nm_args[@]}" > "$str_tmp_keyfile" &&
+            mv -f "$str_tmp_keyfile" "$str_keyfile"
+    )
+    local int_rc=$?
+    [ $int_rc -ne 0 ] && rm -f "$str_tmp_keyfile"
+    return $int_rc
+}
+
+# Persist an IPv6-only install connection on a running node.
+function configure_install_nic_ipv6_nm(){
+    configure_install_nic_ipv6_connection "$@" ""
+}
+
+# Persist the same connection as a native NetworkManager keyfile.
+function configure_install_nic_ipv6_keyfile(){
+    configure_install_nic_ipv6_connection "$@"
+}
+
 function configipv4(){
     str_if_name=$1
     str_v4ip=$2
@@ -564,6 +696,29 @@ function configipv4(){
     fi
 }
 
+# Write the IPv6 default route of a SUSE node, once. A gateway that is the default token or
+# names xcatmaster is the management node and is not written as a route.
+#
+# Two faults here stopped the route being written at all and would then have duplicated it. The
+# test read "[ a ] -a [ b ]", which is not a shell operator: bash reported "too many arguments"
+# and took the else path every time. The duplicate check spelled the class "[:space:]", which
+# matches one of those six characters, so it never found a route already present.
+add_suse_ipv6_default_route()
+{
+    local gateway="$1"
+    local default_token="$2"
+    local routes_file="$3"
+
+    [ -n "$gateway" ] || return 0
+    [ "$gateway" != "$default_token" ] || return 0
+    echo "$gateway" | grep -q 'xcatmaster' && return 0
+
+    if ! grep -E "default[[:space:]]+${gateway}[[:space:]]" "$routes_file" >/dev/null 2>&1; then
+        echo "default $gateway - -" >> "$routes_file"
+    fi
+    return 0
+}
+
 configipv6(){
     str_if_name=$1
     str_v6ip=$2
@@ -596,12 +751,8 @@ configipv6(){
         echo "LABEL_ipv6${num_v6num}=ipv6$num_v6num" >> $str_conf_file
         echo "IPADDR_ipv6${num_v6num}=${str_v6ip}" >> $str_conf_file
         echo "PREFIXLEN_ipv6${num_v6num}=${str_v6prefix}" >> $str_conf_file
-        if [ "$str_v6gateway" != "$str_default_token" ] -a [ `echo $str_v6gateway | grep -v 'xcatmaster'` ];then
-            grep -E "default[:space:]+${str_v6gateway}[:space:]+" /etc/sysconfig/network/routes 2>&1 1>/dev/null
-            if [ $? -ne 0 ];then
-                echo "default $str_v6gateway - -" >> /etc/sysconfig/network/routes
-            fi
-        fi
+        add_suse_ipv6_default_route "$str_v6gateway" "$str_default_token" \
+            "${XCAT_SUSE_ROUTES_FILE:-/etc/sysconfig/network/routes}"
 
         #add extra params
 	i=0
@@ -926,6 +1077,15 @@ elif [ "$1" = "-s" ];then
     str_inst_gateway=''
     str_inst_mtu=''
     str_inst_dns=''
+    str_inst_dns_search=''
+    str_inst_ipv6=''
+    str_inst_ipv6_prefix=''
+    str_inst_ipv6_gateway=''
+    str_inst_ipv6_dns=''
+    str_inst_ipv6_dns_search=''
+    str_requested_ipv6=''
+    str_requested_ipv6_prefix=''
+    install_nic_is_ipv6=0
     if [ "$str_os_type" = "aix" ];then
         log_error "configeth on $NODE: aix does not support -s flag"
         exit 1
@@ -1005,7 +1165,16 @@ elif [ "$1" = "-s" ];then
         fi
     fi
     if [ -n "$IPADDR" ];then
-        str_inst_ip=$IPADDR
+        if [[ "$IPADDR" == *:* ]]; then
+            str_requested_ipv6=${IPADDR%/*}
+            if [[ "$IPADDR" == */* ]]; then
+                str_requested_ipv6_prefix=${IPADDR##*/}
+            fi
+            str_inst_ip=''
+            str_inst_mask=''
+        else
+            str_inst_ip=$IPADDR
+        fi
     fi
 
     if [ -n "$MACADDRESS" ];then
@@ -1015,20 +1184,38 @@ elif [ "$1" = "-s" ];then
         str_inst_mac=`ip link show $netdev | grep ether | awk '{print $2}'`
     fi
     if [ -z "$str_inst_ip" -o -z "$str_inst_mask" ];then
-        log_info "configeth on $NODE: config install nic, can not find information from dhcp lease file, return."
-        exit 1
-    fi
-    str_inst_net=$(v4calcnet $str_inst_ip $str_inst_mask)
-    num_index=1
-    while [ $num_index -le $NETWORKS_LINES ];do
-        eval str_tmp=\$NETWORKS_LINE$num_index
-        str_tmp_name=`echo $str_tmp | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
-        if [ "$str_tmp_name" = "$str_inst_net" ];then
-            str_inst_mtu=`echo $str_tmp | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`
-            break
+        # EL10 uses NetworkManager's internal DHCPv6 client, so there may be no
+        # dhclient lease file.  Recover the live global address and its route
+        # metadata before replacing the installer-created connection.
+        if [ "$str_os_type" = "redhat" ] && \
+            [[ $networkmanager_active -eq 1 || $networkmanager_active -eq 2 ]] && \
+            discover_install_nic_ipv6 "$str_inst_nic" "$str_requested_ipv6"; then
+            [ -n "$str_requested_ipv6" ] && str_inst_ipv6=$str_requested_ipv6
+            [ -n "$str_requested_ipv6_prefix" ] && str_inst_ipv6_prefix=$str_requested_ipv6_prefix
+            if [ -n "$str_inst_ipv6" ] && [ -n "$str_inst_ipv6_prefix" ]; then
+                install_nic_is_ipv6=1
+            fi
         fi
-        num_index=$((num_index+1))
-    done
+
+        if [ $install_nic_is_ipv6 -ne 1 ]; then
+            log_info "configeth on $NODE: config install nic, can not find active IPv4 or IPv6 address information, return."
+            exit 1
+        fi
+    fi
+
+    if [ $install_nic_is_ipv6 -ne 1 ]; then
+        str_inst_net=$(v4calcnet $str_inst_ip $str_inst_mask)
+        num_index=1
+        while [ $num_index -le $NETWORKS_LINES ];do
+            eval str_tmp=\$NETWORKS_LINE$num_index
+            str_tmp_name=`echo $str_tmp | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
+            if [ "$str_tmp_name" = "$str_inst_net" ];then
+                str_inst_mtu=`echo $str_tmp | awk -F'mtu=' '{print $2}' | awk -F'|' '{print $1}'`
+                break
+            fi
+            num_index=$((num_index+1))
+        done
+    fi
 
 
     #get extra configration parameters for each nic
@@ -1138,28 +1325,51 @@ elif [ "$1" = "-s" ];then
     
         #write ifcfg-* file for redhat
         con_name="xcat-"${str_inst_nic}
-        str_inst_prefix=$(v4mask2prefix ${str_inst_mask})
+        if [ $install_nic_is_ipv6 -ne 1 ]; then
+            str_inst_prefix=$(v4mask2prefix ${str_inst_mask})
+        fi
         str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_inst_nic}"
         if [ $networkmanager_active -eq 2 ]; then
             str_conf_file="/etc/sysconfig/network-scripts/ifcfg-$con_name"
         fi
-        if [ $networkmanager_active -eq 1 ]; then
+        if [ $install_nic_is_ipv6 -eq 1 ] && [ $networkmanager_active -eq 2 ]; then
+            str_keyfile="/etc/NetworkManager/system-connections/${con_name}.nmconnection"
+            configure_install_nic_ipv6_keyfile "$con_name" "$str_inst_nic" \
+                "$str_inst_ipv6" "$str_inst_ipv6_prefix" \
+                "$str_inst_ipv6_gateway" "$str_inst_ipv6_dns" \
+                "$str_inst_ipv6_dns_search" "$str_inst_mtu" "$str_keyfile"
+            if [ $? -ne 0 ]; then
+                log_error "configeth on $NODE: failed to persist the IPv6 install NIC keyfile."
+                error_code=1
+            fi
+        elif [ $networkmanager_active -eq 1 ]; then
             is_nmcli_connection_exist "$con_name"
             if [ $? -eq 0 ]; then
                 tmp_con_name=${str_inst_nic}"-tmp"
                 nmcli con modify $con_name connection.id $tmp_con_name
             fi
-            if [ -z "$str_inst_gateway" ]; then
-                # EL10/NM: during updatenode the dhclient lease and MACADDRESS may be
-                # absent, leaving the gateway empty. Recover it from the live default
-                # route so the install NIC keeps its default route.
-                str_inst_gateway=`ip route show default | awk '{print $3}' | head -1`
+            if [ $install_nic_is_ipv6 -eq 1 ]; then
+                configure_install_nic_ipv6_nm "$con_name" "$str_inst_nic" \
+                    "$str_inst_ipv6" "$str_inst_ipv6_prefix" \
+                    "$str_inst_ipv6_gateway" "$str_inst_ipv6_dns" \
+                    "$str_inst_ipv6_dns_search" "$str_inst_mtu"
+                if [ $? -ne 0 ]; then
+                    log_error "configeth on $NODE: failed to persist the IPv6 install NIC connection."
+                    error_code=1
+                fi
+            else
+                if [ -z "$str_inst_gateway" ]; then
+                    # EL10/NM: during updatenode the dhclient lease and MACADDRESS may be
+                    # absent, leaving the gateway empty. Recover it from the live default
+                    # route so the install NIC keeps its default route.
+                    str_inst_gateway=`ip route show default | awk '{print $3}' | head -1`
+                fi
+                gw4_arg=""
+                # Never pass an empty gw4: nmcli rejects "value for 'gw4' is missing", the
+                # connection is not created, and the later down+reload leaves the NIC down.
+                [ -n "$str_inst_gateway" ] && gw4_arg="gw4 $str_inst_gateway"
+                nmcli con add type ethernet con-name $con_name ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix} connection.autoconnect-priority 9 $gw4_arg
             fi
-            gw4_arg=""
-            # Never pass an empty gw4: nmcli rejects "value for 'gw4' is missing", the
-            # connection is not created, and the later down+reload leaves the NIC down.
-            [ -n "$str_inst_gateway" ] && gw4_arg="gw4 $str_inst_gateway"
-            nmcli con add type ethernet con-name $con_name ifname ${str_inst_nic} ipv4.method manual ipv4.addresses  ${str_inst_ip}/${str_inst_prefix} connection.autoconnect-priority 9 $gw4_arg
             str_conf_file_1="/etc/sysconfig/network-scripts/ifcfg-xcat-${str_inst_nic}-1"
             if [ -f $str_conf_file_1 ]; then
                 grep $con_name $str_conf_file_1 >/dev/null 2>/dev/null
@@ -1182,25 +1392,25 @@ elif [ "$1" = "-s" ];then
               echo "GATEWAY=${str_inst_gateway}" >> $str_conf_file
             fi
         fi
-        if [ $networkmanager_active -eq 2 ]; then
+        if [ $install_nic_is_ipv6 -ne 1 ] && [ $networkmanager_active -eq 2 ]; then
             echo "AUTOCONNECT_PRIORITY=9" >> $str_conf_file
         fi
-        if [ -n "${str_inst_dns}" ];then
-	        if [ $networkmanager_active -eq 1 ]; then
-		        nmcli con modify $con_name ipv4.dns ${str_inst_dns}
-                fi
+        if [ $install_nic_is_ipv6 -ne 1 ] && [ -n "${str_inst_dns}" ];then
+            if [ $networkmanager_active -eq 1 ]; then
+                nmcli con modify $con_name ipv4.dns ${str_inst_dns}
+            fi
         fi
-        if [ -n "${str_inst_dns_search}" ];then
-	        if [ $networkmanager_active -eq 1 ]; then
-		        nmcli con modify $con_name ipv4.dns-search "${str_inst_dns_search}"
-                fi
+        if [ $install_nic_is_ipv6 -ne 1 ] && [ -n "${str_inst_dns_search}" ];then
+            if [ $networkmanager_active -eq 1 ]; then
+                nmcli con modify $con_name ipv4.dns-search "${str_inst_dns_search}"
+            fi
         fi
-        if [ -n "${str_inst_mtu}" ];then
-	        if [ $networkmanager_active -eq 1 ]; then
-		        nmcli con modify $con_name mtu ${str_inst_mtu}
+        if [ $install_nic_is_ipv6 -ne 1 ] && [ -n "${str_inst_mtu}" ];then
+            if [ $networkmanager_active -eq 1 ]; then
+                nmcli con modify $con_name mtu ${str_inst_mtu}
             else
                 echo "MTU=${str_inst_mtu}" >> $str_conf_file
-	        fi
+            fi
         fi
 
         # Add GATEWAY to the network file only if the OS version is RHEL 7.x or below.
@@ -1220,7 +1430,11 @@ elif [ "$1" = "-s" ];then
         do
             name="${array_extra_param_names[$i]}"
             value="${array_extra_param_values[$i]}"
-            if xcat_uses_nm_keyfile "$OSVER" "$con_name"; then
+            if [ $install_nic_is_ipv6 -eq 1 ] && [ $networkmanager_active -eq 2 ]; then
+                # The target-root keyfile already carries the live MTU. nmcli
+                # cannot apply its other properties from the Anaconda chroot.
+                :
+            elif xcat_uses_nm_keyfile "$OSVER" "$con_name"; then
                 nmcli con modify $con_name $name $value
             else
                 echo "$i: name=$name value=$value"
@@ -1249,20 +1463,33 @@ elif [ "$1" = "-s" ];then
 
     if [ "$UPDATENODE" = "1" ] || [ "$NODESETSTATE" = "netboot" ] || [ "$NODESETSTATE" = "statelite" ] || grep "REBOOT=TRUE" /opt/xcat/xcatinfo >/dev/null 2>&1; then
         if_state=0
-        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
+        skip_nic_restart=0
+        if [ $install_nic_is_ipv6 -eq 1 ] && [ $networkmanager_active -eq 2 ]; then
+            # This keyfile belongs to the target system. Do not tear down the
+            # Anaconda-owned live connection from inside the chroot.
+            log_info "configeth on $NODE: IPv6 install NIC keyfile takes effect on first boot."
+            skip_nic_restart=1
+        fi
+        if [ $skip_nic_restart -eq 0 ] && [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ];then
             : # netplan apply below reconfigures the interface; no ifdown needed
-        elif [ "$str_os_type" = "debian" ];then
+        elif [ $skip_nic_restart -eq 0 ] && [ "$str_os_type" = "debian" ];then
             ifdown --force $str_inst_nic
-        else
+        elif [ $skip_nic_restart -eq 0 ]; then
             ip link set dev $str_inst_nic down
         fi
         #tested before NetworkManager: on an NM-rendered netplan node this is the correct arm,
         #and as an elif after it, it was dead code that fell through to an nmcli call with an
         #unset connection name
-        if [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ]; then
+        if [ $skip_nic_restart -eq 1 ]; then
+            :
+        elif [ "$str_os_type" = "debian" ] && [ "$netplan_active" = "1" ]; then
             netplan_apply "$str_inst_nic" || error_code=1
         elif [ $networkmanager_active -eq 1 ]; then
-            nmcli con modify $con_name ipv4.dns "${NAMESERVERS}"
+            if [ $install_nic_is_ipv6 -eq 1 ]; then
+                [ -n "$NAMESERVERS" ] && nmcli con modify "$con_name" ipv6.dns "$NAMESERVERS"
+            else
+                nmcli con modify $con_name ipv4.dns "${NAMESERVERS}"
+            fi
             nmcli con reload
             nmcli con up $con_name
 	    else

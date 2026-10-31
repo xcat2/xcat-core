@@ -71,6 +71,9 @@ Requires: /usr/sbin/dhcpd
 %else
 Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
 %endif
+# A service node answers DHCP for its own subnet, so it writes /etc/radvd.conf too. Without
+# radvd an IPv6-only node behind it gets one address with a prefix length of 128 and no route.
+Requires: radvd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %ifnarch s390x

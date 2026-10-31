@@ -46,6 +46,9 @@ PRIMARYNIC=#TABLE:noderes:$NODE:primarynic#
 export PRIMARYNIC
 
 MASTER=#TABLE:noderes:$NODE:xcatmaster#
+# The DHCPv6 client identifier that the reservation of this node holds, so
+# configdhcpv6duid writes the one makedhcp reserved rather than deriving another.
+DHCP6DUID=#TABLE:mac:$NODE:duid#
 export MASTER
 SERVICEGROUP=#TABLE:noderes:$NODE:servicenode#
 export SERVICEGROUP

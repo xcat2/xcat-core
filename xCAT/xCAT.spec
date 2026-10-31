@@ -90,10 +90,22 @@ Requires: /usr/sbin/dhcpd
 Requires: (chrony or ntp)
 Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
 %endif
+# makedhcp writes /etc/radvd.conf for every IPv6 network in the networks table. A client that
+# follows RFC 4861 starts DHCPv6 only when an advertisement sets the managed flag, and its
+# on-link prefix and default route come from the advertisement rather than from the lease. So
+# without radvd an IPv6-only node gets one address with a prefix length of 128 and no route.
+Requires: radvd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
 Requires: /usr/bin/ssh
 %if %nots390x
+%if 0%{?suse_version}
+# Two openSUSE packages provide /usr/sbin/in.tftpd and the solver may pick either. atftp has
+# no IPv6 option, so it binds 0.0.0.0:69 only and a node booting over DHCPv6 never fetches its
+# loader. tftp is the hpa server, which listens on both families.
+Requires: tftp
+%else
 Requires: /usr/sbin/in.tftpd
+%endif
 Requires: xCAT-buildkit = 4:%{version}-%{release}
 # Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 Requires: perl-IO-Stty >= 0.04-5

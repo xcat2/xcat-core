@@ -66,14 +66,20 @@ if [ -z "$bootnic" ]; then
 fi
 
 if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
-	duid='default-duid "\\000\\004';
-	#product_uuid in sysfs fails to cope with endianness of SMBIOS 2.6, unconditionnaly swap.  Technically leads to incorrect DUID in 'older' systems but matches MS behavior
-	for i in `sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/;s/-//g;s/\(..\)/\1 /g' /sys/devices/virtual/dmi/id/product_uuid`; do
-		octnum="\\"`printf "\\%03o" 0x$i`
-		duid=$duid$octnum
-	done
-	duid=$duid'";'
-	echo $duid > /var/lib/dhclient/dhclient6.leases
+	# makedhcp refuses the nil UUID and reserves the hardware address instead, so a DUID
+	# built from it matches no reservation. genesis-duid skips it for the same reason.
+	if [ "$(tr -d -c '0-9a-fA-F' </sys/devices/virtual/dmi/id/product_uuid)" = 00000000000000000000000000000000 ]; then
+		logger -s -t $log_label -p local4.info "SMBIOS UUID is the nil UUID, sending no DUID-UUID"
+	else
+		duid='default-duid "\\000\\004';
+		# EDK2 firmware sends the SMBIOS bytes, and product_uuid prints the first three fields byte-swapped.
+		for i in `sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/;s/-//g;s/\(..\)/\1 /g' /sys/devices/virtual/dmi/id/product_uuid`; do
+			octnum="\\"`printf "\\%03o" 0x$i`
+			duid=$duid$octnum
+		done
+		duid=$duid'";'
+		echo $duid > /var/lib/dhclient/dhclient6.leases
+	fi
 fi
 
 rpcbind
@@ -276,12 +282,30 @@ for parm in `cat /proc/cmdline`; do
     elif [[ ${key,,} == "gateway" ]]; then
         gateway=$value
     elif [[ ${key,,} == "xcatd" ]]; then
-        XCATMASTER=`echo $value |awk -F: '{print $1}'`
-        XCATPORT=`echo $value |awk -F: '{print $2}'`
+        # An IPv6 address holds colons, so "<addr>:<port>" cannot be split on the colon.
+        # destiny.pm brackets an IPv6 address, as RFC 3986 does.
+        if [[ $value == \[*\]:* ]]; then
+            XCATMASTER=${value%%\]:*}
+            XCATMASTER=${XCATMASTER#\[}
+            XCATPORT=${value##*\]:}
+        else
+            XCATMASTER=`echo $value |awk -F: '{print $1}'`
+            XCATPORT=`echo $value |awk -F: '{print $2}'`
+        fi
     fi
 done
 export XCATPORT
 export XCATMASTER
+
+# Every consumer of the pair needs the address bracketed when it is IPv6: openssl s_client
+# -connect rejects "2001:db8::1:3001" as ambiguous, so getcert and getdestiny never connect.
+# Derive the destination once here rather than re-joining at each call site.
+if [[ $XCATMASTER == *:* ]]; then
+    XCATDEST="[$XCATMASTER]:$XCATPORT"
+else
+    XCATDEST="$XCATMASTER:$XCATPORT"
+fi
+export XCATDEST
 
 logger -s -t $log_label -p local4.info "XCATMASTER is $XCATMASTER, XCATPORT is $XCATPORT"
 
@@ -446,20 +470,20 @@ DEVICE=$bootnic
 export DEVICE
 
 if [ "$destiny" != "discover" ]; then #we aren't discoverying, we probably can and should get a cert
-	logger -s -t $log_label -p local4.info "Getting initial certificate --> $XCATMASTER:$XCATPORT"
-	/bin/getcert $XCATMASTER:$XCATPORT
+	logger -s -t $log_label -p local4.info "Getting initial certificate --> $XCATDEST"
+	/bin/getcert $XCATDEST
 fi
 if [ "$destiny" ]; then
 	# run getdestiny to update node status
-	/bin/getdestiny $XCATMASTER:$XCATPORT >/dev/null 2>&1
+	/bin/getdestiny $XCATDEST >/dev/null 2>&1
 fi
 
 while :; do
 
         grepconfigraid=`echo $destiny|grep "configraid"`
         if [ -z "$destiny" -o -n "$grepconfigraid" ]; then
-                logger -s -t $log_label -p local4.info "Running getdestiny --> $XCATMASTER:$XCATPORT"
-                destiny=`getdestiny $XCATMASTER:$XCATPORT`
+                logger -s -t $log_label -p local4.info "Running getdestiny --> $XCATDEST"
+                destiny=`getdestiny $XCATDEST`
         	logger -s -t $log_label -p local4.info "Received destiny=$destiny"
 	fi
 
@@ -475,8 +499,8 @@ while :; do
 		/bin/dodiscovery
 		logger -s -t $log_label -p local4.info "dodiscovery - Complete."
 
-		logger -s -t $log_label -p local4.info "Getting certificate --> $XCATMASTER:$XCATPORT"
-		/bin/getcert $XCATMASTER:$XCATPORT
+		logger -s -t $log_label -p local4.info "Getting certificate --> $XCATDEST"
+		/bin/getcert $XCATDEST
 		destiny=''
 		dest=''
 		XCAT_DISCOVERY_WAS_DONE=1
@@ -487,21 +511,21 @@ while :; do
 		dest=''
 		/bin/bash
 		logger -s -t $log_label -p local4.info "Exited shell."
-		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
-		/bin/nextdestiny $XCATMASTER:$XCATPORT
+		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATDEST..."
+		/bin/nextdestiny $XCATDEST
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
         elif [ "$dest" = osimage ]; then
-		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
-		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATDEST..."
+		destiny=`/bin/nextdestiny $XCATDEST`
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
         elif [ "$dest" = ondiscover ]; then
-		logger -s -t $log_label -p local4.info "Running nextdestiny (ondiscover) $XCATMASTER:$XCATPORT..."
-		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		logger -s -t $log_label -p local4.info "Running nextdestiny (ondiscover) $XCATDEST..."
+		destiny=`/bin/nextdestiny $XCATDEST`
 		logger -s -t $log_label -p local4.info "nextdestiny (ondiscover) - Complete."
 	elif [ "$dest" = runcmd ]; then
 		$destparameter
-		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
-		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATDEST..."
+		destiny=`/bin/nextdestiny $XCATDEST`
 		dest=`echo $destiny|awk -F= '{print $1}'`
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 	elif [ "$dest" = runimage ]; then
@@ -524,14 +548,14 @@ while :; do
 		tar xvf `basename $destparameter`
 		./runme.sh
 		cd -
-		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
-		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATDEST..."
+		destiny=`/bin/nextdestiny $XCATDEST`
 		dest=`echo $destiny|awk -F= '{print $1}'`
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 
 	elif [ "$dest" = "reboot" -o "$dest" = "boot" ]; then
-		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATMASTER:$XCATPORT..."
-		/bin/nextdestiny $XCATMASTER:$XCATPORT
+		logger -s -t $log_label -p local4.info "Running nextdestiny $XCATDEST..."
+		/bin/nextdestiny $XCATDEST
 		logger -s -t $log_label -p local4.info "nextdestiny - Complete."
 		if [ $IPMI_SUPPORT -ne 0 ]; then
                     # Set boot from network will cause OpenPOWER server wait at petitboot menu, so do nothing here

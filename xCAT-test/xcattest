@@ -814,9 +814,9 @@ sub load_config_file {
             $type = "Varible";
         } elsif ($type eq "Table") {
             ##TABLE BLOCK##
-            if ($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
-                $attr  = $1;
-                $value = $2;
+            if ( my ($a, $v) = xCAT::Test::OS::parse_conf_assignment($line) ) {
+                $attr  = $a;
+                $value = $v;
                 if ($name && ($$config_ref{table}{$sub_type}{$name}{__KEY__} ne $attr)) {
                     $$config_ref{table}{$sub_type}{$name}{$attr} = $value;
                 } else {
@@ -826,9 +826,9 @@ sub load_config_file {
             }
         } elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-            if ($line =~ /(\w+)\s*=\s*([:,\w\.\-\/]+)/) {
-                $attr  = $1;
-                $value = $2;
+            if ( my ($a, $v) = xCAT::Test::OS::parse_conf_assignment($line) ) {
+                $attr  = $a;
+                $value = $v;
                 if ($attr eq "Name") {
                     $name = $value;
                 } elsif (!defined($name)) {
@@ -1581,10 +1581,11 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{object}) {
         foreach my $type (keys %{ $$config_ref{object} }) {
             foreach my $name (keys %{ $$config_ref{object}{$type} }) {
-                $cmd = "chdef -t $type -o $name";
-                foreach my $attr (keys %{ $$config_ref{object}{$type}{$name} }) {
-                    $cmd = $cmd . " $attr=$$config_ref{object}{$type}{$name}{$attr}";
-                }
+                # The values come from a conf and runcmd passes the command to bash, so a
+                # value that carries shell syntax must be quoted. vmothersetting separates
+                # its settings with a semicolon, which would end the chdef.
+                $cmd = xCAT::Test::OS::object_definition_command(
+                    $type, $name, $$config_ref{object}{$type}{$name} );
                 log_this($running_log_fd, "$cmd");
                 runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {
@@ -1598,12 +1599,13 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{table}) {
         foreach my $type (keys %{ $$config_ref{table} }) {
             foreach my $name (keys %{ $$config_ref{table}{$type} }) {
-                $cmd = "chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
-                foreach my $attr (keys %{ $$config_ref{table}{$type}{$name} }) {
-                    if ($attr ne '__KEY__') {
-                        $cmd = $cmd . " $type.$attr=$$config_ref{table}{$type}{$name}{$attr}";
-                    }
-                }
+                # Every argument is quoted, the row selector with them. See
+                # table_row_command: a conf value can carry shell syntax.
+                $cmd = xCAT::Test::OS::table_row_command(
+                    $type,
+                    $$config_ref{table}{$type}{$name}{__KEY__},
+                    $name,
+                    $$config_ref{table}{$type}{$name} );
                 log_this($running_log_fd, "$cmd");
                 &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {

@@ -476,6 +476,7 @@ sub copycd
     my $installroot;
     my $arch;
     my $path;
+    my $isopath;
     $installroot = "/install";
     my $sitetab = xCAT::Table->new('site');
 
@@ -496,6 +497,7 @@ sub copycd
         'a=s' => \$arch,
         'p=s' => \$copypath,
         'm=s' => \$path,
+        'I=s' => \$isopath,
         'i'   => \$inspection,
         'o'   => \$noosimage,
         'w'   => \$nonoverwrite,
@@ -623,6 +625,7 @@ sub copycd
         { data => "Copying media to $installroot/$distname/$arch" });
     my $omask = umask 0022;
     mkpath("$installroot/$distname/$arch");
+    link_install_iso("$installroot/$distname/$arch", $isopath, $callback);
     mkpath("$installroot/$distname/$arch/install/netboot") if ($isnetinst);
     umask $omask;
     my $rc;
@@ -747,6 +750,170 @@ sub copycd
 
 #-------------------------------------------------------------------------------
 
+=head3 static_ip6_boot_arg
+
+    The dracut ip= argument that gives an IPv6-only node a static address.
+
+    networks.gateway holds what the administrator wrote, and '<xcatmaster>' is the common
+    value. Unresolved it reaches the boot argument as "[<xcatmaster>]", and the node has no
+    route to a server off its own link. A gateway that does not resolve is dropped: an
+    address with no route still reaches an image server on the same link.
+
+    Arguments:
+        $node     the node being installed
+        $nicname  the name of the provisioning NIC
+        $cfg6     optional coderef, for tests; defaults to getNodeNetworkCfg6
+        $resolve  optional coderef, for tests; defaults to ipv6_server_for_node
+    Returns:
+        the argument, or undef when the node has no usable address
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub static_ip6_boot_arg {
+    my ($node, $nicname, $cfg6, $resolve) = @_;
+
+    $cfg6    ||= sub { return xCAT::NetworkUtils->getNodeNetworkCfg6($_[0]); };
+    $resolve ||= sub { return xCAT::NetworkUtils->ipv6_server_for_node($_[0], $_[1]); };
+
+    my ($address, undef, $gateway, $prefix) = $cfg6->($node);
+    $gateway = $resolve->($node, $gateway)
+      if defined($gateway) && length($gateway);
+    return xCAT::NetworkUtils::dracut_static_ip6($address, $gateway, $prefix, $nicname);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 install_iso_name
+
+    The name the install ISO takes inside the install tree.
+
+    Returns:
+        the name.
+
+    One name for every distribution, so the kernel command line does not carry
+    the name of the media it was built from. casper checks the ISO against the
+    initrd with matches_uuid, so a tree serves the ISO it was copied from and
+    no other.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub install_iso_name { return 'install.iso'; }
+
+#-------------------------------------------------------------------------------
+
+=head3 link_install_iso
+
+    Link the install ISO into the install tree, so httpd can serve it.
+
+    Arguments:
+        $treedir  the install tree of this distribution and architecture
+        $isopath  the ISO copycds was given, or undef for a block device
+        $callback the callback, for the warning
+    Returns:
+        1 when the link is in place, 0 when it is not.
+
+    A symbolic link, not a copy: the ISO is 3.2G for Ubuntu 24.04, and the
+    xcat.conf that ships with xCAT gives /install "Options FollowSymLinks".
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub link_install_iso {
+    my ($treedir, $isopath, $callback) = @_;
+
+    return 0 unless defined($isopath) && length($isopath);
+    return 0 unless -f $isopath;
+    my $link = "$treedir/" . install_iso_name();
+
+    # copycds can be given the ISO that is already in the tree, or the link to it. The
+    # unlink below would then delete the media and leave a link pointing at nothing, so
+    # the two are compared by device and inode first, which also follows the link.
+    my @from = stat($isopath);
+    my @to   = stat($link);
+    return 1 if @from && @to && $from[0] == $to[0] && $from[1] == $to[1];
+
+    unlink($link);
+    unless (symlink($isopath, $link)) {
+        $callback->({ warning => ["Cannot link $isopath to $link, so an IPv6-only node cannot install from this media: $!"] })
+          if $callback;
+        return 0;
+    }
+    return 1;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 subiquity_iso_url
+
+    The URL that casper downloads the install ISO from.
+
+    Arguments:
+        $authority the install server, bracketed when it is IPv6
+        $treepath  the install tree path under the document root
+    Returns:
+        the URL.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_iso_url {
+    my ($authority, $treepath) = @_;
+
+    return unless defined($authority) && length($authority);
+    return unless defined($treepath) && length($treepath);
+    return "http://$authority$treepath/" . install_iso_name();
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 subiquity_url_kcmdline
+
+    Build the kernel command line for a Subiquity install that fetches its ISO
+    over HTTP, which is how an IPv6-only node reaches its root.
+
+    ip=off: casper calls configure_networking only inside
+    "if [ -n "$STATICIP" -a "$STATICIP" != frommedia ]", and STATICIP comes from
+    ip=. Leaving ip= out therefore skips the whole networking stage, and wget
+    answers "Cannot assign requested address" because no interface has an
+    address. The value 'off' takes the branch while asking for no IPv4:
+    configure_networking reads ip= into IP and treats off as already done.
+
+    ip6=dhcp: casper reads ip6= and configures the interface with dhcpcd -6.
+
+    netboot=url: do_urlmount downloads the ISO with casper's own wget, which
+    speaks IPv6, and loop-mounts it. nfsroot= is left out, because klibc
+    nfsmount has no IPv6 and casper would try it first.
+
+    No toram: do_urlmount has already put the ISO in the initramfs tmpfs, so
+    the live filesystem is read from memory and copying it again only doubles
+    the memory the node needs.
+
+    Arguments:
+        $base       the command line built so far
+        $isourl     the URL of the install ISO
+        $authority  the install server for the seed URL, bracketed when IPv6
+        $node       the node being installed
+    Returns:
+        the completed command line
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub subiquity_url_kcmdline {
+    my ($base, $isourl, $authority, $node) = @_;
+
+    my $kcmdline = $base;
+    $kcmdline .= " autoinstall ip=off ip6=dhcp boot=casper netboot=url url=${isourl}";
+    $kcmdline .= " ds=nocloud-net;s=http://${authority}/install/autoinst/${node}/";
+    $kcmdline .= " ---";
+
+    return $kcmdline;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 subiquity_nfsroot_server
 
     Resolve the install server to the address casper's klibc nfsmount needs.
@@ -772,8 +939,10 @@ sub subiquity_nfsroot_server {
     return undef unless defined($instserver) && length($instserver);
     return $instserver if $instserver eq '!myipfn!';
 
-    # A dual-stack management node also has an AAAA record. casper takes everything after the
-    # first colon in nfsroot= as the path, so an IPv6 address there cannot be parsed.
+    # A dual-stack management node also has an AAAA record, and the live filesystem must be
+    # mounted over IPv4. casper passes nfsroot= through untouched; it is klibc nfsmount that
+    # cannot read an IPv6 server. Measured on noble: "[2001:db8::1]:/export" and
+    # "2001:db8::1:/export" both answer "need a path", while "192.0.2.1:/export" is accepted.
     $resolver ||= sub { xCAT::NetworkUtils->getipaddr($_[0], OnlyV4 => 1) };
     return $resolver->($instserver);
 }
@@ -830,10 +999,14 @@ sub subiquity_kcmdline {
 
     Resolve the install server and build the Subiquity command line, or say why not.
 
-    The two steps are composed here rather than in mkinstall so the composition can be driven:
-    mkinstall needs a management node, and the decision that matters -- which install server
-    ends up in nfsroot -- is exactly what a regression would change. The caller keeps the side
-    effects: reporting the error and skipping the node.
+    An IPv4 node mounts its root over NFS. An IPv6-only node downloads the ISO over HTTP,
+    because klibc nfsmount has no IPv6.
+
+    The steps are composed here rather than in mkinstall so the composition can be driven:
+    mkinstall needs a management node, and the decisions that matter -- which install server
+    ends up in nfsroot, and which of the two routes a node takes -- are exactly what a
+    regression would change. The caller keeps the side effects: reporting the error and
+    skipping the node.
 
     Arguments:
         $base       the command line built so far
@@ -842,14 +1015,41 @@ sub subiquity_kcmdline {
         $httpport   the xCAT HTTP port
         $node       the node being installed
         $resolver   optional coderef, for tests; passed through to subiquity_nfsroot_server
+        $ipv6_only  optional coderef, for tests; defaults to NetworkUtils::node_is_ipv6_only
+        $iso_exists optional coderef, for tests; defaults to a file test on the ISO link
     Returns:
-        ($kcmdline, undef) on success, or (undef, $message) when the server does not resolve
+        ($kcmdline, undef) on success, or (undef, $message) when the node cannot install
 
 =cut
 
 #-------------------------------------------------------------------------------
 sub subiquity_boot_params {
-    my ($base, $instserver, $pkgdir, $httpport, $node, $resolver) = @_;
+    my ($base, $instserver, $pkgdir, $httpport, $node, $resolver, $ipv6_only, $iso_exists) = @_;
+
+    # An IPv6-only node takes the HTTP route. casper mounts the live filesystem with klibc
+    # nfsmount, which has no IPv6: it answers "need a path" for "[2001:db8::1]:/export" and
+    # for "2001:db8::1:/export", while an IPv4 server gets past parsing to the mount. The
+    # network itself is not the limit, because casper reads ip6= and configures the interface
+    # with dhcpcd -6.
+    #
+    # do_urlmount downloads the ISO with casper's own wget, which speaks IPv6. That needs the
+    # ISO in the install tree, which copycds links there, so a tree copied before this change
+    # has none and the node is refused rather than sent to a URL that answers 404.
+    $ipv6_only  ||= sub { return xCAT::NetworkUtils->node_is_ipv6_only($_[0]); };
+    $iso_exists ||= sub { return -e $_[0]; };
+    if ($ipv6_only->($node)) {
+        my $authority = xCAT::NetworkUtils->format_host_port($instserver, $httpport);
+        return (undef, "Could not format the install server '$instserver' for a URL.")
+          unless $authority;
+        return (undef, "$node has no IPv4 address, and $pkgdir/" . install_iso_name()
+              . " does not exist. The Ubuntu live installer mounts its root with klibc "
+              . "nfsmount, which has no IPv6 support, so an IPv6-only node installs from the "
+              . "ISO over HTTP instead. Run copycds again to link the ISO into the install "
+              . "tree.")
+          unless $iso_exists->("$pkgdir/" . install_iso_name());
+        my $isourl = subiquity_iso_url($authority, $pkgdir);
+        return (subiquity_url_kcmdline($base, $isourl, $authority, $node), undef);
+    }
 
     my $nfsip = subiquity_nfsroot_server($instserver, $resolver);
     return (undef, "Could not resolve the install server '$instserver' to an address. "
@@ -1828,7 +2028,8 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
             } else {
-                $kcmdline = "imgurl=http://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = "imgurl=http://" . xCAT::NetworkUtils->format_host_port($imgsrv, $httpport)
+                  . "/$rootimgdir/rootimg-statelite.gz STATEMNT=";
                 $kcmdline = $checksum_arg . $kcmdline;
             }
 
@@ -1857,7 +2058,7 @@ sub mknetboot
             }
             $kcmdline .= $statemnt . " ";
             $kcmdline .=
-              "XCAT=$xcatmaster:$xcatdport ";
+              "XCAT=" . xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport) . " ";
             $kcmdline .=
               "NODE=$node ";
 
@@ -1885,10 +2086,10 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=http://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+              "imgurl=http://" . xCAT::NetworkUtils->format_host_port($imgsrv, $httpport) . "/$rootimgdir/$compressedrootimg ";
             $kcmdline .= $checksum_arg;
             $kcmdline .= $uftp_args;
-            $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+            $kcmdline .= "XCAT=" . xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport) . " ";
         }
 
         
@@ -1947,6 +2148,19 @@ sub mknetboot
             $kcmdline .= "$net_params->{netdev} ";
         } elsif (defined($net_params->{BOOTIF}) && ($net_params->{setmac} || $arch =~ /ppc/)) {
             $kcmdline .= "$net_params->{BOOTIF} ";
+        }
+
+        # dracut reads no ip= from the parameters above, and with none it uses DHCPv4. An
+        # IPv6-only node then has no address and cannot fetch the root image.
+        #
+        # The static form is preferred over either6: DHCPv6 carries one address with a
+        # prefix length of 128 and no route, and the provision network sends no router
+        # advertisement, so a node that takes the DHCPv6 answer alone cannot reach its
+        # server.
+        if (xCAT::NetworkUtils->node_is_ipv6_only($node)) {
+            my $ip6 = static_ip6_boot_arg($node, $net_params->{nicname})
+              || $net_params->{ip6};
+            $kcmdline .= "$ip6 " if $ip6;
         }
 
         my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);

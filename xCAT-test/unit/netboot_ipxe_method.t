@@ -31,6 +31,11 @@ BEGIN {
     sub checkNodeIPaddress { return { ip => '192.0.2.10' } }
     sub nodeonmynet        { return 1 }
 
+    # setstate asks which family the node has, so the iPXE script names a server the node
+    # can reach. These nodes are IPv4, which keeps ${next-server} in the script.
+    sub node_address_family { return 4 }
+    sub my_ip_facing_family { return (0, '192.0.2.1') }
+
     package xCAT::TableUtils;
     sub getTftpDir         { return $tftp }
     sub get_site_attribute { return $_[1] eq 'dhcpsetup' ? ('n') : () }    # no makedhcp from nodeset here

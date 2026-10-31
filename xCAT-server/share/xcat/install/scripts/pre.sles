@@ -214,7 +214,36 @@ if [ -r "/tmp/partitionfile" ]; then
     fi
 fi
 msgutil_r "$MASTER_IP" "info" "Generate the repository for the installation" "/var/log/xcat/xcat.log" "$log_label"
-export nextserver=`cat /proc/cmdline | grep http | awk -F'autoyast=http://' {'print \$2'} | awk -F':' {'print \$1'}`
+# The install server goes back into a media_url, so keep it in the form a URL accepts.
+# Cutting the authority at the first colon splits "[2001:db8::1]:80" into "[2001", and
+# a portless IPv4 URL kept its path.
+extract_url_host()
+{
+    local authority="${1#*://}"
+
+    authority="${authority%%/*}"
+    case "$authority" in
+    \[*\]*)
+        authority="${authority#\[}"
+        printf '%s\n' "${authority%%\]*}"
+        ;;
+    *)
+        printf '%s\n' "${authority%%:*}"
+        ;;
+    esac
+}
+
+# url_host_literal <host> -- the host as a URL authority. An IPv6 address needs brackets.
+url_host_literal()
+{
+    case "$1" in
+    *:*) printf '[%s]\n' "$1" ;;
+    *)   printf '%s\n' "$1" ;;
+    esac
+}
+
+NEXTSERVER_URL="$(grep -oE 'autoyast=https?://(\[[^]]+\]|[^[:space:]/:]+)(:[0-9]+)?' /proc/cmdline | head -n 1)"
+export nextserver="$(url_host_literal "$(extract_url_host "$NEXTSERVER_URL")")"
 cp /tmp/profile/modified.xml /tmp/profile/modified1.xml
 sed -e 's!<software>!<add-on><add_on_products config:type="list">#INSTALL_SOURCES_IN_PRE#</add_on_products></add-on><software>!'  /tmp/profile/modified1.xml > /tmp/profile/modified.xml
 

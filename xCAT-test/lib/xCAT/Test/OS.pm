@@ -91,4 +91,102 @@ sub _slurp {
     return $text;
 }
 
+
+#-------------------------------------------------------
+
+=head3 shell_quote
+
+    Descriptions: Quote a value so a shell passes it through unchanged.
+    Arguments: the value
+    Returns: the value in single quotes, with any single quote escaped
+=cut
+
+#-------------------------------------------------------
+sub shell_quote
+{
+    my ($value) = @_;
+    $value = '' unless defined $value;
+    $value =~ s/'/'\\''/g;
+    return "'" . $value . "'";
+}
+
+#-------------------------------------------------------
+
+=head3 object_definition_command
+
+    Descriptions: The chdef command that defines one object from a conf section.
+                  Attribute values are quoted, because a conf carries values a
+                  shell would read as syntax: vmothersetting separates its
+                  settings with a semicolon, which ends the command.
+    Arguments: the object type, the object name, a hash reference of attributes
+    Returns: the command
+=cut
+
+#-------------------------------------------------------
+sub object_definition_command
+{
+    my ($type, $name, $attrs) = @_;
+
+    my $cmd = "chdef -t " . shell_quote($type) . " -o " . shell_quote($name);
+    foreach my $attr (sort keys %$attrs) {
+        $cmd .= " " . shell_quote("$attr=" . $attrs->{$attr});
+    }
+    return $cmd;
+}
+
+#-------------------------------------------------------
+
+=head3 parse_conf_assignment
+
+    Descriptions: Read one "attr=value" line of a conf section.
+                  The value class carries ':' and '/' so an IPv6 network
+                  reaches the table: without them "net=2001:db8:176::" matched
+                  "2001" and the row was written with that value. It carries
+                  ';' for the same reason, because othersettings and
+                  vmothersetting separate their settings with one and the row
+                  was written with the first setting alone.
+    Arguments: the line
+    Returns: the attribute and the value, or an empty list when the line is
+             not an assignment
+
+=cut
+
+#-------------------------------------------------------
+sub parse_conf_assignment
+{
+    my ($line) = @_;
+
+    return unless defined $line;
+    return unless $line =~ /(\w+)\s*=\s*([:,;\w\.\-\/]+)/;
+    return ($1, $2);
+}
+
+#-------------------------------------------------------
+
+=head3 table_row_command
+
+    Descriptions: The chtab command that writes one table row from a conf
+                  section. Every argument is quoted, the row selector with
+                  them: a conf carries values a shell reads as syntax, and
+                  othersettings separates its settings with a semicolon, which
+                  would end the command and run the rest.
+    Arguments: the table name, the key column, the row name, a hash reference
+               of attributes
+    Returns: the command
+
+=cut
+
+#-------------------------------------------------------
+sub table_row_command
+{
+    my ($table, $key, $name, $attrs) = @_;
+
+    my $cmd = "chtab " . shell_quote("$key=$name");
+    foreach my $attr (sort keys %$attrs) {
+        next if $attr eq '__KEY__';
+        $cmd .= " " . shell_quote("$table.$attr=" . $attrs->{$attr});
+    }
+    return $cmd;
+}
+
 1;

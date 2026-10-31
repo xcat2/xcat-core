@@ -58,6 +58,89 @@ sub _oracle_linux_distname
     return "ol$version";
 }
 
+sub _server_authority
+{
+    my ($server, $port, $ipv6_only) = @_;
+    return xCAT::NetworkUtils->format_host_port($server, $port) if $ipv6_only;
+    return "$server:$port";
+}
+
+sub _syslog_server_arg
+{
+    my $server = shift;
+    return $server if defined($server) && $server eq '!myipfn!';
+    return xCAT::NetworkUtils->format_uri_host($server);
+}
+
+# The debug syslog arguments of the stateless kernel command line. An IPv6
+# server has to be bracketed, or the kernel reads the last colon group as the
+# port. An unusable server name gives no arguments at all, rather than
+# "syslog.server=" with nothing after it.
+sub _netboot_syslog_kcmdline_args
+{
+    my $server = shift;
+    my $arg = _syslog_server_arg($server);
+    return '' unless defined($arg);
+    return " syslog.server=$arg syslog.type=rsyslogd syslog.filter=*.* ";
+}
+
+# The same arguments for a stateful install. The modern installer takes
+# inst.syslog and brackets an IPv6 server; the legacy one takes syslog and
+# never saw an IPv6 address.
+sub _install_syslog_kcmdline_args
+{
+    my ($server, $modern_installer) = @_;
+    return " syslog=$server" unless $modern_installer;
+    my $arg = _syslog_server_arg($server);
+    return '' unless defined($arg);
+    return " inst.syslog=$arg";
+}
+
+sub _el10_install_url_args
+{
+    my ($method, $authority, $httpprefix, $node) = @_;
+    return "inst.repo=$method://$authority$httpprefix inst.ks=$method://$authority/install/autoinst/$node";
+}
+
+# UEFI and the EL10 initrd can use different DHCPv6 DUIDs and IAIDs.  Keep
+# DHCPv6 for the firmware handoff, then give the kernel the node's known address.
+sub _el10_static_ipv6_boot_args
+{
+    my ( $node, $net_params ) = @_;
+    $net_params ||= {};
+
+    my ( $ip, $hostname, $gateway, $prefix ) = xCAT::NetworkUtils->getNodeNetworkCfg6($node);
+    return unless $ip && defined($prefix) && $prefix =~ /^\d+$/ && $prefix <= 128;
+
+    my $interface = $net_params->{nicname};
+    my @args;
+    unless ($interface) {
+        my $mac = $net_params->{mac};
+        return unless $mac;
+        $mac =~ tr/-/:/;
+        return unless $mac =~ /^(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/;
+        $mac = lc($mac);
+        $interface = 'xcatboot0';
+        push @args, "ifname=$interface:$mac";
+    }
+
+    if (defined($gateway) && length($gateway)) {
+        $gateway = xCAT::NetworkUtils->ipv6_server_for_node($node, $gateway);
+        return unless $gateway;
+    } else {
+        $gateway = '';
+    }
+
+    my $client_field = xCAT::NetworkUtils->format_uri_host($ip);
+    my $gateway_field = $gateway ? xCAT::NetworkUtils->format_uri_host($gateway) : '';
+    return unless $client_field && (!$gateway || $gateway_field);
+
+    $hostname ||= $node;
+    push @args, 'rd.neednet=1';
+    push @args, "ip=${client_field}::${gateway_field}:$prefix:$hostname:$interface:none";
+    return join(' ', @args);
+}
+
 
 sub _centos_linux_distname
 {
@@ -746,6 +829,8 @@ sub mknetboot
 
         $ent = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['primarynic']);
         my $sent = $hmhash->{$node}->[0];
+        my $static_ipv6_boot = xCAT::SvrUtils->uses_static_ipv6_boot($osver)
+          && xCAT::NetworkUtils->node_is_ipv6_only($node);
 
         #          $hmtab->getNodeAttribs($node,
         #                                 ['serialport', 'serialspeed', 'serialflow']);
@@ -778,23 +863,43 @@ sub mknetboot
         }
 
         my $imgsrvip;
-        unless ($imgsrv eq '!myipfn!' or xCAT::NetworkUtils->isValidIp($imgsrv)) {
-            # if imgsrv is hostname, convert it to ip address
-            # the host name might not be resolved inside initrd
-            $imgsrvip = xCAT::NetworkUtils->getipaddr($imgsrv);
-        }
-        unless($imgsrvip){
-            $imgsrvip=$imgsrv;
+        my $xcatmasterip;
+        if ($static_ipv6_boot) {
+            $imgsrvip = xCAT::NetworkUtils->ipv6_server_for_node($node, $imgsrv);
+            unless ($imgsrvip) {
+                xCAT::MsgUtils->report_node_error($callback, $node, "Unable to resolve the image server for $node as IPv6");
+                next;
+            }
+            $xcatmasterip = xCAT::NetworkUtils->ipv6_server_for_node($node, $xcatmaster);
+            unless ($xcatmasterip) {
+                xCAT::MsgUtils->report_node_error($callback, $node, "Unable to resolve the xCAT master for $node as IPv6");
+                next;
+            }
+        } else {
+            unless ($imgsrv eq '!myipfn!' or xCAT::NetworkUtils->isValidIp($imgsrv)) {
+                # if imgsrv is hostname, convert it to ip address
+                # the host name might not be resolved inside initrd
+                $imgsrvip = xCAT::NetworkUtils->getipaddr($imgsrv);
+            }
+            unless($imgsrvip){
+                $imgsrvip=$imgsrv;
+            }
+
+            unless (xCAT::NetworkUtils->isValidIp($xcatmaster)) {
+                # if xcatmaster is hostname, convert it to ip address
+                # the host name might not be resolved inside initrd
+                $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
+            }
+            unless($xcatmasterip){
+                $xcatmasterip=$xcatmaster
+            }
         }
 
-        my $xcatmasterip;
-        unless (xCAT::NetworkUtils->isValidIp($xcatmaster)) {
-            # if xcatmaster is hostname, convert it to ip address
-            # the host name might not be resolved inside initrd
-            $xcatmasterip = xCAT::NetworkUtils->getipaddr($xcatmaster);
-        }
-        unless($xcatmasterip){
-            $xcatmasterip=$xcatmaster
+        my $imgsrv_authority = _server_authority($imgsrvip, $httpport, $static_ipv6_boot);
+        my $xcatmaster_endpoint = _server_authority($xcatmasterip, $xcatdport, $static_ipv6_boot);
+        unless ($imgsrv_authority && $xcatmaster_endpoint) {
+            xCAT::MsgUtils->report_node_error($callback, $node, "Unable to format the IPv6 server endpoint for $node");
+            next;
         }
 
         # Start to build kcmdline
@@ -836,9 +941,9 @@ sub mknetboot
                 }
             } else {
                 if (-r "$rootimgdir/rootimg-statelite.gz.metainfo") {
-                    $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/rootimg-statelite.gz.metainfo STATEMNT=";
+                    $kcmdline = "imgurl=$httpmethod://$imgsrv_authority/$rootimgdir/rootimg-statelite.gz.metainfo STATEMNT=";
                 } else {
-                    $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                    $kcmdline = "imgurl=$httpmethod://$imgsrv_authority/$rootimgdir/rootimg-statelite.gz STATEMNT=";
                 }
                 $kcmdline = $checksum_arg . $kcmdline;
             }
@@ -867,7 +972,7 @@ sub mknetboot
             }
             $kcmdline .= $statemnt . " ";
 
-            $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
+            $kcmdline .= "XCAT=$xcatmaster_endpoint ";
   
 
             if ($rootfstype ne "ramdisk") {
@@ -894,13 +999,13 @@ sub mknetboot
         }
         else {
             if (-r "$rootimgdir/$compressedrootimg.metainfo") {
-                $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/$compressedrootimg.metainfo ";
+                $kcmdline = "imgurl=$httpmethod://$imgsrv_authority/$rootimgdir/$compressedrootimg.metainfo ";
             } else {
-                $kcmdline = "imgurl=$httpmethod://$imgsrvip:$httpport/$rootimgdir/$compressedrootimg ";
+                $kcmdline = "imgurl=$httpmethod://$imgsrv_authority/$rootimgdir/$compressedrootimg ";
             }
             $kcmdline .= $checksum_arg;
             $kcmdline .= $uftp_args;
-            $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
+            $kcmdline .= "XCAT=$xcatmaster_endpoint ";
             $kcmdline .= "NODE=$node ";
 
             # add flow control setting
@@ -918,7 +1023,7 @@ sub mknetboot
             #for use in postscript and postbootscript in xcatdsklspost in the rootimg
             $kcmdline .= " LOGSERVER=$xcatmasterip ";
             #for use in syslog dracut module in the initrd
-            $kcmdline .= " syslog.server=$xcatmasterip syslog.type=rsyslogd syslog.filter=*.* ";
+            $kcmdline .= _netboot_syslog_kcmdline_args($xcatmasterip);
             $kcmdline .= " xcatdebugmode=$::XCATSITEVALS{xcatdebugmode} ";
         }
 
@@ -947,6 +1052,14 @@ sub mknetboot
             }
         } elsif (defined($net_params->{BOOTIF}) && ($net_params->{setmac} || $arch =~ /ppc/)) {
             $kcmdline .= "$net_params->{BOOTIF} ";
+        }
+        if ($static_ipv6_boot) {
+            my $network_args = _el10_static_ipv6_boot_args($node, $net_params);
+            unless ($network_args) {
+                xCAT::MsgUtils->report_node_error($callback, $node, "Unable to render static IPv6 boot networking for $node");
+                next;
+            }
+            $kcmdline .= "$network_args ";
         }
 
         my %client_nethash = xCAT::DBobjUtils->getNetwkInfo([$node]);
@@ -1413,7 +1526,7 @@ sub mkinstall
                 $platform,
                 $partfile,
                 \%tmpl_hash,
-                $os
+                os => $os
               );
         }
 
@@ -1529,11 +1642,24 @@ sub mkinstall
                 $instserver = $ent->{nfsserver};
             }
 
-            if ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
+            my $static_ipv6_boot = xCAT::SvrUtils->uses_static_ipv6_boot($os)
+              && xCAT::NetworkUtils->node_is_ipv6_only($node);
+            if ($static_ipv6_boot) {
+                $instserver = xCAT::NetworkUtils->ipv6_server_for_node($node, $instserver);
+                unless ($instserver) {
+                    xCAT::MsgUtils->report_node_error($callback, $node, "Unable to resolve the install server for $node as IPv6");
+                    next;
+                }
+            } elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
                 unless ($instserver eq '!myipfn!') {
                     my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($instserver);
                     $instserver = $ip;
                 }
+            }
+            my $instserver_authority = _server_authority($instserver, $httpport, $static_ipv6_boot);
+            unless ($instserver_authority) {
+                xCAT::MsgUtils->report_node_error($callback, $node, "Unable to format the install server endpoint for $node");
+                next;
             }
             my $httpprefix = $pkgdir;
             if ($installroot =~ /\/$/) {
@@ -1550,19 +1676,15 @@ sub mkinstall
             my $modern_installer = $os =~ /^openeuler/
               || xCAT::Utils->version_cmp($kversion, "7.0") >= 0;
             if ($pkvm) {
-                $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
+                $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver_authority$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver_authority/install/autoinst/$node root=live:$httpmethod://$instserver_authority$httpprefix/LiveOS/squashfs.img";
             } else {
                 if (!$modern_installer) {
-                    $kcmdline = "repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
-                      . $instserver . ":" . $httpport
+                    $kcmdline = "repo=$httpmethod://$instserver_authority$httpprefix ks=$httpmethod://"
+                      . $instserver_authority
                       . "/install/autoinst/"
                       . $node;
                 } else {
-                    $kcmdline = "inst.repo=$httpmethod://$instserver:$httpport$httpprefix inst.ks="
-                      . "$httpmethod://"
-                      . $instserver . ":" . $httpport
-                      . "/install/autoinst/"
-                      . $node;
+                    $kcmdline = _el10_install_url_args($httpmethod, $instserver_authority, $httpprefix, $node);
                 }
             }
             if ($maxmem) {
@@ -1589,9 +1711,16 @@ sub mkinstall
                 $kcmdline .= " $net_params->{BOOTIF} ";
             }
 
-            #if site.managedaddressmode=static, specify the network configuration as kernel options
-            #to avoid multicast dhcp
-            if ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
+            # EL10 IPv6-only boots need the node address after the firmware
+            # handoff.  Other platforms retain the site-managed legacy path.
+            if ($static_ipv6_boot) {
+                my $network_args = _el10_static_ipv6_boot_args($node, $net_params);
+                unless ($network_args) {
+                    xCAT::MsgUtils->report_node_error($callback, $node, "Unable to render static IPv6 boot networking for $node");
+                    next;
+                }
+                $kcmdline .= " $network_args ";
+            } elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/) {
                 my ($ipaddr, $hostname, $gateway, $netmask) = xCAT::NetworkUtils->getNodeNetworkCfg($node);
                 unless ($ipaddr) {
                     xCAT::MsgUtils->report_node_error($callback, $node, "cannot resolve the ip address of $node");
@@ -1649,7 +1778,7 @@ sub mkinstall
             }
 
             if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
-                unless ($instserver eq '!myipfn!') {
+                unless ($instserver eq '!myipfn!' || $static_ipv6_boot) {
                     my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($instserver);
                     $instserver = $ip;
                 }
@@ -1666,12 +1795,12 @@ sub mkinstall
                     $kcmdline .= " inst.loglevel=debug";
 
                     #all the logs during installation will be forwarded to xcatmster
-                    $kcmdline .= " inst.syslog=$instserver";
+                    $kcmdline .= _install_syslog_kcmdline_args($instserver, 1);
                 } else {
                     if ($::XCATSITEVALS{xcatdebugmode} eq "2") {
                         $kcmdline .= " sshd=1";
                     }
-                    $kcmdline .= " syslog=$instserver";
+                    $kcmdline .= _install_syslog_kcmdline_args($instserver, 0);
                 }
 
             }
@@ -2072,6 +2201,21 @@ sub mksysclone
                 $kcmdline .= " $net_params->{BOOTIF} ";
             }
 
+            # A cloned node reaches the same dracut networking as a netboot one, so it takes the
+            # static address too. Without this it asked DHCPv6 with the identifier its initrd
+            # generates, which matches no reservation.
+            if (xCAT::SvrUtils->uses_static_ipv6_boot($os)
+                && xCAT::NetworkUtils->node_is_ipv6_only($node))
+            {
+                my $network_args = _el10_static_ipv6_boot_args($node, $net_params);
+                unless ($network_args) {
+                    xCAT::MsgUtils->report_node_error($callback, $node,
+                        "Unable to render static IPv6 boot networking for $node");
+                    next;
+                }
+                $kcmdline .= "$network_args ";
+            }
+
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport}))
             {
@@ -2099,7 +2243,8 @@ sub mksysclone
                     $kcmdline .= "n8r";
                 }
             }
-            $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+            my $xcat_endpoint = xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport);
+            $kcmdline .= " XCAT=$xcat_endpoint xcatd=$xcat_endpoint SCRIPTNAME=$imagename";
 
             my $k;
             my $i;

@@ -16,6 +16,7 @@ use xCAT::Utils;
 use xCAT::HTTPUtils ();
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use xCAT::SvrUtils;
 use xCAT::PasswordUtils;
 use xCAT::MsgUtils;
 use xCAT::SELinux;
@@ -40,6 +41,11 @@ my $field;
 my $idir;
 my $node;
 my $master;
+my $master_uri_host;
+# 'our', not 'my', so a test can set it: the subiquity netplan helpers below read it and
+# nothing else in this file needs it to be lexical.
+our $node_ipv6_only;
+my $template_os;
 my $httpportsuffix;
 my %loggedrealms;
 my $lastmachinepassdata;
@@ -55,18 +61,92 @@ sub httpport_suffix {
     return xCAT::HTTPUtils::httpport_suffix($httpport);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 _sles_media_url
+
+    The media_url of an autoyast add-on product.
+
+    Arguments:
+        $node_ipv6_only  - whether the node has no IPv4 address
+        $master_host     - the master host, already bracketed when it is IPv6
+        $httpportsuffix  - the port suffix, empty on port 80
+        $pkgdir          - the package directory
+    Returns:
+        the URL YaST installs the product from.
+
+    The table substitution writes the address of the management node as it
+    stands, and "http://2001:db8::1//install" is not a URL YaST can read. A node
+    that has IPv4 keeps the substitution, which service nodes rely on.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub _sles_media_url {
+    my ($node_ipv6_only, $master_host, $httpportsuffix, $pkgdir) = @_;
+
+    my $host = $node_ipv6_only ? $master_host : '#TABLE:noderes:$NODE:nfsserver#';
+    return "http://$host$httpportsuffix/$pkgdir";
+}
+
+sub _dynamic_kickstart_network
+{
+    my ($suffix, $ipv6_only) = @_;
+    my $network = "dhcp --device=$suffix";
+    $network .= " --noipv4 --ipv6=dhcp" if $ipv6_only;
+    return $network;
+}
+
+sub _static_kickstart_network6
+{
+    my ($candidate, $suffix) = @_;
+    my ($ipaddr, $hostname, $gateway, $prefix) =
+      xCAT::NetworkUtils->getNodeNetworkCfg6($candidate);
+
+    unless ($ipaddr && defined($prefix)) {
+        $tmplerr = "Cannot resolve the static IPv6 network configuration of $candidate";
+        return;
+    }
+
+    if (defined($gateway) && length($gateway)) {
+        $gateway = xCAT::NetworkUtils->ipv6_server_for_node($candidate, $gateway);
+        unless ($gateway) {
+            $tmplerr = "Cannot resolve the IPv6 gateway of $candidate";
+            return;
+        }
+    }
+
+    my $network = "static --device=$suffix --activate --noipv4 --ipv6=$ipaddr/$prefix";
+    $network .= " --ipv6gateway=$gateway" if defined($gateway) && length($gateway);
+    $network .= " --hostname=$hostname" if defined($hostname) && length($hostname);
+
+    my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$candidate]) };
+    my @nameserver_ips;
+    foreach my $nameserver (split(/,/, $nameservers{$candidate} || '')) {
+        next unless length($nameserver);
+        my $resolved = xCAT::NetworkUtils->ipv6_server_for_node($candidate, $nameserver);
+        push @nameserver_ips, $resolved if $resolved;
+    }
+    $network .= " --nameserver=" . join(',', @nameserver_ips) if @nameserver_ips;
+
+    return $network;
+}
+
+
 sub subvars {
     my $self = shift;
     my $inf  = shift;
     my $outf = shift;
     $tmplerr = undef;    #clear tmplerr since we are starting fresh
     $node    = shift;
+    $node_ipv6_only = xCAT::NetworkUtils->node_is_ipv6_only($node);
     my $pkglistfile      = shift;
     my $media_dir        = shift;
     my $platform         = shift;
     my $partitionfileval = shift;
     my $tmpl_hash = shift;
     my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
+    $template_os = $namedargs{os};
 
     unless ($namedargs{reusemachinepass}) {
         $lastmachinepassdata->{password} = "";
@@ -96,6 +176,7 @@ sub subvars {
     ## 2, the ip address of the mn/sn facing the compute node
     ## 3, the site.master
     $master = undef;
+    $master_uri_host = undef;
 
     #the "xcatmaster" attribute of the node
     if ($tmpl_hash->{'xcatmaster'}) {
@@ -106,7 +187,9 @@ sub subvars {
 
         #the ip address of the mn facing the compute node
         my $ipfn;
-        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        my @ipfnd = $node_ipv6_only
+          ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+          : xCAT::NetworkUtils->my_ip_facing($node);
         unless ($ipfnd[0]) { $ipfn = $ipfnd[1]; }
         if ($ipfn) {
             $master = $ipfn;
@@ -129,12 +212,17 @@ sub subvars {
     }
 
     $ENV{XCATMASTER} = $master;
-    my $ipaddr = xCAT::NetworkUtils->getipaddr($master);
+    my $ipaddr = $node_ipv6_only
+      ? xCAT::NetworkUtils->ipv6_server_for_node($node, $master)
+      : xCAT::NetworkUtils->getipaddr($master);
     unless ($ipaddr) {
         $tmplerr = "Unable to resolve master \"$master\" to an IP address for $node";
         return;
     }
     $ENV{MASTER_IP} = "$ipaddr";
+    $master_uri_host = $node_ipv6_only
+      ? xCAT::NetworkUtils->format_uri_host($ipaddr)
+      : $master;
 
     my @nodestatus = xCAT::TableUtils->get_site_attribute("nodestatus");
     my $tmp        = $nodestatus[0];
@@ -317,15 +405,17 @@ sub subvars {
             my $c = 0;
             my $space10 = " " x 10;
             my $space12 = " " x 12;
+            my $nextserver_url_var = $node_ipv6_only ? '$nextserver_uri_host' : '$nextserver';
             foreach my $pkgdir (@pkgdirs) {
                 if ($platform =~ /^(rh|SL|centos|alma|ol|fedora|rocky|openeuler)$/) {
                     if ($c == 0) {
                         # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                         # the rhels5.9 will not be installed successfully. So put in kickstart directly.
-                        $source_in_pre .= "echo 'url --url http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
+                        $source_in_pre .= 'nextserver_uri_host="[$nextserver]"' . "\n" if $node_ipv6_only;
+                        $source_in_pre .= "echo 'url --url http://'$nextserver_url_var'$httpportsuffix/$pkgdir' >> /tmp/repos";
                         $source .= "url --url http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #For rhels5.9
                     } else {
-                        $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'$httpportsuffix/$pkgdir' >> /tmp/repos";
+                        $source_in_pre .= "\necho 'repo --name=pkg$c --baseurl=http://'$nextserver_url_var'$httpportsuffix/$pkgdir' >> /tmp/repos";
                         $source .= "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir\n"; #for rhels5.9
                     }
                     my $distrepofile="$installroot/postscripts/repos/$pkgdir/local-repository.tmpl";
@@ -336,13 +426,13 @@ sub subvars {
                         open($repofd,"<","$distrepofile");
                         $repo_in_post = <$repofd>;
                         close($repofd);
-                        $repo_in_post =~ s#baseurl=#baseurl=http://$master$httpportsuffix/#g;
+                        $repo_in_post =~ s#baseurl=#baseurl=http://$master_uri_host$httpportsuffix/#g;
                         $writerepo .= "\ncat >/etc/yum.repos.d/local-repository-$c.repo << 'EOF'\n";
                         $writerepo .="$repo_in_post\n";
                         $writerepo .="EOF\n";
                     }
                 } elsif ($platform =~ /^(sles|suse|leap15)/) {
-                    my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$httpportsuffix/$pkgdir";
+                    my $http = _sles_media_url($node_ipv6_only, $master_uri_host, $httpportsuffix, $pkgdir);
                     $source .= "         <listentry>
                <media_url>$http</media_url>
                <product>SuSE-Linux-pkg$c</product>
@@ -389,6 +479,8 @@ sub subvars {
         $inc =~ s/^((?:[ \t]*- [^\n]*\n)*)([ \t]*)- #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL#[ \t]*\n/$1 . ubuntu_autoinstall_items($2, $1, \@autoinstall)/meg;
         $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
         $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
+        $inc =~ s/#SUBIQUITYDHCP:(\d+)#/subiquity_dhcp_keys($1)/eg;
+        $inc =~ s/#SUBIQUITYTARGETDHCP#/subiquity_target_dhcp_keys()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
         $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
         $inc =~ s/#CRYPTORLOCKED:([^:]+):([^:]+):([^#]+)#/crydb_or_locked($1,$2,$3)/eg;
@@ -402,6 +494,7 @@ sub subvars {
         }
         $inc =~ s/#MIRRORSPEC#/mirrorspec()/eg;
         $inc =~ s/#YAST2NET#/yast2network()/eg;
+        $inc =~ s/#YAST2NET6#/yast2network6()/eg;
         $inc =~ s/#KICKSTARTBOOTLOADER#/kickstartbootloader()/eg;
         $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
         $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
@@ -412,12 +505,16 @@ sub subvars {
         $inc =~ s/#WINDNSCFG#/windows_dns_cfg()/eg;
         $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
         $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
-        $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
+        $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode($node)/eg;
         $inc =~ s/#HOSTNAME#/$node/g;
         $inc =~ s/#SHORTNAME#/$shortname/g;
         $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
         $inc =~ s/#GETPRINICMAC:([^#]+)#/xCAT::Utils::parseMacTabEntry(tabdb("mac",$1,"mac"),$1)/eg;
         $inc =~ s/#COLONHTTPPORT#/$httpportsuffix/eg;
+        # The master as a URI host: bracketed when it is an IPv6 literal, so a URL built in a
+        # template can carry it. #XCATVAR:XCATMASTER# is the bare value and stays that way,
+        # because bash reads /dev/tcp/<host>/<port> with no brackets.
+        $inc =~ s/#MASTERURIHOST#/$master_uri_host/eg;
 
         if (($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")) {
             $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#//g;
@@ -953,6 +1050,15 @@ sub get_win_prodkey {
 }
 
 sub managed_address_mode {
+    my ($node) = @_;
+
+    # An IPv6-only node has no IPv4 address to ask a DHCP server for, and both the Kickstart
+    # and the AutoYaST profile configure it statically. The site attribute describes the
+    # cluster, so it cannot answer for such a node: post.sles.common reads this value and
+    # rewrites the interface with BOOTPROTO=dhcp for anything but static.
+    return 'static'
+      if defined($node) && xCAT::NetworkUtils->node_is_ipv6_only($node);
+
     return $::XCATSITEVALS{managedaddressmode};
 }
 
@@ -1080,8 +1186,18 @@ sub kickstartnetwork {
     my $params = install_device_params($installnic, $primarynic, $ent->{mac}, $node);
     my $macaddr = defined($params->{mac}) ? lc($params->{mac}) : '';
     my $suffix = defined($params->{nicname}) ? $params->{nicname} : $macaddr;
+    my $ipv6_only = defined($node_ipv6_only)
+      ? $node_ipv6_only
+      : xCAT::NetworkUtils->node_is_ipv6_only($node);
 
-    if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
+    if ($ipv6_only
+        && xCAT::SvrUtils->uses_static_ipv6_boot($template_os)
+        && $::XCATSITEVALS{managedaddressmode} ne "autoula")
+    {
+        my $static_network = _static_kickstart_network6($node, $suffix);
+        return unless defined($static_network);
+        $line .= $static_network;
+    } elsif ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
         unless ($hoststab) { $hoststab = xCAT::Table->new('hosts', -create => 1); }
         $line .= "static --device=$suffix --noipv4 --ipv6=";
         my $ulaaddr = autoulaaddress($macaddr);
@@ -1123,7 +1239,7 @@ sub kickstartnetwork {
 
         #return "#KSNET static unsupported";
     } else {
-        $line .= "dhcp --device=$suffix";
+        $line .= _dynamic_kickstart_network($suffix, $ipv6_only);
         $line .= " --hostname=$node" if (defined($platform) && $platform eq 'openeuler');
     }
     return $line;
@@ -1199,6 +1315,140 @@ d-i apt-setup/local$index/comment string online mirror $index\n";
 
 
 
+# The AutoYaST networking section chosen by address family. An IPv4 node gets the same DHCP
+# block the SUSE templates carried before this directive replaced it, so its profile does not
+# change; only an IPv6-only node gets something different, because DHCP cannot serve it.
+sub yast2network6 {
+    if (xCAT::NetworkUtils->node_is_ipv6_only($node)
+        && $::XCATSITEVALS{managedaddressmode} ne "autoula")
+    {
+        my $section = _autoyast_network6($node);
+        return defined($section) ? $section : '';
+    }
+    return <<'EOY';
+<networking>
+   <dns>
+    <dhcp_hostname config:type="boolean">true</dhcp_hostname>
+    <hostname>linux</hostname>
+  </dns>
+  <interfaces config:type="list">
+    <interface>
+      <bootproto>dhcp</bootproto>
+      <device>eth0</device>
+      <startmode>onboot</startmode>
+    </interface>
+  </interfaces>
+  <keep_install_network config:type="boolean">true</keep_install_network>
+  <routing>
+    <ipv4_forward config:type="boolean">false</ipv4_forward>
+  </routing>
+</networking>
+EOY
+}
+
+# The AutoYaST networking section of an IPv6-only node. AutoYaST takes a prefix length rather
+# than a netmask for IPv6, and the default route carries the IPv6 gateway. SUSE has no static
+# handoff on the kernel command line, so a static address here is the only way an IPv6-only node
+# reaches its installer: DHCPv6 would need the client to send the DUID of the reservation.
+sub _autoyast_network6 {
+    my ($node) = @_;
+
+    my ($ipaddr, $hostname, $gateway, $prefix) =
+      xCAT::NetworkUtils->getNodeNetworkCfg6($node);
+    unless ($ipaddr && defined($prefix) && $prefix =~ /^\d+$/ && $prefix <= 128) {
+        $tmplerr = "Cannot resolve the static IPv6 network configuration of $node";
+        return;
+    }
+
+    if (defined($gateway) && length($gateway)) {
+        $gateway = xCAT::NetworkUtils->ipv6_server_for_node($node, $gateway);
+        unless ($gateway) {
+            $tmplerr = "Cannot resolve the IPv6 gateway of $node";
+            return;
+        }
+    }
+
+    my $nd     = xCAT::NetworkUtils->getNodeDomains([$node]);
+    my $domain = $nd->{$node};
+    my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$node]) };
+    # site.nameservers holds one list for the cluster, so the node can be given the IPv4
+    # resolver of another network. An IPv6-only node cannot reach it, and an unreachable
+    # server in resolv.conf makes every lookup wait for its timeout.
+    #
+    # '<xcatmaster>' is the management node, which runs named. It is not the gateway: a
+    # cluster whose gateway is a separate router would be given a resolver that answers
+    # nothing, and a cluster with no gateway would be given none at all.
+    my $master6 = xCAT::NetworkUtils->ipv6_server_for_node($node, '<xcatmaster>');
+    my @nameserversIP = grep { index($_, ':') >= 0 }
+      grep { defined && length }
+      map { $_ eq '<xcatmaster>' ? $master6 : $_ } split(/,/, $nameservers{$node} // '');
+    @nameserversIP = ($master6)
+      if !@nameserversIP
+      && defined($master6)
+      && index($master6, ':') >= 0;
+
+    my $interface = {
+        'bootproto' => ['static'],
+        'startmode' => ['onboot'],
+        'device'    => ['eth0'],
+        'ipaddr'    => [$ipaddr],
+        'prefixlen' => ["$prefix"],
+    };
+    my $routing = {
+        'ip_forward' => [ { 'content' => 'false', 'config:type' => 'boolean' } ],
+    };
+    if (defined($gateway) && length($gateway)) {
+        $routing->{routes} = [
+            {
+                'route' => [
+                    {
+                        'destination' => ['default'],
+                        'gateway'     => [$gateway],
+                        'netmask'     => ['-'],
+                        'device'      => ['-'],
+                    }
+                ],
+                'config:type' => 'list',
+            }
+        ];
+    }
+
+    my $networkhash = {
+        'networking' => [
+            {
+                'dns' => [
+                    {
+                        'domain'        => ["$domain"],
+                        'dhcp_hostname' => [ { 'content' => 'false', 'config:type' => 'boolean' } ],
+                        # dhcp_hostname is false, because an IPv6-only node has no DHCPv4 to
+                        # take a hostname from. YaST writes none at all without this one, and
+                        # the installed node answers "localhost".
+                        'hostname'   => [$hostname],
+                        # searchlist takes config:type="list" in the AutoYaST schema, the
+                        # way nameservers below does. Without it YaST validates nothing and
+                        # reports only "Element profile failed to validate content".
+                        'searchlist' => [ { 'config:type' => 'list', 'search' => [$domain] } ],
+                        # dhcp_resolv says whether DHCP may overwrite resolv.conf. The
+                        # AutoYaST schema of Leap 15.6 refuses it, and one element it
+                        # refuses makes YaST reject the whole profile. This section is
+                        # static, so no DHCP can touch resolv.conf anyway.
+                        'nameservers'   => [ { 'config:type' => 'list', 'nameserver' => [@nameserversIP] } ],
+                    }
+                ],
+                # AutoYaST keeps the network the installer used unless the profile says
+                # otherwise, and the section this one replaces sets it true. Without this the
+                # interface below is ignored: the node installs, then boots with
+                # BOOTPROTO=dhcp and no address of its own.
+                'keep_install_network' =>
+                  [ { 'content' => 'false', 'config:type' => 'boolean' } ],
+                'interfaces' => [ { 'interface' => [$interface], 'config:type' => 'list' } ],
+                'routing'    => [$routing],
+            }
+        ]
+    };
+    return XML::Simple->new(KeepRoot => 1)->XMLout($networkhash);
+}
+
 sub yast2network {
     my $line;
     my $hoststab;
@@ -1208,6 +1458,13 @@ sub yast2network {
     unless ($ent and $ent->{mac}) { $tmplerr="missing mac data for $node"; return; }
     my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac}, $node);
     $suffix = lc($suffix);
+
+    # An IPv6-only node cannot take the IPv4 arms below: getNodeNetworkCfg returns nothing for it.
+    if (xCAT::NetworkUtils->node_is_ipv6_only($node)
+        && $::XCATSITEVALS{managedaddressmode} ne "autoula")
+    {
+        return _autoyast_network6($node);
+    }
 
     if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
 
@@ -1771,6 +2028,57 @@ sub subiquity_install_netcfg_for_node {
         $node);
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 subiquity_dhcp_keys
+
+    The netplan keys that tell the Subiquity installer how to address the
+    provisioning NIC.
+
+    An IPv6-only node has no DHCPv4 server to answer, and netplan brings the
+    interface up with no address at all when it is told to use DHCPv4 only. The
+    installer then cannot reach its package source and falls back to asking at
+    the console, which on a serial console waits forever.
+
+    Arguments:
+        $indent how many spaces each key is indented by
+    Returns:
+        the keys, one per line, indented as asked.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub subiquity_dhcp_keys {
+    my ($indent) = @_;
+
+    my $pad = ' ' x (defined($indent) ? $indent : 8);
+    return "${pad}dhcp4: true" unless $node_ipv6_only;
+    return "${pad}dhcp6: true\n${pad}dhcp4: false";
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 subiquity_target_dhcp_keys
+
+    The same keys for the netplan that the late command writes into the
+    installed system, as printf arguments.
+
+    Returns:
+        the arguments, each already quoted and indented for netplan.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub subiquity_target_dhcp_keys {
+
+    unless ($node_ipv6_only) {
+        return '"      dhcp4: true" "      dhcp4-overrides:" "        use-domains: true"';
+    }
+    return '"      dhcp6: true" "      dhcp4: false" "      dhcp6-overrides:" "        use-domains: true"';
+}
+
+#-----------------------------------------------------------------------------
+
 sub subiquity_install_nic {
     my ($setname) = subiquity_install_netcfg_for_node();
     return $setname;
@@ -2194,7 +2502,8 @@ sub ubuntu_subiquity_pkgdir_uri
     return $path if $path =~ m{^https?://};
 
     $path = "/$path" if $path !~ m{^/};
-    return "http://$master$httpportsuffix$path";
+    my $url_host = $master_uri_host || $master;
+    return "http://$url_host$httpportsuffix$path";
 }
 
 sub tabdb
@@ -2263,7 +2572,12 @@ sub tabdb
         unless ($blankok) {
             if ($field eq "xcatmaster") {
                 my $ipfn;
-                my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+                my $ipv6_only = defined($node_ipv6_only)
+                  ? $node_ipv6_only
+                  : xCAT::NetworkUtils->node_is_ipv6_only($node);
+                my @ipfnd = $ipv6_only
+                  ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+                  : xCAT::NetworkUtils->my_ip_facing($node);
                 unless ($ipfnd[0]) { $ipfn = $ipfnd[1]; }
                 if ($ipfn) {
                     return $ipfn;
