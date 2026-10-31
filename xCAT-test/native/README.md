@@ -45,6 +45,15 @@ packages, execute target-architecture binaries or prove that the generated image
 
 ## Other native tests
 
+`debian_genimage_profile_assets.t` runs the Debian genimage command in an
+isolated filesystem. It checks custom and shipped package lists,
+extra-package lists and postinstall scripts. Package tools and postinstall
+scripts stop with deliberate failures after recording the selected input.
+Only the Debian script directory is copied, with no installed xCAT libraries.
+Source-checkout copies follow symlinks. An optional directory argument checks
+a package payload without following symlinks.
+It does not install packages or build an initrd.
+
 The pull-request workflow runs these packaging cases explicitly as an ordinary
 user:
 

@@ -21,9 +21,15 @@ fi
 # requests fail. An emulated node needs minutes for that key.
 CSR_TIMEOUT=${GETCERT_CSR_TIMEOUT:-600}
 CSR_DEADLINE=$((SECONDS + CSR_TIMEOUT))
-while ! openssl req -new -key /etc/xcat/certkey.pem -out /tmp/tls.csr -subj "/CN=$(hostname)" >& /dev/null; do
+CSR_ERROR=/tmp/getcert.csr.err
+while ! openssl req -new -key /etc/xcat/certkey.pem -out /tmp/tls.csr -subj "/CN=$(hostname)" > /dev/null 2> $CSR_ERROR; do
 	if [ "$SECONDS" -ge "$CSR_DEADLINE" ]; then
-		give_up "no certificate request after ${CSR_TIMEOUT}s; /etc/xcat/certkey.pem is not usable"
+		# Name the key that was used AND what openssl printed: the key is usually intact and
+		# the absent file is OPENSSLDIR/openssl.cnf.
+		# Read and flatten with bash builtins. The Genesis payload is a minimal initramfs
+		# and need not carry tr or cat.
+		csr_error=$(< $CSR_ERROR)
+		give_up "no certificate request after ${CSR_TIMEOUT}s using /etc/xcat/certkey.pem: ${csr_error//$'\n'/ }"
 	fi
 	sleep 1
 done

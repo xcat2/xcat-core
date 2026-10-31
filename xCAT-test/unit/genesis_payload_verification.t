@@ -19,6 +19,12 @@ use XCAT::GenesisPayload qw(module_commands missing_paths check_payload);
 my $OPENSSH_99 = "OpenSSH_9.9p1\n/usr/libexec/openssh/sshd-session\n";
 my $OPENSSH_80 = "OpenSSH_8.0p1\n";
 
+# The two awk programs name themselves in their own binary.
+my $GAWK = "GNU Awk 5.2.2, API 3.2\n";
+my $MAWK = "mawk 1.3.4 20240123\n";
+my $AWK_NOT_GAWK =
+  'usr/bin/awk is not gawk (allowcred.awk opens its TCP stream with the gawk /inet/ coprocess)';
+
 # A complete payload: OpenSSH 9.9 sshd plus its session helper, tmux plus a UTF-8 locale.
 my @COMPLETE = qw(
   usr/sbin/sshd usr/libexec/openssh/sshd-session usr/bin/tmux
@@ -71,6 +77,18 @@ is_deeply([ missing_paths(all_but('usr/libexec/openssh/sshd-session'), sshd => $
 
 is_deeply([ missing_paths(all_but('usr/lib/locale/C.utf8/LC_CTYPE', 'usr/bin/tmux'), sshd => $OPENSSH_99) ],
     [], 'a payload without tmux needs no locale');
+
+# allowcred.awk, minixcatd.awk and udpcat.awk open a TCP stream with the gawk |& coprocess
+# and the /inet/ special file. mawk rejects both at parse time, so the node asks for no
+# credential and reports no flag, and nothing in the build says why.
+is_deeply([ missing_paths(carries(@COMPLETE), sshd => $OPENSSH_99, awk => $GAWK) ],
+    [], 'a payload whose awk is gawk passes');
+is_deeply([ missing_paths(carries(@COMPLETE), sshd => $OPENSSH_99, awk => $MAWK) ],
+    [$AWK_NOT_GAWK], 'a payload whose awk is mawk fails and says so');
+
+# An awk with no name in it is not gawk either. busybox awk has no /inet/ support.
+is_deeply([ missing_paths(carries(@COMPLETE), sshd => $OPENSSH_99, awk => "busybox\n") ],
+    [$AWK_NOT_GAWK], 'an awk that is neither gawk nor mawk fails too');
 
 # dracut_install reports a missing binary and returns, so every name the dracut module
 # installs has to be checked against the payload. A name starting with "/" is installed at
@@ -149,6 +167,20 @@ is_deeply([ check_payload($nohelper) ],
     [ 1, "verify-genesis-payload: $nohelper is incomplete:\n"
           . "  usr/libexec/openssh/sshd-session (this sshd execs it for every connection)\n" ],
     'the command line reads usr/sbin/sshd to decide on sshd-session');
+
+my $mawk = payload_tree(@COMPLETE);
+write_text("$mawk/usr/sbin/sshd", $OPENSSH_99);
+write_text("$mawk/usr/bin/awk",  $MAWK);
+is_deeply([ check_payload($mawk) ],
+    [ 1, "verify-genesis-payload: $mawk is incomplete:\n  $AWK_NOT_GAWK\n" ],
+    'the command line reads usr/bin/awk back out of the payload');
+
+my $gawk = payload_tree(@COMPLETE);
+write_text("$gawk/usr/sbin/sshd", $OPENSSH_99);
+write_text("$gawk/usr/bin/awk",  $GAWK);
+is_deeply([ check_payload($gawk) ],
+    [ 0, "verify-genesis-payload: $gawk is complete\n" ],
+    'a payload whose awk is gawk passes on the command line');
 is_deeply([ check_payload('--commands-from', $module, $nodhcp) ],
     [ 0, "verify-genesis-payload: $nodhcp is complete\n" ],
     '--commands-from does not require a name installed under a condition');

@@ -106,6 +106,18 @@ fi
 if [ ! -e /usr/share/empty.sshd ]; then
     mkdir -p /usr/share/empty.sshd
 fi
+# Debian and Ubuntu build sshd with --with-privsep-path=/run/sshd, and sshd exits with
+# "Missing privilege separation directory" when it is absent. The image carries /run and not
+# /run/sshd, so Genesis on Ubuntu answered no ssh and every case that reaches a booted node
+# over xdsh failed. Created here rather than baked into the image: /run is a tmpfs on a
+# running system, and a directory under it does not survive the mount.
+# The mode is set whether or not the directory had to be created: sshd refuses a privsep
+# directory that is group or world writable, with the same message, so a wrong mode looks
+# exactly like an absent one.
+for sshd_privsep in /run/sshd /var/run/sshd; do
+    mkdir -p "$sshd_privsep"
+    chmod 0755 "$sshd_privsep"
+done
 echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
 mkdir -p /etc/xcat

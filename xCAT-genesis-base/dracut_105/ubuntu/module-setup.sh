@@ -40,16 +40,37 @@ _dracut_install_opt() {
     fi
 }
 
+# openssl req reads the config file at OPENSSLDIR/openssl.cnf and exits 1 without it, so the
+# node makes no certificate request. dracut_install copies the program and its libraries only.
+# OPENSSLDIR is /usr/lib/ssl on Ubuntu and /etc/pki/tls on EL, so ask openssl where it looks.
+_dracut_install_openssl_config() {
+    local dir cnf
+    dir=$(openssl version -d 2>/dev/null | sed -e 's/^OPENSSLDIR: *"*//' -e 's/"*$//')
+    cnf="${dir:-/etc/ssl}/openssl.cnf"
+    if [ ! -e "$cnf" ]; then
+        dfatal "xcat: no openssl config at $cnf; Genesis cannot request a certificate"
+        exit 1
+    fi
+    dracut_install "$cnf"
+}
+
 install() {
     # Ubuntu multiarch triplet for architecture-specific library paths
     local TRIPLET
     TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu)
 
     dracut_install wget openssl tar ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc bash
+    _dracut_install_openssl_config
     _dracut_install_opt mstflint
     dracut_install netstat # broadcom update requires
     dracut_install uniq # mellanox update requires
-    dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr
+    dracut_install grep ip hostname egrep grep dirname expr
+
+    # allowcred.awk, minixcatd.awk and udpcat.awk open a TCP stream with the gawk |&
+    # coprocess and the /inet/ special file. mawk rejects both at parse time, and mawk is
+    # the awk alternative on this build root, so name gawk and point awk at it.
+    dracut_install gawk
+    ln -sf gawk "$initdir/usr/bin/awk"
     dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.btrfs
     #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
     dracut_install mkswap df ifenslave ssh-keygen scp clear

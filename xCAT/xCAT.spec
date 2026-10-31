@@ -78,9 +78,18 @@ Requires: net-tools
 Requires: /usr/bin/killall
 # makentp/setupntp configure the MN as an NTP server for its compute nodes and support chronyd/ntpd
 # only. chrony is the default on EL7+/SLES15+ (and the only option on EL8+); ntp covers the rest.
-Requires: (chrony or ntp)
 # openEuler's system-release version does not identify an EL release.
+#
+# openSUSE takes plain names. The sles12 cell is an openSUSE 42.3 node whose rpm is 4.11, which
+# has no rich dependencies and reports the whole expression as an unprovided capability. Neither
+# Leap release carries kea, so these expressions resolve to chrony and ISC dhcpd there anyway.
+%if 0%{?suse_version}
+Requires: chrony
+Requires: /usr/sbin/dhcpd
+%else
+Requires: (chrony or ntp)
 Requires: (/usr/sbin/dhcpd if openEuler-release else ((kea and kea-hooks) if (system-release >= 10) else /usr/sbin/dhcpd))
+%endif
 # makedhcp writes /etc/radvd.conf for every IPv6 network in the networks table. A client that
 # follows RFC 4861 starts DHCPv6 only when an advertisement sets the managed flag, and its
 # on-link prefix and default route come from the advertisement rather than from the lease. So
