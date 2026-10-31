@@ -17,30 +17,13 @@ BEGIN {
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 
     package xCAT::NetworkUtils;
-    our %families = (nodev4 => 4, nodev6 => 6);
-    our @legacy_facing_calls;
-    our @family_facing_calls;
-
-    sub node_address_family {
-        my $node = shift;
-        $node = shift if defined($node) && $node eq __PACKAGE__;
-        return $families{$node};
-    }
 
     sub my_ip_facing {
         my $node = shift;
         $node = shift if defined($node) && $node eq __PACKAGE__;
-        push @legacy_facing_calls, $node;
         return (0, '192.0.2.1');
     }
 
-    sub my_ip_facing_family {
-        my $node = shift;
-        $node = shift if defined($node) && $node eq __PACKAGE__;
-        my $family = shift;
-        push @family_facing_calls, [ $node, $family ];
-        return (0, '2001:db8::1');
-    }
     $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
 
     package xCAT::MsgUtils;
@@ -91,43 +74,6 @@ is(
     xCAT_plugin::yaboot::yaboot_config_name(undef),
     undef,
     'an address that was not resolved has no name'
-);
-
-# yaboot_facing_address looks the facing address up in the family the node has.
-@xCAT::NetworkUtils::legacy_facing_calls = ();
-@xCAT::NetworkUtils::family_facing_calls = ();
-is_deeply(
-    [ xCAT_plugin::yaboot::yaboot_facing_address('nodev6') ],
-    [ 0, '2001:db8::1' ],
-    'an IPv6-only node gets the IPv6-facing address'
-);
-is_deeply(
-    $xCAT::NetworkUtils::family_facing_calls[0],
-    [ 'nodev6', 6 ],
-    'an IPv6-only node is resolved through the family helper'
-);
-is(
-    scalar(@xCAT::NetworkUtils::legacy_facing_calls),
-    0,
-    'an IPv6-only node does not reach the IPv4-only helper'
-);
-
-@xCAT::NetworkUtils::legacy_facing_calls = ();
-@xCAT::NetworkUtils::family_facing_calls = ();
-is_deeply(
-    [ xCAT_plugin::yaboot::yaboot_facing_address('nodev4') ],
-    [ 0, '192.0.2.1' ],
-    'an IPv4 node keeps the legacy facing lookup'
-);
-is_deeply(
-    \@xCAT::NetworkUtils::legacy_facing_calls,
-    ['nodev4'],
-    'an IPv4 node still reaches the legacy helper'
-);
-is(
-    scalar(@xCAT::NetworkUtils::family_facing_calls),
-    0,
-    'an IPv4 node does not reach the family helper'
 );
 
 done_testing();

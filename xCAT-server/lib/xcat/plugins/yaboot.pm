@@ -27,32 +27,6 @@ my %usage = (
 
 #-----------------------------------------------------------------------------
 
-=head3 yaboot_facing_address
-
-    Finds the address of the management node that faces one node.
-
-    Arguments:
-        $node - the node name
-    Returns:
-        the (code, value) pair that my_ip_facing returns.
-
-    my_ip_facing resolves with inet_aton, so it reports an IPv6-only node
-    unresolvable and the node gets no configuration at all. The family of the
-    node decides which helper answers.
-
-=cut
-
-#-----------------------------------------------------------------------------
-sub yaboot_facing_address {
-    my ($node) = @_;
-
-    return ((xCAT::NetworkUtils->node_address_family($node) || 4) == 6)
-      ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
-      : xCAT::NetworkUtils->my_ip_facing($node);
-}
-
-#-----------------------------------------------------------------------------
-
 =head3 yaboot_config_name
 
     Builds the name of the configuration file that yaboot asks for.
@@ -155,7 +129,7 @@ sub setstate {
     my $kern = $bphash{$node}->[0];
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
-        my @ipfnd = yaboot_facing_address($node);
+        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
 
         if ($ipfnd[0] == 1) {
             $::YABOOT_callback->(
@@ -201,8 +175,7 @@ sub setstate {
             }
         } else {
             $ipfn = $ipfnd[1];
-            $kern->{kcmdline} =
-              xCAT::NetworkUtils::substitute_facing_address($kern->{kcmdline}, $ipfn);
+            $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
         }
     }
 

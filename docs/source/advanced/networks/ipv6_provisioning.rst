@@ -8,10 +8,10 @@ profile over HTTP. The node needs no IPv4 address on the provisioning network.
 Requirements
 ------------
 
-**The node must use a grub2 boot loader.** Only ``netboot=grub2``, ``grub2-http`` and
-``grub2-tftp`` get a ``bootfile-url`` in their DHCPv6 reservation. A node with
-``netboot=pxe``, ``xnba``, ``ipxe`` or ``petitboot`` receives an address but no boot file,
-so it does not netboot over IPv6.
+**The node must use a grub2 or an iPXE boot loader.** Only ``netboot=grub2``,
+``grub2-http``, ``grub2-tftp`` and ``ipxe`` get a ``bootfile-url`` in their DHCPv6
+reservation. A node with ``netboot=pxe``, ``xnba`` or ``petitboot`` receives an address
+but no boot file, so it does not netboot over IPv6.
 
 **The node must boot UEFI with Secure Boot disabled.** The grub2 image under
 ``/tftpboot/boot/grub2`` is not signed. Firmware that enforces Secure Boot downloads the
