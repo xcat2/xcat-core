@@ -24,7 +24,7 @@ Operating System & Hardware Support Matrix
 +-----------+---------------+---------+----------+-----------+
 | openEuler | 22.03 LTS SP4 | yes     | no       | no        |
 +-----------+---------------+---------+----------+-----------+
-| openEuler | 24.03 LTS SP4 | yes     | no       | no        |
+| openEuler | 24.03 LTS SP4 | yes     | no       | yes       |
 +-----------+---------------+---------+----------+-----------+
 
 .. note::
@@ -32,7 +32,8 @@ Operating System & Hardware Support Matrix
    EL stands for Enterprise Linux, such as: Red Hat Enterprise Linux (RHEL), Rocky Linux, AlmaLinux, CentOS and Oracle Linux.
 
    openEuler support covers the management node, installed and diskless service nodes, and
-   stateful and stateless compute nodes.
+   stateful and stateless compute nodes. On riscv64, it covers only stateful and stateless
+   compute nodes.
 
 riscv64 support covers EL 10 (Rocky Linux 10 and the RHEL 10 RISC-V developer preview), on nodes
 that boot through UEFI firmware and grub2. Both stateful and stateless nodes are supported, and

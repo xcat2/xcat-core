@@ -28,6 +28,9 @@ Qualification uses one service pack from each LTS release:
    * - 24.03 LTS GA
      - ppc64le
      - ``openeuler24.03``
+   * - 24.03 LTS SP4
+     - riscv64
+     - ``openeuler24.03sp4``
 
 Earlier service packs are outside this qualification. The POWER GA image
 is a functional exception; its qualification does not establish maintained
@@ -40,6 +43,17 @@ and both compute modes through each serving role. Stateless images use
 cpio with gzip compression. SQLite serves standalone management nodes;
 MariaDB serves the service-node hierarchy. Additional firmware, database,
 image-format and network combinations need separate qualification.
+
+On riscv64, the qualification covers installed and stateless compute nodes
+from the RVA23 media, managed from a riscv64 management node that runs
+Ubuntu 26.04. xCAT publishes no openEuler riscv64 packages, so riscv64
+management and service nodes are outside it. The test hardware could not boot
+from the network, so firmware network boot is not qualified either. See
+:doc:`/guides/admin-guides/manage_clusters/riscv64/index`.
+
+openEuler also publishes RVA20 media for riscv64. ``copycds`` copies both
+builds of a release to the same directory, so import only the build that
+matches the nodes.
 
 The tested provisioning networks use IPv4 and ISC DHCP on isolated links,
 with separate upstream and downstream interfaces on service nodes. The
@@ -116,8 +130,13 @@ Stateless compute images
 
 Build the image on an openEuler host of the target architecture, using its
 native kernel, modules and package repositories. Check the image's network
-drivers and interface settings before generation. For the imported compute
-profile::
+drivers and interface settings before generation. ``genimage`` checks every
+package against the signing keys in the build host's RPM keyring. A new
+openEuler installation has no key there. Import the openEuler key first::
+
+    rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-openEuler
+
+For the imported compute profile::
 
     genimage openeuler24.03sp4-x86_64-netboot-compute
     packimage -m cpio -c gzip openeuler24.03sp4-x86_64-netboot-compute
