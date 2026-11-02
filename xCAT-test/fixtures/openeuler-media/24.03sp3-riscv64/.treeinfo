@@ -1,0 +1,17 @@
+[general]
+timestamp = 1772724994.9646769
+family = openEuler
+version = 24.03-LTS-SP3
+name = openEuler-24.03-LTS-SP3
+variant = Server
+arch = riscv64
+packagedir = 
+
+[stage2]
+mainimage = images/install.img
+
+[images-riscv64]
+kernel = images/pxeboot/vmlinuz
+initrd = images/pxeboot/initrd.img
+efiboot.img = images/efiboot.img
+

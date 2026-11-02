@@ -51,6 +51,7 @@ sub media_tree {
 for my $case (
     ['24.03-ppc64le', 'openeuler24.03', 'ppc64le'],
     ['24.03sp4-x86_64', 'openeuler24.03sp4', 'x86_64'],
+    ['24.03sp3-riscv64', 'openeuler24.03sp3', 'riscv64'],
 ) {
     my ($fixture, $os, $arch) = @$case;
     my $responses = inspect_media(repo_path("xCAT-test/fixtures/openeuler-media/$fixture"));
