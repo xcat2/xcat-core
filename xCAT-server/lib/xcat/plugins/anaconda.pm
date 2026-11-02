@@ -114,7 +114,7 @@ sub _openeuler_media_info
     return { error => 'Unsupported openEuler LTS version in .treeinfo' }
       unless defined($version);
     return { error => 'Unsupported openEuler architecture in .treeinfo' }
-      unless defined($general{arch}) && $general{arch} =~ /\A(?:x86_64|ppc64le)\z/;
+      unless defined($general{arch}) && $general{arch} =~ /\A(?:x86_64|ppc64le|riscv64)\z/;
 
     return { distname => "openeuler$version", arch => $general{arch} };
 }
