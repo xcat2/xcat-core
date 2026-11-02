@@ -32,6 +32,7 @@ mkdir -p /var/log/xcat/
 cat /tmp/pre-install.log >>/var/log/xcat/xcat.log
 {
 echo "Running Kickstart Post-installation script..."
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.openeuler#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat.ng#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels8#
 #SELINUXRELABEL#
