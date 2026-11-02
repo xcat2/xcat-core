@@ -70,6 +70,7 @@ my $sitelogservers;
 my $nrhash;
 my $machash;
 my $dhcp6duids;
+my $dhcp6httpport;
 my $iscsients;
 my $nodetypeents;
 my $chainents;
@@ -893,6 +894,43 @@ sub addnode6 {
     if ($ip) {
         $commands .= "set ip-address = $ip\n";
     }
+    $commands .= "create\n";
+    $commands .= "close\n";
+    $commands .= addnode6_second_client( $node, $identity, $nrent, $ntent );
+
+    return $commands;
+}
+
+#---
+# =head3 addnode6_second_client
+# Descriptions: The omshell commands for the other DHCPv6 client of a chainloading node. The host
+#               above answers the firmware; this one answers iPXE, which sends a DUID-UUID in RFC
+#               4122 order where EDK2 sends the SMBIOS order. It reserves no address, because ISC
+#               DHCP gives one address to one host, and carries only the boot file that its client
+#               needs.
+# Arguments: $node, $identity -- the dhcp6_client_duids entry, $nrent -- noderes, $ntent -- nodetype
+# Returns: the commands, or the empty string when the node has one client or needs no boot file.
+#---
+sub addnode6_second_client
+{
+    my ( $node, $identity, $nrent, $ntent ) = @_;
+
+    return '' unless dhcp6_chainloads($nrent);
+    my @clients = @{ $identity->{duids} || [] };
+    return '' unless @clients > 1;
+    my $client = $clients[1];
+    my $url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, $client->{client} );
+    return '' unless $url;
+
+    my $name = "$node-$client->{client}";
+    my $commands = '';
+    foreach my $key ( "set name = \"$name\"", "set dhcp-client-identifier = $client->{duid}" ) {
+        $commands .= "new host\n$key\nopen\nremove\nclose\n";
+    }
+    $commands .= "new host\n";
+    $commands .= "set name = \"$name\"\n";
+    $commands .= "set dhcp-client-identifier = $client->{duid}\n";
+    $commands .= 'set statements = "option dhcp6.bootfile-url \"' . $url . '\";";' . "\n";
     $commands .= "create\n";
     $commands .= "close\n";
 
@@ -2694,6 +2732,7 @@ sub process_request
             return;
         }
         my $duids = $usingipv6 ? dhcp6_client_duids($req->{node}) : {};
+        $dhcp6httpport = dhcp6_site_http_port() if $usingipv6;
         my ($unchanged, $external_error) = ({});
         if ($omapi_settings and not $opt{d}) {
             ($unchanged, $external_error) = _isc_external_ipxe_check($req->{node}, $nrhash, $omapi_settings, $omapi_secret);
@@ -3875,6 +3914,7 @@ sub kea_build_node_reservations6
     $machash = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
     $nodetypeents = $nodetypetab ? $nodetypetab->getNodesAttribs($nodes, ['arch']) : undef;
     $dhcp6duids = dhcp6_client_duids($nodes);
+    $dhcp6httpport = dhcp6_site_http_port();
 
     my @reservations;
     foreach my $node (@$nodes) {
@@ -4464,28 +4504,45 @@ sub kea_node_reservations6
             $callback->({ node => [ { name => [$node], warning => [ $identity->{warning} ] } ] });
         }
 
-        my %reservation = (
-            'subnet-id'    => $subnet_id,
-            hostname       => $hname,
-            'ip-addresses' => [$ip],
-        );
-        if ($duid) {
-            $reservation{duid} = $duid;
-        } else {
-            $reservation{'hw-address'} = $mac;
-        }
-        my $bootfile_url = dhcp6_bootfile_url_for_node($node, $hname, $nrent, $ntent);
-        if ($bootfile_url) {
-            $reservation{'option-data'} = [
-                {
-                    name          => 'bootfile-url',
-                    data          => $bootfile_url,
-                    'always-send' => JSON::true,
-                },
-            ];
-        }
+        # One entry for each DHCPv6 client of the node, which for a chainloading method is two.
+        # Only the first keeps the reserved address and the hostname: Kea refuses a second
+        # reservation for one address, and _reservation_matches treats a shared hostname as the
+        # same reservation, so upsert_reservations would replace one entry with the other. The
+        # second client takes an address from the dynamic range and needs only its boot file.
+        my @identities =
+          $duid ? @{ $identity->{duids} || [ { duid => $duid, client => 'firmware' } ] }
+                : ( { 'hw-address' => $mac, client => 'firmware' } );
+        @identities = ( $identities[0] ) unless dhcp6_chainloads($nrent);
 
-        push @reservations, \%reservation;
+        my $first = 1;
+        foreach my $client (@identities) {
+            my %reservation = ( 'subnet-id' => $subnet_id );
+            if ($first) {
+                $reservation{hostname}       = $hname;
+                $reservation{'ip-addresses'} = [$ip];
+            }
+            if ( $client->{duid} ) {
+                $reservation{duid} = $client->{duid};
+            } else {
+                $reservation{'hw-address'} = $client->{'hw-address'};
+            }
+            my $bootfile_url =
+              dhcp6_bootfile_url_for_node( $node, $hname, $nrent, $ntent, $client->{client} );
+            if ($bootfile_url) {
+                $reservation{'option-data'} = [
+                    {
+                        name          => 'bootfile-url',
+                        data          => $bootfile_url,
+                        'always-send' => JSON::true,
+                    },
+                ];
+            }
+
+            # A client that needs no boot file and holds no address reserves nothing.
+            next unless $first or $bootfile_url;
+            $first = 0;
+            push @reservations, \%reservation;
+        }
     }
 
     return \@reservations;
@@ -4493,8 +4550,9 @@ sub kea_node_reservations6
 
 sub dhcp6_bootfile_url_for_node
 {
-    my ( $node, $peer, $nrent, $ntent ) = @_;
+    my ( $node, $peer, $nrent, $ntent, $client ) = @_;
 
+    $client ||= 'firmware';
     my $netboot = $nrent ? $nrent->{netboot} : undef;
     return unless $netboot
       && ($netboot eq 'grub2'
@@ -4511,16 +4569,22 @@ sub dhcp6_bootfile_url_for_node
     my $boot_tftpdir = ( ( $nrent && $nrent->{tftpdir} ) || $tftpdir );
 
     if ($netboot eq 'ipxe') {
+        my $policy = xCAT::DHCP::BootPolicy->x86_loader( method => 'ipxe' );
+
+        # iPXE has already replaced the firmware, so what it asks for next is the boot script
+        # of the node. The shim fetches ipxe.efi from the directory it came from, which iPXE
+        # cannot do, so a chainloaded iPXE given the shim again stops at
+        # "Failed to open ipxe.efi". The DHCPv4 path makes the same split with the iPXE
+        # feature options of client class $node-uefi; over DHCPv6 the client is always UEFI.
+        if ( $client eq 'ipxe' ) {
+            my $port = defined($dhcp6httpport) ? $dhcp6httpport : dhcp6_site_http_port();
+            return 'http://' . $uri_host . httpport_suffix($port)
+              . "/tftpboot/$policy->{scripts}/nodes/$node.uefi";
+        }
+
         # The firmware that solicits over DHCPv6 is UEFI, so the UEFI loader is the only one
         # such a client can ask for. xnba still gets no option 59.
-        #
-        # The loader this names cannot finish the boot yet. Measured on ipxe-xcat 2.0.0:
-        # the firmware fetches the shim over IPv6 and starts iPXE, and iPXE then answers
-        # "No configuration methods succeeded" on a network whose only DHCP server is
-        # DHCPv6. The option is still correct for xCAT to send, and the node fails at the
-        # same place without it, but netboot=ipxe over IPv6 needs an iPXE built with
-        # NET_PROTO_IPV6 before it can work.
-        my $loader = xCAT::DHCP::BootPolicy->x86_loader( method => 'ipxe' )->{uefi};
+        my $loader = $policy->{uefi};
         return unless $loader;
 
         # Naming a file the TFTP server does not have costs the client a timeout it cannot
@@ -4660,6 +4724,53 @@ sub dhcp6_client_duid
     return ( undef, "only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported" );
 }
 
+#---
+# =head3 dhcp6_client_duid_list
+# Descriptions: Every DUID that the DHCPv6 clients of one node send, and which client sends each.
+#               A UEFI node that chainloads solicits twice. EDK2 copies the SMBIOS UUID into its
+#               DUID-UUID in the order SMBIOS stores it, little-endian in the first three fields
+#               from SMBIOS 2.6 on. iPXE converts the same bytes to RFC 4122 order first. So the
+#               two clients send different DUIDs built from one vpd.uuid, and a reservation for
+#               one of them does not answer the other.
+# Arguments: $setting -- the duid attribute of the mac table
+#            $uuid    -- vpd.uuid
+#            $primary -- the DUID that $setting selects, which keeps the reserved address
+# Returns: an arrayref of { duid => <duid>, client => 'firmware'|'ipxe' }, the primary first.
+#          A literal DUID gives one entry: there is no UUID to derive the other order from.
+#---
+sub dhcp6_client_duid_list
+{
+    my ( $setting, $uuid, $primary ) = @_;
+
+    return [] unless $primary;
+    my %duid = (
+        firmware => kea_duid_from_uuid( $uuid, 'firmware' ),
+        ipxe     => kea_duid_from_uuid($uuid),
+    );
+    return [ { duid => $primary, client => 'firmware' } ]
+      unless grep { defined($_) && $_ eq $primary } values %duid;
+
+    my @order = ( $duid{firmware} eq $primary ) ? qw(firmware ipxe) : qw(ipxe firmware);
+    return [ map { { duid => $duid{$_}, client => $_ } } @order ];
+}
+
+#: Whether the netboot method of a node replaces the firmware with a loader that runs its own
+#: DHCPv6 client. Only such a node solicits twice, so only such a node needs a reservation for
+#: its second client. grub2 is loaded by the firmware and asks for nothing more.
+sub dhcp6_chainloads
+{
+    my ($nrent) = @_;
+
+    my $netboot = $nrent ? $nrent->{netboot} : undef;
+    return ( defined($netboot) && $netboot eq 'ipxe' ) ? 1 : 0;
+}
+
+sub dhcp6_site_http_port
+{
+    my @ports = xCAT::TableUtils->get_site_attribute('httpport');
+    return ( defined( $ports[0] ) && $ports[0] ne '' ) ? $ports[0] : '80';
+}
+
 sub dhcp6_client_duids
 {
     my ($nodes) = @_;
@@ -4678,6 +4789,7 @@ sub dhcp6_client_duids
         my ( $duid, $error, $warning ) = dhcp6_client_duid( $setting, $uuid );
         $duids{$node} = {
             duid    => $duid,
+            duids   => dhcp6_client_duid_list( $setting, $uuid, $duid ),
             uuid    => $uuid,
             error   => $error ? "The duid attribute of $node is '$setting', but $error." : undef,
             warning => $warning,
@@ -4693,6 +4805,8 @@ sub kea_reservation_matches_for_nodes
 
     my $mactab = xCAT::Table->new('mac');
     my $machash_local = $mactab ? $mactab->getNodesAttribs($nodes, ['mac']) : undef;
+    my $nrtab = xCAT::Table->new('noderes', -create => 0);
+    my $nrhash_local = $nrtab ? $nrtab->getNodesAttribs($nodes, ['netboot']) : undef;
     my $duids = dhcp6_client_duids($nodes);
     my @matches;
 
@@ -4702,8 +4816,17 @@ sub kea_reservation_matches_for_nodes
         push @matches, { 'ip-address' => $ip } if $ip;
         my $ip6 = getipaddr($node, OnlyV6 => 1);
         push @matches, { 'ip-address' => $ip6 } if $ip6;
-        my $duid = $duids->{$node}{duid};
-        push @matches, { duid => $duid } if $duid;
+        # Every DUID the node sends, not only the one that holds its address: a chainloading
+        # node has a second reservation keyed on the DUID of its second client, and a match
+        # list without it leaves that reservation behind on makedhcp -d. A node that does not
+        # chainload has no second reservation, so naming the other DUID would only widen what
+        # a delete can remove.
+        my $nrent_local = $nrhash_local && $nrhash_local->{$node} ? $nrhash_local->{$node}->[0] : undef;
+        my @clients = @{ $duids->{$node}{duids} || [] };
+        @clients = @clients ? ( $clients[0] ) : () unless dhcp6_chainloads($nrent_local);
+        foreach my $client (@clients) {
+            push @matches, { duid => $client->{duid} } if $client->{duid};
+        }
         my $macent = $machash_local && $machash_local->{$node} ? $machash_local->{$node}->[0] : undef;
         next unless $macent && $macent->{mac};
         foreach my $mace (split(/\|/, $macent->{mac})) {
