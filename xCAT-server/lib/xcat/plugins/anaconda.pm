@@ -119,6 +119,19 @@ sub _openeuler_media_info
     return { distname => "openeuler$version", arch => $general{arch} };
 }
 
+# The second line of .discinfo, or '' when it is missing.
+sub _discinfo_description
+{
+    my ($file) = @_;
+    open(my $fh, '<', $file) or return '';
+    <$fh>;
+    my $description = <$fh>;
+    close($fh);
+    return '' unless defined($description);
+    chomp($description);
+    return $description;
+}
+
 
 sub _driver_disk_marker_path
 {
@@ -2502,6 +2515,17 @@ sub copycd
     unless ($path)
     {
         $path = $defaultpath;
+    }
+    # The RVA20 and RVA23 builds of an openEuler riscv64 release have the same
+    # .treeinfo identity. Only the .discinfo description tells them apart.
+    if ($openeuler_media && -r "$path/.discinfo") {
+        my $copied = _discinfo_description("$path/.discinfo");
+        my $media  = defined($desc) ? $desc : '';
+        if (lc($copied) ne lc($media)) {
+            my $build = length($copied) ? $copied : 'no build name';
+            $callback->({ error => "$path holds openEuler media of another build ($build). Copy this media to another directory with -p.", errorcode => [1] });
+            return;
+        }
     }
     if ($::XCATSITEVALS{osimagerequired}) {
         my ($nohaveimages, $errstr) = xCAT::SvrUtils->update_tables_with_templates($distname, $arch, $path, $osdistroname, checkonly => 1);
