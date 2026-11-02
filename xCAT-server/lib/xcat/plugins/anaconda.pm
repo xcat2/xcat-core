@@ -2203,7 +2203,13 @@ sub _install_media_grub2_loader {
 
     my $image = $MEDIA_GRUB2_LOADERS{$arch};
     return unless $image;
-    my $source = "$path/EFI/BOOT/$image";
+
+    # UEFI file names are case-insensitive: openEuler ships grubriscv64.EFI.
+    opendir(my $dh, "$path/EFI/BOOT") or return;
+    my ($name) = sort grep { lc($_) eq $image } readdir($dh);
+    closedir($dh);
+    return unless defined($name);
+    my $source = "$path/EFI/BOOT/$name";
     return unless -r $source;
 
     my $tftpdir = xCAT::TableUtils->getTftpDir();
