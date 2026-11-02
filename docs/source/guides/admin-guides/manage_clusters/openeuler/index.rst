@@ -51,9 +51,10 @@ management and service nodes are outside it. The test hardware could not boot
 from the network, so firmware network boot is not qualified either. See
 :doc:`/guides/admin-guides/manage_clusters/riscv64/index`.
 
-openEuler also publishes RVA20 media for riscv64. ``copycds`` copies both
-builds of a release to the same directory, so import only the build that
-matches the nodes.
+openEuler also publishes RVA20 media for riscv64. Both builds of a release
+have the same target directory, and ``copycds`` refuses to copy one over the
+other. Import the build that matches the nodes, or copy the other build to
+another directory with ``-p``.
 
 The tested provisioning networks use IPv4 and ISC DHCP on isolated links,
 with separate upstream and downstream interfaces on service nodes. The
