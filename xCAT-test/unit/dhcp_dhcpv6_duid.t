@@ -311,11 +311,17 @@ sub isc_hosts {
 
     $DUIDTable::rows{noderes}{cn02} =
       { netboot => 'ipxe', tftpserver => '2001:db8:176::1', tftpdir => $present };
-    $DUIDTable::rows{noderes}{cn03} =
+    # cn01 and cn02 both take the firmware order, so the reservation that holds the address is
+    # the one the firmware matches and the shim is the boot file under test. cn03 takes the
+    # canonical order, which is the order iPXE sends, so its first reservation carries the boot
+    # script instead -- the ordering case below.
+    $DUIDTable::rows{noderes}{cn01} =
       { netboot => 'ipxe', tftpserver => '2001:db8:176::1', tftpdir => $absent };
 
     my $config = empty_config();
-    my %kea = map { $_->{hostname} => $_ } @{ kea_reservations( $config, 'cn02', 'cn03' ) };
+    # The second reservation of a chainloading node carries no hostname, so it is not keyed here.
+    my %kea = map { $_->{hostname} => $_ }
+      grep { defined $_->{hostname} } @{ kea_reservations( $config, 'cn02', 'cn01' ) };
 
     my ($with) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn02}{'option-data'} || [] };
     is( $with && $with->{data}, "tftp://[2001:db8:176::1]/$loader",
@@ -323,7 +329,7 @@ sub isc_hosts {
 
     # Naming a file the TFTP server does not have costs the client a timeout it cannot
     # diagnose, so no option is better than a wrong one.
-    my ($without) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn03}{'option-data'} || [] };
+    my ($without) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn01}{'option-data'} || [] };
     is( $without, undef, 'an ipxe node whose loader is not on disk gets no bootfile-url' );
 }
 
@@ -839,6 +845,103 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     isc_commands('cn01');
     ok( !-e $file || -z $file,
         'a network on an unserved interface announces nothing' );
+}
+
+# ---- A chainloading node is two DHCPv6 clients, with two DUIDs ------------------------------
+# EDK2 copies the SMBIOS UUID into its DUID-UUID in the order SMBIOS stores it, and iPXE converts
+# the same bytes to RFC 4122 order first. So a netboot=ipxe node solicits twice with two DUIDs. A
+# reservation for one of them answers the firmware and leaves iPXE with no boot file, and iPXE
+# then prints "Nothing to boot". The second client also needs the boot script, not the shim: the
+# shim loads ipxe.efi from its own directory, which iPXE cannot do.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+
+    my $present = tempdir( CLEANUP => 1 );
+    my $shim    = 'xcat/ipxe/x86_64-sb/snponly-shim.efi';
+    make_path( dirname("$present/$shim") );
+    open( my $fh, '>', "$present/$shim" ) or die "cannot write the loader: $!";
+    print {$fh} "loader\n";
+    close($fh);
+
+    # cn01 takes the firmware order, cn03 the canonical one, so the two cover both ways round.
+    foreach my $node (qw(cn01 cn03)) {
+        $DUIDTable::rows{noderes}{$node} =
+          { netboot => 'ipxe', tftpserver => '2001:db8:176::1', tftpdir => $present };
+    }
+
+    my $config = empty_config();
+    # cn02 keeps the grub2 of node_rows. It is the control, and not cn10: the firmware order of
+    # the byte-swapped vpd.uuid of cn10 is the canonical order of the vpd.uuid of cn01, so the two
+    # nodes would share a DUID here.
+    my @all = @{ kea_reservations( $config, 'cn01', 'cn03', 'cn02' ) };
+    my %url;
+    foreach my $reservation (@all) {
+        my ($option) = grep { $_->{name} eq 'bootfile-url' } @{ $reservation->{'option-data'} || [] };
+        $url{ $reservation->{duid} } = $option && $option->{data};
+    }
+    my @cn01 = grep { $_->{duid} eq $firmware or $_->{duid} eq $canonical } @all;
+    my $cn02_duid = '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ac';
+
+    my $shim_url   = "tftp://[2001:db8:176::1]/$shim";
+    my $script_url = 'http://[2001:db8:176::1]/tftpboot/xcat/ipxe/nodes/cn01.uefi';
+
+    is( scalar(@cn01), 2,
+        'an ipxe node is reserved for both of the DUIDs its two clients send' );
+    my ($first)  = grep { $_->{duid} eq $firmware } @cn01;
+    my ($second) = grep { $_->{duid} eq $canonical and !defined $_->{hostname} } @cn01;
+    is( $url{$firmware}, $shim_url,
+        'the firmware-order DUID is given the UEFI shim' );
+    my ($second_option) = grep { $_->{name} eq 'bootfile-url' } @{ $second->{'option-data'} || [] };
+    is( $second_option && $second_option->{data}, $script_url,
+        'the RFC 4122-order DUID, which is the one iPXE sends, is given the boot script' );
+
+    # Kea refuses a second reservation for one address, and _reservation_matches treats a shared
+    # hostname as the same reservation, so the second entry carries neither.
+    is( $second->{'ip-addresses'}, undef, 'the second client reserves no address' );
+    is( $second->{hostname},       undef, '... and no hostname' );
+    is_deeply( $first->{'ip-addresses'}, [ $address{cn01} ],
+        'the address stays on the reservation of the first client' );
+    is( $first->{hostname}, 'cn01', '... with the hostname' );
+
+    # mac.duid names the client that keeps the address. cn03 asks for the canonical order, so its
+    # iPXE entry holds the address and the firmware entry is the one without it.
+    my $cn03_canonical = '00:04:12:34:56:78:12:34:4b:cd:98:76:12:34:56:78:90:ad';
+    my $cn03_firmware  = '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ad';
+    my ($cn03_addressed) = grep { defined $_->{hostname} && $_->{hostname} eq 'cn03' } @all;
+    is( $cn03_addressed->{duid}, $cn03_canonical,
+        'mac.duid still decides which client keeps the reserved address' );
+    is( $url{$cn03_firmware}, $shim_url,
+        '... and the other client is reserved for as well' );
+
+    # A grub2 node is loaded by the firmware and asks for nothing more, so a second reservation
+    # would be an entry no client matches.
+    is( scalar( grep { defined $_->{hostname} && $_->{hostname} eq 'cn02' } @all ), 1,
+        'a grub2 node keeps one reservation' );
+    is( scalar( grep { !defined $_->{hostname} } @all ), 2,
+        'and only the two ipxe nodes add one' );
+
+    # makedhcp -d removes a reservation by what it is keyed on, so a delete that names one DUID
+    # leaves the other entry behind.
+    my %matched = map { ( $_->{duid} || '' ) => 1 }
+      @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['cn01'] ) };
+    ok( $matched{$firmware} && $matched{$canonical},
+        'makedhcp -d of an ipxe node names both of its DUIDs' );
+    my %grub2 = map { ( $_->{duid} || '' ) => 1 }
+      @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['cn02'] ) };
+    is_deeply( [ sort grep { length } keys %grub2 ], [$cn02_duid],
+        'and of a grub2 node names only the DUID it reserved' );
+
+    # ISC DHCP gives one address to one host, so the second client is a host of its own there too.
+    my $sessions = isc_commands( 'cn01', 'cn02' );
+    my $hosts = isc_hosts( $sessions->[1] // '' );
+    is( $hosts->{'cn01-ipxe'}, $canonical,
+        'ISC: the second client of an ipxe node is a host keyed on the DUID iPXE sends' );
+    is( $hosts->{cn01}, $firmware, '... beside the host of the firmware' );
+    is( $hosts->{'cn02-ipxe'}, undef, 'ISC: a grub2 node has one host' );
+    my ($statements) = ( $sessions->[1] // '' ) =~
+      /^set name = "cn01-ipxe"\nset dhcp-client-identifier = \S+\nset statements = "(.*)";\ncreate$/m;
+    is( $statements, 'option dhcp6.bootfile-url \\"' . $script_url . '\\";',
+        'ISC: that host is given the boot script' );
 }
 
 done_testing();
