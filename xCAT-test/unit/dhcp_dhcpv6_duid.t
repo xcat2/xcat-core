@@ -1,7 +1,11 @@
 #!/usr/bin/env perl
 # The DHCPv6 client identifier that makedhcp reserves the IPv6 address of a node for. mac.duid selects
 # it: firmware (the default) is the DUID-UUID that EDK2 firmware sends, canonical is vpd.uuid in RFC 4122
-# byte order, and any other value is the DUID itself. ISC DHCP and Kea must build the same one.
+# byte order, ll is the DUID-LL built from the MAC, and any other value is the DUID itself. ISC DHCP and
+# Kea must build the same one.
+#
+# A ppc64le node takes the DUID-LL with no attribute set, because SLOF sends one and sends no UUID at
+# all, so a DUID-UUID reservation can never match it.
 use strict;
 use warnings;
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
@@ -85,10 +89,17 @@ my $nil = '00000000-0000-0000-0000-000000000000';
 # that the operating system reports. A firmware-order DUID made from it is the canonical order of
 # $uuid, which no client sends.
 my $swapped = '78563412-3412-cd4b-9876-1234567890ab';
-my $invalid   = "but only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported.";
+my $invalid   = "but only firmware, canonical, ll, or a DUID of colon-separated hexadecimal octets is supported.";
+# The DUID-LL that SLOF and the ieee1275 grub2 both build from the MAC of the node: DUID type 3 and
+# hardware type 1, then the address. The MACs are asserted below, so these values are checkable.
+my $ll_cn11 = '00:03:00:01:02:00:00:00:01:2b';
+my $ll_cn13 = '00:03:00:01:02:00:00:00:01:2d';
+my $ll_cn14 = '00:03:00:01:02:00:00:00:01:2e';
+my $ll_cn15 = '00:03:00:01:02:00:00:00:01:2f';
 
-# The node, its mac.duid, its vpd.uuid, and the DUID that its reservation must match: undef when the
-# node has no DUID, and an error when mac.duid is not valid.
+# The node, its mac.duid, its vpd.uuid, the DUID that its reservation must match, a label, and the
+# nodetype.arch of the node. The DUID is undef when the node has no DUID, and an error when mac.duid is
+# not valid. The arch defaults to x86_64.
 my @cases = (
     [ 'cn01', undef,          $uuid,                                    $firmware, 'no duid gives the firmware order' ],
     [ 'cn02', ' FIRMWARE ',   '12345678-1234-4bcd-9876-1234567890ac',   '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ac', 'firmware in any case and spacing' ],
@@ -100,11 +111,25 @@ my @cases = (
     [ 'cn08', 'canonical',    'not-a-uuid',                             undef,     'a malformed vpd.uuid gives no DUID' ],
     [ 'cn09', undef,          $nil,                                     undef,     'the nil vpd.uuid gives no DUID' ],
     [ 'cn10', undef,          $swapped,                                 $canonical, 'a byte-swapped vpd.uuid still gives its DUID' ],
+    # SLOF sends 00:03:00:01:<mac> and never a UUID, so a DUID-UUID reservation cannot match a
+    # ppc64le node and it was never offered a boot file.
+    [ 'cn11', undef,          $uuid,                                    $ll_cn11,  'a ppc64le node takes the DUID-LL its firmware sends', 'ppc64le' ],
+    [ 'cn12', 'firmware',     '12345678-1234-4bcd-9876-1234567890b1',   '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:b1', 'an explicit firmware order is still honoured on ppc64le', 'ppc64le' ],
+    [ 'cn13', 'll',           $uuid,                                    $ll_cn13,  'll selects the DUID-LL whatever the architecture' ],
+    # A DUID-LL needs no UUID, which is the whole point: vpd.uuid is not read at all.
+    [ 'cn14', undef,          undef,                                    $ll_cn14,  'a ppc64le node with no vpd.uuid still gets a DUID', 'ppc64le' ],
+    [ 'cn15', undef,          $nil,                                     $ll_cn15,  'and the nil vpd.uuid does not stop one either', 'ppc64le' ],
 );
 my %case = map { $_->[0] => $_ } @cases;
 my @nodes = map { $_->[0] } @cases;
 my %address = map { $nodes[$_] => sprintf( '2001:db8:176::%x', 0x21 + $_ ) } 0 .. $#nodes;
 my %mac     = map { $nodes[$_] => sprintf( '02:00:00:00:01:%02x', 0x21 + $_ ) } 0 .. $#nodes;
+# The DUID-LL cases above name the identifier in full, so the MAC each one is built from is asserted
+# rather than derived twice.
+is( $mac{cn11}, '02:00:00:00:01:2b', 'the MAC that the first DUID-LL case is built from' );
+is( $mac{cn13}, '02:00:00:00:01:2d', 'the MAC that the explicit-ll case is built from' );
+is( $mac{cn14}, '02:00:00:00:01:2e', 'the MAC that the no-uuid case is built from' );
+is( $mac{cn15}, '02:00:00:00:01:2f', 'the MAC that the nil-uuid case is built from' );
 
 sub node_rows {
     my (%duid) = @_;
@@ -112,6 +137,8 @@ sub node_rows {
         noderes => { map { $_ => { netboot => 'grub2', tftpserver => '2001:db8:176::1' } } @nodes },
         mac     => { map { $_ => { mac => $mac{$_}, ( defined $duid{$_} ? ( duid => $duid{$_} ) : () ) } } @nodes },
         vpd     => { map { $_ => ( defined $case{$_}[2] ? { uuid => $case{$_}[2] } : {} ) } @nodes },
+        # The architecture decides which identifier the firmware of the node sends.
+        nodetype => { map { $_ => { arch => ( $case{$_}[5] || 'x86_64' ) } } @nodes },
     );
 }
 my %settings = map { $_->[0] => $_->[1] } @cases;
