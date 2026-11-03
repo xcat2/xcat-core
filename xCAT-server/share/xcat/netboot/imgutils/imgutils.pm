@@ -189,6 +189,53 @@ sub mark_uftp_receiver {
     return !$error;
 }
 
+# The initial ramdisk configures $prinic, and bringing it up again breaks an NFS-based boot.
+# EL10 reads no ifcfg files, so its images get keyfiles.
+sub write_nic_profiles {
+    my ($rootimg_dir, $osver, $prinic, $othernics) = @_;
+    my @othernics = grep { length } split(/,/, $othernics // '');
+    my $scripts = "$rootimg_dir/etc/sysconfig/network-scripts";
+    my $keyfiles = "$rootimg_dir/etc/NetworkManager/system-connections";
+    my $major = el_major_version($osver);
+    my %profiles;
+    if (defined($major) && $major >= 10) {
+        if (-d $keyfiles) {
+            # The keyfiles of an earlier build can name interfaces that this build no longer requests.
+            opendir(my $dh, $keyfiles) or die("Error: cannot read $keyfiles: $!\n");
+            foreach my $old (grep { /^xcat-genimage-.*\.nmconnection$/ } readdir($dh)) {
+                unlink("$keyfiles/$old") or die("Error: cannot remove $keyfiles/$old: $!\n");
+            }
+            closedir($dh);
+            $profiles{"$keyfiles/xcat-genimage-$_.nmconnection"} =
+              "[connection]\nid=$_\ntype=ethernet\ninterface-name=$_\n\n[ipv4]\nmethod=auto\n" for @othernics;
+        }
+    } elsif (-d $scripts) {
+        $profiles{"$scripts/ifcfg-$prinic"} = "ONBOOT=no\nBOOTPROTO=dhcp\nDEVICE=$prinic\n" if $prinic;
+        $profiles{"$scripts/ifcfg-$_"} = "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n" for @othernics;
+    }
+    foreach my $file (sort keys %profiles) {
+        # NetworkManager ignores a keyfile that other users can read.
+        my $mode = $file =~ /\.nmconnection$/ ? oct('600') : oct('644');
+        my $fh;
+        open($fh, '>', $file) && chmod($mode, $file) && print($fh $profiles{$file}) && close($fh)
+          or die("Error: cannot write $file: $!\n");
+    }
+    return;
+}
+
+# NetworkManager otherwise makes a DHCP profile for every Ethernet port without one.
+sub disable_auto_profiles {
+    my ($rootimg_dir, $osver) = @_;
+    my $major = el_major_version($osver);
+    my $confdir = "$rootimg_dir/etc/NetworkManager/conf.d";
+    return unless defined($major) && $major >= 10 && -d $confdir;
+    my $file = "$confdir/xcat.conf";
+    my $fh;
+    open($fh, '>', $file) && print($fh "[main]\nno-auto-default=*\n") && close($fh)
+      or die("Error: cannot write $file: $!\n");
+    return;
+}
+
 sub varsubinline{
     my $line=shift;
     my $refvardict=shift;
