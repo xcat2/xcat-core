@@ -16,6 +16,7 @@ use xCAT::BootUtils qw(find_genesis_boot_files);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
+use xCAT::ConsolePolicy;
 use xCAT::SvrUtils;
 use xCAT::UFTP;
 use xCAT::Yum;
@@ -1076,16 +1077,8 @@ sub mknetboot
                 xCAT::MsgUtils->report_node_error($callback, $node,"serialport defined, but no serialspeed for $node in nodehm table");
                 next;
             }
-            if ($arch =~ /ppc64/i) {
-
-                # For IBM Power machines, either ppc64 or ppc64le (ppc64el),
-                # both the physical serial port or virtual serial port appeared
-                # in PowerVM LPAR or PowerKVM guest use device /dev/hvc0 or
-                # /dev/hvc1 instead of /dev/ttyS0 or /dev/ttyS1
-                $kcmdline .= " console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
-            } else {
-                $kcmdline .= " console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
-            }
+            $kcmdline .= " " . xCAT::ConsolePolicy::kernel_console_arguments(
+                $arch, $sent->{serialport}, $sent->{serialspeed});
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {
                 $kcmdline .= "n8r";
@@ -1822,16 +1815,8 @@ sub mkinstall
                     $kcmdline .= " inst.cmdline ";
                 }
 
-                if ($arch =~ /ppc64/i) {
-
-                    # For IBM Power machines, either ppc64 or ppc64le (ppc64el),
-                    # both the physical serial port or virtual serial port appeared
-                    # in PowerVM LPAR or PowerKVM guest use device /dev/hvc0 or
-                    # /dev/hvc1 instead of /dev/ttyS0 or /dev/ttyS1
-                    $kcmdline .= " console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
-                } else {
-                    $kcmdline .= " console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
-                }
+                $kcmdline .= " " . xCAT::ConsolePolicy::kernel_console_arguments(
+                    $arch, $sent->{serialport}, $sent->{serialspeed});
 
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/) {
                     $kcmdline .= "n8r";
@@ -2234,10 +2219,8 @@ sub mksysclone
 
                 #go cmdline if serial console is requested, the shiny ansi is just impractical
 
-                $kcmdline .=
-                  " cmdline console=tty0 console=ttyS"
-                  . $sent->{serialport} . ","
-                  . $sent->{serialspeed};
+                $kcmdline .= " cmdline " . xCAT::ConsolePolicy::kernel_console_arguments(
+                    $arch, $sent->{serialport}, $sent->{serialspeed});
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)
                 {
                     $kcmdline .= "n8r";

@@ -4,6 +4,7 @@ use Digest::SHA ();
 use File::Temp qw(tempdir tempfile);
 use xCAT::Utils;
 use xCAT::HTTPUtils qw(httpport_suffix);
+use xCAT::ConsolePolicy;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
 use xCAT::SecureBoot;
@@ -779,11 +780,8 @@ sub process_request {
     if ($arch eq 's390x') {
         $consolecmdline = 'console=ttysclp0';
     } elsif (defined($serialport) and $serialspeed) {
-        if ($arch =~ /ppc/) {
-            $consolecmdline = "console=tty0 console=hvc$serialport,$serialspeed";
-        } else {
-            $consolecmdline = "console=tty0 console=ttyS$serialport,$serialspeed";
-        }
+        $consolecmdline = xCAT::ConsolePolicy::kernel_console_arguments(
+            $arch, $serialport, $serialspeed);
         if ($serialflow =~ /cts/ or $serialflow =~ /hard/) {
             $consolecmdline .= "n8r";
         }
