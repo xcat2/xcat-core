@@ -394,6 +394,12 @@ if [ -z $STATEMNT ]; then
         cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
         [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
     done
+    # NetworkManager in the root reuses the connection of the initrd and reads its lease by the same name.
+    for lf in /var/lib/NetworkManager/*.lease; do
+        [ -f "$lf" ] || continue
+        mkdir -p "$NEWROOT/var/lib/NetworkManager"
+        cp "$lf" "$NEWROOT/var/lib/NetworkManager/"
+    done
 
     ifname="$(getarg ifname=)"
     netdev="$(getarg netdev=)"
