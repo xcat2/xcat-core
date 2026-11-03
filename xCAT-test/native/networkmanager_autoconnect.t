@@ -2,15 +2,16 @@
 use strict;
 use warnings;
 
-use File::Path qw(make_path);
 use File::Slurper qw(read_binary write_binary);
 use File::Spec;
-use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
+
+plan skip_all => 'scriptlib execution requires Linux namespaces' unless $^O eq 'linux';
 
 my $scriptlib = repo_path(
     File::Spec->catfile(
@@ -19,17 +20,14 @@ my $scriptlib = repo_path(
 );
 -r $scriptlib or die("$scriptlib is required");
 
-is( system( 'bash', '-n', $scriptlib ), 0,
+my $root = sandbox_root();
+is( ( sandbox_run( $root, { read_only => { $scriptlib => '/scriptlib' } },
+            '/bin/bash', '-n', '/scriptlib' ) )[0], 0,
     'the install script library has valid Bash syntax' );
 
-my $tmpdir = tempdir( CLEANUP => 1 );
-my $test_bin = File::Spec->catdir( $tmpdir, 'bin' );
-my $empty_bin = File::Spec->catdir( $tmpdir, 'empty-bin' );
-make_path( $test_bin, $empty_bin );
-
-my $nmcli_log = File::Spec->catfile( $tmpdir, 'nmcli.log' );
-my $message_log = File::Spec->catfile( $tmpdir, 'messages.log' );
-my $fake_nmcli = File::Spec->catfile( $test_bin, 'nmcli' );
+my $nmcli_log = File::Spec->catfile( $root, 'nmcli.log' );
+my $message_log = File::Spec->catfile( $root, 'messages.log' );
+my $fake_nmcli = File::Spec->catfile( $root, 'bin', 'nmcli' );
 write_binary( $fake_nmcli, <<'SH' );
 #!/bin/sh
 {
@@ -47,8 +45,7 @@ fi
 SH
 chmod 0755, $fake_nmcli or die "Unable to make $fake_nmcli executable: $!";
 
-my $driver = File::Spec->catfile( $tmpdir, 'run-helper' );
-write_binary( $driver, <<'SH' );
+write_binary( File::Spec->catfile( $root, 'run-helper' ), <<'SH' );
 #!/bin/bash
 msgutil_r() {
     {
@@ -62,7 +59,7 @@ msgutil_r() {
 . "$XCAT_TEST_SCRIPTLIB"
 xcat_enable_active_nm_autoconnect "$@"
 SH
-chmod 0755, $driver or die "Unable to make $driver executable: $!";
+my $driver = '/fixture/run-helper';
 
 my $connections = join( "\n",
     'primary uplink:activated', 'backup:deactivated',
@@ -170,15 +167,19 @@ sub run_program {
     write_binary( $nmcli_log, '' );
     write_binary( $message_log, '' );
 
-    local %ENV = %ENV;
-    $ENV{PATH} = $has_nmcli ? "$test_bin:$ENV{PATH}" : $empty_bin;
-    $ENV{XCATDEBUGMODE} = $options{debug} // '0';
-    $ENV{MASTER_IP} = '192.0.2.10';
-    $ENV{XCAT_TEST_MESSAGE_LOG} = $message_log;
-    $ENV{XCAT_TEST_NMCLI_LOG} = $nmcli_log;
-    $ENV{XCAT_TEST_NMCLI_OUTPUT} = $options{connections} // '';
-    $ENV{XCAT_TEST_SCRIPTLIB} = $scriptlib;
+    my %env = (
+        XCATDEBUGMODE          => $options{debug} // '0',
+        MASTER_IP              => '192.0.2.10',
+        XCAT_TEST_MESSAGE_LOG  => '/fixture/messages.log',
+        XCAT_TEST_NMCLI_LOG    => '/fixture/nmcli.log',
+        XCAT_TEST_NMCLI_OUTPUT => $options{connections} // '',
+        XCAT_TEST_SCRIPTLIB    => '/scriptlib',
+    );
+    $env{PATH} = '/fixture/empty-bin' unless $has_nmcli;
 
-    my $status = system( '/bin/bash', $program, @{$arguments} );
-    return $status == -1 ? 255 : $status >> 8;
+    my ( $status, $output ) = sandbox_run( $root,
+        { read_only => { $scriptlib => '/scriptlib' }, env => \%env },
+        '/bin/bash', $program, @{$arguments} );
+    diag($output) if $status;
+    return $status;
 }

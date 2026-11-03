@@ -247,6 +247,14 @@ answers what the store answers for each path it measures.
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
 
+`networkmanager_autoconnect.t` runs the NetworkManager helper of the install
+script library under Bash, with an `nmcli` command fixture, in a private
+filesystem. It needs Bubblewrap and unprivileged user namespaces:
+
+```
+prove xCAT-test/native/networkmanager_autoconnect.t
+```
+
 ## FIPS policy and discovery keys
 
 Run the unchanged statelite and Cumulus callers in private filesystems:
