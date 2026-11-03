@@ -4701,9 +4701,42 @@ sub kea_duid_from_uuid
     return '00:04:' . join(':', @octets);
 }
 
+#---
+# =head3 kea_duid_ll_from_mac
+# Descriptions: The RFC 3315 DUID-LL that a client builds from the address of its own interface:
+#               type 0003, hardware type 0001 for Ethernet, then the MAC. SLOF sends this one, and
+#               the grub2 ieee1275 network stack builds the same one from the same interface, so a
+#               single reservation covers both stages of a ppc64le netboot.
+# Arguments: $mac -- the mac attribute of the mac table
+# Returns: the DUID, or undef when the value holds no usable address. The provisioning NIC is the
+#          first entry, which is the interface that netboots.
+#---
+sub kea_duid_ll_from_mac
+{
+    my ($mac) = @_;
+
+    return unless defined($mac) && length($mac);
+    ( $mac ) = split( /\|/, $mac );
+    ( $mac ) = split( /!/, $mac );
+    $mac = kea_normalize_mac($mac);
+    return unless $mac;
+    return '00:03:00:01:' . $mac;
+}
+
+#: Whether the firmware of an architecture identifies itself by its link-layer address instead of
+#: by a UUID. SLOF reports no UUID at all, so a DUID-UUID reservation can never match a ppc64le
+#: node however the UUID is ordered. EDK2 and its AAVMF build, on x86_64 and on aarch64, send the
+#: UUID.
+sub dhcp6_firmware_duid_is_link_layer
+{
+    my ($arch) = @_;
+
+    return ( defined($arch) && $arch =~ /\Appc/i ) ? 1 : 0;
+}
+
 sub dhcp6_client_duid
 {
-    my ( $setting, $uuid ) = @_;
+    my ( $setting, $uuid, $mac, $arch ) = @_;
 
     my $choice = lc( defined($setting) ? $setting : '' );
     $choice =~ s/^\s+|\s+$//g;
@@ -4711,6 +4744,9 @@ sub dhcp6_client_duid
     # The warning is reported only when no duid attribute is set. Setting one is the remedy it
     # asks for, so firmware and canonical must silence it as a literal DUID already does.
     if ( $choice eq '' ) {
+        # The warning below is about the order of vpd.uuid, which this firmware does not read.
+        return ( kea_duid_ll_from_mac($mac), undef, undef )
+          if dhcp6_firmware_duid_is_link_layer($arch);
         my $duid = kea_duid_from_uuid( $uuid, 'firmware' );
         return ( $duid, undef, dhcp6_uuid_order_warning($uuid) );
     }
@@ -4720,8 +4756,11 @@ sub dhcp6_client_duid
     if ( $choice eq 'canonical' ) {
         return ( kea_duid_from_uuid($uuid), undef, undef );
     }
+    if ( $choice eq 'll' ) {
+        return ( kea_duid_ll_from_mac($mac), undef, undef );
+    }
     return $choice if $choice =~ /\A[0-9a-f]{2}(?::[0-9a-f]{2}){2,129}\z/;
-    return ( undef, "only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported" );
+    return ( undef, "only firmware, canonical, ll, or a DUID of colon-separated hexadecimal octets is supported" );
 }
 
 #---
@@ -4736,7 +4775,8 @@ sub dhcp6_client_duid
 #            $uuid    -- vpd.uuid
 #            $primary -- the DUID that $setting selects, which keeps the reserved address
 # Returns: an arrayref of { duid => <duid>, client => 'firmware'|'ipxe' }, the primary first.
-#          A literal DUID gives one entry: there is no UUID to derive the other order from.
+#          A literal DUID and a DUID-LL give one entry: neither is built from the UUID, so there
+#          is no second order to derive.
 #---
 sub dhcp6_client_duid_list
 {
@@ -4777,16 +4817,21 @@ sub dhcp6_client_duids
 
     my $mactab = xCAT::Table->new('mac');
     my $vpdtab = xCAT::Table->new('vpd', -create => 0);
-    my $settings = $mactab ? $mactab->getNodesAttribs($nodes, ['duid']) : undef;
+    my $nttab  = xCAT::Table->new('nodetype', -create => 0);
+    my $settings = $mactab ? $mactab->getNodesAttribs($nodes, [ 'duid', 'mac' ]) : undef;
     my $uuids    = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
+    # The architecture, because it decides which identifier the firmware of the node sends.
+    my $arches   = $nttab ? $nttab->getNodesAttribs($nodes, ['arch']) : undef;
 
     my %duids;
     foreach my $node (@$nodes) {
         my $macent  = $settings && $settings->{$node} ? $settings->{$node}->[0] : undef;
         my $vpdent  = $uuids && $uuids->{$node} ? $uuids->{$node}->[0] : undef;
+        my $ntent   = $arches && $arches->{$node} ? $arches->{$node}->[0] : undef;
         my $setting = $macent ? $macent->{duid} : undef;
         my $uuid    = $vpdent ? $vpdent->{uuid} : undef;
-        my ( $duid, $error, $warning ) = dhcp6_client_duid( $setting, $uuid );
+        my ( $duid, $error, $warning ) = dhcp6_client_duid(
+            $setting, $uuid, ( $macent ? $macent->{mac} : undef ), ( $ntent ? $ntent->{arch} : undef ) );
         $duids{$node} = {
             duid    => $duid,
             duids   => dhcp6_client_duid_list( $setting, $uuid, $duid ),
