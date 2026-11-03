@@ -72,6 +72,9 @@ jobs:
       - name: Exercise the install script library
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/networkmanager_autoconnect.t
+      - name: Exercise the DHCP server detector
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/detect_dhcpd_tcpdump_lookup.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl

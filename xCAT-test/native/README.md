@@ -255,6 +255,16 @@ filesystem. It needs Bubblewrap and unprivileged user namespaces:
 prove xCAT-test/native/networkmanager_autoconnect.t
 ```
 
+`detect_dhcpd_tcpdump_lookup.t` runs the DHCP server detectors of xCAT-server
+and xCAT-probe with a `tcpdump` command fixture. The capture cases need a
+default route on the loopback interface, so they run in mount and network
+namespaces from `unshare` instead of Bubblewrap. They need `unshare`, `mount`,
+`ip` and a writable `/var/tmp`, and skip without a private network namespace:
+
+```
+prove xCAT-test/native/detect_dhcpd_tcpdump_lookup.t
+```
+
 ## FIPS policy and discovery keys
 
 Run the unchanged statelite and Cumulus callers in private filesystems:
