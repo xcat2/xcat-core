@@ -303,7 +303,8 @@ On Debian or Ubuntu, install `bubblewrap`, `debhelper`, `devscripts`, `fakeroot`
 prove xCAT-test/native/xcatd_debian_lifecycle.t \
       xCAT-test/native/xcatd_restart_callers.t \
       xCAT-test/native/apache_package_lifecycle.t \
-      xCAT-test/native/package_upgrade_logging.t
+      xCAT-test/native/package_upgrade_logging.t \
+      xCAT-test/native/xcatd_debian_init_state.t
 ```
 
 On EL8 or EL10, install `bubblewrap`, `rpm-build`, `systemd`, `chkconfig`,
