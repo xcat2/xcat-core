@@ -118,6 +118,19 @@ sub disable_vendor_repositories {
     }
 }
 
+# kdump.service fails without dump memory, which a stateless command line
+# reserves only with crashkernel= or, on POWER, fadump=.
+sub skip_kdump_without_dump_memory {
+    my ($rootimg_dir) = @_;
+    return unless -e "$rootimg_dir/usr/lib/systemd/system/kdump.service";
+    my $dropin_dir = "$rootimg_dir/etc/systemd/system/kdump.service.d";
+    mkpath($dropin_dir);
+    open(my $fh, '>', "$dropin_dir/xcat-dump-memory.conf")
+      or die "Cannot write $dropin_dir/xcat-dump-memory.conf: $!\n";
+    print $fh "[Unit]\nConditionKernelCommandLine=|crashkernel\nConditionKernelCommandLine=|fadump\n";
+    close($fh) or die "Cannot write $dropin_dir/xcat-dump-memory.conf: $!\n";
+}
+
 sub publish_boot_files {
     my ($native_bootdir, $destdir, $initrd, $mode) = @_;
     move($initrd, "$native_bootdir/initrd-$mode.gz")

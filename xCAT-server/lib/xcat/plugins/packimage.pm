@@ -201,7 +201,7 @@ sub process_request {
     my $is_openeuler = $osver =~ /^openeuler/;
     if ($is_openeuler) {
         unless (defined(xCAT::Utils::normalize_openeuler_version(substr($osver, 9)))
-            && $arch =~ /^(?:x86_64|ppc64le)$/) {
+            && $arch =~ /^(?:x86_64|ppc64le|riscv64)$/) {
             $callback->({ error => ["Unsupported openEuler image release or architecture: $osver $arch"], errorcode => [1] });
             return 1;
         }

@@ -2,7 +2,8 @@
 use strict;
 use warnings;
 
-use File::Slurper qw(write_text);
+use File::Path qw(make_path);
+use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
 use FindBin;
 use Storable qw(dclone);
@@ -51,6 +52,7 @@ sub media_tree {
 for my $case (
     ['24.03-ppc64le', 'openeuler24.03', 'ppc64le'],
     ['24.03sp4-x86_64', 'openeuler24.03sp4', 'x86_64'],
+    ['24.03sp3-riscv64', 'openeuler24.03sp3', 'riscv64'],
 ) {
     my ($fixture, $os, $arch) = @$case;
     my $responses = inspect_media(repo_path("xCAT-test/fixtures/openeuler-media/$fixture"));
@@ -140,6 +142,71 @@ ok(!xCAT_plugin::anaconda::using_dracut('openeuler24.09'), 'a non-LTS token is n
         'metadata-only media cannot be imported');
     is_deeply($responses[0]{errorcode}, [1], 'missing payload reports failure');
     is_deeply($request, $original, 'missing payload is rejected before claiming or changing media');
+}
+
+# Complete riscv64 media whose .discinfo names a build, as the RVA23 DVD does.
+sub build_media {
+    my ($description, $arch) = @_;
+    $arch ||= 'riscv64';
+    my $root = media_tree('24.03-LTS-SP3', $arch, '', $arch);
+    write_text("$root/.discinfo", "1234567890\n$description\n$arch\n");
+    make_path("$root/images/pxeboot", "$root/repodata");
+    write_text("$root/$_", "payload\n")
+      for qw(images/pxeboot/vmlinuz images/pxeboot/initrd.img images/install.img repodata/repomd.xml);
+    return $root;
+}
+
+# Copies media to $target. The table stub stops a copy that passes the build
+# check at its first table, before anything is written.
+sub copy_media {
+    my ($media, $target) = @_;
+    my $request = { command => ['copycd'], arg => ['-m', $media, '-p', $target] };
+    my (@responses, $output, $stopped);
+    {
+        open(my $stdout, '>', \$output) or die "open scalar output: $!";
+        local *STDOUT = $stdout;
+        no warnings 'redefine';
+        local *xCAT::Table::new = sub {
+            my ($class, $table, @args) = @_;
+            die "copy reached table $table\n" if $table ne 'site' || @args;
+            return bless {}, 'Local::OpenEulerSite';
+        };
+        local *xCAT::TableUtils::get_site_attribute = sub { return '/unused-install-root'; };
+        eval {
+            xCAT_plugin::anaconda::process_request($request, sub { push @responses, @_ }, sub {
+                die "copy dispatched a request\n";
+            });
+            1;
+        } or $stopped = $@;
+    }
+    return (\@responses, $stopped);
+}
+
+sub copied_target {
+    my ($description) = @_;
+    my $target = tempdir(CLEANUP => 1);
+    write_text("$target/.discinfo", "1234567800\n$description\nriscv64\n") if defined $description;
+    return $target;
+}
+
+for my $case (['RVA23', '', 'RVA23'], ['', 'RVA23', 'no build name']) {
+    my ($copied, $media, $named) = @$case;
+    my $target = copied_target($copied);
+    my ($responses, $stopped) = copy_media(build_media($media), $target);
+    like($responses->[0]{error} || '', qr/\Q$target\E holds openEuler media of another build \(\Q$named\E\)/,
+        "media of build '$media' are refused over a copy of build '$copied'");
+    is_deeply($responses->[0]{errorcode}, [1], 'the refusal reports failure');
+    is($stopped, undef, 'the refusal comes before any table is opened');
+    is(read_text("$target/.discinfo"), "1234567800\n$copied\nriscv64\n", 'the existing copy is unchanged');
+}
+
+for my $case (['RVA23', 'RVA23', 'riscv64'], ['rva23', 'RVA23', 'riscv64'], [undef, 'RVA23', 'riscv64'],
+              ['', '', 'x86_64']) {
+    my ($copied, $media, $arch) = @$case;
+    my $label = defined $copied ? "a copy of build '$copied'" : 'an empty target';
+    my ($responses, $stopped) = copy_media(build_media($media, $arch), copied_target($copied));
+    ok(!grep({ ($_->{error} // '') =~ /another build/ } @$responses), "$arch media of build '$media' copy over $label");
+    is($stopped, "copy reached table osdistro\n", 'the copy continues past the build check');
 }
 
 done_testing();

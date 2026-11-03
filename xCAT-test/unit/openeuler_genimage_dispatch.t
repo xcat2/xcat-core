@@ -55,6 +55,12 @@ for my $os (qw(openeuler20.03sp4 openeuler22.03sp4 openeuler24.03sp1 openeuler24
     like($out, qr{netboot/openeuler; ./genimage -a ppc64le -o openeuler24\.03 -p compute\n},
         'POWER keeps its architecture and GA release');
 }
+{
+    my ($responses, $out) = dispatch('openeuler24.03sp3', 'riscv64');
+    ok(!grep({ $_->{error} } @$responses), 'riscv64 resolves the native image builder');
+    like($out, qr{netboot/openeuler; ./genimage -a riscv64 -o openeuler24\.03sp3 -p compute\n},
+        'riscv64 keeps its architecture and SP release');
+}
 for my $case (['openeuler25.03', 'x86_64'], ['openeuler24.03sp0', 'x86_64'],
     ['openeuler', 'x86_64'], ['openeuler24.03', 'aarch64']) {
     my ($responses, $out) = dispatch(@$case);

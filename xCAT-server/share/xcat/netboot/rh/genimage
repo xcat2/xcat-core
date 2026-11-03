@@ -821,6 +821,7 @@ xdie("Error: failed to generate the initial ramdisk: native image has no dracut 
   if $native_bootdir && !$dracutmode;
 
 imgutils::disable_vendor_repositories($rootimg_dir);
+imgutils::skip_kdump_without_dump_memory($rootimg_dir);
 
 #-- run postinstall script
 unless ($imagename) {
