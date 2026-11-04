@@ -3219,7 +3219,7 @@ sub kea_subnet6_intent
     if ($domain) {
         push @option_data, { name => 'domain-search', data => $domain };
     }
-    my $nameservers = kea_ipv6_nameservers(
+    my $nameservers = dhcp6_resolvers_for_network(
         $net,
         $entry->{nameservers} || $sitenameservers
     );
@@ -3264,6 +3264,71 @@ sub kea_ipv6_nameservers
     }
 
     return @resolved ? join(', ', @resolved) : undef;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 dhcp6_resolvers_for_network
+
+    Descriptions:
+        The DNS servers to advertise on one IPv6 network.
+    Arguments:
+        $network     - the networks table net value, with or without a prefix length
+        $nameservers - the networks or site nameservers value
+    Returns:
+        A comma separated list of IPv6 addresses, or undef when none is available.
+    Comments:
+        site.nameservers holds IPv4 addresses on a normal cluster, so an IPv6-only node was
+        given no resolver at all. The management node answers DNS on the provisioning
+        network, which is the address <xcatmaster> names for IPv4. Returns undef rather than
+        a guess when the management node has no address on the network: a resolver that
+        never answers costs the node its own DNS timeout.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub dhcp6_resolvers_for_network
+{
+    my ( $network, $nameservers ) = @_;
+
+    my $resolved = kea_ipv6_nameservers( $network, $nameservers );
+    return $resolved if defined($resolved) && length($resolved);
+
+    my $peer = defined($network) ? $network : '';
+    $peer =~ s{/.*$}{};
+    return unless length($peer);
+
+    my $fallback = xCAT::NetworkUtils->ipv6_server_for_node( $peer, '<xcatmaster>' );
+    return unless $fallback && $fallback =~ /:/;
+    return $fallback;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isc_dhcp6_nameserver_statement
+
+    Descriptions:
+        The ISC dhcpd statement that gives an IPv6 node its resolver.
+    Arguments:
+        $network     - the networks table net value
+        $nameservers - the networks or site nameservers value
+    Returns:
+        One dhcpd statement, or undef when no resolver is available.
+    Comments:
+        RFC 3646 names the option dhcp6.name-servers. addnet6 wrote "nameservers <list>;",
+        which dhcpd does not accept, and dhcpd refuses the whole file on an unknown
+        statement.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isc_dhcp6_nameserver_statement
+{
+    my ( $network, $nameservers ) = @_;
+
+    my $resolvers = dhcp6_resolvers_for_network( $network, $nameservers );
+    return unless defined($resolvers) && length($resolvers);
+    return "option dhcp6.name-servers $resolvers;";
 }
 
 sub kea_resolve_ddns_target
@@ -5260,7 +5325,7 @@ sub configure_router_advertisements
 
     my $nettab = xCAT::Table->new('networks');
     return unless $nettab;
-    my @nets = $nettab->getAllAttribs('net', 'mask', 'mgtifname');
+    my @nets = $nettab->getAllAttribs('net', 'mask', 'mgtifname', 'nameservers');
     $nettab->close();
 
     my @wanted;
@@ -5272,7 +5337,17 @@ sub configure_router_advertisements
         next unless defined $prefix;
         my $net = $entry->{net};
         $net =~ s{/\d+\z}{};
-        push @wanted, { interface => $entry->{mgtifname}, prefix => "$net/$prefix" };
+        push @wanted, {
+            interface => $entry->{mgtifname},
+            prefix    => "$net/$prefix",
+
+            # The same chooser the two DHCPv6 backends use, so a node that configures itself
+            # from the advertisement gets the resolver its lease would have carried.
+            rdnss => dhcp6_resolvers_for_network(
+                "$net/$prefix",
+                $entry->{nameservers} || $sitenameservers
+            ),
+        };
     }
 
     my $config = xCAT::NetworkUtils::radvd_config(\@wanted);
@@ -5541,10 +5616,9 @@ sub addnet6
 
 
     my $nameservers = $netcfgs{$net}->{nameservers};
-    if ($nameservers and $nameservers =~ /:/) {
-        push @netent, "    nameservers " . $netcfgs{$net}->{nameservers} . ";\n";
-    }
-    my $ddnserver = $nameservers;
+    my $nsstatement = isc_dhcp6_nameserver_statement( $net, $nameservers );
+    push @netent, "    $nsstatement\n" if $nsstatement;
+    my $ddnserver = defined($nameservers) ? $nameservers : '';
     $ddnserver =~ s/,.*//;
     my $ddnsdomain;
     if ($netcfgs{$net}->{ddnsdomain}) {

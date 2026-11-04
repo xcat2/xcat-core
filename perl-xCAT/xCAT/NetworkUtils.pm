@@ -4034,6 +4034,7 @@ sub radvd_config {
 
     return unless ref($nets) eq 'ARRAY';
     my %prefixes;
+    my %resolvers;
     my @order;
     foreach my $net (@$nets) {
         next unless ref($net) eq 'HASH';
@@ -4042,6 +4043,11 @@ sub radvd_config {
         next unless defined($interface) && length($interface);
         next unless defined($prefix) && $prefix =~ m{\A[0-9a-fA-F:]+/\d+\z};
         push @order, $interface unless $prefixes{$interface};
+        foreach my $resolver (split /\s*,\s*/, ($net->{rdnss} || '')) {
+            next unless $resolver =~ /:/;
+            next if grep { $_ eq $resolver } @{ $resolvers{$interface} || [] };
+            push @{ $resolvers{$interface} }, $resolver;
+        }
         next if grep { $_ eq $prefix } @{ $prefixes{$interface} || [] };
         push @{ $prefixes{$interface} }, $prefix;
     }
@@ -4057,6 +4063,15 @@ sub radvd_config {
             $text .= "    prefix $prefix\n    {\n";
             $text .= "        AdvOnLink on;\n";
             $text .= "        AdvAutonomous off;\n";
+            $text .= "    };\n";
+        }
+
+        # RFC 8106. dracut reads /run/net6-*.conf, which it fills from the advertisement as
+        # well as from DHCPv6, so an initrd that takes its address by router advertisement
+        # has no other source for a resolver. A client discards an RDNSS with no lifetime.
+        if (@{ $resolvers{$interface} || [] }) {
+            $text .= "    RDNSS " . join(' ', @{ $resolvers{$interface} }) . "\n    {\n";
+            $text .= "        AdvRDNSSLifetime 1800;\n";
             $text .= "    };\n";
         }
         $text .= "};\n";
