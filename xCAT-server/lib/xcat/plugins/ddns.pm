@@ -1101,6 +1101,29 @@ sub isvalidip {
     return xCAT::NetworkUtils->isValidIp($candidate);
 }
 
+#-------------------------------------------------------
+#  _server_ip_addresses
+#   Descriptions: The addresses of the name server, for its own records in a new zone file.
+#                 A dual-stack server needs an A record and an AAAA record. An IPv6-only node
+#                 resolves this name to reach the server, and an A record on its own leaves that
+#                 node with no address it can use.
+#   Arguments: the addresses the lookup returned
+#   Returns: the valid ones, IPv4 first
+#-------------------------------------------------------
+sub _server_ip_addresses {
+    my @addresses = @_;
+
+    my @ordered;
+    foreach my $address (@addresses) {
+        push @ordered, $address if isvalidip($address) && $address !~ /:/;
+    }
+    foreach my $address (@addresses) {
+        push @ordered, $address if isvalidip($address) && $address =~ /:/;
+    }
+
+    return @ordered;
+}
+
 sub _preferred_ip_address {
     my @addresses = @_;
 
@@ -1157,14 +1180,17 @@ sub update_zones {
         $name .= '.';
     }
     my $ip;
+    my @serverips;
     if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
         $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
         unless (isvalidip($ip)) {
             xCAT::SvrUtils::sendmsg([ 1, "The hosts table entry for $node indicates $ip as an ip address, which is not a valid address" ], $callback);
             return;
         }
+        @serverips = ($ip);
     } else {
         my @addresses = getipaddr($node, GetAllAddresses => 1);
+        @serverips = _server_ip_addresses(@addresses);
         $ip = _preferred_ip_address(@addresses);
         unless ($ip) {
             xCAT::SvrUtils::sendmsg([ 1, "Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts)" ], $callback);
@@ -1199,8 +1225,9 @@ sub update_zones {
             print $zonehdl "  IN NS  $name\n";
 
             if ($name =~ /$currzone/) { #Must guarantee an address record for the DNS server
-                my $record_type = _dns_record_type($ip);
-                print $zonehdl "$name  IN $record_type  $ip\n";
+                foreach my $serverip (@serverips) {
+                    print $zonehdl "$name  IN " . _dns_record_type($serverip) . "  $serverip\n";
+                }
             }
             flock($zonehdl, LOCK_UN);
             close($zonehdl);
