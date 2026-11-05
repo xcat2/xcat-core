@@ -18,6 +18,9 @@ use xCAT::Template;
 my %addresses = (
     nodev4                 => { 4 => '192.0.2.50' },
     nodev6                 => { 6 => '2001:db8:1::50' },
+    # A node whose gateway is a literal router address, not the management node. The two must
+    # differ, or a resolver test cannot tell the management node from the gateway.
+    nodev6lit              => { 6 => '2001:db8:1::51' },
     nodedual               => { 4 => '192.0.2.60', 6 => '2001:db8:1::60' },
     'master4.example.test' => { 4 => '192.0.2.1' },
     'master6.example.test' => { 6 => '2001:db8::1' },
@@ -35,22 +38,31 @@ local *xCAT::NetworkUtils::getipaddr = sub {
     return $entry->{4} if $opts{OnlyV4};
     return $entry->{4} || $entry->{6};
 };
+# The address of the management node on the network of the node. An MN with none is the
+# control of the resolver fallback below: it must yield no resolver rather than a guess.
+our $master_facing6 = '2001:db8::1';
 local *xCAT::NetworkUtils::my_ip_facing_family = sub {
     my $node = shift;
     $node = shift if defined($node) && $node eq 'xCAT::NetworkUtils';
     my $family = shift;
     push @facing_calls, [$node, $family];
-    return (0, '2001:db8::1');
+    return (1, undef) unless defined($master_facing6);
+    return (0, $master_facing6);
 };
 local *xCAT::NetworkUtils::getNodeNetworkCfg6 = sub {
     my $candidate = shift;
     $candidate = shift if defined($candidate) && $candidate eq 'xCAT::NetworkUtils';
+    return ('2001:db8:1::51', $candidate, '2001:db8:1::fe', 64)
+      if $candidate eq 'nodev6lit';
     return ('2001:db8:1::50', $candidate, '<xcatmaster>', 64);
 };
+# site.nameservers holds one list for the whole cluster, so it can name resolvers the node
+# cannot reach.
+our $site_nameservers = 'dns6.example.test,192.0.2.53';
 local *xCAT::NetworkUtils::getNodeNameservers = sub {
     my $nodes = shift;
     $nodes = shift if defined($nodes) && $nodes eq 'xCAT::NetworkUtils';
-    return { $nodes->[0] => 'dns6.example.test,192.0.2.53' };
+    return { $nodes->[0] => $site_nameservers };
 };
 
 is(
@@ -194,6 +206,34 @@ foreach my $el_os (qw(alma8.10 rhels9.6)) {
     );
     unlike($el_rendered, qr/--ipv6=dhcp/,
         "$el_os does not ask DHCPv6 from the installer");
+}
+
+# The resolver of a statically configured IPv6-only node. site.nameservers names the IPv4
+# resolver of the cluster on a normal lab, so no resolver reached the node and it installed
+# with no /etc/resolv.conf.
+{
+    local $site_nameservers = '192.168.177.1';
+    my $v4ns = render_minimal_template('nodev6lit', 'master6.example.test', undef, 'alma9.6');
+    like($v4ns, qr/^network .* --nameserver=2001:db8::1$/m,
+        'an IPv4 site resolver is replaced by the IPv6 address of the management node');
+    unlike($v4ns, qr/--nameserver=[^ ]*192\.168\.177\.1/,
+        'and the IPv4 resolver itself does not reach the node');
+    unlike($v4ns, qr/--nameserver=[^ ]*2001:db8:1::fe/,
+        'and not by the gateway, which can be a router that serves no DNS');
+}
+{
+    local $site_nameservers = '2001:db8:aa::53';
+    my $v6ns = render_minimal_template('nodev6lit', 'master6.example.test', undef, 'alma9.6');
+    like($v6ns, qr/^network .* --nameserver=2001:db8:aa::53$/m,
+        'a configured IPv6 resolver is kept as it stands');
+}
+{
+    # The control: an MN with no address on the network of the node has no resolver to offer.
+    local $site_nameservers = '192.168.177.1';
+    local $master_facing6 = undef;
+    my $none = render_minimal_template('nodev6lit', 'master6.example.test', undef, 'alma9.6');
+    unlike($none, qr/--nameserver/,
+        'a management node with no address on the network yields no resolver at all');
 }
 
 my $v4_rendered = render_minimal_template('nodev4', 'master4.example.test');
