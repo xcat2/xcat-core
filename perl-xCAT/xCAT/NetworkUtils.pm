@@ -1118,6 +1118,8 @@ sub my_hexnets
     foreach (@nets)
     {
         my @elems = split /\s+/;
+        # A hexnet is a PXELINUX file name built from a hexadecimal IPv4 prefix. DHCPv6
+        # has no such file name, so inet6 is left out rather than given one.
         unless (/^\s*inet\s/)
         {
             next;
@@ -1305,7 +1307,9 @@ sub my_nets
         {
             if ($elems[1] eq 'inet6')
             {
-                next; #Linux IPv6 TODO, do not return IPv6 networks on Linux for now
+                # my_nets stays IPv4-only on Linux. lsslp.pm and PPCdb.pm read its keys
+                # with dotted-quad arithmetic. The IPv6 networks are my_nets6.
+                next;
             }
             ($curnet, $maskbits) = split /\//, $elems[2];
         }
@@ -1350,6 +1354,93 @@ sub my_nets
             #$rethash->{$n} = $if;
             _record_network_address(\$rethash, $n, $master, $returnall);
         }
+    }
+    return $rethash;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   ipv6_network_address
+
+    Description:
+        Masks an IPv6 address down to its network prefix.
+
+    Arguments:
+        An IPv6 address literal and a prefix length (0-128).
+    Returns:
+        The network address, or undef when either argument is malformed.
+
+    Example:
+        xCAT::NetworkUtils->ipv6_network_address('2001:db8:177::1', 64);
+        # 2001:db8:177::
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ipv6_network_address
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    my $prefix = shift;
+
+    return unless defined($address) && defined($prefix);
+    return unless $prefix =~ /^\d+$/ && $prefix >= 0 && $prefix <= 128;
+    $address =~ s/\%.*//;    # a scoped literal, as in fe80::1%eth0
+
+    my $packed = _pack_ip_address($address, 6);
+    return unless defined($packed) && length($packed) == 16;
+
+    my $whole_bytes    = int($prefix / 8);
+    my $remaining_bits = $prefix % 8;
+    my $masked = substr($packed, 0, $whole_bytes);
+    if ($remaining_bits)
+    {
+        my $mask = (0xff << (8 - $remaining_bits)) & 0xff;
+        $masked .= chr(ord(substr($packed, $whole_bytes, 1)) & $mask);
+    }
+    $masked .= "\0" x (16 - length($masked));
+
+    return _unpack_ip_address($masked, 6);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   my_nets6
+
+    Description:
+        The IPv6 networks this host has a global address on.
+
+    Arguments:
+        Optional: 'all' returns every address found for each network in order.
+        The default behavior returns the last address found.
+    Returns:
+        A hash ref keyed <network>/<prefixlen>, as my_nets keys its IPv4
+        entries: { '2001:db8:177::/64' => '2001:db8:177::1' }.
+
+    Comments:
+        my_nets stays IPv4-only on Linux. lsslp.pm and PPCdb.pm read its keys
+        with dotted-quad arithmetic, so an IPv6 key there is a wrong answer
+        rather than a new one. A caller that wants both families asks for both.
+        Link-local addresses are left out: _local_ip_prefixes reads global
+        scope only, and a provisioning network is not link-local.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_nets6
+{
+    my $returnall = @_ && $_[-1] eq 'all';
+    my $rethash;
+
+    foreach my $entry (_local_ip_prefixes(6))
+    {
+        my ($address, $prefix) = @{$entry};
+        my $net = ipv6_network_address($address, $prefix);
+        next unless defined($net);
+        _record_network_address(\$rethash, "$net/$prefix", $address, $returnall);
     }
     return $rethash;
 }
