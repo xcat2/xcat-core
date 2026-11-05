@@ -1969,20 +1969,9 @@ sub findme {
     my $ip = $request->{'_xcat_clientip'};
     xCAT::MsgUtils->message('S', "Profield nodes discover: _xcat_clientip is $ip.\n");
     my $mac = '';
-    my $arptable;
-    if (-x "/usr/sbin/arp") {
-        $arptable = `/usr/sbin/arp -n`;
-    }
-    else {
-        $arptable = `/sbin/arp -n`;
-    }
-    my @arpents = split /\n/, $arptable;
-    foreach (@arpents) {
-        if (m/^($ip)\s+\S+\s+(\S+)\s/) {
-            $mac = $2;
-            last;
-        }
-    }
+    # arp(8) prints the IPv4 table only, and the address used to be interpolated
+    # into a regular expression, where every dot matched any character.
+    $mac = xCAT::NetworkUtils->mac_of_neighbour($ip);
     if (!$mac) {
         setrsp_errormsg("Profiled nodes discover: Can not get mac address of this node.");
         return;
