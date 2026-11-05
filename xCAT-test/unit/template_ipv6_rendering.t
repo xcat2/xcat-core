@@ -117,8 +117,9 @@ local $::XCATSITEVALS{managedaddressmode} = 'dhcp';
 local $::XCATSITEVALS{xcatdebugmode} = '0';
 
 sub render_minimal_template {
-    my ($node, $master, $body) = @_;
+    my ($node, $master, $body, $os) = @_;
     $body //= "#KICKSTARTNET#\n#INSTALL_SOURCES_IN_PRE#\n";
+    $os //= 'alma10.1';
     my $tmpdir = tempdir(CLEANUP => 1);
     my $input = "$tmpdir/input.tmpl";
     my $output = "$tmpdir/output";
@@ -135,9 +136,9 @@ sub render_minimal_template {
         'rh',
         undef,
         { xcatmaster => $master },
-        os => 'alma10.1',
+        os => $os,
     );
-    is($error, 0, "$node minimal EL10 template renders without error");
+    is($error, 0, "$node minimal $os template renders without error");
 
     open(my $rendered, '<', $output) or die "Unable to read rendered template: $!";
     local $/;
@@ -178,6 +179,21 @@ is($ENV{MASTER_IP}, '2001:db8::1', 'IPv6-only template resolves the explicit mas
         qr/--ip=|--netmask=/,
         'site static mode does not fall through to legacy IPv4 Kickstart options'
     );
+}
+
+# EL 8 and EL 9 render the same static network line as EL 10, by operator decision of
+# 2026-11-05. They rendered "dhcp --noipv4 --ipv6=dhcp" before, and anaconda then solicited
+# DHCPv6 with an identifier that no makedhcp reservation holds.
+foreach my $el_os (qw(alma8.10 rhels9.6)) {
+    my $el_rendered =
+      render_minimal_template('nodev6', 'master6.example.test', undef, $el_os);
+    like(
+        $el_rendered,
+        qr/^network --onboot=yes --bootproto=static --device=02:00:00:00:00:61 --activate --noipv4 --ipv6=2001:db8:1::50\/64 --ipv6gateway=2001:db8::1 --hostname=nodev6 --nameserver=2001:db8::53$/m,
+        "$el_os renders the static IPv6 network line"
+    );
+    unlike($el_rendered, qr/--ipv6=dhcp/,
+        "$el_os does not ask DHCPv6 from the installer");
 }
 
 my $v4_rendered = render_minimal_template('nodev4', 'master4.example.test');

@@ -2289,14 +2289,15 @@ sub uses_static_ipv6_boot
 
     # openEuler reaches the same kickstart and dracut code as EL through #KICKSTARTNET#.
     return 1 if $basename =~ /^openeuler$/i;
-    # EL 10 is where xCAT implemented and tested this, not where the installer gained the
-    # option: EL 9 already takes "--noipv4 --ipv6=dhcp" from the same template. Extending it
-    # downwards is untested rather than impossible. The comparison is not an equality so that
-    # a later release keeps it; is_el10_os tested for 10 exactly and left EL 11 on DHCPv6.
+    # The static form is the one xCAT tests, on EL 10. EL 8 and EL 9 take it by operator
+    # decision of 2026-11-05: their anaconda reads the same "network --noipv4 --ipv6="
+    # options from the same template, and their dracut reads the same "ip=" argument.
+    # The comparison is not an equality so that a later release keeps it; is_el10_os
+    # tested for 10 exactly and left EL 11 on DHCPv6.
     return 1
       if $basename =~ /^(?:rh\w*|centos|alma|rocky|ol)$/i
       && $majorversion =~ /^\d+$/
-      && $majorversion >= 10;
+      && $majorversion >= 8;
     return 0;
 }
 

@@ -65,9 +65,8 @@ range, so the range is required.
 ================  =========================================================================
 Family            Handoff to the installer
 ================  =========================================================================
-EL 10             ``ip=`` with the address, from ``uses_static_ipv6_boot``
+EL 8 and later    ``ip=`` with the address, from ``uses_static_ipv6_boot``
 openEuler         ``ip=`` with the address, from ``uses_static_ipv6_boot``
-EL 8, EL 9        DHCPv6 in the install initrd, which solicits as a third client
 Ubuntu, diskless  ``ip=`` with the address, from ``dracut_static_ip6``
 Ubuntu, diskful   ``ip6=dhcp``, and casper runs ``dhcpcd -6`` as a third client
 SLES, openSUSE    ``ipv6only=1 hostip=<address>/<prefix>``, from ``static_ipv6_boot_args``
