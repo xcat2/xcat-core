@@ -381,7 +381,10 @@ sub isc_hosts {
 {
     local %DUIDTable::rows = node_rows(%settings);
     my $config = empty_config();
-    my %kea = map { $_->{hostname} => $_ } @{ kea_reservations( $config, @nodes ) };
+    # A client that holds no address carries no hostname, so the reservation of each node is the
+    # one keyed here.
+    my %kea = map { $_->{hostname} => $_ }
+      grep { defined $_->{hostname} } @{ kea_reservations( $config, @nodes ) };
     my @kea_errors = sort @errors;
     my $sessions = isc_commands(@nodes);
     # The ISC path also reports a missing /etc/sysconfig/dhcpd, which depends on the host.
@@ -421,12 +424,16 @@ sub isc_hosts {
         'ISC: a node without a usable vpd.uuid is skipped with the reason, and a suspect order is reported'
     );
 
-    # makedhcp -d and -q find a reservation by the DUID that makedhcp gave it, and by nothing else.
+    # makedhcp -d and -q find a reservation by the DUIDs that makedhcp gave it, and by nothing
+    # else. A DUID-UUID says the node reports a UUID, so the Genesis image is a client of its own
+    # there and the DUID-LL it sends was reserved beside the UUID.
     foreach my $case (@cases) {
         my ( $node, undef, undef, $want ) = @$case;
         my @duids = map { $_->{duid} } grep { $_->{duid} }
           @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( [$node] ) };
-        is_deeply( \@duids, [ ( defined($want) && !ref($want) ) ? $want : () ], "Kea: query and delete of $node match only its DUID" );
+        my @expected = ( defined($want) && !ref($want) ) ? ($want) : ();
+        push @expected, '00:03:00:01:' . $mac{$node} if @expected && $want =~ /\A00:04:/;
+        is_deeply( \@duids, \@expected, "Kea: query and delete of $node match the DUIDs it reserved" );
     }
 }
 
@@ -443,11 +450,14 @@ sub isc_hosts {
     my @stale;
     $backend->upsert_reservations( $config, $second, \@stale );
     my @kept = @{ $config->{Dhcp6}{subnet6}[0]{reservations} };
-    is( scalar(@kept), 1, 'Kea: a node keeps one reservation after its duid attribute changes' );
+    is( scalar(@kept), 2, 'Kea: a node keeps one reservation for each of its clients after its duid attribute changes' );
     is( $kept[0]{duid}, $canonical, 'Kea: the reservation matches the new DUID' );
     is_deeply( $kept[0]{'ip-addresses'}, [ $address{cn01} ], 'Kea: the reservation keeps the address' );
     is( $kept[0]{'option-data'}[0]{data}, 'tftp://[2001:db8:176::1]/boot/grub2/grub2-cn01', 'Kea: the reservation keeps the bootfile-url' );
-    is_deeply( [ map { $_->{duid} } @stale ], [$firmware], 'Kea: the replaced reservation is the one of the old DUID' );
+    # The DUID-LL is not built from vpd.uuid, so it is rewritten unchanged. The entry of the old
+    # UUID order is the one that goes.
+    is_deeply( [ map { $_->{duid} } @stale ], [ $firmware, '00:03:00:01:' . $mac{cn01} ],
+        'Kea: the replaced reservation is the one of the old DUID' );
 
     my $session = isc_commands('cn01')->[1] // '';
     like( $session, qr/^new host\nset name = "cn01"\nopen\nremove\nclose\n/m, 'ISC: the host of the old DUID is removed by name' );
@@ -467,14 +477,18 @@ sub isc_hosts {
     local %DUIDTable::rows = node_rows( cn03 => 'canonical' );
     $DUIDTable::rows{vpd}{cn03} = { uuid => $uuid };
     $backend->upsert_reservations( $config, kea_reservations( $config, 'cn01', 'cn03' ), [] );
-    my %duid = map { $_->{hostname} => $_->{duid} } @{ $config->{Dhcp6}{subnet6}[0]{reservations} };
+    # The clients that hold no address carry no hostname, so the addressed reservations are the
+    # ones keyed here.
+    my %duid = map { $_->{hostname} => $_->{duid} }
+      grep { defined $_->{hostname} } @{ $config->{Dhcp6}{subnet6}[0]{reservations} };
     is_deeply( \%duid, { cn01 => $firmware, cn03 => $canonical }, 'Kea: one UUID in two byte orders gives two reservations' );
 
     $backend->upsert_reservations( $config, kea_reservations( $config, 'cn03' ), [] );
     foreach my $match ( @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['cn03'] ) } ) {
         $backend->delete_reservations( $config, $match );
     }
-    is_deeply( [ map { [ $_->{hostname}, $_->{duid} ] } @{ $config->{Dhcp6}{subnet6}[0]{reservations} } ],
+    is_deeply( [ map { [ $_->{hostname}, $_->{duid} ] }
+          grep { defined $_->{hostname} } @{ $config->{Dhcp6}{subnet6}[0]{reservations} } ],
         [ [ 'cn01', $firmware ] ], 'Kea: updating and deleting cn03 leaves the reservation of cn01' );
     my $session = isc_commands('cn03')->[1] // '';
     is( isc_hosts($session)->{cn03}, $canonical, 'ISC: cn03 creates its host for the canonical order' );
@@ -490,7 +504,9 @@ sub isc_hosts {
     sub subnet_id_for_ip { return 1; }
 }
 {
-    my $hostnames = sub { [ map { $_->{hostname} } map { @{ $_->{reservations} || [] } } @{ $_[0]{ $_[1] }{ $_[2] } } ] };
+    # The reservation that holds the address is the one with a hostname, and it is the one a
+    # shared identifier moves from node to node.
+    my $hostnames = sub { [ grep { defined } map { $_->{hostname} } map { @{ $_->{reservations} || [] } } @{ $_[0]{ $_[1] }{ $_[2] } } ] };
 
     # The DUID: cn01 holds it, then cn03 is given it.
     local %DUIDTable::rows = node_rows();
@@ -690,7 +706,10 @@ sub isc_hosts {
     local %main::resolve = ( %main::resolve, 'cn01-eth1' => { 6 => '2001:db8:176::31' } );
     my $reservations = kea_reservations( $config, 'cn01' );
     is_deeply( [@warnings], ["cn01: $swapped_note"], 'Kea: the node is reported once, not once for each of its NICs' );
-    is_deeply( [ map { $_->{duid} } @$reservations ], [ $canonical, $canonical ],
+    # Each NIC keeps an address of its own. The Genesis client holds none, and it is identified
+    # by a DUID of the node, so one entry answers it for both NICs.
+    is_deeply( [ map { $_->{duid} } @$reservations ],
+        [ $canonical, '00:03:00:01:' . $mac{cn01}, $canonical ],
         'Kea: the reservation is still written with the DUID the stored value gives' );
 
     my $session = isc_commands('cn01')->[1] // '';
@@ -961,8 +980,8 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     # would be an entry no client matches.
     is( scalar( grep { defined $_->{hostname} && $_->{hostname} eq 'cn02' } @all ), 1,
         'a grub2 node keeps one reservation' );
-    is( scalar( grep { !defined $_->{hostname} } @all ), 2,
-        'and only the two ipxe nodes add one' );
+    is( scalar( grep { !defined $_->{hostname} && $_->{duid} =~ /\A00:04:/ } @all ), 2,
+        'and only the two ipxe nodes add a second DUID-UUID' );
 
     # makedhcp -d removes a reservation by what it is keyed on, so a delete that names one DUID
     # leaves the other entry behind.
@@ -972,8 +991,8 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
         'makedhcp -d of an ipxe node names both of its DUIDs' );
     my %grub2 = map { ( $_->{duid} || '' ) => 1 }
       @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['cn02'] ) };
-    is_deeply( [ sort grep { length } keys %grub2 ], [$cn02_duid],
-        'and of a grub2 node names only the DUID it reserved' );
+    is_deeply( [ sort grep { length } keys %grub2 ], [ sort ( $cn02_duid, '00:03:00:01:' . $mac{cn02} ) ],
+        'and of a grub2 node names only the DUIDs it reserved' );
 
     # ISC DHCP gives one address to one host, so the second client is a host of its own there too.
     my $sessions = isc_commands( 'cn01', 'cn02' );

@@ -2493,9 +2493,11 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
     );
 
     is( scalar(@errors), 0, 'DHCPv6 reservations build without errors' );
-    is( scalar(@$reservations), 4, 'all known IPv6 nodes receive reservations' );
+    # nodev6 is the only one of the four with a vpd.uuid, so it alone adds the entry of the
+    # Genesis image, which holds no address and sends the DUID-LL of the NIC.
+    is( scalar(@$reservations), 5, 'all known IPv6 nodes receive reservations' );
 
-    my %by_hostname = map { $_->{hostname} => $_ } @$reservations;
+    my %by_hostname = map { $_->{hostname} => $_ } grep { defined $_->{hostname} } @$reservations;
     my $grub2 = $by_hostname{nodev6};
     # Without mac.duid the first three UUID fields are reversed, as EDK2 firmware sends them.
     is( $grub2->{duid}, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation matches the DUID-UUID a UEFI client sends' );
@@ -2606,7 +2608,8 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
         );
         delete $res_tables{networks};
 
-        is( scalar(@$owned), 1, 'global dynamic-range DHCP owner retains an unrelated IPv6 reservation like legacy dispatch' );
+        is( scalar( grep { defined $_->{hostname} } @$owned ), 1,
+            'global dynamic-range DHCP owner retains an unrelated IPv6 reservation like legacy dispatch' );
     }
 }
 
@@ -2674,7 +2677,7 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 
     my $reservations = xCAT_plugin::dhcp::kea_build_node_reservations6(
         bless( {}, 'DHCPKeaRes6Backend' ), {}, [ sort keys %nodes ] );
-    my %by_hostname = map { $_->{hostname} => $_ } @$reservations;
+    my %by_hostname = map { $_->{hostname} => $_ } grep { defined $_->{hostname} } @$reservations;
     is_deeply( \@errors, [], 'the DHCPv6 reservations of the UUID cases build without errors' );
     is( $by_hostname{uefi}{duid}, $uefi_duid, 'the reservation carries the DUID-UUID that the UEFI client sends' );
     is( $by_hostname{plain}{duid}, '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ab', 'a vpd.uuid without separators gives the same DUID' );
@@ -2686,7 +2689,8 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 
     my @duids = map { $_->{duid} } grep { $_->{duid} }
       @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['uefi'] ) };
-    is_deeply( \@duids, [$uefi_duid], 'query and delete match the DUID that the reservation carries' );
+    is_deeply( \@duids, [ $uefi_duid, '00:03:00:01:' . $nodes{uefi}{mac} ],
+        'query and delete match the DUIDs that the reservations carry' );
 }
 
 done_testing();
