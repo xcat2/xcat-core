@@ -66,7 +66,11 @@ ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels10.0'), 'EL10 takes the static IP
 ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels11.0'), 'and so does a later EL, which an equality test missed');
 ok(xCAT::SvrUtils->uses_static_ipv6_boot('openeuler24.03sp4'), 'openEuler takes it as well');
 ok(xCAT::SvrUtils->uses_static_ipv6_boot('openeuler20.03sp4'), 'every openEuler release, not just the newest');
-ok(!xCAT::SvrUtils->uses_static_ipv6_boot('rhels9.6'), 'EL9 does not, so it keeps the DHCPv6 path');
+# EL 8 and EL 9 take the static address too, by operator decision of 2026-11-05. Their
+# installer reads the same kickstart network options and their dracut the same "ip=".
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels9.6'), 'EL9 takes it as well');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('alma8.10'), 'and EL8, whatever the EL brand name');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot('rhels7.9'), 'EL7 does not, so the floor still holds');
 ok(!xCAT::SvrUtils->uses_static_ipv6_boot('sles12'), 'SUSE does not');
 ok(!xCAT::SvrUtils->uses_static_ipv6_boot('ubuntu24.04'), 'Ubuntu does not');
 ok(!xCAT::SvrUtils->uses_static_ipv6_boot(undef), 'and an undefined osver is not a capability');
