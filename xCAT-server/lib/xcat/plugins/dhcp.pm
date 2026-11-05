@@ -713,11 +713,16 @@ sub delnode6_commands
 
     return '' unless defined($node) && length($node);
 
-    my $commands = "new host\n";
-    $commands .= "set name = \"$node\"\n";
-    $commands .= "open\n";
-    $commands .= "remove\n";
-    $commands .= "close\n";
+    # A client that holds no address is a host of its own, named after the client. A delete that
+    # names the node alone leaves those hosts with the boot file of a node it reported as removed.
+    my $commands = '';
+    foreach my $name ( $node, map { "$node-$_" } dhcp6_secondary_clients() ) {
+        $commands .= "new host\n";
+        $commands .= "set name = \"$name\"\n";
+        $commands .= "open\n";
+        $commands .= "remove\n";
+        $commands .= "close\n";
+    }
     return $commands;
 }
 
@@ -956,43 +961,44 @@ sub addnode6 {
     }
     $commands .= "create\n";
     $commands .= "close\n";
-    $commands .= addnode6_second_client( $node, $identity, $nrent, $ntent );
+    $commands .= addnode6_other_clients( $node, $identity, $nrent, $ntent );
 
     return $commands;
 }
 
 #---
-# =head3 addnode6_second_client
-# Descriptions: The omshell commands for the other DHCPv6 client of a chainloading node. The host
-#               above answers the firmware; this one answers iPXE, which sends a DUID-UUID in RFC
-#               4122 order where EDK2 sends the SMBIOS order. It reserves no address, because ISC
-#               DHCP gives one address to one host, and carries only the boot file that its client
-#               needs.
+# =head3 addnode6_other_clients
+# Descriptions: The omshell commands for the DHCPv6 clients of a node that hold no address. The
+#               host above answers the first client; these answer iPXE, which sends a DUID-UUID
+#               in RFC 4122 order where EDK2 sends the SMBIOS order, and the Genesis image, which
+#               sends the DUID-LL of the NIC. Each reserves no address, because ISC DHCP gives one
+#               address to one host, and carries only the boot file that its client needs.
 # Arguments: $node, $identity -- the dhcp6_client_duids entry, $nrent -- noderes, $ntent -- nodetype
 # Returns: the commands, or the empty string when the node has one client or needs no boot file.
 #---
-sub addnode6_second_client
+sub addnode6_other_clients
 {
     my ( $node, $identity, $nrent, $ntent ) = @_;
 
-    return '' unless dhcp6_chainloads($nrent);
-    my @clients = @{ $identity->{duids} || [] };
-    return '' unless @clients > 1;
-    my $client = $clients[1];
-    my $url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, $client->{client} );
-    return '' unless $url;
-
-    my $name = "$node-$client->{client}";
+    my @clients = dhcp6_node_clients( $identity->{duids}, $nrent );
+    shift @clients;
     my $commands = '';
-    foreach my $key ( "set name = \"$name\"", "set dhcp-client-identifier = $client->{duid}" ) {
-        $commands .= "new host\n$key\nopen\nremove\nclose\n";
+    foreach my $client (@clients) {
+        next unless $client->{duid};
+        my $url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, $client->{client} );
+        next unless $url;
+
+        my $name = "$node-$client->{client}";
+        foreach my $key ( "set name = \"$name\"", "set dhcp-client-identifier = $client->{duid}" ) {
+            $commands .= "new host\n$key\nopen\nremove\nclose\n";
+        }
+        $commands .= "new host\n";
+        $commands .= "set name = \"$name\"\n";
+        $commands .= "set dhcp-client-identifier = $client->{duid}\n";
+        $commands .= 'set statements = "option dhcp6.bootfile-url \"' . $url . '\";";' . "\n";
+        $commands .= "create\n";
+        $commands .= "close\n";
     }
-    $commands .= "new host\n";
-    $commands .= "set name = \"$name\"\n";
-    $commands .= "set dhcp-client-identifier = $client->{duid}\n";
-    $commands .= 'set statements = "option dhcp6.bootfile-url \"' . $url . '\";";' . "\n";
-    $commands .= "create\n";
-    $commands .= "close\n";
 
     return $commands;
 }
@@ -4590,6 +4596,7 @@ sub kea_node_reservations6
 
     my $duid = $identity->{duid};
     my $warned_order = 0;
+    my $others_written = 0;
     my @reservations;
     foreach my $mace (split(/\|/, $macent->{mac})) {
         my ( $mac, $hname ) = split(/!/, $mace);
@@ -4638,7 +4645,11 @@ sub kea_node_reservations6
         my @identities =
           $duid ? @{ $identity->{duids} || [ { duid => $duid, client => 'firmware' } ] }
                 : ( { 'hw-address' => $mac, client => 'firmware' } );
-        @identities = ( $identities[0] ) unless dhcp6_chainloads($nrent);
+        @identities = dhcp6_node_clients( \@identities, $nrent );
+        # A client that holds no address is identified by a DUID of the node and not of the NIC,
+        # so one entry answers it however many IPv6 NICs the node has. A second entry would put
+        # the same identifier in the subnet twice.
+        @identities = ( $identities[0] ) if $others_written;
 
         my $first = 1;
         foreach my $client (@identities) {
@@ -4669,6 +4680,7 @@ sub kea_node_reservations6
             $first = 0;
             push @reservations, \%reservation;
         }
+        $others_written = 1;
     }
 
     return \@reservations;
@@ -4910,13 +4922,15 @@ sub dhcp6_client_duid
 # Arguments: $setting -- the duid attribute of the mac table
 #            $uuid    -- vpd.uuid
 #            $primary -- the DUID that $setting selects, which keeps the reserved address
-# Returns: an arrayref of { duid => <duid>, client => 'firmware'|'ipxe' }, the primary first.
-#          A literal DUID and a DUID-LL give one entry: neither is built from the UUID, so there
-#          is no second order to derive.
+#            $mac     -- the mac attribute, which the DUID-LL of the Genesis client is built from
+# Returns: an arrayref of { duid => <duid>, client => 'firmware'|'ipxe'|'genesis' }, the primary
+#          first. A literal DUID and a DUID-LL give one entry: mac.duid then names the one client
+#          the operator wants answered, and neither value is built from the UUID, so there is no
+#          second order to derive.
 #---
 sub dhcp6_client_duid_list
 {
-    my ( $setting, $uuid, $primary ) = @_;
+    my ( $setting, $uuid, $primary, $mac ) = @_;
 
     return [] unless $primary;
     my %duid = (
@@ -4927,7 +4941,16 @@ sub dhcp6_client_duid_list
       unless grep { defined($_) && $_ eq $primary } values %duid;
 
     my @order = ( $duid{firmware} eq $primary ) ? qw(firmware ipxe) : qw(ipxe firmware);
-    return [ map { { duid => $duid{$_}, client => $_ } } @order ];
+    my @clients = map { { duid => $duid{$_}, client => $_ } } @order;
+
+    # The Genesis image is a third client of the same node. Its NetworkManager carries
+    # ipv6.dhcp-duid=ll, so the image sends the DUID-LL of the NIC and matches neither UUID
+    # order. That DUID is 00:03:00:01 and the address, so it is derived here from the mac table
+    # and needs no value the node has to report first.
+    my $ll = kea_duid_ll_from_mac($mac);
+    push @clients, { duid => $ll, client => 'genesis' } if $ll;
+
+    return \@clients;
 }
 
 #: Whether the netboot method of a node replaces the firmware with a loader that runs its own
@@ -4939,6 +4962,32 @@ sub dhcp6_chainloads
 
     my $netboot = $nrent ? $nrent->{netboot} : undef;
     return ( defined($netboot) && $netboot eq 'ipxe' ) ? 1 : 0;
+}
+
+#: The clients of a node that hold no address, and which therefore get a host of their own on ISC
+#: DHCP. delnode6 removes those hosts, so the names come from one list.
+sub dhcp6_secondary_clients { return qw(ipxe genesis); }
+
+#---
+# =head3 dhcp6_node_clients
+# Descriptions: The DHCPv6 clients of one node that makedhcp reserves for, in order. The first one
+#               keeps the address and the hostname, so it stays first.
+#               iPXE solicits only where the netboot method loads it, and a reservation for a
+#               client that never solicits is an entry nothing matches. The Genesis image runs
+#               whatever loaded it, so its DUID-LL is kept for every netboot method.
+# Arguments: $clients -- the duids list of a dhcp6_client_duids entry
+#            $nrent   -- the noderes row of the node
+# Returns: the clients, the one that keeps the reserved address first.
+#---
+sub dhcp6_node_clients
+{
+    my ( $clients, $nrent ) = @_;
+
+    my @clients = @{ $clients || [] };
+    return @clients if dhcp6_chainloads($nrent);
+    my $primary = shift @clients;
+    return () unless $primary;
+    return ( $primary, grep { ( $_->{client} || '' ) eq 'genesis' } @clients );
 }
 
 sub dhcp6_site_http_port
@@ -4970,7 +5019,8 @@ sub dhcp6_client_duids
             $setting, $uuid, ( $macent ? $macent->{mac} : undef ), ( $ntent ? $ntent->{arch} : undef ) );
         $duids{$node} = {
             duid    => $duid,
-            duids   => dhcp6_client_duid_list( $setting, $uuid, $duid ),
+            duids   => dhcp6_client_duid_list(
+                $setting, $uuid, $duid, ( $macent ? $macent->{mac} : undef ) ),
             uuid    => $uuid,
             error   => $error ? "The duid attribute of $node is '$setting', but $error." : undef,
             warning => $warning,
@@ -4997,14 +5047,12 @@ sub kea_reservation_matches_for_nodes
         push @matches, { 'ip-address' => $ip } if $ip;
         my $ip6 = getipaddr($node, OnlyV6 => 1);
         push @matches, { 'ip-address' => $ip6 } if $ip6;
-        # Every DUID the node sends, not only the one that holds its address: a chainloading
-        # node has a second reservation keyed on the DUID of its second client, and a match
-        # list without it leaves that reservation behind on makedhcp -d. A node that does not
-        # chainload has no second reservation, so naming the other DUID would only widen what
-        # a delete can remove.
+        # Every DUID the node sends, not only the one that holds its address: the other clients
+        # have reservations of their own, and a match list without their DUIDs leaves those
+        # reservations behind on makedhcp -d. dhcp6_node_clients is the selection the
+        # reservations were written from, so a delete can remove no more than was written.
         my $nrent_local = $nrhash_local && $nrhash_local->{$node} ? $nrhash_local->{$node}->[0] : undef;
-        my @clients = @{ $duids->{$node}{duids} || [] };
-        @clients = @clients ? ( $clients[0] ) : () unless dhcp6_chainloads($nrent_local);
+        my @clients = dhcp6_node_clients( $duids->{$node}{duids}, $nrent_local );
         foreach my $client (@clients) {
             push @matches, { duid => $client->{duid} } if $client->{duid};
         }
