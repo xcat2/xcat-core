@@ -426,7 +426,17 @@ sub makedhcp_step {
     require_dhcp_plugin();
     my ( @errors, @warnings );
 
-    no warnings 'once';
+    # kea_process_request calls configure_router_advertisements on every IPv6 run, and
+    # "ip netns exec" shares the mount namespace of the host. Without the next four lines the
+    # step rewrites /etc/radvd.conf of the management node and restarts its radvd.
+    my ($scratch) = ( $ENV{XCATCFG} // '' ) =~ /\ASQLite:(.+)\z/;
+    die "The makedhcp step needs the scratch directory of the test\n" unless $scratch && -d $scratch;
+
+    no warnings qw(once redefine);
+    local $xCAT_plugin::dhcp::radvdconffile = "$scratch/radvd.conf";
+    local *xCAT::Utils::enableservice      = sub { return 0; };
+    local *xCAT::Utils::checkservicestatus = sub { return 0; };
+    local *xCAT::Utils::restartservice     = sub { return 0; };
     local $xCAT_plugin::dhcp::callback = sub {
         my ($resp) = @_;
         push @errors,   @{ $resp->{error}   || [] };
