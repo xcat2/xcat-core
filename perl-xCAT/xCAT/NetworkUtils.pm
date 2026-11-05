@@ -4006,6 +4006,43 @@ sub ipxe_script_server {
 
 #-------------------------------------------------------------------------------
 
+=head3 ipxe_script_server_for_node
+
+    Descriptions: The server that the iPXE boot script of one node names, or nothing and the
+                  reason there is none.
+
+                  xnba.pm kept ${next-server} whenever the IPv6 lookup did not answer. An IPv6
+                  client resolves that DHCPv4 variable to the empty string, so every URL in the
+                  script loses its host and nodeset still reports success. There is no value
+                  that works for such a node, so the caller is given a reason instead.
+
+    Arguments: $node
+    Returns: ($server, undef), or (undef, $reason)
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ipxe_script_server_for_node {
+    my ($class, $node) = @_;
+
+    my $family = $class->node_address_family($node) || 4;
+    return ('${next-server}', undef) unless $family == 6;
+
+    # my_ip_facing resolves with inet_aton and reports an IPv6-only node unresolvable, so the
+    # lookup has to name the family.
+    my @facing  = $class->my_ip_facing_family($node, 6);
+    my $facing  = ( @facing && !$facing[0] ) ? $facing[1] : undef;
+    my $server  = ipxe_script_server(6, $facing);
+    return ($server, undef) if defined $server;
+
+    return (undef,
+          "$node provisions over IPv6 and no IPv6 address of this server faces it, so every URL"
+        . " in its boot script would carry no host. Give the provisioning interface an address"
+        . " in the IPv6 network of $node.");
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 radvd_config
 
     Descriptions: The radvd configuration for the IPv6 networks xCAT serves.

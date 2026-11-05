@@ -232,16 +232,11 @@ sub setstate {
     my $elilokcmdline = $kern->{kcmdline}; #track it separate, since vars differ
     my $pxelinuxkcmdline = $kern->{kcmdline}; #track it separate, since vars differ
     # next-server is a DHCPv4 field. An IPv6 node resolves it to nothing, so every URL in
-    # the script loses its host. Such a node carries the facing address instead, bracketed.
-    # my_ip_facing resolves with inet_aton and reports an IPv6-only node unresolvable, so the
-    # lookup has to name the family.
-    my $script_server = '${next-server}';
-    if ((xCAT::NetworkUtils->node_address_family($node) || 4) == 6) {
-        my @facing = xCAT::NetworkUtils->my_ip_facing_family($node, 6);
-        my $resolved = $facing[0] ? undef
-          : xCAT::NetworkUtils::ipxe_script_server(6, $facing[1]);
-        $script_server = $resolved if defined $resolved;
-    }
+    # the script loses its host. There is no value that serves such a node when no IPv6
+    # address faces it, which is why this stops instead of keeping the variable.
+    my ($script_server, $script_server_error) =
+      xCAT::NetworkUtils->ipxe_script_server_for_node($node);
+    return (1, $script_server_error) if defined $script_server_error;
 
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn = $script_server;
