@@ -13,12 +13,18 @@ Requirements
 reservation. A node with ``netboot=pxe``, ``xnba`` or ``petitboot`` receives an address
 but no boot file, so it does not netboot over IPv6.
 
-**The node must boot UEFI with Secure Boot disabled.** The grub2 image under
+**A grub2 node must boot UEFI with Secure Boot disabled.** The grub2 image under
 ``/tftpboot/boot/grub2`` is not signed. Firmware that enforces Secure Boot downloads the
 image and then refuses to start it::
 
     NBP file downloaded successfully.
     BdsDxe: failed to load Boot0004 "UEFI PXEv6" : Access Denied
+
+This is a constraint of grub2, not of IPv6. On x86_64 use ``netboot=ipxe``: ``ipxe-xcat``
+installs ``xcat/ipxe/x86_64-sb/snponly-shim.efi``, which Microsoft signs, so the node boots
+with Secure Boot on. ``netboot=grub2`` does not boot an x86_64 node at all, because no
+package installs an x86_64 grub2 image. On ppc64le, aarch64 and riscv64, grub2 is the only
+method and Secure Boot must be off.
 
 The DHCPv6 client identifier
 ----------------------------
@@ -44,10 +50,25 @@ values it accepts.
 The handoff to the installer
 ----------------------------
 
-``nodeset`` writes the address on the kernel command line, so the installer does not
-repeat the DHCPv6 exchange::
+On EL 10 and on openEuler, ``nodeset`` writes the address on the kernel command line, so
+the installer does not repeat the DHCPv6 exchange::
 
     ip=[2001:db8:149::10]::[2001:db8:149::1]:64:node01:xcatboot0:none
 
 The final ``none`` turns off DHCPv6 in the initrd. The node keeps the address that
 ``makedhcp`` reserved for it through the whole installation.
+
+Other families hand off differently, and a node that runs its own DHCPv6 client sends a
+DUID that ``makedhcp`` did not reserve. Such a client takes an address from the dynamic
+range, so the range is required.
+
+================  =========================================================================
+Family            Handoff to the installer
+================  =========================================================================
+EL 10             ``ip=`` with the address, from ``uses_static_ipv6_boot``
+openEuler         ``ip=`` with the address, from ``uses_static_ipv6_boot``
+EL 8, EL 9        DHCPv6 in the install initrd, which solicits as a third client
+Ubuntu, diskless  ``ip=`` with the address, from ``dracut_static_ip6``
+Ubuntu, diskful   ``ip6=dhcp``, and casper runs ``dhcpcd -6`` as a third client
+SLES, openSUSE    ``ipv6only=1 hostip=<address>/<prefix>``, from ``static_ipv6_boot_args``
+================  =========================================================================
