@@ -358,6 +358,18 @@ sub isc_hosts {
     # diagnose, so no option is better than a wrong one.
     my ($without) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn01}{'option-data'} || [] };
     is( $without, undef, 'an ipxe node whose loader is not on disk gets no bootfile-url' );
+
+    # BUT IT MUST NOT BE SILENT. makedhcp exits 0 either way, so a node with no boot file and no
+    # warning reaches a firmware timeout and no log on the management node says why. The warning
+    # names the path that was looked for, because the node carries its own noderes.tftpdir and
+    # the reader cannot derive it from the site value.
+    my @loader = grep { /snponly-shim\.efi/ } @warnings;
+    is( scalar @loader, 1, 'the absent loader is reported exactly once for the node' );
+    like( $loader[0], qr/\Qcn01:\E/, 'the warning is attributed to the node' );
+    like( $loader[0], qr{\Q$absent/$loader\E},
+        'and names the full path that was looked for, which is the node tftpdir and not the site one' );
+    is( scalar( grep { /\Q$present\E/ } @warnings ), 0,
+        'and the node whose loader IS on disk is not reported' );
 }
 
 # ---- Each backend builds the DUID that mac.duid selects --------------------------------------------
