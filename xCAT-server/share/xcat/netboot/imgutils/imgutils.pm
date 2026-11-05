@@ -249,6 +249,64 @@ sub disable_auto_profiles {
     return;
 }
 
+# debootstrap deletes $rootimg_dir/debootstrap when it finishes, and its tar -k fails over a finished root.
+sub debootstrap_finished {
+    my ($rootimg_dir) = @_;
+    die("Error: $rootimg_dir holds an unfinished debootstrap. Remove $rootimg_dir and run genimage again.\n")
+      if -e "$rootimg_dir/debootstrap";
+    return -e "$rootimg_dir/var/lib/dpkg/status" ? 1 : 0;
+}
+
+# genimage moves the .bak files back, and a .bak that an interrupted run left holds the image's own file.
+sub use_host_resolver {
+    my ($rootimg_dir) = @_;
+    foreach my $file ('hosts', 'resolv.conf') {
+        my $image = "$rootimg_dir/etc/$file";
+        move($image, "$image.bak") unless -e "$image.bak" || -l "$image.bak";
+        unlink($image);
+        File::Copy::copy("/etc/$file", $image);
+    }
+    return;
+}
+
+# A finished image holds the dummy resolv.conf and the apt sources of the run that built it.
+sub prepare_reused_root {
+    my ($rootimg_dir) = @_;
+    unlink(map { "$rootimg_dir/etc/apt/sources.list.d/$_" } qw(genimage.apt.list genimage1.apt.list));
+    use_host_resolver($rootimg_dir);
+    return;
+}
+
+# apt would move a root image of another release or architecture partway to the requested one.
+sub check_reused_root {
+    my ($rootimg_dir, $suite, $arch) = @_;
+    my ($codename, $image_arch);
+    my $os_release = -e "$rootimg_dir/usr/lib/os-release" ? "$rootimg_dir/usr/lib/os-release" : "$rootimg_dir/etc/os-release";
+    my %field;
+    foreach my $file ($os_release, "$rootimg_dir/etc/lsb-release") {
+        my $fh;
+        next if -l $file || !open($fh, '<', $file);
+        %field = (%field, map { /^(VERSION_CODENAME|UBUNTU_CODENAME|DISTRIB_CODENAME)=(["']?)(\S+?)\2\s*$/ ? ($1 => $3) : () } <$fh>);
+        close($fh);
+    }
+    # Ubuntu 16.04 images before base-files 9.4ubuntu4.3 have only UBUNTU_CODENAME, and 14.04 images only DISTRIB_CODENAME.
+    $codename = $field{VERSION_CODENAME} // $field{UBUNTU_CODENAME} // $field{DISTRIB_CODENAME};
+    if (open(my $fh, '<', "$rootimg_dir/var/lib/dpkg/status")) {
+        local $/ = '';
+        ($image_arch) = map { /^Package: dpkg\n(?:.+\n)*?Architecture: (\S+)/ ? $1 : () } <$fh>;
+        close($fh);
+    }
+    (my $release = $suite) =~ s/-(?:updates|security|backports|proposed)$//;
+    die("Error: genimage cannot tell the Ubuntu release and architecture of $rootimg_dir. Remove $rootimg_dir and run genimage again.\n")
+      unless $codename && $image_arch;
+    die("Error: $rootimg_dir holds Ubuntu $codename for $image_arch, not $release for $arch. Remove $rootimg_dir or use another rootimgdir.\n")
+      unless $codename eq $release && $image_arch eq $arch;
+    # dpkg owns bin/uname, so genimage cannot tell whether the backup or the file in place is current.
+    die("Error: $rootimg_dir holds bin/uname-binary, which an interrupted genimage run left. Restore bin/uname from it or remove $rootimg_dir, then run genimage again.\n")
+      if -e "$rootimg_dir/bin/uname-binary" || -l "$rootimg_dir/bin/uname-binary";
+    return 1;
+}
+
 # A kernel release compares number by number, so 6.8.0-100-generic is newer than 6.8.0-99-generic.
 sub newest_kernel_version {
     my @releases = @_;

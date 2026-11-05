@@ -327,11 +327,6 @@ unless ($onlyinitrd) {
     close($aptconfig);
     mkpath "$rootimg_dir/etc";
 
-    my $fd;
-    open($fd, ">>", "$rootimg_dir/etc/fstab");
-    print $fd "#Dummy fstab for dpkg postscripts to see\n";
-    close($fd);
-
     my $non_interactive;
     if (!$prompt) { $non_interactive = "-y"; }
 
@@ -369,8 +364,19 @@ unless ($onlyinitrd) {
         $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir file://$srcdir";
     }
 
-    print "Run cmd [$aptcmd1 $aptcmd2] to create rootimage bootstraps\n";
-    my $rc = system("$aptcmd1 $aptcmd2");
+    my $rc = 0;
+    if (imgutils::debootstrap_finished($rootimg_dir)) {
+        imgutils::check_reused_root($rootimg_dir, $dist, $uarch);
+        print "Updating the existing root image in $rootimg_dir\n";
+        imgutils::prepare_reused_root($rootimg_dir);
+    } else {
+        my $fd;
+        open($fd, ">>", "$rootimg_dir/etc/fstab");
+        print $fd "#Dummy fstab for dpkg postscripts to see\n";
+        close($fd);
+        print "Run cmd [$aptcmd1 $aptcmd2] to create rootimage bootstraps\n";
+        $rc = system("$aptcmd1 $aptcmd2");
+    }
     if ($rc) {
         my $os=xCAT::Utils->osver("os");
         if ($os ne 'ubuntu') {
@@ -531,13 +537,7 @@ unless ($onlyinitrd) {
     }
     close($aptconfig);
 
-    #backup the /etc/hosts & /etc/resolv.conf
-    move("$rootimg_dir/etc/hosts",       "$rootimg_dir/etc/hosts.bak");
-    move("$rootimg_dir/etc/resolv.conf", "$rootimg_dir/etc/resolv.conf.bak");
-
-    #copy the mn's /etc/hosts & /etc/resolv.conf to the rootimage
-    copy("/etc/hosts",       "$rootimg_dir/etc/hosts");
-    copy("/etc/resolv.conf", "$rootimg_dir/etc/resolv.conf");
+    imgutils::use_host_resolver($rootimg_dir);
 
     #Now let's handle extra packages
     unless ($imagename) {
