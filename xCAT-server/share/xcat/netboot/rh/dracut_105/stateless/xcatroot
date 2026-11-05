@@ -110,6 +110,60 @@ EOF
     fi
 }
 
+# Prints the name of the provisioning NIC, from the kernel command line.  dracut names the
+# interface in ifname= and in netdev=; BOOTIF carries a MAC only, so sysfs gives the name.
+xcat_boot_netif() {
+    local ifname="$1"
+    local netdev="$2"
+    local bootif="$3"
+    local sysnet="${4:-/sys/class/net}"
+    local mac
+    local devpath
+
+    if [ -n "$ifname" ]; then
+        printf '%s\n' "${ifname%%:*}"
+        return 0
+    fi
+
+    if [ -n "$netdev" ]; then
+        printf '%s\n' "$netdev"
+        return 0
+    fi
+
+    [ -n "$bootif" ] || return 1
+    mac=$(printf '%s' "${bootif#01-}" | tr 'A-Z-' 'a-z:')
+    for devpath in "$sysnet"/*; do
+        [ -r "$devpath/address" ] || continue
+        if [ "$(cat "$devpath/address")" = "$mac" ]; then
+            printf '%s\n' "${devpath##*/}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Writes the IPv6 configuration of $netif into $newroot.  A node that is not IPv6-only needs
+# nothing, so a non-zero status means the configuration of an IPv6-only node is lost.  The
+# booted system does not repeat the DHCPv6 exchange of the initial ramdisk, and the
+# reservation answers the DUID that exchange used, so such a node comes up with no address.
+xcat_persist_ipv6_boot() {
+    local newroot="$1"
+    local netif="$2"
+    local bootip="$3"
+    local sysnet="${4:-/sys/class/net}"
+    local sources=("${@:5}")
+    local mac
+
+    [ -n "$netif" ] || return 0
+    xcat_is_ipv6_boot "$bootip" "$netif" || return 0
+
+    mac=$(cat "$sysnet/$netif/address" 2>/dev/null)
+    [ -n "$mac" ] || return 1
+
+    persist_ipv6_nm_connection "$newroot" "$netif" "$mac" "${sources[@]}"
+}
+
 log_label="xcat.deployment"
 
 NEWROOT=$3
@@ -479,87 +533,20 @@ else
 fi
 cd /
 
-function getdevfrommac() {
-    boothwaddr=$1
-    ip link show | while read line
-    do
-        dev=`echo $line | egrep "^[0-9]+: [0-9A-Za-z]+" | cut -d ' ' -f 2 | cut -d ':' -f 1`
-        if [ "X$dev" != "X" ]; then
-            devname=$dev
-        fi
-
-        if [ "X$devname" != "X" ]; then
-            hwaddr=`echo $line | egrep "^[ ]*link" | awk '{print $2}'`
-            if [ "X$hwaddr" = "X$boothwaddr" ]; then
-                echo $devname
-            fi
-        fi
-    done
-}
-
-
-if [ -z "$STATEMNT" ]; then
-    for lf in /tmp/dhclient.*.lease; do
-        netif=${lf#*.}
-        netif=${netif%.*}
-        cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
-        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
-    done
-
-    ifname="$(getarg ifname=)"
-    netdev="$(getarg netdev=)"
-    BOOTIF="$(getarg BOOTIF=)"
-    if [ ! -z "$ifname" ]; then
-        MACX=${ifname#*:}
-        ETHX=${ifname%:$MACX*}
-    elif [ ! -z "$netdev" ]; then
-        ETHX=$netdev
-        MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
-    elif [ ! -z "$BOOTIF" ]; then
-        MACX=$BOOTIF
-        MACX=${MACX#01-}
-        MACX=${MACX//-/:}
-        ETHX=$(getdevfrommac $MACX)
-    fi
-
-
-    if [ -n "$MACX" ] && [ -n "$ETHX" ]; then
-        BOOT_IP="$(getarg ip=)"
-        IPV6_BOOT=0
-        if xcat_is_ipv6_boot "$BOOT_IP" "$ETHX"; then
-            IPV6_BOOT=1
-            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Persisting the NetworkManager connection for IPv6 interface $ETHX"
-            if ! persist_ipv6_nm_connection "$NEWROOT" "$ETHX" "$MACX"; then
-                logger -t $log_label -p local4.error "Unable to persist the static IPv6 configuration for $ETHX"
-                exit 1
-            fi
-        fi
-
-        if [ "$IPV6_BOOT" -eq 1 ]; then
-            # EL10 uses NetworkManager keyfiles.  Do not leave a competing
-            # legacy ifcfg profile that would start a new DHCPv6 identity.
-            rm -f "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-        else
-            if [ ! -e "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX" ]; then
-                [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-                mkdir -p "$NEWROOT/etc/sysconfig/network-scripts"
-                touch "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-            fi
-            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
-            echo "DEVICE=$ETHX" > "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-            echo "BOOTPROTO=dhcp" >> "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-            echo "HWADDR=$MACX" >> "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-            echo "ONBOOT=yes" >> "$NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-        fi
-    fi
-fi
-
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/etc/resolv.conf"
 cp /etc/resolv.conf "$NEWROOT/etc/"
 
 if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
     [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "disable selinux ..."
     echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
+fi
+
+if [ -z "$STATEMNT" ]; then
+    BOOT_NETIF="$(xcat_boot_netif "$(getarg ifname=)" "$(getarg netdev=)" "$(getarg BOOTIF=)")"
+    if ! xcat_persist_ipv6_boot "$NEWROOT" "$BOOT_NETIF" "$(getarg ip=)"; then
+        logger "${SYSLOGHOST[@]}" -t $log_label -p local4.error "Unable to persist the static IPv6 configuration for $BOOT_NETIF"
+        exit 1
+    fi
 fi
 
 logger "${SYSLOGHOST[@]}" -t $log_label -p local4.info "Exiting xcatroot..."
