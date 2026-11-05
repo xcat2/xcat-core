@@ -23,6 +23,9 @@ use Sys::Hostname;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
+# IO::Socket::INET6 is optional on an older management node. Without it a
+# callback to an IPv6 node cannot be opened at all.
+our $inet6support = eval { require IO::Socket::INET6; 1; };
 my $core_socket_resolver = defined(&Socket::getaddrinfo)
   && defined(&Socket::getnameinfo)
   && defined(&Socket::inet_pton)
@@ -4266,6 +4269,155 @@ sub gen_net_boot_params
     return $net_params;
 }
 
+#-------------------------------------------------------------------------------
+
+# A link-layer address, as both tools print it: ethernet is six bytes, and
+# InfiniBand is twenty.
+our $MAC_ADDRESS_PATTERN = qr/[0-9a-fA-F]{1,2}(?::[0-9a-fA-F]{1,2}){5,19}/;
+
+=head3   mac_from_neighbour_table
+
+    Description:
+        The link-layer address a neighbour table holds for one address.
+
+    Arguments:
+        The text of the table, and the address to look up.
+    Returns:
+        The address in lower case, or undef when the table holds none.
+
+    Comments:
+        Three tools write three formats, and this sub reads all three:
+            arp -n            192.0.2.10 ether 52:54:00:aa:bb:cc C eth0
+            ip neigh show     192.0.2.10 dev eth0 lladdr 52:54:00:aa:bb:cc REACHABLE
+            ip -6 neigh show  2001:db8::2 dev eth0 lladdr 52:54:00:aa:bb:cc router REACHABLE
+        The address is compared after both sides are normalized, because
+        2001:db8::2 and 2001:0db8:0:0:0:0:0:2 are one address written two ways.
+        The callers used to interpolate the address into a regular expression,
+        where every dot matched any character.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub mac_from_neighbour_table
+{
+    my $text = shift;
+    if (defined($text) && $text eq __PACKAGE__)
+    {
+        $text = shift;
+    }
+    my $address = shift;
+
+    return unless defined($text) && defined($address);
+    my $wanted = _canonical_neighbour_address($address);
+    return unless defined($wanted);
+
+    foreach my $line (split(/\n/, $text))
+    {
+        next unless $line =~ /^\s*(\S+)\s+(\S.*)$/;
+        my ($entry, $rest) = ($1, $2);
+        my $found = _canonical_neighbour_address($entry);
+        next unless defined($found) && $found eq $wanted;
+
+        # ip(8) names the column; arp(8) puts it third, and writes
+        # "(incomplete)" in place of the type and the address.
+        return lc($1) if $rest =~ /\blladdr\s+($MAC_ADDRESS_PATTERN)(?:\s|$)/o;
+        return lc($1) if $rest =~ /^\S+\s+($MAC_ADDRESS_PATTERN)(?:\s|$)/o;
+    }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   neighbour_table_text
+
+    Description:
+        Reads the neighbour table that holds one address.
+
+    Arguments:
+        The address to look up.
+    Returns:
+        The text of the table, or undef when no tool is available.
+
+    Comments:
+        arp(8) prints the IPv4 table only, so an IPv6 address needs
+        "ip -6 neigh show". This keeps the IPv4 path on arp(8).
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub neighbour_table_text
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    return unless defined($address) && length($address);
+
+    if (xCAT::NetworkUtils->isIpv6addr($address))
+    {
+        my $ipcmd = _neighbour_command('ip');
+        return unless $ipcmd;
+        return scalar(`$ipcmd -6 neigh show`);
+    }
+    my $arpcmd = _neighbour_command('arp');
+    return unless $arpcmd;
+    return scalar(`$arpcmd -n`);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   mac_of_neighbour
+
+    Description:
+        The link-layer address of a neighbour, for either address family.
+
+    Arguments:
+        The address of the neighbour.
+    Returns:
+        The address in lower case, or undef.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub mac_of_neighbour
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    return mac_from_neighbour_table(neighbour_table_text($address), $address);
+}
+
+sub _neighbour_command
+{
+    my $name = shift;
+    foreach my $dir ('/usr/sbin', '/sbin', '/usr/bin', '/bin')
+    {
+        return "$dir/$name" if -x "$dir/$name";
+    }
+    return;
+}
+
+# One address written two ways is one address. An IPv6 literal is compared
+# after it is packed; an IPv4 one has a single spelling already.
+sub _canonical_neighbour_address
+{
+    my $address = shift;
+    return unless defined($address) && length($address);
+    $address =~ s/\%.*//;    # a scoped literal, as in fe80::1%eth0
+
+    if (index($address, ':') >= 0)
+    {
+        my $packed = _pack_ip_address($address, 6);
+        return unless defined($packed) && length($packed) == 16;
+        return unpack('H*', $packed);
+    }
+    return unless xCAT::NetworkUtils->isIpaddr($address);
+    return $address;
+}
+
 #--------------------------------------------------------------------------------
 =head3  send_tcp_msg
       establish a tcp socket to the specified IP address and port, then send the specifid message via the socket
@@ -4283,12 +4435,7 @@ sub send_tcp_msg {
     my $destport=shift;
     my $msg=shift;
 
-    my $sock = new IO::Socket::INET(
-                PeerAddr => $destip,
-                PeerPort => $destport,
-                Timeout  => '1',
-                Proto    => 'tcp'
-            );
+    my $sock = xCAT::NetworkUtils->open_tcp_socket($destip, $destport, 1);
     if ($sock) {
         print $sock $msg;
         close($sock);
@@ -4296,6 +4443,47 @@ sub send_tcp_msg {
     }else{
         return 1;
     }
+}
+
+#--------------------------------------------------------------------------------
+=head3  open_tcp_socket
+      Opens a TCP connection to an address of either family.
+      Arguments:
+         $address : the destination address, IPv4 or IPv6
+         $port    : the destination TCP port
+         $timeout : the connect timeout in seconds, optional
+      Returns:
+         the socket, or undef with $! set.
+
+      IO::Socket::INET cannot reach an IPv6 address, so a node discovered over
+      IPv6 never received its restart message and timed out. IO::Socket::INET6
+      is optional on an older management node, so the IPv4 path is the
+      fallback.
+=cut
+#--------------------------------------------------------------------------------
+sub open_tcp_socket {
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    my $port    = shift;
+    my $timeout = shift;
+
+    return unless defined($address) && length($address) && defined($port);
+    my %socket_args = (
+        PeerAddr => $address,
+        PeerPort => $port,
+        Proto    => 'tcp',
+    );
+    $socket_args{Timeout} = $timeout if defined($timeout);
+
+    if ($inet6support)
+    {
+        my $sock = IO::Socket::INET6->new(%socket_args);
+        return $sock if $sock;
+    }
+    return IO::Socket::INET->new(%socket_args);
 }
 
 #-----------------------------------------------------------------------------

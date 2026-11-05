@@ -80,21 +80,9 @@ sub findme {
         xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Error: virtual machines is not supported");
         return;
     }
-    my $arptable;
-    if (-x "/usr/sbin/arp") {
-        $arptable = `/usr/sbin/arp -n`;
-    }
-    else {
-        $arptable = `/sbin/arp -n`;
-    }
-
-    my @arpents = split /\n/, $arptable;
-    foreach (@arpents) {
-        if (m/^($ip)\s+\S+\s+(\S+)\s/) {
-            $mac = $2;
-            last;
-        }
-    }
+    # arp(8) prints the IPv4 table only, and the address used to be interpolated
+    # into a regular expression, where every dot matched any character.
+    $mac = xCAT::NetworkUtils->mac_of_neighbour($ip);
 
     unless ($mac) {
         xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Error: Could not find mac of the $ip");
