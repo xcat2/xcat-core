@@ -66,6 +66,7 @@ my $tempfile;
 my $prompt;
 my $noupdate;
 my $kernelimage;
+my $lock;
 
 
 sub xdie {
@@ -217,6 +218,15 @@ foreach (@ndrivers, @default_ndrivers) {
 
 my $uarch = xCAT::Utils->debian_arch($arch);
 
+
+# The lock is named after the real path of the root image, which must exist.
+mkpath($rootimg_dir) unless ($onlyinitrd);
+my $lockerror;
+($lockerror, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+if ($lockerror) {
+    print "Error: $lock\n";
+    exit 1;
+}
 
 unless ($onlyinitrd) {
     @aptdirs = ();
