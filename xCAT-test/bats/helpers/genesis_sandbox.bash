@@ -45,11 +45,18 @@ setup_genesis_sandbox()
 
 run_genesis()
 {
-    local expected_status=$1
+    local expected_status=$1 alternate_status
     shift
+    # GNU timeout reports a child that a signal killed as 128+signal. The uutils timeout of
+    # Ubuntu 26.04 reports the signal number alone, so one SIGTERM is 143 or 15 by platform.
+    alternate_status=$expected_status
+    if [ "$expected_status" -gt 128 ]; then
+        alternate_status=$((expected_status - 128))
+    fi
     run "${sandbox[@]}" "$@" timeout 20 /bin/bash /run/script </dev/null
-    if [ "$status" -ne "$expected_status" ]; then
-        printf 'Expected exit %s, got %s\n%s\n' "$expected_status" "$status" "$output" >&2
+    if [ "$status" -ne "$expected_status" ] && [ "$status" -ne "$alternate_status" ]; then
+        printf 'Expected exit %s or %s, got %s\n%s\n' \
+            "$expected_status" "$alternate_status" "$status" "$output" >&2
         return 1
     fi
 }
