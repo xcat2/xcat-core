@@ -878,6 +878,29 @@ sub upstream_loader_warnings {
     return @warnings;
 }
 
+# Why one NODE gets no DHCPv6 boot file. dhcp6_bootfile_url_for_node drops the option when the
+# UEFI loader is not under the tftpdir of that node, and makedhcp exits 0, so the node reaches a
+# firmware timeout with nothing naming the file it asked for.
+#
+# upstream_loader_warnings cannot cover this. It reads the SITE TFTP directory and runs on
+# makedhcp -n and -a only, so a node with its own noderes.tftpdir is never examined, and
+# makedhcp <node> examines nothing.
+#
+# A node can load from another TFTP server, so this is a warning and not an error.
+sub dhcp6_missing_loader_warning {
+    my ( $class, %opts ) = @_;
+
+    my $tftpdir = $opts{tftpdir};
+    my $loader  = $opts{loader};
+    return unless defined $tftpdir && length $tftpdir;
+    return unless defined $loader  && length $loader;
+    $tftpdir =~ s{/+$}{};
+    return if -e "$tftpdir/$loader";
+    return "$tftpdir/$loader is missing, so $opts{node} gets no DHCPv6 boot file and its"
+      . " firmware times out with nothing to load. Install ipxe-xcat on the TFTP server"
+      . " of $opts{node}.";
+}
+
 # Whether this server has a loader that can SAN-boot an x86 node without iSCSI boot data: an
 # undionly.kpxe that the administrator put in the TFTP root, or the BIOS file of the loader of the
 # netboot method of the node.

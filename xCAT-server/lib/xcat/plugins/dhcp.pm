@@ -71,6 +71,9 @@ my $nrhash;
 my $machash;
 my $dhcp6duids;
 my $dhcp6httpport;
+# The missing-loader warnings already reported in this makedhcp, keyed on the sentence, so a node
+# with several IPv6 NICs is named once.
+my %dhcp6_loader_warned;
 my $iscsients;
 my $nodetypeents;
 my $chainents;
@@ -1921,6 +1924,7 @@ sub process_request
     $callback = shift;
     my $oldmask = umask 0077;
     $restartdhcp = 0;
+    %dhcp6_loader_warned = ();
     my $rsp;
 
     #print Dumper($req);
@@ -4653,8 +4657,18 @@ sub dhcp6_bootfile_url_for_node
         return unless $loader;
 
         # Naming a file the TFTP server does not have costs the client a timeout it cannot
-        # diagnose, which is why the Kea client classes check the loader the same way.
-        return if defined $boot_tftpdir && !-e "$boot_tftpdir/$loader";
+        # diagnose, which is why the Kea client classes check the loader the same way. The node
+        # is named rather than dropped in silence: the tftpdir of the node is not the site one,
+        # so the reader cannot derive the path that was looked for.
+        if ( my $missing = xCAT::DHCP::BootPolicy->dhcp6_missing_loader_warning(
+                node => $node, tftpdir => $boot_tftpdir, loader => $loader ) )
+        {
+            # Once per node per makedhcp. A node with several IPv6 NICs reaches this for each of
+            # them, and the same sentence repeated is noise that hides the rest of the output.
+            $callback->({ node => [ { name => [$node], warning => [$missing] } ] })
+              unless $dhcp6_loader_warned{$missing}++;
+            return;
+        }
         return "tftp://$uri_host/$loader";
     }
 
