@@ -882,6 +882,14 @@ sub subiquity_iso_url {
     configure_networking reads ip= into IP and treats off as already done.
 
     ip6=dhcp: casper reads ip6= and configures the interface with dhcpcd -6.
+    There is no static form. initramfs-tools reads ip6= in
+    scripts/functions:configure_networking, where every value but
+    ""/none/done/off runs dhcpcd -6, and a value that is not on/dhcp/any is
+    taken as the name of a device. A static address written here would become a
+    device name, so the lease dhcpcd takes comes from the dynamic range and
+    carries a DUID that matches no reservation. The node is given its reserved
+    address by the static netplan in the autoinstall instead, which replaces
+    that lease before the installer runs.
 
     netboot=url: do_urlmount downloads the ISO with casper's own wget, which
     speaks IPv6, and loop-mounts it. nfsroot= is left out, because klibc
@@ -1031,7 +1039,9 @@ sub subiquity_boot_params {
     # nfsmount, which has no IPv6: it answers "need a path" for "[2001:db8::1]:/export" and
     # for "2001:db8::1:/export", while an IPv4 server gets past parsing to the mount. The
     # network itself is not the limit, because casper reads ip6= and configures the interface
-    # with dhcpcd -6.
+    # with dhcpcd -6. That lease is from the dynamic range, because dhcpcd generates its own
+    # DUID in the initramfs: the reserved address reaches the node through the static netplan
+    # of the autoinstall, not through ip6=.
     #
     # do_urlmount downloads the ISO with casper's own wget, which speaks IPv6. That needs the
     # ISO in the install tree, which copycds links there, so a tree copied before this change

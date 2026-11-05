@@ -158,6 +158,10 @@ my $resolver = sub { $_[0] eq 'mn.cluster' ? '10.0.0.1' : undef };
         qr{\Qurl=http://[2001:db8::1]:80/install/ubuntu24.04/x86_64/install.iso\E},
         '... from the bracketed install server, so the port can still be read'
     );
+    # initramfs-tools reads ip6= in configure_networking, where every value but
+    # ""/none/done/off runs dhcpcd -6 and a value that is not on/dhcp/any is taken as a device
+    # name. There is no static form, so this lease comes from the dynamic range. The reserved
+    # address reaches the node through the static netplan of the autoinstall instead.
     like( $kcmdline, qr{\bip6=dhcp\b}, '... with ip6=, which casper gives to dhcpcd -6' );
     # casper calls configure_networking only when ip= is set, whatever the value. Without it
     # the whole networking stage is skipped and wget has no source address.

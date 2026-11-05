@@ -479,6 +479,7 @@ sub subvars {
         $inc =~ s/^((?:[ \t]*- [^\n]*\n)*)([ \t]*)- #INCLUDE_DEFAULT_PKGLIST_AUTOINSTALL#[ \t]*\n/$1 . ubuntu_autoinstall_items($2, $1, \@autoinstall)/meg;
         $inc =~ s/#SUBIQUITYINSTALLNIC#/subiquity_install_nic()/eg;
         $inc =~ s/#SUBIQUITYINSTALLMAC#/subiquity_install_mac()/eg;
+        $inc =~ s/#SUBIQUITYINSTALLMATCH:(\d+)#/subiquity_install_match($1)/eg;
         $inc =~ s/#SUBIQUITYDHCP:(\d+)#/subiquity_dhcp_keys($1)/eg;
         $inc =~ s/#SUBIQUITYTARGETDHCP#/subiquity_target_dhcp_keys()/eg;
         $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
@@ -2021,11 +2022,73 @@ sub subiquity_install_netcfg {
 
 #--------------------------------------------------------------------------------
 sub subiquity_install_netcfg_for_node {
+    my ($nodename) = @_;
+
+    $nodename = $node unless defined($nodename);
     return subiquity_install_netcfg(
         tabdb('noderes', '$NODE', 'installnic', 1),
         tabdb('noderes', '$NODE', 'primarynic', 1),
         tabdb('mac',     '$NODE', 'mac'),
-        $node);
+        $nodename);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 _subiquity_netplan6
+
+    The netplan keys of an IPv6-only node, static, as one block of lines.
+
+    Arguments:
+        $nodename the node being templated
+        $indent   how many spaces each top-level key is indented by
+    Returns:
+        the keys, one per line, or undef when the node has no usable address
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub _subiquity_netplan6 {
+    my ($nodename, $indent) = @_;
+
+    my $pad = ' ' x (defined($indent) ? $indent : 8);
+
+    my ($address, undef, $gateway, $prefix) =
+      xCAT::NetworkUtils->getNodeNetworkCfg6($nodename);
+    unless ($address && defined($prefix) && $prefix =~ /^\d+$/ && $prefix <= 128) {
+        $tmplerr = "Cannot resolve the static IPv6 network configuration of $nodename";
+        return;
+    }
+
+    if (defined($gateway) && length($gateway)) {
+        $gateway = xCAT::NetworkUtils->ipv6_server_for_node($nodename, $gateway);
+    }
+
+    # site.nameservers holds one list for the cluster, so the node can be given the IPv4
+    # resolver of another network. An IPv6-only node cannot reach it, and an unreachable
+    # server in resolv.conf makes every lookup wait for its timeout.
+    #
+    # '<xcatmaster>' is the management node, which runs named. It is not the gateway: a
+    # cluster whose gateway is a separate router would be given a resolver that answers
+    # nothing.
+    my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$nodename]) };
+    my $master6 = xCAT::NetworkUtils->ipv6_server_for_node($nodename, '<xcatmaster>');
+    my @resolvers = grep { index($_, ':') >= 0 }
+      grep { defined && length }
+      map { $_ eq '<xcatmaster>' ? $master6 : $_ } split(/,/, $nameservers{$nodename} // '');
+    @resolvers = ($master6)
+      if !@resolvers && defined($master6) && index($master6, ':') >= 0;
+
+    my @lines = ("${pad}dhcp4: false", "${pad}addresses: [$address/$prefix]");
+    if (defined($gateway) && length($gateway)) {
+        # 'to: default' rather than the deprecated gateway6, which netplan warns about and
+        # drops. This is the shape xcatroot already writes for a diskless IPv6 node, so the
+        # cluster runs one netplan dialect.
+        push @lines, "${pad}routes:", "${pad}  - to: default", "${pad}    via: $gateway";
+    }
+    push @lines, "${pad}nameservers:", "${pad}  addresses: [" . join(', ', @resolvers) . "]"
+      if @resolvers;
+
+    return join("\n", @lines);
 }
 
 #-----------------------------------------------------------------------------
@@ -2040,8 +2103,18 @@ sub subiquity_install_netcfg_for_node {
     installer then cannot reach its package source and falls back to asking at
     the console, which on a serial console waits forever.
 
+    DHCPv6 is not the answer either. A DHCPv6 client is identified by its DUID,
+    not by the MAC, so the installer sends a DUID that matches no Kea
+    reservation and takes an address out of the dynamic range. That address has
+    no PTR record, makedns writes PTRs from the hosts table, and xcatd
+    identifies a client over IPv6 only by the name its address resolves to. The
+    install then reaches post.xcat, which fetches mypostscript and is answered
+    by a getpostscript that cannot say which node asked. So the node is given
+    the address makedhcp reserved for it.
+
     Arguments:
-        $indent how many spaces each key is indented by
+        $indent   how many spaces each key is indented by
+        $nodename optional, for tests; defaults to the node being templated
     Returns:
         the keys, one per line, indented as asked.
 
@@ -2049,11 +2122,14 @@ sub subiquity_install_netcfg_for_node {
 
 #-----------------------------------------------------------------------------
 sub subiquity_dhcp_keys {
-    my ($indent) = @_;
+    my ($indent, $nodename) = @_;
 
     my $pad = ' ' x (defined($indent) ? $indent : 8);
     return "${pad}dhcp4: true" unless $node_ipv6_only;
-    return "${pad}dhcp6: true\n${pad}dhcp4: false";
+
+    $nodename = $node unless defined($nodename);
+    my $section = _subiquity_netplan6($nodename, defined($indent) ? $indent : 8);
+    return defined($section) ? $section : '';
 }
 
 #-----------------------------------------------------------------------------
@@ -2063,6 +2139,13 @@ sub subiquity_dhcp_keys {
     The same keys for the netplan that the late command writes into the
     installed system, as printf arguments.
 
+    An IPv6-only node keeps the static address here too. systemd-networkd
+    generates its own DUID, so a reinstalled node that asked for DHCPv6 would
+    come up on a third address, again with no PTR, and the first xcatdsklspost
+    and every later updatenode would fail the same way as the install.
+
+    Arguments:
+        $nodename optional, for tests; defaults to the node being templated
     Returns:
         the arguments, each already quoted and indented for netplan.
 
@@ -2070,11 +2153,52 @@ sub subiquity_dhcp_keys {
 
 #-----------------------------------------------------------------------------
 sub subiquity_target_dhcp_keys {
+    my ($nodename) = @_;
 
     unless ($node_ipv6_only) {
         return '"      dhcp4: true" "      dhcp4-overrides:" "        use-domains: true"';
     }
-    return '"      dhcp6: true" "      dhcp4: false" "      dhcp6-overrides:" "        use-domains: true"';
+    $nodename = $node unless defined($nodename);
+    my $section = _subiquity_netplan6($nodename, 6);
+    return '' unless defined($section);
+    return join(' ', map { qq("$_") } split(/\n/, $section));
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 subiquity_install_match
+
+    The netplan match key that picks the provisioning NIC of the node being
+    installed.
+
+    An IPv4 node keeps the glob the templates carried: DHCPv4 answers on one
+    interface only, so every candidate may be offered the lease. An IPv6-only
+    node is given a static address, and a static address on each of three
+    interfaces of one bridge is a broken network, so that node is matched by
+    its own MAC.
+
+    Arguments:
+        $indent   how many spaces the key is indented by
+        $nodename optional, for tests; defaults to the node being templated
+    Returns:
+        the key, indented as asked.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub subiquity_install_match {
+    my ($indent, $nodename) = @_;
+
+    my $pad = ' ' x (defined($indent) ? $indent : 10);
+    return "${pad}name: \"e*\"" unless $node_ipv6_only;
+
+    $nodename = $node unless defined($nodename);
+    my (undef, $macaddress) = subiquity_install_netcfg_for_node($nodename);
+    unless (defined($macaddress) && length($macaddress)) {
+        $tmplerr = "Cannot resolve the MAC address of $nodename";
+        return '';
+    }
+    return "${pad}macaddress: \"$macaddress\"";
 }
 
 #-----------------------------------------------------------------------------
