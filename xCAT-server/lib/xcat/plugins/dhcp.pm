@@ -690,10 +690,67 @@ sub listnode
     }
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 delnode6_commands
+
+    Descriptions: The omshell commands that remove the DHCPv6 host of a node.
+    Arguments: $node
+    Returns: the commands, or the empty string when there is no node to remove.
+
+    The sequence is the one addnode6 uses to clear a name conflict before it
+    creates the host, so a removal and a replacement act on the same object.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub delnode6_commands
+{
+    my ($node) = @_;
+
+    return '' unless defined($node) && length($node);
+
+    my $commands = "new host\n";
+    $commands .= "set name = \"$node\"\n";
+    $commands .= "open\n";
+    $commands .= "remove\n";
+    $commands .= "close\n";
+    return $commands;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 delnode6
+
+    Descriptions: Remove the DHCPv6 host of a node over an open omapi session.
+    Arguments: $node, $writer -- the omshell handle, or undef
+    Returns: 1 when the commands were written, 0 when there was nothing to do.
+
+    makedhcp -d removed the DHCPv4 host alone. addnode6 creates the DHCPv6 host
+    as a separate object on a separate omapi port, so the reservation survived
+    the delete and kept the address and the boot file of a node that makedhcp
+    reported as removed.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub delnode6
+{
+    my ($node, $writer) = @_;
+
+    return 0 unless defined($writer);
+    my $commands = delnode6_commands($node);
+    return 0 unless length($commands);
+    print {$writer} $commands;
+    return 1;
+}
+
 sub delnode
 {
     my $node  = shift;
     my $inetn = inet_aton($node);
+
+    delnode6($node, $omshell6) if $usingipv6;
 
     if (_isc_static_host_fallback()) {
         _delete_isc_static_host($node);
@@ -5510,6 +5567,77 @@ sub putmyselffirst {
 
 #-------------------------------------------------------------------------------
 
+=head3 net_config_for
+
+    Descriptions: The %netcfgs entry of a subnet.
+    Arguments: the subnet, with or without a prefix length
+    Returns: the configuration hash reference, or undef when there is none.
+
+    addrangedetection keys %netcfgs on networks.net, which a conf may write
+    with no prefix length, while addnet6 names a subnet "<net>/<prefix>" from
+    the "ip -6 route" output. A lookup under the long form alone found nothing,
+    so the subnet6 lost its domain-search list and its name servers, while
+    dynamic_range_for, which already falls back, still found the range.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub net_config_for
+{
+    my ($net) = @_;
+
+    return unless defined $net;
+    return $netcfgs{$net} if $netcfgs{$net};
+    (my $bare = $net) =~ s{/.*$}{};
+    return $netcfgs{$bare};
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 isc_dhcp6_subnet_statements
+
+    Descriptions: The domain and resolver statements of an ISC subnet6.
+    Arguments:
+        %args - net, config (the net_config_for entry), site_domain,
+                alldomains (arrayref), domain_search (0 on sles10 and rh5,
+                whose dhcpd does not know the option)
+    Returns: the statements, as a list. Empty when the subnet has nothing to say.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isc_dhcp6_subnet_statements
+{
+    my (%args) = @_;
+
+    my $cfg = $args{config} || {};
+    my @lines;
+
+    my $netdomain = $cfg->{domain} || $args{site_domain};
+    $netdomain = '' unless defined $netdomain;
+    push @lines, "    option domain-name \"" . $netdomain . "\";\n";
+
+    if ($args{domain_search} and $cfg->{domain}) {
+
+        # We want something like "option domain-search "foo.com", "bar.com";"
+        my $domainstring = qq~"$cfg->{domain}"~;
+        foreach my $dom (@{ $args{alldomains} || [] }) {
+            chomp $dom;
+            if ($dom ne $cfg->{domain}) {
+                $domainstring .= qq~, "$dom"~;
+            }
+        }
+        push @lines, "    option domain-search  $domainstring;\n";
+    }
+
+    my $nsstatement = isc_dhcp6_nameserver_statement($args{net}, $cfg->{nameservers});
+    push @lines, "    $nsstatement\n" if $nsstatement;
+
+    return @lines;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 dynamic_range_for
 
     Descriptions: The dynamic range of a subnet, as ISC writes it.
@@ -5592,37 +5720,30 @@ sub addnet6
     #posix timezone rfc 4833/tzdb timezone
     #phase 3 will include whatever is required to do Netboot6.  That might be in the october timeframe for lack of implementations to test
     #boot url/param (rfc 59070)
-    my $netdomain = $netcfgs{$net}->{domain};
+    # The lookup falls back to the bare net, as dynamic_range_for does. See
+    # net_config_for: a conf may write networks.net with no prefix length,
+    # while $net names the subnet "<net>/<prefix>".
+    my $netcfg = net_config_for($net) || {};
+
+    my $netdomain = $netcfg->{domain};
     unless ($netdomain) { $netdomain = $site_domain; }
-    push @netent, "    option domain-name \"" . $netdomain . "\";\n";
 
     #  add domain-search if not sles10 or rh5
     my $osv = xCAT::Utils->osver();
-    unless (($osv =~ /^sle[sc]10/) || ($osv =~ /^rh.*5$/)) {
+    push @netent, isc_dhcp6_subnet_statements(
+        net           => $net,
+        config        => $netcfg,
+        site_domain   => $site_domain,
+        alldomains    => \@alldomains,
+        domain_search => (($osv =~ /^sle[sc]10/) || ($osv =~ /^rh.*5$/)) ? 0 : 1,
+    );
 
-        # We want something like "option domain-search "foo.com", "bar.com";"
-        my $domainstring = qq~"$netcfgs{$net}->{domain}"~;
-        foreach my $dom (@alldomains) {
-            chomp $dom;
-            if ($dom ne $netcfgs{$net}->{domain}) {
-                $domainstring .= qq~, "$dom"~;
-            }
-        }
-
-        if ($netcfgs{$net}->{domain}) {
-            push @netent, "    option domain-search  $domainstring;\n";
-        }
-    }
-
-
-    my $nameservers = $netcfgs{$net}->{nameservers};
-    my $nsstatement = isc_dhcp6_nameserver_statement( $net, $nameservers );
-    push @netent, "    $nsstatement\n" if $nsstatement;
+    my $nameservers = $netcfg->{nameservers};
     my $ddnserver = defined($nameservers) ? $nameservers : '';
     $ddnserver =~ s/,.*//;
     my $ddnsdomain;
-    if ($netcfgs{$net}->{ddnsdomain}) {
-        $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
+    if ($netcfg->{ddnsdomain}) {
+        $ddnsdomain = $netcfg->{ddnsdomain};
     }
     my $ddns_on = $::XCATSITEVALS{dnshandler} =~ /ddns/ ? 1 : 0;
     my $settings;
