@@ -294,7 +294,7 @@ if ( grep { $_ eq 'kea' } @backends ) {
     # An invalid duid is an error, and the node keeps the reservation that it had.
     set_duid( 'cn02', 'not-a-duid' );
     my $refused = makedhcp( backend => 'kea', kea => \%kea, nodes => ['cn02'] );
-    is_deeply( $refused->{errors}, ["The duid attribute of cn02 is 'not-a-duid', but only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported."],
+    is_deeply( $refused->{errors}, [ invalid_duid_error( 'cn02', 'not-a-duid' ) ],
         'Kea: makedhcp reports an invalid duid' );
     $serve->();
     check_reserved( 'Kea, cn02 after an invalid duid, the client of its old DUID', $node{cn02}{duid}, 'cn02' );
@@ -386,7 +386,7 @@ if ( grep { $_ eq 'isc' } @backends ) {
 
     set_duid( 'cn01', 'not-a-duid' );
     my $refused = makedhcp( backend => 'isc', nodes => ['cn01'] );
-    is_deeply( $refused->{errors}, ["cn01: The duid attribute of cn01 is 'not-a-duid', but only firmware, canonical, or a DUID of colon-separated hexadecimal octets is supported."],
+    is_deeply( $refused->{errors}, [ 'cn01: ' . invalid_duid_error( 'cn01', 'not-a-duid' ) ],
         'ISC: makedhcp reports an invalid duid' );
     is( $refused->{commands}, '', 'ISC: makedhcp sends no OMAPI command for a node with an invalid duid' );
     $omshell->( $refused->{commands} ) if length( $refused->{commands} // '' );
@@ -397,10 +397,8 @@ if ( grep { $_ eq 'isc' } @backends ) {
 done_testing();
 
 # ---- The makedhcp step ------------------------------------------------------------------------------
-sub makedhcp_step {
-    my ($args) = @_;
-
-    # xcatd loads xCAT::DBobjUtils before any plugin runs.
+# xcatd loads xCAT::DBobjUtils before any plugin runs.
+sub require_dhcp_plugin {
     require xCAT::DBobjUtils;
     my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
     if ( -f $plugin ) {
@@ -408,7 +406,26 @@ sub makedhcp_step {
     } else {
         require xCAT_plugin::dhcp;
     }
+    return;
+}
+
+# The sentence that dhcp6_client_duids builds around the error of dhcp6_client_duid. It is read
+# from the plugin rather than written out here, so a change of wording fails the step that
+# produces it instead of an assertion that still holds the old text.
+sub invalid_duid_error {
+    my ( $node, $setting ) = @_;
+    require_dhcp_plugin();
+    my ( undef, $error ) = xCAT_plugin::dhcp::dhcp6_client_duid($setting);
+    die "dhcp6_client_duid accepts '$setting', so there is no error to assert\n" unless $error;
+    return "The duid attribute of $node is '$setting', but $error.";
+}
+
+sub makedhcp_step {
+    my ($args) = @_;
+
+    require_dhcp_plugin();
     my ( @errors, @warnings );
+
     no warnings 'once';
     local $xCAT_plugin::dhcp::callback = sub {
         my ($resp) = @_;
