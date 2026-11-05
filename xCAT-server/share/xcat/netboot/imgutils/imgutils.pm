@@ -249,6 +249,43 @@ sub disable_auto_profiles {
     return;
 }
 
+# A kernel release compares number by number, so 6.8.0-100-generic is newer than 6.8.0-99-generic.
+sub newest_kernel_version {
+    my @releases = @_;
+    my $compare  = sub {
+        my @left  = split(/(\d+)/, $_[0]);
+        my @right = split(/(\d+)/, $_[1]);
+        while (@left && @right) {
+            my ($l, $r) = (shift(@left), shift(@right));
+            my $order = ($l =~ /^\d+$/ && $r =~ /^\d+$/) ? $l <=> $r : $l cmp $r;
+            return $order if $order;
+        }
+        return @left <=> @right;
+    };
+    my ($newest) = sort { $compare->($b, $a) } @releases;
+    return $newest;
+}
+
+# Package scripts run this uname in the image, so -r names the kernel that genimage publishes.
+sub uname_script {
+    my ($kernelver) = @_;
+    my $release = $kernelver ? "echo \"$kernelver\"" : 'ls /lib/modules | sort -V | tail -n 1';
+    return "#!/bin/bash \n"
+      . "case \"\$1\" in \n"
+      . "\"-m\") \n"
+      . "    ARCH=\"\$(dpkg --print-architecture || \n"
+      . "                rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}')\" \n"
+      . "    case \"\$ARCH\" in \n"
+      . "        \"amd64\") ARCH=\"x86_64\" ;; \n"
+      . "        \"ppc64el\") ARCH=\"ppc64le\" ;; \n"
+      . "    esac \n"
+      . "    echo \"\$ARCH\" ;; \n"
+      . "\"-r\")   $release ;; \n"
+      . "\"-s\"|\"\") echo \"Linux\" ;; \n"
+      . "esac \n"
+      . "exit 0 \n";
+}
+
 sub varsubinline{
     my $line=shift;
     my $refvardict=shift;

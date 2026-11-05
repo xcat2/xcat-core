@@ -733,7 +733,7 @@ foreach (@KVERS) {
 
 @KVERS = <$rootimg_dir/lib/modules/*> unless (scalar(@KVERS));
 
-$basekernelver = basename(pop @KVERS) if (scalar(@KVERS));
+$basekernelver = imgutils::newest_kernel_version(map { basename($_) } @KVERS) if (scalar(@KVERS));
 
 $basekernelver = `uname -r` unless ($basekernelver);
 
@@ -2269,20 +2269,7 @@ sub use_hackuname {
     # write the hacked uname script
     my $unamefile;
     open($unamefile, ">", "$rootimg_dir/bin/uname");
-    print $unamefile "#!/bin/bash \n";
-    print $unamefile "case \"\$1\" in \n";
-    print $unamefile "\"-m\") \n";
-    print $unamefile "    ARCH=\"\$(dpkg --print-architecture || \n";
-    print $unamefile "                rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}')\" \n";
-    print $unamefile "    case \"\$ARCH\" in \n";
-    print $unamefile "        \"amd64\") ARCH=\"x86_64\" ;; \n";
-    print $unamefile "        \"ppc64el\") ARCH=\"ppc64le\" ;; \n";
-    print $unamefile "    esac \n";
-    print $unamefile "    echo \"\$ARCH\" ;; \n";
-    print $unamefile "\"-r\")   cd /lib/modules && for d in * ; do : ; done && echo \$d ;; \n";
-    print $unamefile "\"-s\"|\"\") echo \"Linux\" ;; \n";
-    print $unamefile "esac \n";
-    print $unamefile "exit 0 \n";
+    print $unamefile imgutils::uname_script($kernelver);
     close $unamefile;
     chmod(0755, "$rootimg_dir/bin/uname");
 }
