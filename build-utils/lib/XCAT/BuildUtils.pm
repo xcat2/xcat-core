@@ -765,6 +765,8 @@ Returns:
     failed and the worker exits with status 127, and () when the fork failed. In scalar
     context: the pid, or undef.
     In the child: 0, after the parent released it. The child never returns otherwise.
+    When $fork returns 0 without forking, as Parallel::ForkManager does with max_procs 0: 0
+    (list context: (0, 1)) in the calling process, which then runs the work itself.
 
 =cut
 
@@ -774,13 +776,21 @@ sub start_build_worker {
     require POSIX;
     $fork //= sub { fork() };
     pipe(my $gate_r, my $gate_w) or return;
-    my $pid = $fork->();
+    my $self = $$;
+    my $pid  = $fork->();
     unless (defined $pid) {
         my $error = $!;
         close($gate_r);
         close($gate_w);
         $! = $error;
         return;
+    }
+    # Parallel::ForkManager->new(0) does not fork, and start() returns 0 in this process. The
+    # work then runs here, under the locks this process already holds.
+    if (!$pid && $$ == $self) {
+        close($gate_r);
+        close($gate_w);
+        return wantarray ? (0, 1) : 0;
     }
     unless ($pid) {
         close($gate_w);
