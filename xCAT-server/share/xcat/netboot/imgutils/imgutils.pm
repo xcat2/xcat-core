@@ -169,8 +169,10 @@ sub publish_staged_boot_files {
             next;
         }
         my $error = $!;
+        # NFS can apply a rename and still report a failure, so put back a staged file that is gone.
+        my @attempted = (-e "$native_bootdir/$name" || -l "$native_bootdir/$name") ? () : ($file);
         my @failed;
-        foreach my $done (reverse @published) {
+        foreach my $done (@attempted, reverse @published) {
             my ($done_name, $done_what) = @$done;
             my $previous = "$native_bootdir/previous-$done_name";
             my $restored = (-e $previous || -l $previous)
