@@ -20,7 +20,7 @@ use imgutils;
 my @modes = qw(statelite stateless);
 my @names = ('kernel', map { "initrd-$_.gz" } @modes);
 
-# Publishes a staged kernel and two ramdisks over an older set, failing the named link, rename, applied rename, or rollback.
+# Publishes a staged kernel and two ramdisks over an older set, with the faults that %case names.
 sub publish_case {
     my (%case) = @_;
     my $dir     = tempdir(CLEANUP => 1);
@@ -47,6 +47,7 @@ sub publish_case {
             }
             if ((defined $case{rename} && $_[0] eq "$staging/$case{rename}")
                 || (defined $case{rollback} && $_[0] eq "$staging/previous-$case{rollback}")) {
+                unlink("$staging/previous-$case{lost}") if defined $case{lost};
                 $! = EACCES;
                 return 0;
             }
@@ -139,6 +140,16 @@ SKIP: {
     my ($kept) = glob("$dir/.genimage-boot.*/previous-initrd-statelite.gz");
     ok(defined $kept, 'the staging directory keeps the previous ramdisk that could not be put back');
     is(defined $kept ? read_text($kept) : undef, "old initrd-statelite.gz\n", 'the kept file is the previous ramdisk');
+}
+
+{
+    my ($ok, $error, $dir, $state) = publish_case(old => 1, rename => 'initrd-stateless.gz', lost => 'kernel');
+    ok(!$ok, 'a rollback whose backup is gone stops the publication');
+    like($error, qr/kernel rollback failed: .*Boot files retained in \Q$dir\E\/\.genimage-boot\./,
+        'the error names the kernel whose backup is gone');
+    is($state->{kernel}, "new kernel\n", 'the published kernel is not removed when its backup is gone');
+    is($state->{'initrd-statelite.gz'}, "old initrd-statelite.gz\n", 'the ramdisk with a backup is still put back');
+    ok(scalar(glob("$dir/.genimage-boot.*")), 'the staging directory is kept when a backup is gone');
 }
 
 done_testing();
