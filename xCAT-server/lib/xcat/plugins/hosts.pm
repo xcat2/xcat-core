@@ -329,7 +329,8 @@ sub addotherinterfaces
         if ($_ =~ /!/) {
             ($itf, $ip) = split(/!/, $_);
         } else {
-            ($itf, $ip) = split(/:/, $_);
+            # An IPv6 address carries colons. Split at the first one only.
+            ($itf, $ip) = split(/:/, $_, 2);
         }
         if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
@@ -362,7 +363,8 @@ sub delotherinterfaces
         if ($_ =~ /!/) {
             ($itf, $ip) = split(/!/, $_);
         } else {
-            ($itf, $ip) = split(/:/, $_);
+            # An IPv6 address carries colons. Split at the first one only.
+            ($itf, $ip) = split(/:/, $_, 2);
         }
         if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
@@ -818,7 +820,8 @@ sub donics
             if ($_ =~ /!/) {
                 ($nicname, $nicip) = split('!', $_);
             } else {
-                ($nicname, $nicip) = split(':', $_);
+                # An IPv6 address carries colons. Split at the first one only.
+                ($nicname, $nicip) = split(':', $_, 2);
             }
 
             $nicindex{$nicname} = 0;
