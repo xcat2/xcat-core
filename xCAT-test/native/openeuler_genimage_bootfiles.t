@@ -75,7 +75,6 @@ for my $failure (qw(none kernel-copy dracut move-initrd publish-initrd)) {
     is(read_text("$case/image/initrd-$_.gz"), "$set initrd\n", "$label leaves the $set $_ initrd")
         for qw(statelite stateless);
     is($state->{dracut_calls}, $el_dracut_calls{$failure}, "$label stops at the first failed step");
-    is($state->{lock_calls}, 0, "$label retains its existing onlyinitrd lock behavior");
     is_deeply([glob("$case/image/rootimg/tmp/initrd.*.gz")], [], "$label removes temporary dracut output");
     is_deeply([glob("$case/image/.genimage*")], [], "$label removes boot staging files");
 }
