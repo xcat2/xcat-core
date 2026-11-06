@@ -49,23 +49,39 @@ for my $kernel (qw(vmlinux image modules)) {
     is(read_text("$case/image/kernel"), "new kernel\n", "$kernel layout publishes its kernel");
     is(read_text("$case/image/initrd-stateless.gz"), "new initrd\n", "$kernel layout publishes its initrd");
 }
-my ($rc, $state, $output, $case) = run_case('openeuler24.03sp3', 'lock', 'vmlinuz', 1);
-isnt($rc, 0, 'lock refusal is fatal');
-like($output, qr/Could not acquire image operation lock/, 'lock refusal reports the contested image');
-is($state->{lock_calls}, 1, 'lock refusal uses the existing lock owner');
-is($state->{dracut_calls}, 0, 'lock refusal does not run dracut');
-is(read_text("$case/image/kernel"), "old kernel\n", 'lock refusal preserves kernel');
-is(read_text("$case/image/initrd-stateless.gz"), "old initrd\n", 'lock refusal preserves initrd');
-is_deeply($state->{commands}, [], 'lock refusal does not run mount cleanup against the active build');
-is_deeply([glob("$case/image/.genimage*")], [], 'lock refusal creates no staging directory');
+my ($rc, $state, $output, $case);
+for my $os (qw(openeuler24.03sp3 rhels9.6)) {
+    ($rc, $state, $output, $case) = run_case($os, 'lock', 'vmlinuz', 1);
+    isnt($rc, 0, "$os lock refusal is fatal");
+    like($output, qr/Could not acquire image operation lock/, "$os lock refusal reports the contested image");
+    is($state->{lock_calls}, 1, "$os lock refusal uses the existing lock owner");
+    is($state->{dracut_calls}, 0, "$os lock refusal does not run dracut");
+    is(read_text("$case/image/kernel"), "old kernel\n", "$os lock refusal preserves kernel");
+    is(read_text("$case/image/initrd-$_.gz"), "old initrd\n", "$os lock refusal preserves the $_ initrd")
+        for qw(statelite stateless);
+    is_deeply($state->{commands}, [], "$os lock refusal does not run mount cleanup against the active build");
+    is_deeply([glob("$case/image/.genimage*")], [], "$os lock refusal creates no staging directory");
+}
 
-for my $failure (qw(none kernel-copy dracut move-initrd)) {
+my %el_dracut_calls = (none => 2, 'kernel-copy' => 0, dracut => 1, 'move-initrd' => 1, 'publish-initrd' => 2);
+for my $failure (qw(none kernel-copy dracut move-initrd publish-initrd)) {
     ($rc, $state, $output, $case) = run_case('rhels9.6', $failure, 'vmlinuz', 1);
-    is($rc == 0 ? 0 : 1, $failure eq 'dracut' ? 1 : 0, "EL $failure retains its exit behavior") or diag($output);
-    is(read_text("$case/image/kernel"), $failure eq 'kernel-copy' ? "old kernel\n" : "new kernel\n",
-        "EL $failure retains kernel copy behavior");
-    is($state->{dracut_calls}, $failure eq 'dracut' ? 1 : 2, "EL $failure retains both initrd modes");
-    is($state->{lock_calls}, 0, "EL $failure retains its existing onlyinitrd lock behavior");
+    my $label = "EL $failure";
+    my $set = $failure eq 'none' ? 'new' : 'old';
+    if ($failure eq 'none') {
+        is($rc, 0, "$label completes") or diag($output);
+    } else {
+        isnt($rc, 0, "$label fails");
+        like($output, qr/Error: failed to (?:copy|generate|move|publish).*?(?:kernel|ramdisk)/i,
+            "$label reports the failed boot file operation");
+    }
+    is(read_text("$case/image/kernel"), "$set kernel\n", "$label leaves the $set kernel");
+    is(read_text("$case/image/initrd-$_.gz"), "$set initrd\n", "$label leaves the $set $_ initrd")
+        for qw(statelite stateless);
+    is($state->{dracut_calls}, $el_dracut_calls{$failure}, "$label stops at the first failed step");
+    is($state->{lock_calls}, 1, "$label acquires the image operation lock");
+    is_deeply([glob("$case/image/rootimg/tmp/initrd.*.gz")], [], "$label removes temporary dracut output");
+    is_deeply([glob("$case/image/.genimage*")], [], "$label removes boot staging files");
 }
 
 done_testing();
@@ -86,7 +102,7 @@ sub run_case {
     chmod 0000, $kernel_file if $failure eq 'kernel-copy';
     if ($old) {
         write_text("$case/image/kernel", "old kernel\n");
-        write_text("$case/image/initrd-stateless.gz", "old initrd\n");
+        write_text("$case/image/initrd-$_.gz", "old initrd\n") for qw(statelite stateless);
     }
     if ($repositories) {
         make_path("$root/etc/yum.repos.d");
