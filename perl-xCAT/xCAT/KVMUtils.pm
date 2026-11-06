@@ -65,6 +65,10 @@ sub default_storagemodel {
         An x86_64 guest that asks for efi moves to q35, because every x86_64 OVMF descriptor
         targets pc-q35-* only. q35 has no IDE controller, so its disks and its optical drive
         move to scsi.
+
+        efi-secureboot also sets secureboot, which guest_os turns into the requirement
+        libvirt reads. efi alone states no requirement, so libvirt takes the descriptor of
+        highest priority that fits the guest, and that order belongs to the hypervisor.
     Arguments:
         $guest_arch - nodetype.arch of the node, or undef
         $hyp_cpumodel - the cpumodel of the hypervisor, or undef
@@ -82,6 +86,7 @@ sub guest_arch_profile {
         arch         => undef,
         machine      => undef,
         firmware     => undef,
+        secureboot   => 0,
         cpu_mode     => undef,
         cpu_model    => undef,
         pseries      => 0,
@@ -130,12 +135,15 @@ sub guest_arch_profile {
         $profile{bios}         = 0;
         $profile{sound}        = 0;
     }
-    if (defined($firmware) and $firmware eq 'efi' and not defined $profile{firmware}) {
-        $profile{firmware} = 'efi';
-        if ($profile{x86_features}) {
-            $profile{machine}    = 'q35';
-            $profile{disk_model} = 'scsi';
-            $profile{cd_prefix}  = 'sd';
+    if (defined($firmware) and $firmware =~ /^efi(?:-secureboot)?$/) {
+        $profile{secureboot} = 1 if $firmware eq 'efi-secureboot';
+        unless (defined $profile{firmware}) {
+            $profile{firmware} = 'efi';
+            if ($profile{x86_features}) {
+                $profile{machine}    = 'q35';
+                $profile{disk_model} = 'scsi';
+                $profile{cd_prefix}  = 'sd';
+            }
         }
     }
     return \%profile;
@@ -433,6 +441,8 @@ sub vm_othersettings {
     Descriptions:
         The firmware a node asks for in vm.othersettings. No node asks by default, so an
         existing guest keeps the firmware of its machine type.
+
+        efi asks for UEFI. efi-secureboot asks for UEFI that verifies what it boots.
     Arguments:
         $othersettings - vm.othersettings of the node, or undef
     Returns:
@@ -456,20 +466,59 @@ sub requested_firmware {
 
     Descriptions:
         The refusal of a firmware value that libvirt cannot select. A node with a typo must
-        not stay on SeaBIOS without a message.
+        not stay on SeaBIOS without a message, nor lose a Secure Boot requirement it asked
+        for.
     Arguments:
         $firmware - the value from requested_firmware, or undef
         $node - the node name
     Returns:
-        the error message, or undef when the value is efi or undef
+        the error message, or undef when the value is efi, efi-secureboot or undef
 
 =cut
 
 #-------------------------------------------------------
 sub firmware_error {
     my ($firmware, $node) = @_;
-    return undef if !defined($firmware) or $firmware eq 'efi';
-    return "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi.";
+    return undef if !defined($firmware) or $firmware =~ /^efi(?:-secureboot)?$/;
+    return "vm.othersettings firmware:$firmware names no firmware libvirt can select for $node. Use firmware:efi or firmware:efi-secureboot.";
+}
+
+#-------------------------------------------------------
+
+=head3 firmware_machine_error
+
+    Descriptions:
+        The refusal of a machine type that cannot carry the firmware the node asks for.
+
+        Every x86_64 OVMF descriptor targets pc-q35-* only, and guest_os writes a machine:
+        setting of vm.othersettings over the machine type guest_arch_profile chose. Without
+        this refusal libvirt answers "Unable to find 'efi' firmware that is compatible with
+        the current configuration", which names neither the node nor either setting.
+
+        Only the i440fx family is judged, and only on x86_64. xCAT does not know which
+        machine types a hypervisor offers, so any other value goes to libvirt, which reports
+        a machine type it cannot use.
+
+        build_xmldesc returns the message, and both mkvm and makedom call build_xmldesc, so
+        the refusal reaches mkvm and the rpower boot of a node whose domain is not yet built.
+    Arguments:
+        $firmware - the result of requested_firmware, or undef
+        $machine - the machine: setting of vm.othersettings, or undef
+        $arch - nodetype.arch of the node, or undef
+        $node - the node name
+    Returns:
+        the error message, or undef when the pair can boot
+
+=cut
+
+#-------------------------------------------------------
+sub firmware_machine_error {
+    my ($firmware, $machine, $arch, $node) = @_;
+    return undef unless defined($firmware) and defined($machine);
+    return undef unless defined($arch) and $arch eq 'x86_64';
+    return undef unless $machine eq 'pc' or $machine =~ /^(?:pc-)?i440fx/;
+    return "vm.othersettings firmware:$firmware needs a q35 machine type, and $node names"
+      . " machine:$machine. Use machine:q35, or leave the machine type out.";
 }
 
 #-------------------------------------------------------
@@ -481,6 +530,13 @@ sub firmware_error {
 
         A ppc64le hypervisor gets no <bios useserial>. A profile without bios drops it too.
         A machine type from vm.othersettings replaces the machine type of the profile.
+
+        A profile with secureboot states <loader secure='yes'/>. libvirt keeps only the
+        descriptors that carry the secure-boot feature while it selects the firmware, so a
+        hypervisor with no such firmware refuses the domain. The element says nothing about
+        the UEFI keys, so firmware_features asks for enrolled-keys beside it. Without the
+        element the guest takes whichever firmware the hypervisor prefers, and the domain
+        says nothing about whether that firmware verifies what it boots.
     Arguments:
         $profile - the hash reference from guest_arch_profile
         %args - hyp_cpumodel: the cpumodel of the hypervisor; bootorder: vm.bootorder of the
@@ -508,9 +564,83 @@ sub guest_os {
     $os{type}->{arch}    = $profile->{arch}     if defined $profile->{arch};
     $os{type}->{machine} = $profile->{machine}  if defined $profile->{machine};
     $os{firmware}        = $profile->{firmware} if defined $profile->{firmware};
+    $os{loader}->{secure} = 'yes' if $profile->{secureboot};
     delete $os{bios} unless $profile->{bios};
     $os{type}->{machine} = $args{machine} if defined $args{machine};
     return \%os;
+}
+
+#-------------------------------------------------------
+
+=head3 firmware_features
+
+    Descriptions:
+        The firmware autoselection features of one guest, in the form <firmware> states them.
+
+        A guest with secureboot asks for secure-boot and for enrolled-keys. secure-boot names
+        a firmware that can verify what it boots. It does not name the UEFI keys that decide
+        what passes, and a firmware with secure-boot and no enrolled keys boots an unsigned
+        binary. The two x86_64 descriptors of an EL 10 host show the difference:
+        30-edk2-ovmf-x64-sb-enrolled.json and 40-edk2-ovmf-x64-sb.json name the same
+        OVMF_CODE.secboot.fd and differ in the nvram template, OVMF_VARS.secboot.fd against
+        OVMF_VARS.fd. Only the first template holds keys.
+
+        libvirt reads <loader secure='yes'/> as the secure-boot feature alone, and picks the
+        descriptor of highest priority that carries it. A host that ships the 40- descriptor
+        and not the 30- one satisfies that domain with an empty key store.
+    Arguments:
+        $profile - the hash reference from guest_arch_profile, or undef
+    Returns:
+        an array reference of { name, enabled } pairs, empty when the guest asks for none
+
+=cut
+
+#-------------------------------------------------------
+sub firmware_features {
+    my ($profile) = @_;
+    return [] unless ref($profile) eq 'HASH' and $profile->{secureboot};
+    return [
+        { name => 'secure-boot',   enabled => 'yes' },
+        { name => 'enrolled-keys', enabled => 'yes' },
+    ];
+}
+
+#-------------------------------------------------------
+
+=head3 add_firmware_features
+
+    Descriptions:
+        Add <firmware> with the features firmware_features names to the <os> of one domain.
+
+        guest_os cannot carry this element. The firmware attribute of <os> and the <firmware>
+        child of <os> are one key of one hash for XMLout, which writes a scalar as an
+        attribute and a reference as an element, so the hash holds one of the two. The
+        attribute is the one that starts the firmware selection.
+    Arguments:
+        $xml - the domain XML
+        $features - the array reference from firmware_features
+    Returns:
+        the new domain XML, or $xml when the guest asks for no feature
+
+=cut
+
+#-------------------------------------------------------
+sub add_firmware_features {
+    my ($xml, $features) = @_;
+    return $xml unless ref($features) eq 'ARRAY' and scalar(@$features);
+    require XML::LibXML;
+    my $domdesc = XML::LibXML->new()->parse_string($xml);
+    my ($os) = $domdesc->findnodes('/domain/os');
+    return $xml unless $os;
+    my $element = $domdesc->createElement('firmware');
+    foreach my $feature (@$features) {
+        my $child = $domdesc->createElement('feature');
+        $child->setAttribute('enabled', $feature->{enabled});
+        $child->setAttribute('name',    $feature->{name});
+        $element->appendChild($child);
+    }
+    $os->appendChild($element);
+    return $domdesc->toString();
 }
 
 #-------------------------------------------------------

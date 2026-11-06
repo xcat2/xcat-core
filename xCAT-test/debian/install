@@ -7,3 +7,4 @@ unit opt/xcat/share/xcat/tools/autotest
 integration opt/xcat/share/xcat/tools/autotest
 blackboxtest opt/xcat/share/xcat/tools/autotest
 lib/xCAT/Test/OS.pm opt/xcat/lib/perl/xCAT/Test
+lib/xCAT/Test/Conf.pm opt/xcat/lib/perl/xCAT/Test

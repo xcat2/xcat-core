@@ -10,6 +10,7 @@ use Storable qw(dclone);
 use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
+use xCAT::MediaPerms;
 use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::UFTP;
@@ -672,6 +673,10 @@ sub copycd
     #    "cd $path; find . | nice -n 20 cpio -dump $installroot/$distname/$arch/"
     #    );
     chmod 0755, "$installroot/$distname/$arch";
+
+    # The media carries its own modes. xCAT serves the install directory over HTTP, so a file
+    # the web server cannot read is answered 403 and the node that fetches it cannot boot.
+    xCAT::MediaPerms::make_readable("$installroot/$distname/$arch");
 
     # Need to do this otherwise there will be warning about corrupt Packages file
     # when installing a system
