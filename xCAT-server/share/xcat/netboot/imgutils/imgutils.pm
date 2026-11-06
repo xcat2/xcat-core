@@ -135,23 +135,41 @@ sub publish_boot_files {
     my ($native_bootdir, $destdir, $initrd, $mode) = @_;
     move($initrd, "$native_bootdir/initrd-$mode.gz")
       or die("Error: failed to move the initial ramdisk for $mode: $!\n");
-    my $old_kernel = -e "$destdir/kernel" || -l "$destdir/kernel";
-    if ($old_kernel) {
-        link("$destdir/kernel", "$native_bootdir/previous-kernel")
-          or die("Error: failed to preserve the previous kernel: $!\n");
+    return publish_staged_boot_files($native_bootdir, $destdir, $mode);
+}
+
+# nodeset copies the kernel and the initial ramdisks as one set, so a failure puts back every file already replaced.
+sub publish_staged_boot_files {
+    my ($native_bootdir, $destdir, @modes) = @_;
+    my @files = ([ 'kernel', 'kernel' ], map { [ "initrd-$_.gz", "initial ramdisk for $_" ] } @modes);
+    foreach my $file (@files) {
+        my ($name, $what) = @$file;
+        next unless -e "$destdir/$name" || -l "$destdir/$name";
+        link("$destdir/$name", "$native_bootdir/previous-$name")
+          or die("Error: failed to preserve the previous $what: $!\n");
     }
-    rename("$native_bootdir/kernel", "$destdir/kernel")
-      or die("Error: failed to publish the kernel: $!\n");
-    unless (rename("$native_bootdir/initrd-$mode.gz", "$destdir/initrd-$mode.gz")) {
-        my $error = $!;
-        my $restored = $old_kernel
-          ? rename("$native_bootdir/previous-kernel", "$destdir/kernel")
-          : unlink("$destdir/kernel");
-        unless ($restored) {
-            $native_bootdir->unlink_on_destroy(0);
-            die("Error: failed to publish the initial ramdisk: $error; kernel rollback failed: $!. Boot files retained in $native_bootdir\n");
+    my @published;
+    foreach my $file (@files) {
+        my ($name, $what) = @$file;
+        if (rename("$native_bootdir/$name", "$destdir/$name")) {
+            push @published, $file;
+            next;
         }
-        die("Error: failed to publish the initial ramdisk for $mode: $error\n");
+        my $error = $!;
+        my @failed;
+        foreach my $done (reverse @published) {
+            my ($done_name, $done_what) = @$done;
+            my $previous = "$native_bootdir/previous-$done_name";
+            my $restored = (-e $previous || -l $previous)
+              ? rename($previous, "$destdir/$done_name")
+              : unlink("$destdir/$done_name");
+            push @failed, "$done_what rollback failed: $!" unless $restored;
+        }
+        if (@failed) {
+            $native_bootdir->unlink_on_destroy(0);
+            die("Error: failed to publish the $what: $error; " . join('; ', @failed) . ". Boot files retained in $native_bootdir\n");
+        }
+        die("Error: failed to publish the $what: $error\n");
     }
     return 1;
 }
