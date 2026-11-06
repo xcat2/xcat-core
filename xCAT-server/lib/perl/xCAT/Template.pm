@@ -2072,22 +2072,15 @@ sub _subiquity_netplan6 {
         $gateway = xCAT::NetworkUtils->ipv6_server_for_node($nodename, $gateway);
     }
 
-    # site.nameservers holds one list for the cluster, so the node can be given the IPv4
-    # resolver of another network. An IPv6-only node cannot reach it, and an unreachable
-    # server in resolv.conf makes every lookup wait for its timeout.
-    #
-    # '<xcatmaster>' is the management node, which runs named. It is not the gateway: a
-    # cluster whose gateway is a separate router would be given a resolver that answers
-    # nothing.
-    my %nameservers = %{ xCAT::NetworkUtils->getNodeNameservers([$nodename]) };
-    my $master6 = xCAT::NetworkUtils->ipv6_server_for_node($nodename, '<xcatmaster>');
-    my @resolvers = grep { index($_, ':') >= 0 }
-      grep { defined && length }
-      map { $_ eq '<xcatmaster>' ? $master6 : $_ } split(/,/, $nameservers{$nodename} // '');
-    @resolvers = ($master6)
-      if !@resolvers && defined($master6) && index($master6, ':') >= 0;
+    my @resolvers = _ipv6_nameservers_for_node($nodename);
 
-    my @lines = ("${pad}dhcp4: false", "${pad}addresses: [$address/$prefix]");
+    # A router advertisement with the managed flag starts DHCPv6 in systemd-networkd even with
+    # dhcp6 off. The pool address it takes has no PTR record, and xcatd refuses a callback from
+    # an address it cannot name.
+    my @lines = (
+        "${pad}dhcp4: false", "${pad}dhcp6: false", "${pad}accept-ra: false",
+        "${pad}addresses: [$address/$prefix]"
+    );
     if (defined($gateway) && length($gateway)) {
         # 'to: default' rather than the deprecated gateway6, which netplan warns about and
         # drops. This is the shape xcatroot already writes for a diskless IPv6 node, so the
