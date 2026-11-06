@@ -49,15 +49,19 @@ for my $kernel (qw(vmlinux image modules)) {
     is(read_text("$case/image/kernel"), "new kernel\n", "$kernel layout publishes its kernel");
     is(read_text("$case/image/initrd-stateless.gz"), "new initrd\n", "$kernel layout publishes its initrd");
 }
-my ($rc, $state, $output, $case) = run_case('openeuler24.03sp3', 'lock', 'vmlinuz', 1);
-isnt($rc, 0, 'lock refusal is fatal');
-like($output, qr/Could not acquire image operation lock/, 'lock refusal reports the contested image');
-is($state->{lock_calls}, 1, 'lock refusal uses the existing lock owner');
-is($state->{dracut_calls}, 0, 'lock refusal does not run dracut');
-is(read_text("$case/image/kernel"), "old kernel\n", 'lock refusal preserves kernel');
-is(read_text("$case/image/initrd-stateless.gz"), "old initrd\n", 'lock refusal preserves initrd');
-is_deeply($state->{commands}, [], 'lock refusal does not run mount cleanup against the active build');
-is_deeply([glob("$case/image/.genimage*")], [], 'lock refusal creates no staging directory');
+my ($rc, $state, $output, $case);
+for my $os (qw(openeuler24.03sp3 rhels9.6)) {
+    ($rc, $state, $output, $case) = run_case($os, 'lock', 'vmlinuz', 1);
+    isnt($rc, 0, "$os lock refusal is fatal");
+    like($output, qr/Could not acquire image operation lock/, "$os lock refusal reports the contested image");
+    is($state->{lock_calls}, 1, "$os lock refusal uses the existing lock owner");
+    is($state->{dracut_calls}, 0, "$os lock refusal does not run dracut");
+    is(read_text("$case/image/kernel"), "old kernel\n", "$os lock refusal preserves kernel");
+    is(read_text("$case/image/initrd-$_.gz"), "old initrd\n", "$os lock refusal preserves the $_ initrd")
+        for qw(statelite stateless);
+    is_deeply($state->{commands}, [], "$os lock refusal does not run mount cleanup against the active build");
+    is_deeply([glob("$case/image/.genimage*")], [], "$os lock refusal creates no staging directory");
+}
 
 my %el_dracut_calls = (none => 2, 'kernel-copy' => 0, dracut => 1, 'move-initrd' => 1, 'publish-initrd' => 2);
 for my $failure (qw(none kernel-copy dracut move-initrd publish-initrd)) {
@@ -75,6 +79,7 @@ for my $failure (qw(none kernel-copy dracut move-initrd publish-initrd)) {
     is(read_text("$case/image/initrd-$_.gz"), "$set initrd\n", "$label leaves the $set $_ initrd")
         for qw(statelite stateless);
     is($state->{dracut_calls}, $el_dracut_calls{$failure}, "$label stops at the first failed step");
+    is($state->{lock_calls}, 1, "$label acquires the image operation lock");
     is_deeply([glob("$case/image/rootimg/tmp/initrd.*.gz")], [], "$label removes temporary dracut output");
     is_deeply([glob("$case/image/.genimage*")], [], "$label removes boot staging files");
 }
