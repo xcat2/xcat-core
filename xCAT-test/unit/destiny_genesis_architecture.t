@@ -57,10 +57,7 @@ is(
 );
 is(xCAT_plugin::destiny::_genesis_boot_arch($tftp, 'x86_64'), 'x86_64', 'other architectures are unchanged');
 
-ok(xCAT_plugin::destiny::_genesis_uses_power_console('ppc64'), 'legacy POWER uses the hypervisor console');
-ok(xCAT_plugin::destiny::_genesis_uses_power_console('ppc64le'), 'ppc64le uses the hypervisor console');
-for my $arch (qw(x86_64 aarch64 s390x riscv64 ppc64el ppc64lex)) {
-    ok(!xCAT_plugin::destiny::_genesis_uses_power_console($arch), "$arch does not select a POWER console");
-}
+# The console device of each architecture moved to xCAT::ConsolePolicy, which destiny.pm now
+# calls. console_policy.t covers every architecture, aarch64 among them.
 
 done_testing();

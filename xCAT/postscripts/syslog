@@ -32,6 +32,35 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
 fi
 
 master=$MASTER
+
+# The legacy rsyslog forwarding syntax treats a colon after the target as the
+# port separator.  Bracket IPv6 literals so the complete address is passed to
+# the resolver, while preserving the existing output for hostnames and IPv4.
+# A COLON DOES NOT MEAN IPv6. site.master may carry a port, and an IPv4 address
+# or a hostname with one has exactly one colon, while an IPv6 literal has at
+# least two. Bracketing on any colon rendered @[127.0.0.1:1515], which rsyslog
+# does not accept.
+format_syslog_forward_target()
+{
+  case "$1" in
+    \[*)   printf '%s\n' "$1" ;;
+    *:*:*) printf '[%s]\n' "$1" ;;
+    *)     printf '%s\n' "$1" ;;
+  esac
+}
+
+# The legacy syslog-ng udp() destination is IPv4-only.  Its udp6() companion
+# accepts an IPv6 literal directly (without URI-style brackets).
+syslog_ng_udp_driver()
+{
+  case "$1" in
+    \[*:*:*\]*) printf '%s\n' 'udp6' ;;
+    *:*:*)      printf '%s\n' 'udp6' ;;
+    *)          printf '%s\n' 'udp' ;;
+  esac
+}
+
+syslog_forward_target=$(format_syslog_forward_target "$master")
 conf_file="/etc/syslog.conf"
 sysconfig="/etc/sysconfig/syslog"
 init="/etc/init.d/syslog"
@@ -140,7 +169,7 @@ config_Rsyslog_C3()
   else
       sed -i 's/^\(\*\..*\)/\#\1/;
                      s/^\(news\|local7\|mail\|authpriv\|cron\|kern\)\./\#\1\./' $2
-      echo "*.* @$master" >> $2
+      echo "*.* @$syslog_forward_target" >> $2
   fi
   # Mark the end of xCAT section
   echo "# $xCATSettingsEND" >> $2
@@ -376,7 +405,7 @@ config_rsyslog_V8()
     if [ $isSN -eq 1 ] && xcat_is_openeuler "$OSVER"; then
         config_native_rsyslog_receiver "$remoteconf" || return $?
     fi
-    echo "*.* @$master" >> $remoteconf
+    echo "*.* @$syslog_forward_target" >> $remoteconf
     echo "# $xCATSettingsEND" >> $remoteconf
  fi
  if xcat_is_openeuler "$OSVER"; then
@@ -575,7 +604,8 @@ else
           sed -i "/# xCAT settings/,$ d" $conf_file
       fi
       echo "# xCAT settings" >> $conf_file
-      echo "destination loghost { udp(\"$master\"); };" >> $conf_file
+      syslog_ng_driver=$(syslog_ng_udp_driver "$master")
+      echo "destination loghost { ${syslog_ng_driver}(\"$master\"); };" >> $conf_file
       echo 'log { source(src); destination(loghost); };' >> $conf_file
 
       # remove the settings that will log to local files
@@ -591,13 +621,13 @@ else
       fi
       echo "# xCAT settings" > $conf_file
       if [ $isLinux -eq 0 ]; then
-        echo "*.debug @$master" >> $conf_file
+        echo "*.debug @$syslog_forward_target" >> $conf_file
       else
         if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
           echo "\$ModLoad imuxsock" >> $conf_file
-          echo "*.* @$master" >> $conf_file
+          echo "*.* @$syslog_forward_target" >> $conf_file
         else
-          echo "*.* @$master" >> $conf_file
+          echo "*.* @$syslog_forward_target" >> $conf_file
         fi
       fi
     fi

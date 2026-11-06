@@ -70,8 +70,10 @@ for my $release (qw(24.04 26.04)) {
     my @expected = qw(bash nfs-common openssl isc-dhcp-client libc-bin
         linux-image-generic openssh-server openssh-client wget rsync
         busybox-static gawk bind9-dnsutils tar gzip xz-utils cpio chrony);
-    push @expected, qw(util-linux-extra iproute2 dracut dracut-network)
-        if $release eq '24.04';
+    push @expected, qw(util-linux-extra iproute2) if $release eq '24.04';
+    # genimage enters dracut mode only when the rootimg carries dracut. Every release
+    # needs it, because the legacy /init it falls back to is IPv4-only.
+    push @expected, qw(dracut dracut-network);
     push @cases, ['netboot', 'ubuntu', 'compute', "ubuntu$release", 'riscv64',
         'pkglist', "compute.ubuntu$release.riscv64.pkglist", \@expected];
 }

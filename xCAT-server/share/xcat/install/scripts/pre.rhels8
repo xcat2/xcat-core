@@ -32,8 +32,9 @@ cat >/tmp/baz.py <<'EOF'
 import socket
 import sys
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
+# create_connection resolves the master and connects in whichever family it
+# answers in. socket(AF_INET) could only reach an IPv4 management node.
+sock = socket.create_connection(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
 
 print(sys.argv[1])
 response = sock.recv(100)
@@ -52,8 +53,37 @@ import os
 import linecache
 import re
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
+# The install monitor must listen in the family the management node reaches it
+# in. An AF_INET listener gave an IPv6-only node a socket xcatd cannot open, so
+# the node reported no status for the whole installation.
+def create_listen_socket(port, master):
+	last_error = None
+	master_addresses = socket.getaddrinfo(master, None, socket.AF_UNSPEC,
+								  socket.SOCK_STREAM)
+	seen_families = set()
+	for master_family, socktype, proto, canonname, master_sockaddr in master_addresses:
+		if master_family in seen_families:
+			continue
+		seen_families.add(master_family)
+		listen_addresses = socket.getaddrinfo(
+			None, port, master_family, socket.SOCK_STREAM, 0, socket.AI_PASSIVE)
+		for family, socktype, proto, canonname, sockaddr in listen_addresses:
+			listen_sock = socket.socket(family, socktype, proto)
+			listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			if family == socket.AF_INET6 and hasattr(socket, 'IPV6_V6ONLY'):
+				listen_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+			try:
+				listen_sock.bind(sockaddr)
+				listen_sock.listen(5)
+				return listen_sock
+			except OSError as error:
+				last_error = error
+				listen_sock.close()
+	if last_error:
+		raise last_error
+	raise OSError('no usable address for install monitor')
+
+sock = socket.create_connection(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
 
 response = sock.recv(100)
 if(response == b"ready\n"):
@@ -62,13 +92,8 @@ if(response == b"ready\n"):
 
 sock.close()
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
 port = 3054
-sock.bind(('', port))
-
-sock.listen(5)
+sock = create_listen_socket(port, '#XCATVAR:XCATMASTER#')
 
 try:
 	while 1:
@@ -316,9 +341,26 @@ msgutil_r "$MASTER_IP" "info" "Generate the repository for the installation" "/v
 # The following code is to generate the repository for the installation
 cat /proc/cmdline
 
-NEXTSERVER="$(grep -m 1 http /proc/cmdline)"
-NEXTSERVER="${NEXTSERVER#*http://}"
-NEXTSERVER="${NEXTSERVER%%:*}"
+# The host of a URL. An IPv6 literal is bracketed and holds colons, so cutting
+# the authority at the first colon returned a fragment of the address.
+extract_url_host()
+{
+    local authority="${1#*://}"
+
+    authority="${authority%%/*}"
+    case "$authority" in
+    \[*\]*)
+        authority="${authority#\[}"
+        printf '%s\n' "${authority%%\]*}"
+        ;;
+    *)
+        printf '%s\n' "${authority%%:*}"
+        ;;
+    esac
+}
+
+NEXTSERVER_URL="$(grep -oE 'https?://(\[[^]]+\]|[^[:space:]/:]+)(:[0-9]+)?' /proc/cmdline | head -n 1)"
+NEXTSERVER="$(extract_url_host "$NEXTSERVER_URL")"
 
 export nextserver="$NEXTSERVER"
 #INSTALL_SOURCES_IN_PRE#

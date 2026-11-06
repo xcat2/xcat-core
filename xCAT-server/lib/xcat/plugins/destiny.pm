@@ -14,7 +14,9 @@ use xCAT::TableUtils;
 use Sys::Syslog;
 use xCAT::GlobalDef;
 use xCAT::Table;
+use xCAT::NetworkUtils;
 use xCAT::DHCP::BootPolicy;
+use xCAT::ConsolePolicy;
 use xCAT_monitoring::monitorctrl;
 use Getopt::Long;
 use strict;
@@ -68,11 +70,6 @@ sub _genesis_boot_arch {
         return 'ppc64';
     }
     return $arch;
-}
-
-sub _genesis_uses_power_console {
-    my ($arch) = @_;
-    return $arch eq 'ppc64' || $arch eq 'ppc64le';
 }
 
 sub process_request {
@@ -656,11 +653,9 @@ sub setdestiny {
 
             $ent = $hments->{$_}->[0]; #$nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
             if ($ent and defined($ent->{serialport})) {
-                if (_genesis_uses_power_console($arch)) {
-                    $kcmdline .= "console=tty0 console=hvc" . $ent->{serialport};
-                } else {
-                    $kcmdline .= "console=tty0 console=ttyS" . $ent->{serialport};
-                }
+                # Genesis takes no speed here; the next block reports a missing one.
+                $kcmdline .= xCAT::ConsolePolicy::kernel_console_arguments(
+                    $arch, $ent->{serialport});
 
                 #$ent = $nodehm->getNodeAttribs($_,['serialspeed']);
                 unless ($ent and defined($ent->{serialspeed})) {
@@ -690,17 +685,18 @@ sub setdestiny {
                 if (-r "$tftpdir/xcat/genesis.fs.$arch.$bestsuffix") {
                     $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
                     $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$bestsuffix";
-                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=" . xCAT::NetworkUtils::xcatd_cmdline_address($master, $xcatdport) . " destiny=$state";
                 } else {
                     $bphash->{$_}->[0]->{kernel} = "xcat/genesis.kernel.$arch";
                     $bphash->{$_}->[0]->{initrd} = "xcat/genesis.fs.$arch.$othersuffix";
-                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport destiny=$state";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=" . xCAT::NetworkUtils::xcatd_cmdline_address($master, $xcatdport) . " destiny=$state";
                 }
             } else {    # genesis.kernel file is not there, assume 'legacy' environment
                 if (-r "$tftpdir/xcat/nbk.$arch") {
                     $bphash->{$_}->[0]->{kernel} = "xcat/nbk.$arch";
                     $bphash->{$_}->[0]->{initrd} = "xcat/nkfs.$arch.gz";
-                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd=$master:$xcatdport";
+                    $bphash->{$_}->[0]->{kcmdline} = $kcmdline . "xcatd="
+                      . xCAT::NetworkUtils::xcatd_cmdline_address($master, $xcatdport);
                     $callback->({ warning => ["No genesis.kernel.$arch file found. Defaulting to legacy nbk.$arch"]});
                 } else { # can not find genesis.kernel or nbk file
                     $callback->({ error => ["Could not find genesis.kernel.$arch or legacy nbk.$arch files"], errorcode => [1] });

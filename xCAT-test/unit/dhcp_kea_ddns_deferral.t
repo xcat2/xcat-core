@@ -35,6 +35,7 @@ BEGIN {
         *{"${caller}::getipaddr"} = \&getipaddr;
     }
     sub getipaddr { return '10.0.0.1'; }
+    sub isValidIp { my $addr = $_[-1]; return defined($addr) && $addr =~ /^[0-9a-fA-F:.]+$/ ? 1 : 0; }
     sub my_ip_facing { return ( 0, '10.0.0.1' ); }
     sub thishostisnot { return 0; }
     sub ip_forwarding_enabled { return 0; }

@@ -1,4 +1,46 @@
 #!/bin/sh
+
+# xcat_static_ip6_fields <ip= parameter> -- print "<address> <prefix> <gateway>" for the
+# static IPv6 form dracut takes, client:peer:gateway:prefix:hostname:interface:autoconf.
+#
+# An IPv6 literal carries colons, so the fields cannot be cut on a colon: dracut brackets
+# the address and the gateway, and the brackets are what delimits them.
+xcat_static_ip6_fields()
+{
+    local spec addr rest gw prefix
+
+    spec="${1#ip=}"
+    case "$spec" in
+    \[*) ;;
+    *) return 1 ;;
+    esac
+    addr="${spec#\[}"
+    addr="${addr%%\]*}"
+    rest="${spec#*\]:}"
+
+    # peer, which xCAT never sets
+    rest="${rest#*:}"
+
+    case "$rest" in
+    \[*)
+        gw="${rest#\[}"
+        gw="${gw%%\]*}"
+        rest="${rest#*\]:}"
+        ;;
+    *)
+        gw=""
+        rest="${rest#*:}"
+        ;;
+    esac
+    prefix="${rest%%:*}"
+
+    [ -n "$addr" ] || return 1
+    case "$prefix" in
+    ''|*[!0-9]*) return 1 ;;
+    esac
+    printf '%s %s %s\n' "$addr" "$prefix" "$gw"
+}
+
 NEWROOT=$3
 RWDIR=.statelite
 XCATMASTER=$XCAT
@@ -264,8 +306,45 @@ if [ -z $STATEMNT ]; then
   fi
 
   if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
+    # The booted system takes the address the node was given on the kernel command line
+    # when that address is IPv6. dhcp4 leaves an IPv6-only node with no address at all, and
+    # systemd-networkd-wait-online then fails.
+    XCAT_IP6_FIELDS=""
+    for xcat_cmdline_word in $(cat /proc/cmdline); do
+      case "$xcat_cmdline_word" in
+      ip=\[*)
+        XCAT_IP6_FIELDS=$(xcat_static_ip6_fields "$xcat_cmdline_word") || XCAT_IP6_FIELDS=""
+        break
+        ;;
+      esac
+    done
+
     if [ -x $NEWROOT/usr/sbin/netplan ]; then
       mkdir -p $NEWROOT/etc/netplan
+      if [ -n "$XCAT_IP6_FIELDS" ]; then
+        set -- $XCAT_IP6_FIELDS
+        XCAT_IP6_ADDR=$1
+        XCAT_IP6_PREFIX=$2
+        XCAT_IP6_GW=$3
+        cat > $NEWROOT/etc/netplan/90-xcat.yaml <<XCATNETPLAN6
+network:
+  version: 2
+  ethernets:
+    $ETHX:
+      dhcp4: false
+      addresses: [$XCAT_IP6_ADDR/$XCAT_IP6_PREFIX]
+      match:
+        macaddress: "$MACX"
+XCATNETPLAN6
+        if [ -n "$XCAT_IP6_GW" ]; then
+          cat >> $NEWROOT/etc/netplan/90-xcat.yaml <<XCATNETPLAN6GW
+      routes:
+        - to: default
+          via: $XCAT_IP6_GW
+XCATNETPLAN6GW
+        fi
+        chmod 600 $NEWROOT/etc/netplan/90-xcat.yaml
+      else
       cat > $NEWROOT/etc/netplan/90-xcat.yaml <<XCATNETPLAN
 network:
   version: 2
@@ -275,6 +354,7 @@ network:
       match:
         macaddress: "$MACX"
 XCATNETPLAN
+      fi
     elif [ -d $NEWROOT/etc/sysconfig/network-scripts ]; then
       echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
       echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX

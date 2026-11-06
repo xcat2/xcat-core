@@ -54,4 +54,42 @@ $warnings = warnings_for( tree_with( $bios, $uefi, $payload, 'xcat/xnba/nets/x',
 is( scalar @$warnings, 1, 'a directory under xcat/ipxe/nets is not a network boot script' );
 like( $warnings->[0], qr{xcat/ipxe/nets has no network boot script}, 'so the network scripts are still missing' );
 
+# ---- A NODE whose own loader is missing, which upstream_loader_warnings cannot see -----------
+# upstream_loader_warnings reads the SITE TFTP directory and runs on makedhcp -n and -a only. A
+# node carries its own noderes.tftpdir, and makedhcp <node> never calls it at all, so
+# dhcp6_bootfile_url_for_node dropped the DHCPv6 boot file with nothing said anywhere: makedhcp
+# exited 0 and the node sat at a firmware timeout.
+my $ready = tree_with($uefi);
+my @none = xCAT::DHCP::BootPolicy->dhcp6_missing_loader_warning(
+    node => "cn01", tftpdir => $ready, loader => $uefi );
+is( scalar @none, 0, "a node whose loader is on disk gets no warning" );
+
+my $missing_dir = tree_with();
+my ($warning) = xCAT::DHCP::BootPolicy->dhcp6_missing_loader_warning(
+    node => "cn01", tftpdir => $missing_dir, loader => $uefi );
+like( $warning, qr{\Q$missing_dir/$uefi\E},
+      "a node whose loader is absent gets a warning naming the FULL PATH it looked for" );
+like( $warning, qr{\bcn01\b}, "... and the node, so a per-node tftpdir is attributable" );
+like( $warning, qr/no DHCPv6 boot file/,
+      "... and the consequence, which is the thing the silence hid" );
+like( $warning, qr/ipxe-xcat/, "... and the package that supplies the loader" );
+
+# A trailing slash on the tftpdir must not double in the path, or the warning names a file that
+# never existed and the reader looks in the wrong place.
+($warning) = xCAT::DHCP::BootPolicy->dhcp6_missing_loader_warning(
+    node => "cn01", tftpdir => "$missing_dir/", loader => $uefi );
+like( $warning, qr{\Q$missing_dir/$uefi\E}, "a trailing slash on the TFTP directory is dropped" );
+unlike( $warning, qr{//}, "... and no doubled separator is left in the path" );
+
+# No tftpdir and no loader are not a missing file. dhcp6_bootfile_url_for_node keeps the boot
+# file in both cases, so a warning here would be a false alarm on every such node.
+for my $case ( [ "an unset tftpdir", { tftpdir => undef, loader => $uefi } ],
+               [ "an empty tftpdir", { tftpdir => "",    loader => $uefi } ],
+               [ "an unset loader",  { tftpdir => $missing_dir, loader => undef } ] )
+{
+    my @quiet = xCAT::DHCP::BootPolicy->dhcp6_missing_loader_warning(
+        node => "cn01", %{ $case->[1] } );
+    is( scalar @quiet, 0, "$case->[0] is not reported as a missing loader" );
+}
+
 done_testing();

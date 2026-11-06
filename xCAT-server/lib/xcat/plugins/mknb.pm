@@ -4,6 +4,7 @@ use Digest::SHA ();
 use File::Temp qw(tempdir tempfile);
 use xCAT::Utils;
 use xCAT::HTTPUtils qw(httpport_suffix);
+use xCAT::ConsolePolicy;
 use xCAT::TableUtils;
 use xCAT::NodeRange;
 use xCAT::SecureBoot;
@@ -761,12 +762,24 @@ sub process_request {
         }
     }
     my $hexnet_addresses  = xCAT::NetworkUtils->my_hexnets('all');
-    my $normnet_addresses = xCAT::NetworkUtils->my_nets('all');
+    my $normnet_addresses = xCAT::NetworkUtils->my_nets('all') || {};
+    # my_hexnets names a PXELINUX file after a hexadecimal IPv4 prefix. DHCPv6
+    # has no such file name, so the IPv6 networks reach only the nets/ scripts
+    # below, which DHCP names after the network and its prefix length.
+    my $normnet6_addresses = xCAT::NetworkUtils->my_nets6('all') || {};
+    foreach my $net6 (keys %{$normnet6_addresses}) {
+        $normnet_addresses->{$net6} = $normnet6_addresses->{$net6};
+    }
     my @masters = xCAT::TableUtils->get_site_attribute("master");
     my @master_addresses;
     if ($masters[0]) {
         @master_addresses = xCAT::NetworkUtils->getipaddr(
             $masters[0], OnlyV4 => 1, GetAllAddresses => 1
+        );
+        # A preferred address is only compared for equality, so the two families
+        # are kept in one list: no IPv4 network can select an IPv6 literal.
+        push @master_addresses, xCAT::NetworkUtils->getipaddr(
+            $masters[0], OnlyV6 => 1, GetAllAddresses => 1
         );
     }
     my ($hexnets, $xcatdhexnets) = _select_network_addresses(
@@ -779,11 +792,8 @@ sub process_request {
     if ($arch eq 's390x') {
         $consolecmdline = 'console=ttysclp0';
     } elsif (defined($serialport) and $serialspeed) {
-        if ($arch =~ /ppc/) {
-            $consolecmdline = "console=tty0 console=hvc$serialport,$serialspeed";
-        } else {
-            $consolecmdline = "console=tty0 console=ttyS$serialport,$serialspeed";
-        }
+        $consolecmdline = xCAT::ConsolePolicy::kernel_console_arguments(
+            $arch, $serialport, $serialspeed);
         if ($serialflow =~ /cts/ or $serialflow =~ /hard/) {
             $consolecmdline .= "n8r";
         }
@@ -829,6 +839,10 @@ sub process_request {
         my $net = $_;
         my $nicip = $normnets->{$net};
         my $xcatd_address = defined($xcatdnormnets->{$net}) ? $xcatdnormnets->{$net} : $nicip;
+        # "xcatd=2001:db8::1:3001" parses as a valid IPv6 literal with no port, so the
+        # node reads the wrong address and reports nothing. Bracket it.
+        my $xcatd_endpoint = xCAT::NetworkUtils::xcatd_cmdline_address($xcatd_address, $xcatdport);
+        my $xcatd_uri_host = xCAT::NetworkUtils->format_uri_host($xcatd_address);
         $net =~ s/\//_/;
         if (defined($nobootnicips{$nicip})
             || ($arch eq 's390x' && defined($nobootnicips{$xcatd_address}))) {
@@ -871,10 +885,10 @@ sub process_request {
                 open($cfg, ">", "$nets/$net");
                 print $cfg "#!gpxe\n";
                 if ($invisibletouch) {
-                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . "\n";
+                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=$xcatd_endpoint $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . "\n";
                     print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
                 } else {
-                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/nbk.' . "$arch xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
+                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/nbk.' . "$arch xcatd=$xcatd_endpoint $consolecmdline\n";
                     print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
                 }
                 print $cfg "imgload kernel\n";
@@ -887,7 +901,7 @@ sub process_request {
                     print $cfg '   image=/tftpboot/xcat/genesis.kernel.' . "$arch\n";
                     print $cfg "   label=\"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
                     print $cfg "   initrd=$initrd_file\n";
-                    print $cfg "   append=\"xcatd=" . $xcatd_address . ":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
+                    print $cfg "   append=\"xcatd=$xcatd_endpoint destiny=discover $consolecmdline BOOTIF=%B\"\n";
                     close($cfg);
                     open($cfg, ">", "$nets/$net.uefi");
                     print $cfg "#!gpxe\n";
@@ -898,7 +912,7 @@ sub process_request {
                       ? xCAT::SecureBoot->shim_url_path(arch => $arch, tftpdir => $tftpdir)
                       : undef;
                     print $cfg 'shim http://${next-server}' . $portsuffix . $shim . "\n" if ($shim);
-                    print $cfg "imgargs kernel xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
+                    print $cfg "imgargs kernel xcatd=$xcatd_endpoint $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
                     print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
                     close($cfg);
                 }
@@ -908,9 +922,9 @@ sub process_request {
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $xcatd_address . "$portsuffix/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $xcatd_address . "$portsuffix/$initrd_file\n";
-            print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
+            print $cfgfile "   kernel http://" . $xcatd_uri_host . "$portsuffix/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $xcatd_uri_host . "$portsuffix/$initrd_file\n";
+            print $cfgfile '   append "xcatd=' . $xcatd_endpoint . " $consolecmdline\"\n";
             close($cfgfile);
         } elsif ($arch eq 's390x') {
             my (undef, $config_error) = _write_s390x_discovery_config(
@@ -933,6 +947,8 @@ sub process_request {
     $dopxe = 0;
     foreach (keys %{$hexnets}) {
         my $xcatd_address = defined($xcatdhexnets->{$_}) ? $xcatdhexnets->{$_} : $hexnets->{$_};
+        my $xcatd_endpoint = xCAT::NetworkUtils::xcatd_cmdline_address($xcatd_address, $xcatdport);
+        my $xcatd_uri_host = xCAT::NetworkUtils->format_uri_host($xcatd_address);
         $dopxe = 0;
         if ($arch =~ /x86/) {    #only do pxe if just x86 or x86_64 and no x86
             if ($arch =~ /x86_64/) {
@@ -959,16 +975,16 @@ sub process_request {
             print $cfgfile "DEFAULT xCAT\n";
             print $cfgfile "  LABEL xCAT\n";
             print $cfgfile "  KERNEL xcat/$kernel_file\n";
-            print $cfgfile "  APPEND initrd=$tftp_initrd xcatd=" . $xcatd_address . ":$xcatdport $consolecmdline\n";
+            print $cfgfile "  APPEND initrd=$tftp_initrd xcatd=$xcatd_endpoint $consolecmdline\n";
             close($cfgfile);
         } elsif ($arch =~ /ppc/) {
             open($cfgfile, ">", "$tftpdir/etc/" . lc($_));
             print $cfgfile "default \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
             print $cfgfile "   delay=10\n";
             print $cfgfile "   label \"xCAT Genesis (" . $normnets->{$_} . ")\"\n";
-            print $cfgfile "   kernel http://" . $xcatd_address . "$portsuffix/$tftpdir/xcat/genesis.kernel.$arch\n";
-            print $cfgfile "   initrd http://" . $xcatd_address . "$portsuffix/$initrd_file\n";
-            print $cfgfile '   append "xcatd=' . $xcatd_address . ":$xcatdport $consolecmdline\"\n";
+            print $cfgfile "   kernel http://" . $xcatd_uri_host . "$portsuffix/$tftpdir/xcat/genesis.kernel.$arch\n";
+            print $cfgfile "   initrd http://" . $xcatd_uri_host . "$portsuffix/$initrd_file\n";
+            print $cfgfile '   append "xcatd=' . $xcatd_endpoint . " $consolecmdline\"\n";
             close($cfgfile);
         } elsif (exists $GRUB2_DISCOVERY_ARCHES{$arch}) {
             # Also drop it when the xcatd address chosen for the network sits on a
@@ -1002,7 +1018,9 @@ sub _write_s390x_discovery_config {
     my $tftpdir = $args{tftpdir};
     my $initrd = $args{initrd};
     $initrd =~ s{^\Q$tftpdir\E/?}{}xms;
-    my $cmdline = "xcatd=$args{xcatd_address}:$args{xcatdport} xcat.bootloader=s390-ccw";
+    my $cmdline = "xcatd="
+      . xCAT::NetworkUtils::xcatd_cmdline_address($args{xcatd_address}, $args{xcatdport})
+      . " xcat.bootloader=s390-ccw";
     if (defined $args{consolecmdline} and length $args{consolecmdline}) {
         $cmdline .= " $args{consolecmdline}";
     }
@@ -1106,7 +1124,8 @@ sub _write_grub2_discovery_config {
         unlink($cfgpath);
         return;
     }
-    my $cmdline = "xcatd=$args{xcatd_address}:$args{xcatdport}";
+    my $cmdline = "xcatd="
+      . xCAT::NetworkUtils::xcatd_cmdline_address($args{xcatd_address}, $args{xcatdport});
     if (defined($args{consolecmdline}) and $args{consolecmdline} ne '') {
         $cmdline .= " $args{consolecmdline}";
     }
@@ -1114,9 +1133,10 @@ sub _write_grub2_discovery_config {
     # loads it over HTTP like netboot=grub2-http; the TFTP entry is for a management
     # node that does not serve the TFTP root over HTTP.
     my $httpport = $args{httpport} || '80';
-    my $httproot = 'http,' . $args{xcatd_address} . httpport_suffix($httpport);
+    my $grub_uri_host = xCAT::NetworkUtils->format_uri_host($args{xcatd_address});
+    my $httproot = 'http,' . $grub_uri_host . httpport_suffix($httpport);
     my $http_tftp_root = '/tftpboot';
-    my $tftproot = 'tftp,' . $args{xcatd_address};
+    my $tftproot = 'tftp,' . $grub_uri_host;
     my $content = "# xCAT Genesis discovery for network $hexnet - generated by mknb, do not edit\n";
     $content .= "set default=0\n";
     # Every architecture branch defines the HTTP entry first and the TFTP entry
