@@ -1126,4 +1126,96 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     }
 }
 
+# ---- mac.duid=canonical makes iPXE the client that holds the address ------------------------
+# The canonical order is the DUID that iPXE sends, so the host named after the node answers iPXE
+# and the firmware gets the host <node>-firmware. Each host carries the boot file of its own
+# client: iPXE that is given the shim again never reaches the boot script of the node.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+
+    my $present = tempdir( CLEANUP => 1 );
+    my $shim    = 'xcat/ipxe/x86_64-sb/snponly-shim.efi';
+    make_path( dirname("$present/$shim") );
+    open( my $fh, '>', "$present/$shim" ) or die "cannot write the loader: $!";
+    print {$fh} "loader\n";
+    close($fh);
+    $DUIDTable::rows{noderes}{cn03} =
+      { netboot => 'ipxe', tftpserver => '2001:db8:176::1', tftpdir => $present };
+
+    my $cn03_canonical = '00:04:12:34:56:78:12:34:4b:cd:98:76:12:34:56:78:90:ad';
+    my $cn03_firmware  = '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ad';
+    my $shim_url   = "tftp://[2001:db8:176::1]/$shim";
+    my $script_url = 'http://[2001:db8:176::1]/tftpboot/xcat/ipxe/nodes/cn03.uefi';
+
+    my $session = isc_commands('cn03')->[1] // '';
+    my $hosts = isc_hosts($session);
+    is( $hosts->{cn03}, $cn03_canonical, 'ISC: the host of a canonical node is keyed on the DUID iPXE sends' );
+    is( $hosts->{'cn03-firmware'}, $cn03_firmware, '... and the firmware has a host of its own' );
+
+    my %url;
+    while ( $session =~ /^set name = "([^"]+)"\nset dhcp-client-identifier = \S+\nset statements = "[^\n]*?bootfile-url \\"([^\\]+)\\"/mg ) {
+        $url{$1} = $2;
+    }
+    is( $url{cn03}, $script_url, 'ISC: the host that answers iPXE is given the boot script' );
+    is( $url{'cn03-firmware'}, $shim_url, 'ISC: the host that answers the firmware is given the shim' );
+
+    # makedhcp -d removes the DHCPv6 hosts by name, so a name it does not list stays behind with
+    # the boot file of a node that makedhcp reported as removed.
+    my $removed = '';
+    open( my $out, '>', \$removed ) or die "Cannot open an omshell buffer: $!";
+    xCAT_plugin::dhcp::delnode6( 'cn03', $out );
+    close($out);
+    like( $removed, qr/^set name = "cn03-firmware"\nopen\nremove\n/m,
+        'ISC: makedhcp -d removes the host of the firmware client' );
+}
+
+# ---- A change of netboot removes the reservation of a client that no longer solicits ---------
+# netboot=ipxe gives the node an entry for iPXE that holds no address and no hostname. After a
+# change to grub2 nothing keys on that entry any more, so neither the update nor makedhcp -d
+# found it, and the DUID of iPXE stayed reserved with the boot script of the old method.
+{
+    local %DUIDTable::rows = node_rows(%settings);
+
+    my $present = tempdir( CLEANUP => 1 );
+    my $shim    = 'xcat/ipxe/x86_64-sb/snponly-shim.efi';
+    make_path( dirname("$present/$shim") );
+    open( my $fh, '>', "$present/$shim" ) or die "cannot write the loader: $!";
+    print {$fh} "loader\n";
+    close($fh);
+    my $ipxe  = { netboot => 'ipxe',  tftpserver => '2001:db8:176::1', tftpdir => $present };
+    my $grub2 = { netboot => 'grub2', tftpserver => '2001:db8:176::1' };
+
+    my $config = empty_config();
+    $DUIDTable::rows{noderes}{cn01} = $ipxe;
+    $backend->upsert_reservations( $config, kea_reservations( $config, 'cn01' ), [] );
+    my @before = map { $_->{duid} } @{ $config->{Dhcp6}{subnet6}[0]{reservations} };
+    ok( ( grep { $_ eq $canonical } @before ), 'Kea: an ipxe node has an entry for iPXE' );
+
+    $DUIDTable::rows{noderes}{cn01} = $grub2;
+    my @stale;
+    $backend->upsert_reservations( $config, kea_reservations( $config, 'cn01' ), \@stale );
+    my @after = map { $_->{duid} } @{ $config->{Dhcp6}{subnet6}[0]{reservations} };
+    ok( !( grep { $_ eq $canonical } @after ), 'Kea: after a change to grub2 the entry for iPXE is gone' );
+    ok( ( grep { ( $_->{duid} // '' ) eq $canonical } @stale ),
+        '... and it is in the replaced list, so the Control Agent deletes it too' );
+
+    # The same leftover reached through makedhcp -d: the entry of iPXE is written, then the node
+    # changes to grub2 and is deleted.
+    $config = empty_config();
+    $DUIDTable::rows{noderes}{cn01} = $ipxe;
+    $backend->upsert_reservations( $config, kea_reservations( $config, 'cn01' ), [] );
+    $DUIDTable::rows{noderes}{cn01} = $grub2;
+    foreach my $match ( @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['cn01'] ) } ) {
+        $backend->delete_reservations( $config, $match );
+    }
+    is_deeply( [ map { $_->{duid} } @{ $config->{Dhcp6}{subnet6}[0]{reservations} } ], [],
+        'Kea: makedhcp -d after a change of netboot removes every entry of the node' );
+
+    # ISC DHCP: the host of iPXE is removed by name when the node no longer chainloads.
+    $DUIDTable::rows{noderes}{cn01} = $grub2;
+    my $session = isc_commands('cn01')->[1] // '';
+    like( $session, qr/^new host\nset name = "cn01-ipxe"\nopen\nremove\nclose\n/m,
+        'ISC: a grub2 node removes the host that iPXE had' );
+}
+
 done_testing();
