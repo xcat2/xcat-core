@@ -26,6 +26,7 @@ setup()
     export XCAT_NM_CONF_DIR="$BATS_TEST_TMPDIR/nm"
     export XCAT_NETWORKD_CONF_DIR="$BATS_TEST_TMPDIR/nd"
     export XCAT_TEST_LOG="$BATS_TEST_TMPDIR/commands.log"
+    unset DHCP6DUID MACMAC ARCH
     : >"$XCAT_TEST_LOG"
     mkdir -p "$XCAT_NM_CONF_DIR" "$XCAT_NETWORKD_CONF_DIR"
 }
@@ -158,16 +159,122 @@ DUIDType=uuid
 DUIDRawData=de:ad:be:ef:00:01:02:03:04:05:06:07:08:09" ]
 }
 
-@test "a literal DUID of another type goes to NetworkManager alone" {
+@test "a literal DUID-LLT reaches systemd-networkd as its type and raw data" {
     export DHCP6DUID=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11
     run_duid 00112233-4455-6677-8899-aabbccddeeff
     [ "$status" -eq 0 ]
     [ "$(nm_file)" = "[connection]
 ipv6.dhcp-duid=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11" ]
-    # systemd-networkd composes a DUID from a named type, and only the UUID type can be
-    # expressed that way, so writing one of another type there would send the wrong value.
-    [ ! -e "$XCAT_NETWORKD_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
-    grep -q 'not a UUID DUID' "$XCAT_TEST_LOG"
+    [ "$(nd_file)" = "[DHCPv6]
+DUIDType=link-layer-time
+DUIDRawData=00:01:aa:bb:cc:dd:ee:ff:00:11" ]
+}
+
+@test "a literal DUID-LL reaches systemd-networkd as its type and raw data" {
+    export DHCP6DUID=00:03:00:01:52:54:00:aa:bb:cc
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nd_file)" = "[DHCPv6]
+DUIDType=link-layer
+DUIDRawData=00:01:52:54:00:aa:bb:cc" ]
+}
+
+@test "a literal DUID-EN reaches systemd-networkd as the vendor type" {
+    export DHCP6DUID=00:02:00:00:ab:11:f9:2a:c2:77:29:f9:5c:00
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nd_file)" = "[DHCPv6]
+DUIDType=vendor
+DUIDRawData=00:00:ab:11:f9:2a:c2:77:29:f9:5c:00" ]
+}
+
+# ---- a literal or a DUID-LL needs no SMBIOS UUID -----------------------------------------
+# makedhcp reserves a literal or a DUID-LL without reading vpd.uuid, so a node with no usable
+# SMBIOS UUID still has a reservation that this script must match.
+
+@test "a literal DUID is written when the machine has no SMBIOS UUID" {
+    export DHCP6DUID=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11
+    rm -f "$XCAT_PRODUCT_UUID_FILE"
+    run /bin/bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11" ]
+}
+
+@test "a literal DUID is written when the SMBIOS UUID is the nil UUID" {
+    export DHCP6DUID=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11
+    run_duid 00000000-0000-0000-0000-000000000000
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=00:01:00:01:aa:bb:cc:dd:ee:ff:00:11" ]
+}
+
+# ---- ll: the DUID-LL that makedhcp builds from the first address of mac.mac ---------------
+
+LL=00:03:00:01:52:54:00:aa:bb:cc
+
+@test "ll writes the DUID-LL of the first mac.mac address" {
+    export DHCP6DUID=ll MACMAC='52:54:00:AA:BB:CC!cn1|52:54:00:11:22:33'
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file)" = "[connection]
+ipv6.dhcp-duid=$LL" ]
+    [ "$(nd_file)" = "[DHCPv6]
+DUIDType=link-layer
+DUIDRawData=00:01:52:54:00:aa:bb:cc" ]
+}
+
+@test "ll needs no SMBIOS UUID" {
+    export DHCP6DUID=ll MACMAC=52-54-00-aa-bb-cc
+    rm -f "$XCAT_PRODUCT_UUID_FILE"
+    run /bin/bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$LL" ]
+}
+
+@test "a node moved from firmware to ll loses its UUID identifier" {
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$DUID" ]
+    export DHCP6DUID=ll MACMAC=52:54:00:aa:bb:cc
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$LL" ]
+    [ "$(nd_file | sed -n 's/^DUIDType=//p')" = "link-layer" ]
+}
+
+@test "ll with no usable mac.mac writes nothing" {
+    export DHCP6DUID=ll MACMAC=
+    run_duid 00112233-4455-6677-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ ! -e "$XCAT_NM_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
+    grep -q 'no usable address in mac.mac' "$XCAT_TEST_LOG"
+}
+
+@test "an unset attribute on ppc64le means ll, as makedhcp reserves it" {
+    unset DHCP6DUID
+    export ARCH=ppc64le MACMAC=52:54:00:aa:bb:cc
+    rm -f "$XCAT_PRODUCT_UUID_FILE"
+    run /bin/bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$LL" ]
+}
+
+# ---- mypostscript hands the attribute to the postscript -----------------------------------
+# mypostscript runs each postscript as a child process, so DHCP6DUID reaches it only when the
+# template exports it. The render below does what makescript does to the lines it needs: each
+# #TABLE:<table>:$NODE:<column># becomes "<table>.<column>", the other tags become empty, and the
+# tabdump lines, which makescript replaces with table contents, are dropped.
+
+@test "mypostscript exports DHCP6DUID to the postscripts it runs" {
+    tmpl="$(repo_path 'xCAT-server/share/xcat/mypostscript/mypostscript.tmpl')"
+    rendered="$BATS_TEST_TMPDIR/mypostscript"
+    sed -e '/^tabdump(/d' \
+        -e 's/#TABLE:\([^:]*\):\$NODE:\([^#]*\)#/\1.\2/g' \
+        -e 's/=#[A-Z_]*#/=/g' "$tmpl" >"$rendered"
+    unset DHCP6DUID
+    run /bin/bash -c '. "$1" && /bin/bash -c "printf %s \"\${DHCP6DUID-unset}\""' _ "$rendered"
+    [ "$status" -eq 0 ]
+    [ "$output" = "mac.duid" ]
 }
 
 @test "an attribute that is neither keyword nor DUID writes nothing" {
