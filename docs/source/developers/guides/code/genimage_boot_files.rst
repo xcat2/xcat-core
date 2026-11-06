@@ -11,6 +11,10 @@ image directory must always come from the same build.
 Rules
 -----
 
+#. Hold the image operation lock of the root image,
+   ``xCAT::Utils->acquire_lock_imageop``, also with ``--onlyinitrd``.  The
+   rollback of a failed publication restores earlier files, so two runs on
+   the same image must not overlap.
 #. Build the boot files in a staging directory inside the image directory.
    Create it with ``File::Temp->newdir`` in the image directory, so that each
    file moves into place with a ``rename`` on the same file system.
@@ -34,7 +38,8 @@ Scripts
 
 ``rh/genimage`` follows these rules.  It is the ``genimage`` of RHEL,
 AlmaLinux, Rocky Linux, CentOS, Oracle Linux, Scientific Linux, Fedora and
-openEuler.  ``ubuntu/genimage`` also follows them.
+openEuler.  ``ubuntu/genimage`` follows them, except that it does not take
+the image operation lock.
 
 The ``sles``, ``suse``, ``debian`` and ``fedora12`` scripts still write the
 kernel and the ramdisks directly into the image directory.
