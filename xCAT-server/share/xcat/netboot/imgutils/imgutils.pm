@@ -131,6 +131,26 @@ sub skip_kdump_without_dump_memory {
     close($fh) or die "Cannot write $dropin_dir/xcat-dump-memory.conf: $!\n";
 }
 
+sub copy_kernel {
+    my ($rootimg_dir, $kernelver, $dir) = @_;
+    my ($kernel) = grep { -e $_ } map { "$rootimg_dir/$_" }
+      ("boot/vmlinux-$kernelver", "boot/vmlinuz-$kernelver", "boot/image-$kernelver", "lib/modules/$kernelver/vmlinuz");
+    die("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot\n") unless $kernel;
+    File::Copy::cp($kernel, "$dir/kernel") or die("Error: failed to copy the kernel to $dir: $!\n");
+    return 1;
+}
+
+# Removes $dir after packing it, also when a command of the pipeline fails.
+sub pack_initrd {
+    my ($dir, $initrd, $compress, $mode) = @_;
+    my $command = "cd $dir && find . | cpio -H newc -o | $compress -9 -c - > $initrd";
+    print "\n$command\n";
+    my $rc = system('bash', '-c', "set -o pipefail; $command");
+    rmtree($dir);
+    die("Error: failed to generate the initial ramdisk for $mode.\n") if $rc;
+    return 1;
+}
+
 sub publish_boot_files {
     my ($native_bootdir, $destdir, $initrd, $mode) = @_;
     move($initrd, "$native_bootdir/initrd-$mode.gz")

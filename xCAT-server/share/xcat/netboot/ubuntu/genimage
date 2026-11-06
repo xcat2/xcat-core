@@ -735,17 +735,7 @@ chomp($kernelver);
 # The kernel and the initial ramdisks wait here until genimage publishes them together.
 my $native_bootdir = File::Temp->newdir('.genimage-boot.XXXXXX', DIR => $destdir, CLEANUP => 1);
 my $stateless_uftp_receiver;
-my $kernel_copy;
-if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
-    $kernel_copy = cp("$rootimg_dir/boot/vmlinux-$kernelver", "$native_bootdir/kernel");
-} elsif (-e "$rootimg_dir/boot/vmlinuz-$kernelver") {
-    $kernel_copy = cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$native_bootdir/kernel");
-} elsif (-e "$rootimg_dir/boot/image-$kernelver") {
-    $kernel_copy = cp("$rootimg_dir/boot/image-$kernelver", "$native_bootdir/kernel");
-} else {
-    xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
-}
-die("Error: failed to copy the kernel to $native_bootdir: $!\n") unless $kernel_copy;
+eval { imgutils::copy_kernel($rootimg_dir, $kernelver, $native_bootdir) } or xdie($@);
 
 # Load driver update disk, and copy them to the root image
 my @dd_drivers = &load_dd();
@@ -1892,11 +1882,7 @@ EOMS
     }
 
     #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
-    my $initrd = "$native_bootdir/initrd-$mode.gz";
-    print "\ncd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $initrd \n";
-    my $rc = system('bash', '-c', "set -o pipefail; cd /tmp/xcatinitrd.$$ && find . | cpio -H newc -o | $compress -9 -c - > $initrd");
-    system("rm -rf /tmp/xcatinitrd.$$");
-    die("Error: failed to generate the initial ramdisk for $mode.\n") if $rc;
+    imgutils::pack_initrd("/tmp/xcatinitrd.$$", "$native_bootdir/initrd-$mode.gz", $compress, $mode);
 
 }
 
