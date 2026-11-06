@@ -59,6 +59,27 @@ is(read_text("$case/image/initrd-stateless.gz"), "old initrd\n", 'lock refusal p
 is_deeply($state->{commands}, [], 'lock refusal does not run mount cleanup against the active build');
 is_deeply([glob("$case/image/.genimage*")], [], 'lock refusal creates no staging directory');
 
+my %el_dracut_calls = (none => 2, 'kernel-copy' => 0, dracut => 1, 'move-initrd' => 1, 'publish-initrd' => 2);
+for my $failure (qw(none kernel-copy dracut move-initrd publish-initrd)) {
+    ($rc, $state, $output, $case) = run_case('rhels9.6', $failure, 'vmlinuz', 1);
+    my $label = "EL $failure";
+    my $set = $failure eq 'none' ? 'new' : 'old';
+    if ($failure eq 'none') {
+        is($rc, 0, "$label completes") or diag($output);
+    } else {
+        isnt($rc, 0, "$label fails");
+        like($output, qr/Error: failed to (?:copy|generate|move|publish).*?(?:kernel|ramdisk)/i,
+            "$label reports the failed boot file operation");
+    }
+    is(read_text("$case/image/kernel"), "$set kernel\n", "$label leaves the $set kernel");
+    is(read_text("$case/image/initrd-$_.gz"), "$set initrd\n", "$label leaves the $set $_ initrd")
+        for qw(statelite stateless);
+    is($state->{dracut_calls}, $el_dracut_calls{$failure}, "$label stops at the first failed step");
+    is($state->{lock_calls}, 0, "$label retains its existing onlyinitrd lock behavior");
+    is_deeply([glob("$case/image/rootimg/tmp/initrd.*.gz")], [], "$label removes temporary dracut output");
+    is_deeply([glob("$case/image/.genimage*")], [], "$label removes boot staging files");
+}
+
 done_testing();
 
 sub run_case {
@@ -77,7 +98,7 @@ sub run_case {
     chmod 0000, $kernel_file if $failure eq 'kernel-copy';
     if ($old) {
         write_text("$case/image/kernel", "old kernel\n");
-        write_text("$case/image/initrd-stateless.gz", "old initrd\n");
+        write_text("$case/image/initrd-$_.gz", "old initrd\n") for qw(statelite stateless);
     }
     if ($repositories) {
         make_path("$root/etc/yum.repos.d");
