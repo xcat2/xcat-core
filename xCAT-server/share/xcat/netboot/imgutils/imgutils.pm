@@ -297,7 +297,7 @@ sub use_host_resolver {
     my ($rootimg_dir) = @_;
     foreach my $file ('hosts', 'resolv.conf') {
         my $image = "$rootimg_dir/etc/$file";
-        move($image, "$image.bak") unless -e "$image.bak" || -l "$image.bak";
+        File::Copy::move($image, "$image.bak") unless -e "$image.bak" || -l "$image.bak";
         unlink($image);
         File::Copy::copy("/etc/$file", $image);
     }
