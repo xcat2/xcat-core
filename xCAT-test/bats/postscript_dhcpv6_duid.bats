@@ -283,5 +283,5 @@ DUIDRawData=00:01:52:54:00:aa:bb:cc" ]
     [ "$status" -eq 0 ]
     [ ! -e "$XCAT_NM_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
     [ ! -e "$XCAT_NETWORKD_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
-    grep -q 'is not firmware, canonical, or a DUID' "$XCAT_TEST_LOG"
+    grep -q 'is not firmware, canonical, ll, or a DUID' "$XCAT_TEST_LOG"
 }
