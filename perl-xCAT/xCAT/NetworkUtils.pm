@@ -4137,6 +4137,28 @@ sub ipxe_script_server_for_node {
 
 #-------------------------------------------------------------------------------
 
+=head3 radvd_config_is_xcat
+
+    Descriptions: Says whether a radvd configuration is one that radvd_config
+                  wrote. makedhcp withdraws only such a configuration, because
+                  radvd can also serve networks that xCAT does not manage.
+    Arguments:    $text the content of the configuration file, or undef
+    Returns:      1 when xCAT wrote it, 0 when it did not
+
+=cut
+
+#-------------------------------------------------------------------------------
+our $RADVD_MARKER = '# Written by xCAT makedhcp. makedhcp replaces or removes this file.';
+
+sub radvd_config_is_xcat {
+    my ($text) = @_;
+
+    return 0 unless defined($text);
+    return index( $text, $RADVD_MARKER . "\n" ) == 0 ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 radvd_config
 
     Descriptions: The radvd configuration for the IPv6 networks xCAT serves.
@@ -4184,7 +4206,7 @@ sub radvd_config {
     }
     return unless @order;
 
-    my $text = '';
+    my $text = $RADVD_MARKER . "\n";
     foreach my $interface (@order) {
         $text .= "interface $interface\n{\n";
         $text .= "    AdvSendAdvert on;\n";

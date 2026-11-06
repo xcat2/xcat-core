@@ -2961,7 +2961,7 @@ sub kea_process_request
         if ($restart->{error}) {
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
-        configure_router_advertisements($callback, $activenics) if $using_dhcp6;
+        configure_router_advertisements($callback, $activenics);
         flock($dhcplockfd, LOCK_UN);
         return;
     }
@@ -3099,7 +3099,8 @@ sub kea_process_request
             $callback->({ error => [ $restart->{error} ], errorcode => [1] });
         }
     }
-    configure_router_advertisements($callback, $activenics) if $using_dhcp6;
+    # Also without a DHCPv6 subnet, which is when an advertisement left from before is withdrawn.
+    configure_router_advertisements($callback, $activenics);
 
     flock($dhcplockfd, LOCK_UN);
 }
@@ -5416,7 +5417,8 @@ sub enable_ipv6_forwarding {
 
     site.dhcpinterfaces names the interfaces this server answers on. An
     advertisement on any other interface would offer this host as a router to a
-    LAN the administrator kept it off. An empty or absent set is no restriction.
+    LAN the administrator kept it off. An empty or absent set is no restriction,
+    and neither is the wildcard *, which Kea also accepts.
 
 =cut
 
@@ -5426,6 +5428,7 @@ sub ra_interface_is_served {
 
     return 0 unless defined($interface) && length($interface);
     return 1 unless ref($activenics) eq 'HASH' && scalar(keys %$activenics);
+    return 1 if $activenics->{'*'};
     return $activenics->{$interface} ? 1 : 0;
 }
 
@@ -5449,6 +5452,49 @@ sub radvd_needs_restart {
 
     return 1 if $changed;
     return $running ? 0 : 1;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 withdraw_router_advertisements
+
+    Stops the advertisements of an earlier makedhcp when no IPv6 network is
+    left to announce.
+
+    Arguments:
+        $callback - the response callback
+    Returns:
+        nothing.
+
+    radvd announces a router lifetime of zero when it stops, so the clients
+    drop the route at once. The file is removed so that a restart does not
+    announce the old prefix again. A file that xCAT did not write is left alone.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub withdraw_router_advertisements
+{
+    my ($callback) = @_;
+
+    my $current;
+    if (open(my $fh, '<', $radvdconffile)) {
+        local $/;
+        $current = <$fh>;
+        close($fh);
+    }
+    return unless xCAT::NetworkUtils::radvd_config_is_xcat($current);
+
+    my $rc = xCAT::Utils->stopservice('radvd');
+    if ($rc) {
+        $callback->({ warning => ["radvd did not stop (exit $rc), so it still announces the IPv6 networks that were removed."] });
+        return;
+    }
+    xCAT::Utils->disableservice('radvd');
+    unless (unlink($radvdconffile)) {
+        $callback->({ warning => ["Cannot remove $radvdconffile, so a restart of radvd announces the removed IPv6 networks again: $!"] });
+    }
+    return;
 }
 
 #-----------------------------------------------------------------------------
@@ -5487,7 +5533,10 @@ sub configure_router_advertisements
     }
 
     my $config = xCAT::NetworkUtils::radvd_config(\@wanted);
-    return unless defined $config;
+    unless (defined $config) {
+        withdraw_router_advertisements($callback);
+        return;
+    }
 
     foreach my $net (@wanted) {
         enable_ipv6_forwarding($net->{interface});
