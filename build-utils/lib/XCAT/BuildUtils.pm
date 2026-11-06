@@ -797,7 +797,12 @@ sub start_build_worker {
     # lock forever, and the gated child has not run, so record nothing.
     my $ok = (POSIX::setpgid($pid, $pid) || $!{EACCES}) ? 1 : 0;
     $ok = attach_build_workers($pid) if $ok;
-    $ok = 0 if $ok && (syswrite($gate_w, 'g') // 0) != 1;
+    if ($ok) {
+        # A worker that died after the record leaves no reader. SIGPIPE would end the builder
+        # and skip its cleanup, so let the write fail with EPIPE instead.
+        local $SIG{PIPE} = 'IGNORE';
+        $ok = 0 if (syswrite($gate_w, 'g') // 0) != 1;
+    }
     close($gate_w);
     # Scalar context gives the pid, so `start_build_worker(...) and next` keeps the meaning of
     # `$pm->start and next` whether or not the record succeeded.
