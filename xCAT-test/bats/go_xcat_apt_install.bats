@@ -5,44 +5,22 @@
 # translated apt must not hide the packages that are there.
 
 load 'helpers/go_xcat'
+load 'helpers/go_xcat_apt'
 
 setup()
 {
     go_xcat_require_source
 }
 
-# Run install_packages_apt with apt-cache and apt-get doubles. apt-get records its arguments.
+# Run install_packages_apt with the apt-cache double. apt-get records its arguments.
 #
-#	$@	Package names. The names in APT_UNKNOWN (default "missing") are unknown to apt, and
-#		"nocandidate" is known with no candidate. apt-cache fails after it reports the
-#		package in APT_FAIL_AFTER.
+#	$@	Package names, answered as helpers/go_xcat_apt describes.
 install_with_apt()
 {
     (
         log="$BATS_TEST_TMPDIR/apt-get.log"
         PATH=""
         source "$GO_XCAT_SOURCE" || exit 70
-        apt-cache()
-        {
-            [ "$1" = policy ] || return 1
-            shift
-            local installed='Installed:' candidate='Candidate:' package
-            if [ "${LC_ALL:-${LANG:-}}" != C ]; then
-                installed='已安装：'
-                candidate='候选：'
-            fi
-            for package in "$@"; do
-                case " ${APT_UNKNOWN:-missing} " in
-                *" $package "*) continue ;;
-                esac
-                case "$package" in
-                nocandidate) printf '%s:\n  %s (none)\n  %s (none)\n' "$package" "$installed" "$candidate" ;;
-                *) printf '%s:\n  %s (none)\n  %s 1.0-1\n  Version table:\n     1.0-1 500\n' \
-                    "$package" "$installed" "$candidate" ;;
-                esac
-                [ "$package" != "${APT_FAIL_AFTER:-}" ] || return 100
-            done
-        }
         apt-get() { printf '%s\n' "$*" >>"$log"; }
         install_packages_apt -y "$@"
     )
