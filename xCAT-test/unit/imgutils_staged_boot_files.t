@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 ## no critic (TestingAndDebugging::ProhibitNoWarnings, Variables::RequireLocalizedPunctuationVars)
-use Errno qw(EACCES);
+use Errno qw(EACCES EIO);
 use FindBin;
 use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
@@ -20,7 +20,7 @@ use imgutils;
 my @modes = qw(statelite stateless);
 my @names = ('kernel', map { "initrd-$_.gz" } @modes);
 
-# Publishes a staged kernel and two ramdisks over an older set, failing the named link, rename, or rollback.
+# Publishes a staged kernel and two ramdisks over an older set, failing the named link, rename, applied rename, or rollback.
 sub publish_case {
     my (%case) = @_;
     my $dir     = tempdir(CLEANUP => 1);
@@ -40,6 +40,11 @@ sub publish_case {
             return CORE::link($_[0], $_[1]);
         };
         local *CORE::GLOBAL::rename = sub {
+            if (defined $case{applied} && $_[0] eq "$staging/$case{applied}") {
+                CORE::rename($_[0], $_[1]);
+                $! = EIO;
+                return 0;
+            }
             if ((defined $case{rename} && $_[0] eq "$staging/$case{rename}")
                 || (defined $case{rollback} && $_[0] eq "$staging/previous-$case{rollback}")) {
                 $! = EACCES;
@@ -81,6 +86,19 @@ for my $name (@names) {
     like($error, qr/^Error: failed to publish the (?:kernel|initial ramdisk for \w+): /, "the error names the $name rename");
     is_deeply($state, set_of('old'), "a failed rename of $name puts the older set back");
     is_deeply([ glob("$dir/.genimage*") ], [], "a failed rename of $name removes the staging directory");
+}
+
+for my $name (@names) {
+    my ($ok, $error, $dir, $state) = publish_case(old => 1, applied => $name);
+    ok(!$ok, "a rename of $name that reports a failure after it moved the file stops the publication");
+    is_deeply($state, set_of('old'), "a rename of $name that reports a failure after it moved the file puts the older set back");
+    is_deeply([ glob("$dir/.genimage*") ], [], "a rename of $name that reports a failure after it moved the file removes the staging directory");
+}
+
+{
+    my ($ok, $error, $dir, $state) = publish_case(old => 0, applied => 'initrd-stateless.gz');
+    ok(!$ok, 'a rename that reports a failure after it moved the file on a first build stops the publication');
+    is_deeply($state, { map { $_ => undef } @names }, 'a rename that reports a failure after it moved the file on a first build leaves no kernel or ramdisk');
 }
 
 {
