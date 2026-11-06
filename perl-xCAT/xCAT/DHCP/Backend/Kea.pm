@@ -665,6 +665,14 @@ sub upsert_reservations {
     # Remove stale matches before adding the complete requested set.  A DHCPv6
     # client DUID is valid in more than one subnet, so deleting while adding
     # would otherwise remove an earlier reservation from the same batch.
+    # The entries of a node are replaced as a set: an entry of a client that the
+    # node no longer has matches no reservation of the new set.
+    my %owners;
+    foreach my $owner ( grep { defined } map { _owner_of($_) } @$reservations ) {
+        next if $owners{$owner}++;
+        my $removed = $self->delete_reservations( $config, { 'user-context' => { 'xcat-node' => $owner } } );
+        push @$deleted, @$removed if $deleted;
+    }
     foreach my $reservation (@$reservations) {
         my $removed = $self->delete_reservations($config, $reservation);
         push @$deleted, @$removed if $deleted;
@@ -1045,6 +1053,16 @@ sub _reservation_matches {
         }
         return 1 if $have eq $want;
     }
+
+    # makedhcp names the node that owns an entry in its user context. An entry that holds no
+    # address has no hostname, so this is the only field that ties it to the node. Only a match
+    # that names the owner alone uses it: one node has several entries, and a reservation that
+    # is compared with the entries of its own node must not match all of them.
+    my $owner = _owner_of($match);
+    if ( defined($owner) && !grep { defined $match->{$_} } 'hostname', 'hw-address', 'duid', 'ip-address' ) {
+        my $have = _owner_of($reservation);
+        return 1 if defined($have) && $have eq $owner;
+    }
     if ( defined $match->{'ip-address'} && ref( $reservation->{'ip-addresses'} ) eq 'ARRAY' ) {
         foreach my $ip ( @{ $reservation->{'ip-addresses'} } ) {
             return 1 if lc($ip) eq lc( $match->{'ip-address'} );
@@ -1052,6 +1070,15 @@ sub _reservation_matches {
     }
 
     return 0;
+}
+
+sub _owner_of {
+    my ($entry) = @_;
+
+    my $context = $entry->{'user-context'};
+    return unless ref($context) eq 'HASH';
+    my $owner = $context->{'xcat-node'};
+    return ( defined($owner) && $owner ne '' ) ? $owner : undef;
 }
 
 sub _normalize_control_agent_response {
