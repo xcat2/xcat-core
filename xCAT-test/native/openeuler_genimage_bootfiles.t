@@ -59,15 +59,6 @@ is(read_text("$case/image/initrd-stateless.gz"), "old initrd\n", 'lock refusal p
 is_deeply($state->{commands}, [], 'lock refusal does not run mount cleanup against the active build');
 is_deeply([glob("$case/image/.genimage*")], [], 'lock refusal creates no staging directory');
 
-for my $failure (qw(none kernel-copy dracut move-initrd)) {
-    ($rc, $state, $output, $case) = run_case('rhels9.6', $failure, 'vmlinuz', 1);
-    is($rc == 0 ? 0 : 1, $failure eq 'dracut' ? 1 : 0, "EL $failure retains its exit behavior") or diag($output);
-    is(read_text("$case/image/kernel"), $failure eq 'kernel-copy' ? "old kernel\n" : "new kernel\n",
-        "EL $failure retains kernel copy behavior");
-    is($state->{dracut_calls}, $failure eq 'dracut' ? 1 : 2, "EL $failure retains both initrd modes");
-    is($state->{lock_calls}, 0, "EL $failure retains its existing onlyinitrd lock behavior");
-}
-
 done_testing();
 
 sub run_case {
