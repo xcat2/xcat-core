@@ -7,7 +7,7 @@ use strict;
 use warnings "all";
 
 use File::Basename;
-use File::Copy qw(move);
+use File::Copy ();
 use File::Find;
 use File::Path;
 use Cwd qw(realpath);
@@ -149,13 +149,6 @@ sub pack_initrd {
     rmtree($dir);
     die("Error: failed to generate the initial ramdisk for $mode.\n") if $rc;
     return 1;
-}
-
-sub publish_boot_files {
-    my ($native_bootdir, $destdir, $initrd, $mode) = @_;
-    move($initrd, "$native_bootdir/initrd-$mode.gz")
-      or die("Error: failed to move the initial ramdisk for $mode: $!\n");
-    return publish_staged_boot_files($native_bootdir, $destdir, $mode);
 }
 
 # nodeset copies the kernel and the initial ramdisks as one set, so a failure puts back every file already replaced.
