@@ -155,11 +155,14 @@ sub pack_initrd {
 sub publish_staged_boot_files {
     my ($native_bootdir, $destdir, @modes) = @_;
     my @files = ([ 'kernel', 'kernel' ], map { [ "initrd-$_.gz", "initial ramdisk for $_" ] } @modes);
+    my %backup;
     foreach my $file (@files) {
         my ($name, $what) = @$file;
-        next unless -e "$destdir/$name" || -l "$destdir/$name";
-        link("$destdir/$name", "$native_bootdir/previous-$name")
-          or die("Error: failed to preserve the previous $what: $!\n");
+        if (link("$destdir/$name", "$native_bootdir/previous-$name")) {
+            $backup{$name} = 1;
+        } elsif (!$!{ENOENT}) {
+            die("Error: failed to preserve the previous $what: $!\n");
+        }
     }
     my @published;
     foreach my $file (@files) {
@@ -174,9 +177,8 @@ sub publish_staged_boot_files {
         my @failed;
         foreach my $done (@attempted, reverse @published) {
             my ($done_name, $done_what) = @$done;
-            my $previous = "$native_bootdir/previous-$done_name";
-            my $restored = (-e $previous || -l $previous)
-              ? rename($previous, "$destdir/$done_name")
+            my $restored = $backup{$done_name}
+              ? rename("$native_bootdir/previous-$done_name", "$destdir/$done_name")
               : unlink("$destdir/$done_name");
             push @failed, "$done_what rollback failed: $!" unless $restored;
         }
