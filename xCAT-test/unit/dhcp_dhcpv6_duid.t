@@ -1218,4 +1218,72 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
         'ISC: a grub2 node removes the host that iPXE had' );
 }
 
+# ---- dhcpinterfaces=* serves every interface, and so does the advertisement ------------------
+# Kea accepts the wildcard. The advertisement looked the interface name up literally, so a
+# wildcard served no interface and radvd was given no configuration.
+is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', { '*' => 1 } ), 1,
+    'the wildcard serves an interface that it does not name' );
+{
+    my $file = "$dir/radvd-wildcard.conf";
+    unlink($file);
+    local $xCAT_plugin::dhcp::radvdconffile = $file;
+    local @DUIDTable::networks =
+      ( { net => '2001:db8:176::', mask => '/64', mgtifname => 'eth0' } );
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub { return DUIDTable->new( $_[1] ); };
+    local *xCAT_plugin::dhcp::enable_ipv6_forwarding = sub { return; };
+    local *xCAT::Utils::enableservice = sub { return 0; };
+    local *xCAT::Utils::checkservicestatus = sub { return 0; };
+    local *xCAT::Utils::restartservice = sub { return 0; };
+    use warnings 'redefine';
+    local $::XCATSITEVALS{externaldhcpservers};
+    xCAT_plugin::dhcp::configure_router_advertisements( sub { }, { '*' => 1 } );
+    my $written = -e $file ? do { local ( @ARGV, $/ ) = ($file); <> } : '';
+    like( $written, qr/^interface eth0$/m, 'dhcpinterfaces=* announces the IPv6 network on its interface' );
+}
+
+# ---- The last IPv6 network removed withdraws the advertisement --------------------------------
+# radvd kept the old configuration, so the host went on announcing a prefix and a default route
+# for a network that xCAT no longer serves.
+{
+    my $file = "$dir/radvd-withdraw.conf";
+    unlink($file);
+    local $xCAT_plugin::dhcp::radvdconffile = $file;
+    local @DUIDTable::networks =
+      ( { net => '2001:db8:176::', mask => '/64', mgtifname => 'eth0' } );
+    my ( @stopped, @disabled );
+    no warnings 'redefine';
+    local *xCAT::Table::new = sub { return DUIDTable->new( $_[1] ); };
+    local *xCAT_plugin::dhcp::enable_ipv6_forwarding = sub { return; };
+    local *xCAT::Utils::enableservice = sub { return 0; };
+    local *xCAT::Utils::checkservicestatus = sub { return 0; };
+    local *xCAT::Utils::restartservice = sub { return 0; };
+    local *xCAT::Utils::stopservice = sub { push @stopped, $_[1]; return 0; };
+    local *xCAT::Utils::disableservice = sub { push @disabled, $_[1]; return 0; };
+    use warnings 'redefine';
+    local $::XCATSITEVALS{externaldhcpservers};
+    my @warn;
+    my $cb = sub { push @warn, @{ $_[0]->{warning} || [] } };
+
+    xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
+    ok( -s $file, 'the IPv6 network is announced first' );
+    is_deeply( \@stopped, [], '... and radvd is not stopped while a network remains' );
+
+    @DUIDTable::networks = ( { net => '192.0.2.0', mask => '255.255.255.0', mgtifname => 'eth0' } );
+    xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
+    is_deeply( \@stopped, ['radvd'], 'radvd is stopped when no IPv6 network remains' );
+    ok( !-e $file, '... and its configuration is removed, so a restart does not announce it again' );
+    is_deeply( \@disabled, ['radvd'], '... and the service is disabled' );
+    is_deeply( \@warn, [], 'and the withdrawal warns about nothing' );
+
+    # A radvd configuration that xCAT did not write belongs to the administrator.
+    open( my $own, '>', $file ) or die "Cannot write $file: $!";
+    print {$own} "interface eth5 { AdvSendAdvert on; };\n";
+    close($own);
+    @stopped = ();
+    xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
+    is_deeply( \@stopped, [], 'a radvd configuration that xCAT did not write is left alone' );
+    ok( -s $file, '... and stays on disk' );
+}
+
 done_testing();

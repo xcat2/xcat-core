@@ -660,6 +660,9 @@ foreach my $case (@sysconfig_policy_cases) {
     local *xCAT_plugin::dhcp::kea_build_dhcp6_intent = sub { return { subnets => [] }; };
     local *xCAT_plugin::dhcp::kea_build_ddns_intent = sub { return; };
     local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 0; };
+    # Records the calls instead of writing the radvd configuration of the host.
+    my @advertised;
+    local *xCAT_plugin::dhcp::configure_router_advertisements = sub { push @advertised, $_[1]; return; };
     local *xCAT::MsgUtils::message = sub { return; };
     local *xCAT::MsgUtils::trace = sub { return; };
     local $::XCATSITEVALS{externaldhcpservers};
@@ -698,6 +701,9 @@ foreach my $case (@sysconfig_policy_cases) {
     ok( $backend->{write_options}{backup_existing}, 'makedhcp -n backs up the replaced Kea configuration' );
     ok( $backend->{restart_options}{enable}, 'makedhcp -n enables and restarts Kea after replacement' );
     is_deeply( \@errors, [], 'makedhcp -n replacement completes without errors' );
+    # No IPv6 subnet is left, so the advertisement of the last one has to be withdrawn.
+    is_deeply( \@advertised, [ { eth0 => 1 } ],
+        'makedhcp -n reconciles the router advertisements when no IPv6 subnet remains' );
 }
 
 {
