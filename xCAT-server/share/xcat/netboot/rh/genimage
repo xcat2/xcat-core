@@ -303,13 +303,11 @@ if($onlyinitrd){
         print("the root image directory \"$rootimg_dir\"does not exist, please run \"genimage $imagename\" to generate the root image directory first!\n");
         exit 1;
     }
-    if (defined(imgutils::openeuler_release_version($osver))) {
-        my $retcode;
-        ($retcode, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
-        if ($retcode) {
-            print "Could not acquire image operation lock for $rootimg_dir\n";
-            exit 1;
-        }
+    my $retcode;
+    ($retcode, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if ($retcode) {
+        print "Could not acquire image operation lock for $rootimg_dir\n";
+        exit 1;
     }
 }else
 {
