@@ -2,11 +2,12 @@
 # An x86_64 KVM guest asks libvirt for UEFI with Secure Boot on with vm.othersettings
 # "firmware:efi-secureboot".
 #
-# firmware:efi alone states no requirement about Secure Boot. libvirt then takes the firmware
-# descriptor of highest priority that fits the guest, and that order is host policy: the same
-# node boots with Secure Boot on on one hypervisor and off on another, and the domain reports
-# neither. A node that must boot signed binaries has to say so, so that a hypervisor without a
-# Secure Boot firmware refuses the domain instead of starting it unverified.
+# A node states what it wants, in both directions. firmware:efi alone states no requirement,
+# and libvirt then takes the firmware descriptor of highest priority that fits the guest. That
+# order is host policy: on an EL 10 host the first x86_64 descriptor is
+# 30-edk2-ovmf-x64-sb-enrolled.json, so a node that asked only for UEFI boots with Secure Boot
+# on and keys enrolled, and its unsigned kernel is refused. So firmware:efi asks for
+# secure-boot off, and firmware:efi-secureboot asks for it on.
 #
 # <loader secure='yes'/> is not that requirement on its own. libvirt reads it as the secure-boot
 # feature, and a firmware with secure-boot and an empty key store boots an unsigned binary. The
@@ -65,13 +66,14 @@ is( $sb->{disk_model}, 'scsi', 'and its disks take the scsi bus, because q35 has
 is( $sb_os->{bios}->{useserial}, 'yes',
     'and it keeps <bios useserial="yes"/>, so its boot still reaches the serial console' );
 
-# firmware:efi must keep stating nothing about Secure Boot. A site that asked only for UEFI
-# gets the firmware its hypervisor prefers, as it did before.
+# firmware:efi asks for UEFI and for no Secure Boot. <loader secure='yes'/> is the requirement
+# for Secure Boot on, so it stays off the <os> of that node; the requirement for Secure Boot off
+# is a <firmware> feature, which guest_os cannot carry.
 my $uefi_os = os_of( node_profile('firmware:efi') );
 is( $uefi_os->{firmware}, 'efi', 'firmware:efi still asks for UEFI' );
-is( $uefi_os->{loader},   undef, 'and states no Secure Boot requirement' );
+is( $uefi_os->{loader},   undef, 'and does not ask for a firmware that verifies what it boots' );
 is( os_of( node_profile(undef) )->{loader},
-    undef, 'a node that asks for no firmware states no Secure Boot requirement either' );
+    undef, 'a node that asks for no firmware does not ask for one either' );
 
 # A value libvirt cannot select is refused by name, and the refusal names both values a node
 # may ask for. A typo must not leave the node on a firmware it did not ask for.
@@ -135,11 +137,19 @@ is_deeply(
     [ { name => 'secure-boot', enabled => 'yes' }, { name => 'enrolled-keys', enabled => 'yes' } ],
     'a Secure Boot node asks for secure-boot and for enrolled-keys'
 );
-is_deeply( xCAT::KVMUtils::firmware_features( node_profile('firmware:efi') ),
-    [], 'firmware:efi asks for no firmware feature' );
+is_deeply(
+    xCAT::KVMUtils::firmware_features( node_profile('firmware:efi') ),
+    [ { name => 'secure-boot', enabled => 'no' } ],
+    'firmware:efi asks for a firmware that verifies nothing, and says nothing about the keys'
+);
+is_deeply( xCAT::KVMUtils::firmware_features( { firmware => 'efi', secureboot => 0 } ),
+    [ { name => 'secure-boot', enabled => 'no' } ],
+    'an aarch64 or riscv64 profile, which always asks for UEFI, states Secure Boot off as well' );
 is_deeply( xCAT::KVMUtils::firmware_features( node_profile(undef) ),
-    [], 'and neither does a node that asks for no firmware' );
-is_deeply( xCAT::KVMUtils::firmware_features(undef), [], 'and neither does an undefined profile' );
+    [], 'a node that asks for no firmware asks for no feature, because libvirt reads a feature only with firmware autoselection' );
+is_deeply( xCAT::KVMUtils::firmware_features( { firmware => undef, secureboot => 1 } ),
+    [], 'and so does a profile that asks for Secure Boot without UEFI, which libvirt cannot select' );
+is_deeply( xCAT::KVMUtils::firmware_features(undef), [], 'an undefined profile asks for none' );
 
 # The domain as kvm.pm writes it: the <os> of guest_os, then the features.
 sub domain_of {
@@ -170,15 +180,22 @@ is( XML::LibXML->load_xml( string => $sb_domain )->findnodes('/domain/os/loader'
       ->getAttribute('secure'),
     'yes', 'and keeps <loader secure="yes"/> beside the features' );
 
-# A node that asked only for UEFI gets no <firmware>, so it keeps taking the descriptor its
-# hypervisor prefers.
-foreach my $othersettings ( 'firmware:efi', undef ) {
-    my $name = defined($othersettings) ? $othersettings : 'no firmware';
-    my $domain = domain_of( node_profile($othersettings) );
-    is_deeply(
-        [ XML::LibXML->load_xml( string => $domain )->findnodes('/domain/os/firmware') ],
-        [], "$name states no firmware feature" );
-}
+# A node that asked only for UEFI states Secure Boot off, so the firmware it gets does not
+# depend on the order the hypervisor keeps its descriptors in.
+my $uefi_domain = domain_of( node_profile('firmware:efi') );
+is( feature_enabled( $uefi_domain, 'secure-boot' ),
+    'no', 'the domain of a UEFI node asks for a firmware that verifies nothing' );
+is( feature_enabled( $uefi_domain, 'enrolled-keys' ),
+    undef, 'and states nothing about the keys, which only a Secure Boot firmware reads' );
+is( XML::LibXML->load_xml( string => $uefi_domain )->findnodes('/domain/os/loader')->[0],
+    undef, 'and keeps <loader secure="yes"/> off the domain' );
+
+# A BIOS node takes no <firmware> element. libvirt reads a feature only where firmware
+# autoselection runs, and refuses a domain that states one with no firmware attribute on <os>.
+is_deeply(
+    [ XML::LibXML->load_xml( string => domain_of( node_profile(undef) ) )
+          ->findnodes('/domain/os/firmware') ],
+    [], 'a node that asks for no firmware states no firmware feature' );
 
 is( xCAT::KVMUtils::add_firmware_features( "<domain type='kvm'><os/></domain>", [] ),
     "<domain type='kvm'><os/></domain>",
