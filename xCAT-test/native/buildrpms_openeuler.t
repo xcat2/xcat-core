@@ -94,6 +94,7 @@ sub run_builder {
         "$fixture/dep/openeuler24.03sp3/x86_64", "$fixture/dep/openeuler24.03/ppc64le", "$fixture/dep/el9/x86_64");
     copy($ENV{XCAT_TEST_BUILDRPMS} || repo_path('buildrpms.pl'), "$fixture/buildrpms.pl") or die $!;
     copy(repo_path('build-utils/lib/XCAT/BuildUtils.pm'), "$fixture/build-utils/lib/XCAT/BuildUtils.pm") or die $!;
+    copy(repo_path('build-utils/lib/XCAT/NFSLock.pm'), "$fixture/build-utils/lib/XCAT/NFSLock.pm") or die $!;
     copy($driver, "$fixture/driver.pl") or die $!;
     write_file("$fixture/Version", "2.18.0\n");
     write_file("$fixture/Gitepoch", "1756000000\n");
