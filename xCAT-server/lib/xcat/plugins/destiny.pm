@@ -990,7 +990,10 @@ sub getdestiny {
         } elsif (defined($master_value)) {
             $response{imgserver} = $master_value;
         } else {
-            my @resd = xCAT::NetworkUtils->my_ip_facing($node);
+            # In the family the node provisions in, as InstUtils and grub2 already do: an
+            # IPv6-only node shares the link, so my_ip_facing answers with the IPv4 address and
+            # the node is sent to fetch its image from an address it cannot reach.
+            my @resd = xCAT::NetworkUtils->my_ip_facing_node($node);
             unless ($resd[0]) { $response{imgserver} = $resd[1]; }
         }
 
