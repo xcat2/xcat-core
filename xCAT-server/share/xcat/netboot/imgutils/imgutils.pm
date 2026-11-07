@@ -284,6 +284,33 @@ sub disable_auto_profiles {
     return;
 }
 
+# The netboot dracut.conf names an exclusive module list, so a module nothing in the list depends
+# on is left out of the initial ramdisk. dracut reads the list and nothing else.
+#
+# dracut-ng removed the network-legacy module. Without it 40network selects systemd-networkd, which
+# depends on the systemd module, and the base module installs the shell /init only when systemd is
+# out. systemd as /init needs initrd.target, which the systemd-initrd module installs, and the
+# dracut hooks need the units of the dracut-systemd module. The EL genimage names the same three.
+sub dracut_netboot_modules {
+    my ($moduledir, $wicked) = @_;
+    my $legacy  = -d "$moduledir/35network-legacy" ? 1 : 0;
+    my $netmod  = ($legacy && !$wicked) ? 'network-legacy' : 'network';
+    my @modules = ('xcat', 'nfs', 'base', $netmod, 'kernel-modules');
+    return join(' ', @modules) if $legacy;
+    my %present;
+    if (opendir(my $dh, $moduledir)) {
+
+        # A dracut module directory carries a number that orders it, and the number moves between
+        # dracut releases. The name after the number is what dracut.conf names.
+        foreach my $entry (readdir($dh)) {
+            $present{$1} = 1 if $entry =~ /^[0-9]+(.+)$/ && -d "$moduledir/$entry";
+        }
+        closedir($dh);
+    }
+    push @modules, grep { $present{$_} } qw(systemd systemd-initrd dracut-systemd);
+    return join(' ', @modules);
+}
+
 # debootstrap deletes $rootimg_dir/debootstrap when it finishes, and its tar -k fails over a finished root.
 sub debootstrap_finished {
     my ($rootimg_dir) = @_;
