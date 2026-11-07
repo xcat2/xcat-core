@@ -50,7 +50,7 @@ jobs:
           status=0
           sudo sh -c 'cd "$1" && bats xCAT-test/native/getinstdisk_selection.bats' sh "$workdir" || status=1
           sudo sh -c 'cd "$1" && bats xCAT-test/native/syslog_log_directory.bats' sh "$workdir" || status=1
-          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_installer.t xCAT-test/native/template_root_password.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t xCAT-test/native/remoteshell_credentials.t' sh "$workdir" || status=1
+          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_installer.t xCAT-test/native/template_root_password.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t xCAT-test/native/remoteshell_credentials.t xCAT-test/native/openeuler_xcatroot.t' sh "$workdir" || status=1
           exit "$status"
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
@@ -110,7 +110,7 @@ jobs:
         run: |
           log=$(mktemp)
           trap 'rm -f -- "$log"' EXIT
-          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/selinux_kickstart_relabel.t xCAT-test/native/kdump_condition_systemd.t xCAT-test/native/openeuler_post_kdump.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t xCAT-test/native/ubuntu_subiquity_install_disk.t | tee "$log"
+          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/post_rhels8_link_nics.t xCAT-test/native/selinux_kickstart_relabel.t xCAT-test/native/kdump_condition_systemd.t xCAT-test/native/openeuler_post_kdump.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t xCAT-test/native/ubuntu_subiquity_install_disk.t xCAT-test/native/kickstart_partition_scheme_log.t xCAT-test/native/kickstart_pre_install_log.t | tee "$log"
           ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04

@@ -456,7 +456,8 @@ sub subvars {
                     $partcontent .= "rm -rf /tmp/partitionfile\n";
 
                     # Put the code to decode the partitionfile
-                    $partcontent .= "base64decode</tmp/partscript.enc >/tmp/partscript\n";
+                    # A traced decode prints the partition data, which can hold a passphrase.
+                    $partcontent .= "(set +x; base64decode</tmp/partscript.enc >/tmp/partscript)\n";
                     $partcontent .= "chmod 755 /tmp/partscript\n";
                     $partcontent .= "/tmp/partscript\n";
 
@@ -517,7 +518,8 @@ sub subvars {
                     $partcontent .= "rm -rf /tmp/partitionfile\n";
 
                     # Put the code to decode the partitionfile
-                    $partcontent .= "base64decode</tmp/partitionfile.enc >/tmp/partitionfile\n";
+                    # A traced decode prints the partition data, which can hold a passphrase.
+                    $partcontent .= "(set +x; base64decode</tmp/partitionfile.enc >/tmp/partitionfile)\n";
 
                     #replace the #XCA_PARTITION_SCRIPT#
                     $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
