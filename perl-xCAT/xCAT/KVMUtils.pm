@@ -67,8 +67,9 @@ sub default_storagemodel {
         move to scsi.
 
         efi-secureboot also sets secureboot, which guest_os turns into the requirement
-        libvirt reads. efi alone states no requirement, so libvirt takes the descriptor of
-        highest priority that fits the guest, and that order belongs to the hypervisor.
+        libvirt reads. efi alone asks for no Secure Boot, which firmware_features states as a
+        feature: libvirt otherwise takes the descriptor of highest priority that fits the
+        guest, and that order belongs to the hypervisor.
     Arguments:
         $guest_arch - nodetype.arch of the node, or undef
         $hyp_cpumodel - the cpumodel of the hypervisor, or undef
@@ -588,6 +589,15 @@ sub guest_os {
         libvirt reads <loader secure='yes'/> as the secure-boot feature alone, and picks the
         descriptor of highest priority that carries it. A host that ships the 40- descriptor
         and not the 30- one satisfies that domain with an empty key store.
+
+        A guest that asks for UEFI and no secureboot states secure-boot off. Without that
+        feature libvirt takes the descriptor of highest priority again, and the 30- one is
+        first on an EL 10 host, so the guest starts with Secure Boot on and refuses its own
+        unsigned kernel. It states nothing about enrolled-keys, which only a firmware with
+        secure-boot reads.
+
+        A guest with no firmware runs no firmware autoselection, and libvirt refuses a
+        <firmware> feature there, so it asks for none.
     Arguments:
         $profile - the hash reference from guest_arch_profile, or undef
     Returns:
@@ -598,7 +608,8 @@ sub guest_os {
 #-------------------------------------------------------
 sub firmware_features {
     my ($profile) = @_;
-    return [] unless ref($profile) eq 'HASH' and $profile->{secureboot};
+    return [] unless ref($profile) eq 'HASH' and defined $profile->{firmware};
+    return [ { name => 'secure-boot', enabled => 'no' } ] unless $profile->{secureboot};
     return [
         { name => 'secure-boot',   enabled => 'yes' },
         { name => 'enrolled-keys', enabled => 'yes' },

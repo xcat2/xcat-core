@@ -92,7 +92,7 @@ Both features are asked for, because the two are separate. ``secure-boot`` names
 
 A hypervisor that ships no such firmware refuses the domain with ``Unable to find 'efi' firmware that is compatible with the current configuration``, rather than starting the node on a firmware that verifies nothing.
 
-``firmware:efi`` keeps its meaning and asks for no feature, so a node that asks only for UEFI takes the firmware its hypervisor prefers.
+``firmware:efi`` asks for UEFI with Secure Boot off. Without that, libvirt picks the descriptor of highest priority that fits the node, and the first x86_64 descriptor of an EL 10 host is ``30-edk2-ovmf-x64-sb-enrolled.json``, so a node that asked only for UEFI starts with Secure Boot on and refuses its own unsigned kernel.
 
 Known limits of the upstream loader
 -----------------------------------
