@@ -132,6 +132,10 @@ sub render_dhcp6_config {
 
     $dhcp6{'control-socket'}  = $intent->{'control-socket'}  if $intent->{'control-socket'};
     $dhcp6{'hooks-libraries'} = $intent->{'hooks-libraries'} if $intent->{'hooks-libraries'};
+    # Without this a DHCPv6 client that matches no reservation is answered with an address and no
+    # option 59, so it boots nothing. render_dhcp4_config has always carried the classes.
+    $dhcp6{'client-classes'} = [ map { $self->_render_client_class($_) } @{ $intent->{'client-classes'} } ]
+      if $intent->{'client-classes'};
     $dhcp6{'option-data'} = _render_option_data( $intent->{'option-data'} )
       if $intent->{'option-data'};
     $dhcp6{'dhcp-ddns'}       = $intent->{'dhcp-ddns'}       if $intent->{'dhcp-ddns'};
@@ -1003,6 +1007,16 @@ sub _render_subnet6 {
     $rendered{'option-data'} = _render_option_data(
         _first_defined( $subnet->{'option-data'}, $subnet->{option_data} )
     );
+    # The boot file of one provisioning network must not be offered on another: the server address
+    # in the URL belongs to the network the class was built for.
+    my $additional_classes = _first_defined(
+        $subnet->{additional_client_classes},
+        $subnet->{'evaluate-additional-classes'},
+        $subnet->{evaluate_additional_classes},
+        $subnet->{'require-client-classes'},
+        $subnet->{require_client_classes},
+    );
+    $rendered{ $self->_additional_class_list_field() } = $additional_classes if defined $additional_classes;
     $rendered{reservations} = _render_entry_option_data( $subnet->{reservations} )
       if $subnet->{reservations};
     delete $rendered{'option-data'} unless defined $rendered{'option-data'};
