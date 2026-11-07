@@ -4576,6 +4576,38 @@ sub uri_authority {
 
 #-----------------------------------------------------------------------------
 
+=head3 my_ip_facing_node
+
+    Descriptions:
+        The address of this management node that the node can reach, chosen in the family the
+        node provisions in.
+    Arguments:
+        $node - the node name
+    Returns:
+        ($error, $value) - the same pair my_ip_facing returns. $error is 0 and $value the
+        address on success, or 1 and the reason on failure.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub my_ip_facing_node
+{
+    my $node = shift;
+    if (defined($node) && $node eq __PACKAGE__)
+    {
+        $node = shift;
+    }
+
+    # my_ip_facing resolves the peer with OnlyV4, and an IPv6-only node shares the link, so that
+    # call returns the IPv4 address instead of failing. Genesis was then told to reach xcatd over
+    # a family the node has no address in.
+    return xCAT::NetworkUtils->node_is_ipv6_only($node)
+      ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+      : xCAT::NetworkUtils->my_ip_facing($node);
+}
+
+#-----------------------------------------------------------------------------
+
 =head3 xcatd_cmdline_address
 
     The authority of the xcatd= kernel argument. See uri_authority.
