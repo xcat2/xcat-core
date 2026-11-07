@@ -632,8 +632,10 @@ sub setdestiny {
             }
 
             #if node.xcatmaster not specified, take the ip address facing the node
+            # In the family the node provisions in: an IPv6-only node shares the link, so
+            # my_ip_facing succeeds with the IPv4 address and Genesis cannot reach xcatd.
             unless($master){
-                my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($_);
+                my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing_node($_);
                 unless ($nxtsrvd[0]) {
                     $master = $nxtsrvd[1];
                 }
