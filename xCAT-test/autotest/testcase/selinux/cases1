@@ -61,8 +61,9 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-net
 check:rc==0
 check:output=~SELinux is disabled
 check:output=~cannot label its RAM root
-cmd:sh -c 'grep -rhl "selinux=0" /tftpboot/xcat/xnba/nodes/$$CN /tftpboot/pxelinux.cfg/$$CN /tftpboot/petitboot/$$CN 2>/dev/null'
-check:rc==0
+cmd:sh -c 'ok=0; seen=0; for f in /tftpboot/xcat/xnba/nodes/$$CN /tftpboot/pxelinux.cfg/$$CN /tftpboot/petitboot/$$CN; do [ -f "$f" ] || continue; seen=1; if grep -q "selinux=0" "$f"; then ok=1; echo "BOOTCFG-OK: $f"; else echo "BOOTCFG-NOFLAG: $f"; fi; done; [ "$seen" = 1 ] || echo "BOOTCFG-BAD: the node has no boot configuration"; [ "$ok" = 1 ] || echo "BOOTCFG-BAD: no boot configuration carries selinux=0"'
+check:output=~BOOTCFG-OK:
+check:output!~BOOTCFG-BAD:
 cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/retry_install.sh $$CN __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 check:output=~Provision node\(s\)\: $$CN
