@@ -22,4 +22,28 @@ sub implemented {
     return 1;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 dhcp6_restart_needed
+
+    Descriptions:
+        Says whether makedhcp has to restart dhcpd6.
+
+    Arguments:
+        $class
+        %args - changed: the configuration of dhcpd6 was replaced.
+                ipv6:    the run serves an IPv6 network.
+
+    Returns:
+        1 when dhcpd6 has to be restarted, 0 otherwise.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub dhcp6_restart_needed {
+    my ( $class, %args ) = @_;
+
+    return $args{changed} ? 1 : 0;
+}
+
 1;

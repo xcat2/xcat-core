@@ -35,6 +35,7 @@ use xCAT::HTTPUtils qw(httpport_suffix);
 use xCAT::SvrUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::DHCP::Backend;
+use xCAT::DHCP::Backend::ISC;
 use xCAT::DHCP::OmapiPolicy;
 use xCAT::DHCP::OmapiRunner;
 use xCAT::DHCP::Range;
@@ -2859,7 +2860,9 @@ sub process_request
             print "xx";
         }
     }
-    if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp6 and $^O ne 'aix') {
+    if (not $::XCATSITEVALS{externaldhcpservers} and $^O ne 'aix'
+        and xCAT::DHCP::Backend::ISC->dhcp6_restart_needed(
+            changed => $restartdhcp6, ipv6 => $usingipv6)) {
         xCAT::MsgUtils->trace($verbose_on_off, "d", "dhcp: restart dhcp6 service");
         restart_dhcpd6();
     }
