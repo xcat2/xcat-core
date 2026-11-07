@@ -7,7 +7,7 @@ use strict;
 use warnings "all";
 
 use File::Basename;
-use File::Copy qw(move);
+use File::Copy ();
 use File::Find;
 use File::Path;
 use Cwd qw(realpath);
@@ -118,27 +118,75 @@ sub disable_vendor_repositories {
     }
 }
 
-sub publish_boot_files {
-    my ($native_bootdir, $destdir, $initrd, $mode) = @_;
-    move($initrd, "$native_bootdir/initrd-$mode.gz")
-      or die("Error: failed to move the initial ramdisk for $mode: $!\n");
-    my $old_kernel = -e "$destdir/kernel" || -l "$destdir/kernel";
-    if ($old_kernel) {
-        link("$destdir/kernel", "$native_bootdir/previous-kernel")
-          or die("Error: failed to preserve the previous kernel: $!\n");
-    }
-    rename("$native_bootdir/kernel", "$destdir/kernel")
-      or die("Error: failed to publish the kernel: $!\n");
-    unless (rename("$native_bootdir/initrd-$mode.gz", "$destdir/initrd-$mode.gz")) {
-        my $error = $!;
-        my $restored = $old_kernel
-          ? rename("$native_bootdir/previous-kernel", "$destdir/kernel")
-          : unlink("$destdir/kernel");
-        unless ($restored) {
-            $native_bootdir->unlink_on_destroy(0);
-            die("Error: failed to publish the initial ramdisk: $error; kernel rollback failed: $!. Boot files retained in $native_bootdir\n");
+# kdump.service fails without dump memory, which a stateless command line
+# reserves only with crashkernel= or, on POWER, fadump=.
+sub skip_kdump_without_dump_memory {
+    my ($rootimg_dir) = @_;
+    return unless -e "$rootimg_dir/usr/lib/systemd/system/kdump.service";
+    my $dropin_dir = "$rootimg_dir/etc/systemd/system/kdump.service.d";
+    mkpath($dropin_dir);
+    open(my $fh, '>', "$dropin_dir/xcat-dump-memory.conf")
+      or die "Cannot write $dropin_dir/xcat-dump-memory.conf: $!\n";
+    print $fh "[Unit]\nConditionKernelCommandLine=|crashkernel\nConditionKernelCommandLine=|fadump\n";
+    close($fh) or die "Cannot write $dropin_dir/xcat-dump-memory.conf: $!\n";
+}
+
+sub copy_kernel {
+    my ($rootimg_dir, $kernelver, $dir) = @_;
+    my ($kernel) = grep { -e $_ } map { "$rootimg_dir/$_" }
+      ("boot/vmlinux-$kernelver", "boot/vmlinuz-$kernelver", "boot/image-$kernelver", "lib/modules/$kernelver/vmlinuz");
+    die("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot\n") unless $kernel;
+    File::Copy::cp($kernel, "$dir/kernel") or die("Error: failed to copy the kernel to $dir: $!\n");
+    return 1;
+}
+
+# Removes $dir after packing it, also when a command of the pipeline fails.
+sub pack_initrd {
+    my ($dir, $initrd, $compress, $mode) = @_;
+    my $command = "cd $dir && find . | cpio -H newc -o | $compress -9 -c - > $initrd";
+    print "\n$command\n";
+    my $rc = system('bash', '-c', "set -o pipefail; $command");
+    rmtree($dir);
+    die("Error: failed to generate the initial ramdisk for $mode.\n") if $rc;
+    return 1;
+}
+
+# nodeset copies the kernel and the initial ramdisks as one set, so a failure puts back every file already replaced.
+sub publish_staged_boot_files {
+    my ($native_bootdir, $destdir, @modes) = @_;
+    my @files = ([ 'kernel', 'kernel' ], map { [ "initrd-$_.gz", "initial ramdisk for $_" ] } @modes);
+    my %backup;
+    foreach my $file (@files) {
+        my ($name, $what) = @$file;
+        if (link("$destdir/$name", "$native_bootdir/previous-$name")) {
+            $backup{$name} = 1;
+        } elsif (!$!{ENOENT}) {
+            die("Error: failed to preserve the previous $what: $!\n");
         }
-        die("Error: failed to publish the initial ramdisk for $mode: $error\n");
+    }
+    my @published;
+    foreach my $file (@files) {
+        my ($name, $what) = @$file;
+        if (rename("$native_bootdir/$name", "$destdir/$name")) {
+            push @published, $file;
+            next;
+        }
+        my $error = $!;
+        # NFS can apply a rename and still report a failure, so put back a staged file that is gone.
+        my @attempted = (-e "$native_bootdir/$name" || -l "$native_bootdir/$name") ? () : ($file);
+        my @failed;
+        foreach my $done (@attempted, reverse @published) {
+            my ($done_name, $done_what) = @$done;
+            my $restored = $backup{$done_name}
+              ? rename("$native_bootdir/previous-$done_name", "$destdir/$done_name")
+              : unlink("$destdir/$done_name");
+            push @failed, "$done_what rollback failed: $!" unless $restored;
+        }
+        if (@failed) {
+            $native_bootdir->unlink_on_destroy(0);
+            die("Error: failed to publish the $what: $error; " . join('; ', @failed) . ". Boot files retained in $native_bootdir\n");
+        }
+        die("Error: failed to publish the $what: $error\n");
     }
     return 1;
 }
@@ -187,6 +235,148 @@ sub mark_uftp_receiver {
     print "Warning: $error\n" if $error;
     print "The initial ramdisk $initrd can receive the root image over UFTP.\n" if $receiver && !$error;
     return !$error;
+}
+
+# The initial ramdisk configures $prinic, and bringing it up again breaks an NFS-based boot.
+# EL10 reads no ifcfg files, so its images get keyfiles.
+sub write_nic_profiles {
+    my ($rootimg_dir, $osver, $prinic, $othernics) = @_;
+    my @othernics = grep { length } split(/,/, $othernics // '');
+    my $scripts = "$rootimg_dir/etc/sysconfig/network-scripts";
+    my $keyfiles = "$rootimg_dir/etc/NetworkManager/system-connections";
+    my $major = el_major_version($osver);
+    my %profiles;
+    if (defined($major) && $major >= 10) {
+        if (-d $keyfiles) {
+            # The keyfiles of an earlier build can name interfaces that this build no longer requests.
+            opendir(my $dh, $keyfiles) or die("Error: cannot read $keyfiles: $!\n");
+            foreach my $old (grep { /^xcat-genimage-.*\.nmconnection$/ } readdir($dh)) {
+                unlink("$keyfiles/$old") or die("Error: cannot remove $keyfiles/$old: $!\n");
+            }
+            closedir($dh);
+            $profiles{"$keyfiles/xcat-genimage-$_.nmconnection"} =
+              "[connection]\nid=$_\ntype=ethernet\ninterface-name=$_\n\n[ipv4]\nmethod=auto\n" for @othernics;
+        }
+    } elsif (-d $scripts) {
+        $profiles{"$scripts/ifcfg-$prinic"} = "ONBOOT=no\nBOOTPROTO=dhcp\nDEVICE=$prinic\n" if $prinic;
+        $profiles{"$scripts/ifcfg-$_"} = "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n" for @othernics;
+    }
+    foreach my $file (sort keys %profiles) {
+        # NetworkManager ignores a keyfile that other users can read.
+        my $mode = $file =~ /\.nmconnection$/ ? oct('600') : oct('644');
+        my $fh;
+        open($fh, '>', $file) && chmod($mode, $file) && print($fh $profiles{$file}) && close($fh)
+          or die("Error: cannot write $file: $!\n");
+    }
+    return;
+}
+
+# NetworkManager otherwise makes a DHCP profile for every Ethernet port without one.
+sub disable_auto_profiles {
+    my ($rootimg_dir, $osver) = @_;
+    my $major = el_major_version($osver);
+    my $confdir = "$rootimg_dir/etc/NetworkManager/conf.d";
+    return unless defined($major) && $major >= 10 && -d $confdir;
+    my $file = "$confdir/xcat.conf";
+    my $fh;
+    open($fh, '>', $file) && print($fh "[main]\nno-auto-default=*\n") && close($fh)
+      or die("Error: cannot write $file: $!\n");
+    return;
+}
+
+# debootstrap deletes $rootimg_dir/debootstrap when it finishes, and its tar -k fails over a finished root.
+sub debootstrap_finished {
+    my ($rootimg_dir) = @_;
+    die("Error: $rootimg_dir holds an unfinished debootstrap. Remove $rootimg_dir and run genimage again.\n")
+      if -e "$rootimg_dir/debootstrap";
+    return -e "$rootimg_dir/var/lib/dpkg/status" ? 1 : 0;
+}
+
+# genimage moves the .bak files back, and a .bak that an interrupted run left holds the image's own file.
+sub use_host_resolver {
+    my ($rootimg_dir) = @_;
+    foreach my $file ('hosts', 'resolv.conf') {
+        my $image = "$rootimg_dir/etc/$file";
+        File::Copy::move($image, "$image.bak") unless -e "$image.bak" || -l "$image.bak";
+        unlink($image);
+        File::Copy::copy("/etc/$file", $image);
+    }
+    return;
+}
+
+# A finished image holds the dummy resolv.conf and the apt sources of the run that built it.
+sub prepare_reused_root {
+    my ($rootimg_dir) = @_;
+    unlink(map { "$rootimg_dir/etc/apt/sources.list.d/$_" } qw(genimage.apt.list genimage1.apt.list));
+    use_host_resolver($rootimg_dir);
+    return;
+}
+
+# apt would move a root image of another release or architecture partway to the requested one.
+sub check_reused_root {
+    my ($rootimg_dir, $suite, $arch) = @_;
+    my ($codename, $image_arch);
+    my $os_release = -e "$rootimg_dir/usr/lib/os-release" ? "$rootimg_dir/usr/lib/os-release" : "$rootimg_dir/etc/os-release";
+    my %field;
+    foreach my $file ($os_release, "$rootimg_dir/etc/lsb-release") {
+        my $fh;
+        next if -l $file || !open($fh, '<', $file);
+        %field = (%field, map { /^(VERSION_CODENAME|UBUNTU_CODENAME|DISTRIB_CODENAME)=(["']?)(\S+?)\2\s*$/ ? ($1 => $3) : () } <$fh>);
+        close($fh);
+    }
+    # Ubuntu 16.04 images before base-files 9.4ubuntu4.3 have only UBUNTU_CODENAME, and 14.04 images only DISTRIB_CODENAME.
+    $codename = $field{VERSION_CODENAME} // $field{UBUNTU_CODENAME} // $field{DISTRIB_CODENAME};
+    if (open(my $fh, '<', "$rootimg_dir/var/lib/dpkg/status")) {
+        local $/ = '';
+        ($image_arch) = map { /^Package: dpkg\n(?:.+\n)*?Architecture: (\S+)/ ? $1 : () } <$fh>;
+        close($fh);
+    }
+    (my $release = $suite) =~ s/-(?:updates|security|backports|proposed)$//;
+    die("Error: genimage cannot tell the Ubuntu release and architecture of $rootimg_dir. Remove $rootimg_dir and run genimage again.\n")
+      unless $codename && $image_arch;
+    die("Error: $rootimg_dir holds Ubuntu $codename for $image_arch, not $release for $arch. Remove $rootimg_dir or use another rootimgdir.\n")
+      unless $codename eq $release && $image_arch eq $arch;
+    # dpkg owns bin/uname, so genimage cannot tell whether the backup or the file in place is current.
+    die("Error: $rootimg_dir holds bin/uname-binary, which an interrupted genimage run left. Restore bin/uname from it or remove $rootimg_dir, then run genimage again.\n")
+      if -e "$rootimg_dir/bin/uname-binary" || -l "$rootimg_dir/bin/uname-binary";
+    return 1;
+}
+
+# A kernel release compares number by number, so 6.8.0-100-generic is newer than 6.8.0-99-generic.
+sub newest_kernel_version {
+    my @releases = @_;
+    my $compare  = sub {
+        my @left  = split(/(\d+)/, $_[0]);
+        my @right = split(/(\d+)/, $_[1]);
+        while (@left && @right) {
+            my ($l, $r) = (shift(@left), shift(@right));
+            my $order = ($l =~ /^\d+$/ && $r =~ /^\d+$/) ? $l <=> $r : $l cmp $r;
+            return $order if $order;
+        }
+        return @left <=> @right;
+    };
+    my ($newest) = sort { $compare->($b, $a) } @releases;
+    return $newest;
+}
+
+# Package scripts run this uname in the image, so -r names the kernel that genimage publishes.
+sub uname_script {
+    my ($kernelver) = @_;
+    my $release = $kernelver ? "echo \"$kernelver\"" : 'ls /lib/modules | sort -V | tail -n 1';
+    return "#!/bin/bash \n"
+      . "case \"\$1\" in \n"
+      . "\"-m\") \n"
+      . "    ARCH=\"\$(dpkg --print-architecture || \n"
+      . "                rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}')\" \n"
+      . "    case \"\$ARCH\" in \n"
+      . "        \"amd64\") ARCH=\"x86_64\" ;; \n"
+      . "        \"ppc64el\") ARCH=\"ppc64le\" ;; \n"
+      . "    esac \n"
+      . "    echo \"\$ARCH\" ;; \n"
+      . "\"-r\")   $release ;; \n"
+      . "\"-s\"|\"\") echo \"Linux\" ;; \n"
+      . "esac \n"
+      . "exit 0 \n";
 }
 
 sub varsubinline{
@@ -380,7 +570,7 @@ sub default_net_drivers {
             x86    => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
             x86_64 => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net be2net)],
             aarch64 => [qw(tg3 bnx2 bnx2x e1000e igb mlx_en mlx5_core virtio_net)],
-            riscv64 => [qw(e1000 e1000e igb ixgbe r8169 tg3 bnx2x mlx5_core virtio_net)],
+            riscv64 => [qw(e1000 e1000e igb ixgbe i40e ice r8169 tg3 bnx2x mlx5_core virtio_net)],
             ppc64   => [qw(e1000 e1000e igb ibmveth ehea)],
             s390x   => [qw(qdio ccwgroup)],
         },
@@ -395,7 +585,7 @@ sub default_net_drivers {
             x86_64 => [qw(tg3 bnx2 bnx2x e1000 e1000e igb mlx_en mlx5_core virtio_net overlay)],
             ppc64el => [qw(tg3 bnx2 bnx2x e1000 e1000e igb ibmveth ehea mlx_en mlx4_en mlx5_core virtio_net overlay)],
             ppc64   => [qw(e1000 e1000e igb ibmveth ehea)],
-            riscv64 => [qw(e1000 e1000e igb ixgbe r8169 tg3 bnx2x mlx5_core virtio_net overlay)],
+            riscv64 => [qw(e1000 e1000e igb ixgbe i40e ice r8169 tg3 bnx2x mlx5_core virtio_net overlay)],
             s390x   => [qw(qdio ccwgroup)],
         },
     );

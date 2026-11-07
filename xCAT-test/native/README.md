@@ -247,6 +247,24 @@ answers what the store answers for each path it measures.
 Check the TAP output for skipped prerequisites. A successful `prove` exit with
 skipped cases does not qualify those cases.
 
+`networkmanager_autoconnect.t` runs the NetworkManager helper of the install
+script library under Bash, with an `nmcli` command fixture, in a private
+filesystem. It needs Bubblewrap and unprivileged user namespaces:
+
+```
+prove xCAT-test/native/networkmanager_autoconnect.t
+```
+
+`detect_dhcpd_tcpdump_lookup.t` runs the DHCP server detectors of xCAT-server
+and xCAT-probe with a `tcpdump` command fixture. The capture cases need a
+default route on the loopback interface, so they run in mount and network
+namespaces from `unshare` instead of Bubblewrap. They need `unshare`, `mount`,
+`ip` and a writable `/var/tmp`, and skip without a private network namespace:
+
+```
+prove xCAT-test/native/detect_dhcpd_tcpdump_lookup.t
+```
+
 ## FIPS policy and discovery keys
 
 Run the unchanged statelite and Cumulus callers in private filesystems:
@@ -295,7 +313,8 @@ On Debian or Ubuntu, install `bubblewrap`, `debhelper`, `devscripts`, `fakeroot`
 prove xCAT-test/native/xcatd_debian_lifecycle.t \
       xCAT-test/native/xcatd_restart_callers.t \
       xCAT-test/native/apache_package_lifecycle.t \
-      xCAT-test/native/package_upgrade_logging.t
+      xCAT-test/native/package_upgrade_logging.t \
+      xCAT-test/native/xcatd_debian_init_state.t
 ```
 
 On EL8 or EL10, install `bubblewrap`, `rpm-build`, `systemd`, `chkconfig`,
@@ -422,13 +441,14 @@ prove xCAT-test/native/install_profile_riscv64.t \
       xCAT-test/native/netboot_profile_riscv64.t \
       xCAT-test/native/netboot_profile_postinstall.t \
       xCAT-test/native/builddebs_riscv64.t \
-      xCAT-test/native/ubuntu_subiquity_template.t
+      xCAT-test/native/ubuntu_subiquity_template.t \
+      xCAT-test/native/ubuntu_subiquity_install_disk.t
 ```
 
 The renderers need the system Perl with the xCAT dependencies, XML::Simple,
 DBD::SQLite, Capture::Tiny, and File::Slurper. The sandbox clears the environment
-and does not mount perlbrew or local::lib directories. The Subiquity case also
-needs /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
+and does not mount perlbrew or local::lib directories. The Subiquity cases also
+need /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
 The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
 on non-Debian hosts. Each case creates its own temporary files and database.
 The temporary directory must allow execution; set TMPDIR if /tmp is noexec.

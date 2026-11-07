@@ -368,63 +368,6 @@ else
 fi
 cd /
 
-function getdevfrommac() {
-    boothwaddr=$1
-    ip link show | while read line
-    do
-        dev=`echo $line | egrep "^[0-9]+: [0-9A-Za-z]+" | cut -d ' ' -f 2 | cut -d ':' -f 1`
-        if [ "X$dev" != "X" ]; then
-            devname=$dev
-        fi
-
-        if [ "X$devname" != "X" ]; then
-            hwaddr=`echo $line | egrep "^[ ]*link" | awk '{print $2}'`
-            if [ "X$hwaddr" = "X$boothwaddr" ]; then
-                echo $devname
-            fi
-        fi
-    done
-}
-
-
-if [ -z $STATEMNT ]; then
-    for lf in /tmp/dhclient.*.lease; do
-        netif=${lf#*.}
-        netif=${netif%.*}
-        cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
-        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
-    done
-
-    ifname="$(getarg ifname=)"
-    netdev="$(getarg netdev=)"
-    BOOTIF="$(getarg BOOTIF=)"
-    if [ ! -z "$ifname" ]; then
-        MACX=${ifname#*:}
-        ETHX=${ifname%:$MACX*}
-    elif [ ! -z "$netdev" ]; then
-        ETHX=$netdev
-        MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
-    elif [ ! -z "$BOOTIF" ]; then
-        MACX=$BOOTIF
-        MACX=${MACX#01-}
-        MACX=${MACX//-/:}
-        ETHX=$(getdevfrommac $MACX)
-    fi
-
-
-    if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
-        if [ ! -e $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
-            [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX"
-            touch $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-        fi
-        [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
-        echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-        echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-        echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-        echo "ONBOOT=yes" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
-    fi
-fi
-
 [ "$xcatdebugmode" > "0" ] && logger -t $log_label -p local4.debug "Saving $NEWROOT/etc/resolv.conf"
 cp /etc/resolv.conf "$NEWROOT/etc/"
 

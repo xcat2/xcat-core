@@ -67,6 +67,7 @@ sub module_commands {
                       path is looked for under the payload root.
             source:   the module the commands came from, for the message
             sshd:     the content of usr/sbin/sshd, or undef without one
+            awk:      the content of usr/bin/awk, or undef without one
     Returns:
         one "<path> (<reason>)" string per missing item, in the order checked.
         An empty list means the payload is complete.
@@ -104,6 +105,15 @@ sub missing_paths {
     {
         push @missing,
           "usr/libexec/openssh/sshd-session (this sshd execs it for every connection)";
+    }
+
+    # allowcred.awk, minixcatd.awk and udpcat.awk open a TCP stream with the gawk |&
+    # coprocess and the /inet/ special file. mawk rejects both at parse time and the node
+    # then asks for no credential, so read the binary back. gawk carries its own name. An
+    # empty file carries no name and is not a program, so there is nothing to read.
+    if (length($opt{awk} // '') && index($opt{awk}, 'GNU Awk') < 0) {
+        push @missing,
+          'usr/bin/awk is not gawk (allowcred.awk opens its TCP stream with the gawk /inet/ coprocess)';
     }
 
     # tmux exits under the C locale. The hook then runs doxcat directly, but a Genesis
@@ -157,20 +167,39 @@ sub check_payload {
         return (2, $@) if $@;
     }
 
-    my $sshd;
-    if (open(my $fh, '<:raw', "$payload/usr/sbin/sshd")) {
-        local $/;
-        $sshd = <$fh> // '';
-        close($fh);
-    }
+    my ($sshd, $awk) = (slurp("$payload/usr/sbin/sshd"), slurp("$payload/usr/bin/awk"));
     my @missing = missing_paths(sub { -e "$payload/$_[0]" },
         required => \@args,
         commands => \@commands,
         source   => $commands_from,
-        sshd     => $sshd);
+        sshd     => $sshd,
+        awk      => $awk);
     return (1, "$ME: $payload is incomplete:" . join('', map { "\n  $_" } @missing) . "\n")
       if @missing;
     return (0, "$ME: $payload is complete\n");
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 slurp
+
+    Descriptions: read a file whole, in raw mode. usr/bin/awk and usr/sbin/sshd are
+        binaries, and both are read to tell one program from another.
+    Arguments:
+        $path: the path to read
+    Returns:
+        the content, or undef when the file cannot be read
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub slurp {
+    my ($path) = @_;
+    open(my $fh, '<:raw', $path) or return undef;
+    local $/;
+    my $content = <$fh> // '';
+    close($fh);
+    return $content;
 }
 
 #-------------------------------------------------------------------------------

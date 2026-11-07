@@ -70,10 +70,15 @@ The following describes creating stateless images of the same Operating System, 
        mkdir /install
        mount -o soft xcatmn:/install /install
 
-   #. Copy the executable files from the ``/opt/xcat/share/xcat/netboot`` from the xCAT Management node to the target node: ::
+   #. Copy ``/opt/xcat/share/xcat/netboot`` and the xCAT Perl library ``/opt/xcat/lib/perl`` from the xCAT Management node to the target node: ::
 
-       mkdir -p /opt/xcat/share/xcat/
+       mkdir -p /opt/xcat/share/xcat/ /opt/xcat/lib/
        scp -r xcatmn:/opt/xcat/share/xcat/netboot /opt/xcat/share/xcat/
+       scp -r xcatmn:/opt/xcat/lib/perl /opt/xcat/lib/
+
+   #. Install the Perl modules that the xCAT Perl library uses: ::
+
+       yum install perl perl-DBI perl-Digest-SHA perl-JSON perl-Sys-Syslog perl-XML-Simple
 
 #. Execute the ``genimage`` command obtained from the ``--dryrun``: ::
 

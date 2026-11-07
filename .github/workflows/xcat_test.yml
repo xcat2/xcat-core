@@ -15,7 +15,7 @@ jobs:
       - name: Install lifecycle test dependencies
         run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests ucf debconf-utils systemd libxml-simple-perl apache2 curl
       - name: Test Debian package lifecycle
-        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/debian_chroot_services.t xCAT-test/native/debian_management_recovery.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t
+        run: prove -v xCAT-test/native/xcatd_debian_lifecycle.t xCAT-test/native/xcatd_restart_callers.t xCAT-test/native/debian_chroot_services.t xCAT-test/native/debian_management_recovery.t xCAT-test/native/apache_package_lifecycle.t xCAT-test/native/package_upgrade_logging.t xCAT-test/native/profile_package_payload.t xCAT-test/native/xcatd_debian_init_state.t
       - name: Test optional statelite host keys
         if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/statelite_optional_hostkey.t
@@ -50,7 +50,7 @@ jobs:
           status=0
           sudo sh -c 'cd "$1" && bats xCAT-test/native/getinstdisk_selection.bats' sh "$workdir" || status=1
           sudo sh -c 'cd "$1" && bats xCAT-test/native/syslog_log_directory.bats' sh "$workdir" || status=1
-          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_installer.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t xCAT-test/native/remoteshell_credentials.t' sh "$workdir" || status=1
+          sudo sh -c 'cd "$1" && prove -v xCAT-test/native/getinstdisk_installer.t xCAT-test/native/template_root_password.t xCAT-test/native/enablekdump_per_node.t xCAT-test/native/sudoer_password_source.t xCAT-test/native/remoteshell_credentials.t xCAT-test/native/openeuler_xcatroot.t' sh "$workdir" || status=1
           exit "$status"
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
@@ -69,6 +69,12 @@ jobs:
       - name: Exercise the UFTP listener
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/uftp_listener.t
+      - name: Exercise the install script library
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/networkmanager_autoconnect.t
+      - name: Exercise the DHCP server detector
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/detect_dhcpd_tcpdump_lookup.t
       - name: Run tests
         if: ${{ !cancelled() }}
         run: perl github_action_xcat_test.pl
@@ -104,7 +110,7 @@ jobs:
         run: |
           log=$(mktemp)
           trap 'rm -f -- "$log"' EXIT
-          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t | tee "$log"
+          prove -v xCAT-test/native/install_profile_riscv64.t xCAT-test/native/netboot_profile_riscv64.t xCAT-test/native/netboot_profile_postinstall.t xCAT-test/native/post_rhels8_link_nics.t xCAT-test/native/selinux_kickstart_relabel.t xCAT-test/native/kdump_condition_systemd.t xCAT-test/native/openeuler_post_kdump.t xCAT-test/native/builddebs_riscv64.t xCAT-test/native/ubuntu_subiquity_template.t xCAT-test/native/ubuntu_subiquity_install_disk.t xCAT-test/native/kickstart_partition_scheme_log.t xCAT-test/native/kickstart_pre_install_log.t | tee "$log"
           ! grep -qi skipped "$log"
   rpm_lifecycle_test:
     runs-on: ubuntu-24.04

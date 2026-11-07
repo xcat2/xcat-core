@@ -18,7 +18,7 @@ require imgutils;
 my @riscv = imgutils::default_net_drivers( 'ubuntu', 'riscv64' );
 ok( scalar @riscv, 'a riscv64 Ubuntu image is given network drivers' );
 
-for my $driver (qw(virtio_net e1000 e1000e igb r8169 tg3 mlx5_core)) {
+for my $driver (qw(virtio_net e1000 e1000e igb ixgbe i40e ice r8169 tg3 mlx5_core)) {
     ok( scalar( grep { $_ eq $driver } @riscv ), "the list carries $driver" );
 }
 

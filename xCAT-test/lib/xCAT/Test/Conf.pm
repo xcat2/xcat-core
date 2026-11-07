@@ -59,7 +59,14 @@ sub object_attr {
 sub table_attr {
     my ($line) = @_;
     return () unless defined $line;
-    return ($1, $2) if $line =~ /(\w+)\s*=\s*([\w\.\-]+)/;
+    # The same value class as object_attr. A table value holds the same kinds of thing an object
+    # value does: an IPv6 prefix (2001:db8::/64), a path (/install), a comma-separated list of
+    # name servers. The narrower ([\w\.\-]+) this replaces stopped at the first colon or slash and
+    # wrote the truncated value, so `net=2001:db8:176::/64` reached chtab as `net=2001` and
+    # xcattest re-applied that row on every run. Nothing warned.
+    #
+    # The class holds no whitespace and no '#', so a trailing inline comment is still excluded.
+    return ($1, $2) if $line =~ /(\w+)\s*=\s*([:,;\w\.\-\/]+)/;
     return ();
 }
 
@@ -114,6 +121,39 @@ sub chdef_command {
     }
     my ($qtype, $qname, @qattrs) = map { _quote($_) } @words;
     return join ' ', 'chdef', '-t', $qtype, '-o', $qname, @qattrs;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 chtab_command
+
+    Descriptions:
+        The chtab command that applies one row of a [Table_*] block.
+
+        xcattest runs every command through /bin/bash -c, so each word is quoted, the row
+        selector too. A vm.othersettings value carries a semicolon.
+
+        The assignments are sorted, so one conf builds one command.
+    Arguments:
+        $table - the table name, as the section name spells it
+        $key - the key column of the row
+        $name - the value of the key column
+        $attrs - a hash reference of column to value
+    Returns:
+        the command
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub chtab_command {
+    my ($table, $key, $name, $attrs) = @_;
+    my @words = ("$key=$name");
+    foreach my $attr (sort keys %$attrs) {
+        next if $attr eq '__KEY__';
+        my $value = defined $attrs->{$attr} ? $attrs->{$attr} : '';
+        push @words, "$table.$attr=$value";
+    }
+    return join ' ', 'chtab', map { _quote($_) } @words;
 }
 
 #-------------------------------------------------------------------------------

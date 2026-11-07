@@ -1593,12 +1593,9 @@ sub setup_env_by_configure_file {
     if (exists $$config_ref{table}) {
         foreach my $type (keys %{ $$config_ref{table} }) {
             foreach my $name (keys %{ $$config_ref{table}{$type} }) {
-                $cmd = "chtab $$config_ref{table}{$type}{$name}{__KEY__}=$name";
-                foreach my $attr (keys %{ $$config_ref{table}{$type}{$name} }) {
-                    if ($attr ne '__KEY__') {
-                        $cmd = $cmd . " $type.$attr=$$config_ref{table}{$type}{$name}{$attr}";
-                    }
-                }
+                $cmd = xCAT::Test::Conf::chtab_command($type,
+                    $$config_ref{table}{$type}{$name}{__KEY__}, $name,
+                    $$config_ref{table}{$type}{$name});
                 log_this($running_log_fd, "$cmd");
                 &runcmd($cmd);
                 if ($::RUNCMD_RC != 0) {

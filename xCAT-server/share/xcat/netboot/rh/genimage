@@ -72,11 +72,11 @@ my $lock;
 my $envar;
 my $gpgcheck;
 my $native_bootdir;
+my $stateless_uftp_receiver;
 
 
 sub xdie {
-    unlink("$rootimg_dir/tmp/initrd.$$.gz")
-      if $rootimg_dir && defined(imgutils::openeuler_release_version($osver));
+    unlink("$rootimg_dir/tmp/initrd.$$.gz") if $rootimg_dir;
     system("rm -rf /tmp/xcatinitrd.$$");
     umount_chroot($rootimg_dir);
     die @_;
@@ -303,13 +303,11 @@ if($onlyinitrd){
         print("the root image directory \"$rootimg_dir\"does not exist, please run \"genimage $imagename\" to generate the root image directory first!\n");
         exit 1;
     }
-    if (defined(imgutils::openeuler_release_version($osver))) {
-        my $retcode;
-        ($retcode, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
-        if ($retcode) {
-            print "Could not acquire image operation lock for $rootimg_dir\n";
-            exit 1;
-        }
+    my $retcode;
+    ($retcode, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+    if ($retcode) {
+        print "Could not acquire image operation lock for $rootimg_dir\n";
+        exit 1;
     }
 }else
 {
@@ -719,26 +717,9 @@ chomp($kernelver);
 
 #$updates{'kernelver'} = $kernelver if ($tempfile);
 
-# copy the kernel to $destdir
-my $kernel_output = "$destdir/kernel";
-if (defined(imgutils::openeuler_release_version($osver))) {
-    $native_bootdir = File::Temp->newdir('.genimage-boot.XXXXXX', DIR => $destdir, CLEANUP => 1);
-    $kernel_output = "$native_bootdir/kernel";
-}
-my $kernel_copy;
-if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
-    $kernel_copy = cp("$rootimg_dir/boot/vmlinux-$kernelver", $kernel_output);
-} elsif (-e "$rootimg_dir/boot/vmlinuz-$kernelver") {
-    $kernel_copy = cp("$rootimg_dir/boot/vmlinuz-$kernelver", $kernel_output);
-} elsif (-e "$rootimg_dir/boot/image-$kernelver") {
-    $kernel_copy = cp("$rootimg_dir/boot/image-$kernelver", $kernel_output);
-} elsif (-e "$rootimg_dir/lib/modules/$kernelver/vmlinuz") {
-    $kernel_copy = cp("$rootimg_dir/lib/modules/$kernelver/vmlinuz", $kernel_output);
-} else {
-    xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
-}
-xdie("Error: failed to copy the kernel to $kernel_output: $!\n")
-  if $native_bootdir && !$kernel_copy;
+# The kernel and the initial ramdisks wait here until genimage publishes them together.
+$native_bootdir = File::Temp->newdir('.genimage-boot.XXXXXX', DIR => $destdir, CLEANUP => 1);
+eval { imgutils::copy_kernel($rootimg_dir, $kernelver, $native_bootdir) } or xdie($@);
 
 # Load driver update disk, and copy them to the root image
 my @dd_drivers = &load_dd();
@@ -818,9 +799,10 @@ if ((-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut")) 
     print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
 }
 xdie("Error: failed to generate the initial ramdisk: native image has no dracut installation\n")
-  if $native_bootdir && !$dracutmode;
+  if !$dracutmode && defined(imgutils::openeuler_release_version($osver));
 
 imgutils::disable_vendor_repositories($rootimg_dir);
+imgutils::skip_kdump_without_dump_memory($rootimg_dir);
 
 #-- run postinstall script
 unless ($imagename) {
@@ -1012,6 +994,12 @@ if ($dracutmode) {
 } else {
     mkinitrd("statelite");
     mkinitrd("stateless");
+}
+my @initrd_modes = defined(imgutils::openeuler_release_version($osver)) ? ('stateless') : ('statelite', 'stateless');
+eval { imgutils::publish_staged_boot_files($native_bootdir, $destdir, @initrd_modes) } or xdie($@);
+if ($dracutmode) {
+    mark_rootimg_check('stateless');
+    mark_uftp_receiver('stateless', $stateless_uftp_receiver);
 }
 
 sub getlibs {
@@ -1304,22 +1292,10 @@ sub mkinitrd_dracut {
       or xdie("Error: failed to generate the initial ramdisk for $mode.\n");
     umount_chroot($rootimg_dir);
     eval { imgutils::check_uftp_initrd($rootimg_dir, "/tmp/initrd.$$.gz", $mode) } or xdie($@) if $uftp_receiver;
-    if ($native_bootdir) {
-        eval {
-            imgutils::publish_boot_files($native_bootdir, $destdir,
-                "$rootimg_dir/tmp/initrd.$$.gz", $mode);
-        } or xdie($@);
-        print "the initial ramdisk for $mode is generated successfully.\n";
-        mark_rootimg_check($mode);
-        mark_uftp_receiver($mode, $uftp_receiver);
-        return;
-    }
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$native_bootdir/initrd-$mode.gz")
+      or xdie("Error: failed to move the initial ramdisk for $mode: $!\n");
     print "the initial ramdisk for $mode is generated successfully.\n";
-    print("Move $rootimg_dir/tmp/initrd.$$.gz -> $destdir/initrd-$mode.gz\n");
-    if (move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz")) {
-        mark_rootimg_check($mode);
-        mark_uftp_receiver($mode, $uftp_receiver);
-    }
+    $stateless_uftp_receiver = $uftp_receiver if $mode eq 'stateless';
 }
 
 # nodeset warns unless this marker says that the stateless initial ramdisk checks the root image checksum.
@@ -2057,8 +2033,7 @@ EOMS
     system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
 
     #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
-    system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-$mode.gz");
-    system("rm -rf /tmp/xcatinitrd.$$");
+    eval { imgutils::pack_initrd("/tmp/xcatinitrd.$$", "$native_bootdir/initrd-$mode.gz", 'gzip', $mode) } or xdie($@);
 
 }
 
@@ -2166,19 +2141,8 @@ sub generic_post { #This function is meant to leave the image in a state approxi
     print $cfgfile "#Dummy resolv.conf to make boot cleaner";
     close($cfgfile);
 
-    # Create the ifcfg-x file for diskless node. But keep the ONBOOT=no
-    # to skip the break of nfs-based boot
-    if ($prinic) {
-        open($cfgfile, ">", "$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
-        print $cfgfile "ONBOOT=no\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
-        close($cfgfile);
-    }
-    foreach (split /,/, $othernics) {
-        if (/^$/) { next; }
-        open($cfgfile, ">", "$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$_");
-        print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n";
-        close($cfgfile);
-    }
+    imgutils::write_nic_profiles($rootimg_dir, $osver, $prinic, $othernics);
+    imgutils::disable_auto_profiles($rootimg_dir, $osver);
 
     # securetty not needed on s390x
     if ($arch ne "s390x") {

@@ -34,12 +34,15 @@ if [ "$("$xcat_riscv_uname" -m)" = "riscv64" ] && [ -d "$xcat_riscv_install_root
             disk="$("$xcat_riscv_lsblk" -no PKNAME "$espdev" 2>/dev/null | head -1 | tr -d '[:space:]')"
             part="$("$xcat_riscv_lsblk" -no PARTN "$espdev" 2>/dev/null | head -1 | tr -d '[:space:]')"
             if [ -n "$disk" ] && [ -n "$part" ]; then
+                espuuid="$("$xcat_riscv_lsblk" -no PARTUUID "$espdev" 2>/dev/null | head -1 | tr -d '[:space:]' | tr 'A-F' 'a-f')"
                 # drop the x86 entries anaconda created for this install, and any
-                # riscv64 entry a previous provisioning of this node left behind, so
+                # riscv64 entry a previous provisioning of this node left on this ESP, so
                 # reinstalling does not fill the firmware variable store with copies
-                for bootnum in $("$xcat_riscv_efibootmgr" -v 2>/dev/null | awk '/\\EFI\\[^\\]+\\(shimx64|grubx64|grubriscv64)\.efi/ { sub(/^Boot/, "", $1); sub(/\*$/, "", $1); print $1 }'); do
-                    "$xcat_riscv_efibootmgr" -q -b "$bootnum" -B || true
-                done
+                if [ -n "$espuuid" ]; then
+                    for bootnum in $("$xcat_riscv_efibootmgr" -v 2>/dev/null | awk -v esp=",gpt,$espuuid," 'index(tolower($0), esp) && /\\EFI\\[^\\]+\\(shimx64|grubx64|grubriscv64)\.efi/ { sub(/^Boot/, "", $1); sub(/\*$/, "", $1); print $1 }'); do
+                        "$xcat_riscv_efibootmgr" -q -b "$bootnum" -B || true
+                    done
+                fi
                 label="$(. "$xcat_riscv_install_root/etc/os-release" 2>/dev/null; echo "${NAME:-Linux}")"
                 if "$xcat_riscv_efibootmgr" -q -c -d "/dev/$disk" -p "$part" -L "$label" -l "\\EFI\\$vendordir\\grubriscv64.efi"; then
                     printf '%s\n' "riscv64: UEFI boot entry \"$label\" -> \\EFI\\$vendordir\\grubriscv64.efi on /dev/$disk part $part"

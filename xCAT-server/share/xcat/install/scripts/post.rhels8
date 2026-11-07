@@ -12,6 +12,10 @@ if compgen -G "/etc/sysconfig/network-scripts/ifcfg-*" >/dev/null 2>&1; then
     do
         [ "${i##*/}" = "ifcfg-lo" ] && continue
         nicname="${i##*-}"
+        # A BMC host interface uses a USB class driver and has link but usually no DHCP server.
+        case "$(readlink -f "/sys/class/net/$nicname/device/driver" 2>/dev/null)" in
+        */cdc_ether|*/cdc_ncm|*/cdc_eem|*/rndis_host) continue ;;
+        esac
         if ethtool "$nicname" 2>/dev/null | grep -E -i -q "Link detected.*yes" >/dev/null 2>&1
         then
             case "$XCATDEBUGMODE" in
@@ -41,5 +45,3 @@ do
     sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' /etc/yum.repos.d/$repo_file
   fi
 done
-
-exit 0

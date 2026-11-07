@@ -66,6 +66,7 @@ my $tempfile;
 my $prompt;
 my $noupdate;
 my $kernelimage;
+my $lock;
 
 
 sub xdie {
@@ -218,6 +219,15 @@ foreach (@ndrivers, @default_ndrivers) {
 my $uarch = xCAT::Utils->debian_arch($arch);
 
 
+# The lock is named after the real path of the root image, which must exist.
+mkpath($rootimg_dir) unless ($onlyinitrd);
+my $lockerror;
+($lockerror, $lock) = xCAT::Utils->acquire_lock_imageop($rootimg_dir);
+if ($lockerror) {
+    print "Error: $lock\n";
+    exit 1;
+}
+
 unless ($onlyinitrd) {
     @aptdirs = ();
 
@@ -317,11 +327,6 @@ unless ($onlyinitrd) {
     close($aptconfig);
     mkpath "$rootimg_dir/etc";
 
-    my $fd;
-    open($fd, ">>", "$rootimg_dir/etc/fstab");
-    print $fd "#Dummy fstab for dpkg postscripts to see\n";
-    close($fd);
-
     my $non_interactive;
     if (!$prompt) { $non_interactive = "-y"; }
 
@@ -359,8 +364,19 @@ unless ($onlyinitrd) {
         $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir file://$srcdir";
     }
 
-    print "Run cmd [$aptcmd1 $aptcmd2] to create rootimage bootstraps\n";
-    my $rc = system("$aptcmd1 $aptcmd2");
+    my $rc = 0;
+    if (imgutils::debootstrap_finished($rootimg_dir)) {
+        imgutils::check_reused_root($rootimg_dir, $dist, $uarch);
+        print "Updating the existing root image in $rootimg_dir\n";
+        imgutils::prepare_reused_root($rootimg_dir);
+    } else {
+        my $fd;
+        open($fd, ">>", "$rootimg_dir/etc/fstab");
+        print $fd "#Dummy fstab for dpkg postscripts to see\n";
+        close($fd);
+        print "Run cmd [$aptcmd1 $aptcmd2] to create rootimage bootstraps\n";
+        $rc = system("$aptcmd1 $aptcmd2");
+    }
     if ($rc) {
         my $os=xCAT::Utils->osver("os");
         if ($os ne 'ubuntu') {
@@ -521,13 +537,7 @@ unless ($onlyinitrd) {
     }
     close($aptconfig);
 
-    #backup the /etc/hosts & /etc/resolv.conf
-    move("$rootimg_dir/etc/hosts",       "$rootimg_dir/etc/hosts.bak");
-    move("$rootimg_dir/etc/resolv.conf", "$rootimg_dir/etc/resolv.conf.bak");
-
-    #copy the mn's /etc/hosts & /etc/resolv.conf to the rootimage
-    copy("/etc/hosts",       "$rootimg_dir/etc/hosts");
-    copy("/etc/resolv.conf", "$rootimg_dir/etc/resolv.conf");
+    imgutils::use_host_resolver($rootimg_dir);
 
     #Now let's handle extra packages
     unless ($imagename) {
@@ -723,7 +733,7 @@ foreach (@KVERS) {
 
 @KVERS = <$rootimg_dir/lib/modules/*> unless (scalar(@KVERS));
 
-$basekernelver = basename(pop @KVERS) if (scalar(@KVERS));
+$basekernelver = imgutils::newest_kernel_version(map { basename($_) } @KVERS) if (scalar(@KVERS));
 
 $basekernelver = `uname -r` unless ($basekernelver);
 
@@ -732,16 +742,10 @@ chomp($kernelver);
 
 #$updates{'kernelver'} = $kernelver if ($tempfile);
 
-# copy the kernel to $destdir
-if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
-    cp("$rootimg_dir/boot/vmlinux-$kernelver", "$destdir/kernel");
-} elsif (-e "$rootimg_dir/boot/vmlinuz-$kernelver") {
-    cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
-} elsif (-e "$rootimg_dir/boot/image-$kernelver") {
-    cp("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
-} else {
-    xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
-}
+# The kernel and the initial ramdisks wait here until genimage publishes them together.
+my $native_bootdir = File::Temp->newdir('.genimage-boot.XXXXXX', DIR => $destdir, CLEANUP => 1);
+my $stateless_uftp_receiver;
+eval { imgutils::copy_kernel($rootimg_dir, $kernelver, $native_bootdir) } or xdie($@);
 
 # Load driver update disk, and copy them to the root image
 my @dd_drivers = &load_dd();
@@ -938,6 +942,11 @@ if ($dracutmode) {
     push @ndrivers, @drivers;
     mkinitrd("stateless");
 }
+eval { imgutils::publish_staged_boot_files($native_bootdir, $destdir, 'statelite', 'stateless') } or die($@);
+if ($dracutmode) {
+    mark_rootimg_check('stateless');
+    imgutils::mark_uftp_receiver("$destdir/initrd-stateless.gz", $stateless_uftp_receiver);
+}
 
 sub getlibs {
     my $file    = shift;
@@ -1061,10 +1070,9 @@ sub mkinitrd_dracut {
       or die("Error: failed to generate the initial ramdisk for $mode.\n");
     eval { imgutils::check_uftp_initrd($rootimg_dir, "/tmp/initrd.$$.gz", $mode) } or xdie($@) if $uftp_receiver;
     print "the initial ramdisk for $mode is generated successfully.\n";
-    if (move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz")) {
-        mark_rootimg_check($mode);
-        imgutils::mark_uftp_receiver("$destdir/initrd-$mode.gz", $uftp_receiver) if $mode eq 'stateless';
-    }
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$native_bootdir/initrd-$mode.gz")
+      or die("Error: failed to stage the initial ramdisk for $mode: $!\n");
+    $stateless_uftp_receiver = $uftp_receiver if $mode eq 'stateless';
 }
 
 # nodeset warns unless this marker says that the stateless initial ramdisk checks the root image checksum.
@@ -1884,9 +1892,7 @@ EOMS
     }
 
     #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
-    print "\ncd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $destdir/initrd-$mode.gz \n";
-    system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $destdir/initrd-$mode.gz");
-    system("rm -rf /tmp/xcatinitrd.$$");
+    imgutils::pack_initrd("/tmp/xcatinitrd.$$", "$native_bootdir/initrd-$mode.gz", $compress, $mode);
 
 }
 
@@ -2259,20 +2265,7 @@ sub use_hackuname {
     # write the hacked uname script
     my $unamefile;
     open($unamefile, ">", "$rootimg_dir/bin/uname");
-    print $unamefile "#!/bin/bash \n";
-    print $unamefile "case \"\$1\" in \n";
-    print $unamefile "\"-m\") \n";
-    print $unamefile "    ARCH=\"\$(dpkg --print-architecture || \n";
-    print $unamefile "                rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}')\" \n";
-    print $unamefile "    case \"\$ARCH\" in \n";
-    print $unamefile "        \"amd64\") ARCH=\"x86_64\" ;; \n";
-    print $unamefile "        \"ppc64el\") ARCH=\"ppc64le\" ;; \n";
-    print $unamefile "    esac \n";
-    print $unamefile "    echo \"\$ARCH\" ;; \n";
-    print $unamefile "\"-r\")   cd /lib/modules && for d in * ; do : ; done && echo \$d ;; \n";
-    print $unamefile "\"-s\"|\"\") echo \"Linux\" ;; \n";
-    print $unamefile "esac \n";
-    print $unamefile "exit 0 \n";
+    print $unamefile imgutils::uname_script($kernelver);
     close $unamefile;
     chmod(0755, "$rootimg_dir/bin/uname");
 }

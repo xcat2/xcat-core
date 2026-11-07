@@ -82,7 +82,7 @@ sub attempt {
 }
 
 for my $case (['openeuler20.03sp4', 'x86_64'], ['openeuler22.03sp4', 'x86_64'],
-    ['openeuler24.03sp3', 'x86_64'], ['openeuler24.03', 'ppc64le']) {
+    ['openeuler24.03sp3', 'x86_64'], ['openeuler24.03', 'ppc64le'], ['openeuler24.03sp3', 'riscv64']) {
     my ($responses, $commands, $locks, $root) = attempt(@$case, 0);
     ok(grep({ $_->{error} && $_->{error}[0] =~ /Invalid compress method/ } @$responses),
         "@$case reaches the archive boundary");
@@ -94,7 +94,7 @@ for my $case (['openeuler20.03sp4', 'x86_64'], ['openeuler22.03sp4', 'x86_64'],
 }
 
 for my $case (['openeuler24.03sp3', 'x86_64', 1], ['openeuler24.03', 'ppc64le', 1],
-    ['openeuler25.03', 'x86_64', 0], ['openeuler24.03sp0', 'x86_64', 0],
+    ['openeuler24.03sp3', 'riscv64', 1], ['openeuler25.03', 'x86_64', 0], ['openeuler24.03sp0', 'x86_64', 0],
     ['openeuler24.03sp3', 's390x', 0]) {
     my ($responses, $commands, $locks, $root) = attempt(@$case);
     my $error = $case->[2] ? qr/StateLite images are not supported/ : qr/Unsupported openEuler image/;

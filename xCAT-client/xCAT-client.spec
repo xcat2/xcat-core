@@ -19,8 +19,12 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %define s390x %(if [ "$s390x" = "1" ];then echo 1; else echo 0; fi)
 %define nots390x %(if [ "$s390x" = "1" ];then echo 0; else echo 1; fi)
 
-# Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
-%if !0%{?suse_version}
+# The pod converters are in perl-Pod-Html on EL and in the core perl package on
+# SUSE, which has no perl-Pod-Html. A SUSE chroot holds perl-base only, and that
+# ships neither Pod::Man nor pod2man.
+%if 0%{?suse_version}
+BuildRequires: perl
+%else
 BuildRequires: perl-Pod-Html
 %endif
 
@@ -31,6 +35,12 @@ BuildArch: noarch
 
 Requires: perl-xCAT = 4:%{version}-%{release}
 Requires: cpio
+# openSUSE has no perl-generators, so no perl(...) requirement is generated here and nothing
+# installs the modules this code loads. xcatd stays inactive without them: xCAT::Table dies
+# loading JSON. EL and openEuler generate these automatically and need no list.
+%if 0%{?suse_version}
+Requires: perl(Expect)
+%endif
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux

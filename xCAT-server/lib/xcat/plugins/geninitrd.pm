@@ -148,8 +148,13 @@ sub geninitrd {
             xCAT::MsgUtils->message("E", { error => ["The rootimgdir attribute for the osimage should be set."], errorcode => ["1"] }, $callback);
             return;
         }
-        my @output = `genimage $osimage --onlyinitrd`;
+        my @output = `genimage $osimage --onlyinitrd 2>&1`;
+        my $status = $?;
         xCAT::MsgUtils->message("I", { data => \@output }, $callback);
+        if ($status) {
+            my $rc = ($status > 0 && $status >> 8) || 1;
+            xCAT::MsgUtils->message("E", { error => ["genimage $osimage --onlyinitrd failed with rc $rc."] }, $callback, $rc);
+        }
 
         #$doreq->({ command => ['genimage'],
         #              arg => [$osimage, '--onlyinitrd'] }, $callback);

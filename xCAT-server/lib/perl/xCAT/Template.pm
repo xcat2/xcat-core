@@ -224,15 +224,16 @@ sub subvars {
             $filepath   = $1;
         }
 
+        # The last entry of each kind wins, with its own s: prefix.
         if ($filepath =~ /^d:(.*)/) {
-            $diskfile = $1;
-            if ($scriptflag) { $diskscriptflag = 1; }
+            $diskfile       = $1;
+            $diskscriptflag = $scriptflag;
         } elsif ($filepath =~ /^c:(.*)/) {
-            $configfile = $1;
-            if ($scriptflag) { $configscriptflag = 1; }
+            $configfile       = $1;
+            $configscriptflag = $scriptflag;
         } elsif ($filepath) {
-            $partitionfile = $filepath;
-            if ($scriptflag) { $partscriptflag = 1; }
+            $partitionfile  = $filepath;
+            $partscriptflag = $scriptflag;
         }
     }
 
@@ -455,7 +456,8 @@ sub subvars {
                     $partcontent .= "rm -rf /tmp/partitionfile\n";
 
                     # Put the code to decode the partitionfile
-                    $partcontent .= "base64decode</tmp/partscript.enc >/tmp/partscript\n";
+                    # A traced decode prints the partition data, which can hold a passphrase.
+                    $partcontent .= "(set +x; base64decode</tmp/partscript.enc >/tmp/partscript)\n";
                     $partcontent .= "chmod 755 /tmp/partscript\n";
                     $partcontent .= "/tmp/partscript\n";
 
@@ -483,7 +485,7 @@ sub subvars {
 
                     # Put the base64 coded partitionfile into %pre part
                     $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
-                    if ($scriptflag) {
+                    if ($partscriptflag) {
 
                         # Put the code to decode preseed script and run it to generate pressed recipe file
                         #$partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
@@ -516,7 +518,8 @@ sub subvars {
                     $partcontent .= "rm -rf /tmp/partitionfile\n";
 
                     # Put the code to decode the partitionfile
-                    $partcontent .= "base64decode</tmp/partitionfile.enc >/tmp/partitionfile\n";
+                    # A traced decode prints the partition data, which can hold a passphrase.
+                    $partcontent .= "(set +x; base64decode</tmp/partitionfile.enc >/tmp/partitionfile)\n";
 
                     #replace the #XCA_PARTITION_SCRIPT#
                     $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
@@ -1657,7 +1660,7 @@ sub envvar
     return ($ENV{$envvar});
 }
 
-sub crydb
+sub crypt_field
 {
     my ($table, $key, $field) = @_;
     my @fields = [$field, 'cryptmethod'];
@@ -1681,10 +1684,19 @@ sub crydb
     return xCAT::PasswordUtils::crypt_system_password($table, $kp, \@fields);
 }
 
+sub crydb
+{
+    my ( $table, $key, $field ) = @_;
+    my $crypted = crypt_field( $table, $key, $field );
+    return $crypted if defined($crypted) && length($crypted);
+    $tmplerr = "Unable to find requested field <$field> from table <$table>, with key <$key>";
+    return "";
+}
+
 sub crydb_or_locked
 {
     my ( $table, $key, $field ) = @_;
-    my $crypted = crydb( $table, $key, $field );
+    my $crypted = crypt_field( $table, $key, $field );
     return $crypted if defined($crypted) && length($crypted);
     return '*';
 }

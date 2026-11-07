@@ -31,6 +31,10 @@ my %PACKAGES_FOR = (
     dhclient  => ['isc-dhcp-client'],
     ifenslave => ['ifenslave'],
     hwclock   => [ 'util-linux-extra', 'util-linux' ],
+
+    # mawk is the awk alternative on a Debian or Ubuntu root, and it rejects the gawk
+    # /inet/ coprocess at parse time, so the module names gawk rather than awk.
+    gawk      => ['gawk'],
 );
 
 # A release carries exactly the names in its list.
