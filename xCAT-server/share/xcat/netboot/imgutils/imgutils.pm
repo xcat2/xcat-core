@@ -284,6 +284,16 @@ sub disable_auto_profiles {
     return;
 }
 
+# The netboot dracut.conf names an exclusive module list, so a module nothing in the list depends
+# on is left out of the initial ramdisk. dracut reads the list and nothing else.
+sub dracut_netboot_modules {
+    my ($moduledir, $wicked) = @_;
+    my $legacy  = -d "$moduledir/35network-legacy" ? 1 : 0;
+    my $netmod  = ($legacy && !$wicked) ? 'network-legacy' : 'network';
+    my @modules = ('xcat', 'nfs', 'base', $netmod, 'kernel-modules');
+    return join(' ', @modules);
+}
+
 # debootstrap deletes $rootimg_dir/debootstrap when it finishes, and its tar -k fails over a finished root.
 sub debootstrap_finished {
     my ($rootimg_dir) = @_;
