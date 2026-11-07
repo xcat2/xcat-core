@@ -3,6 +3,7 @@ package xCAT::DHCP::BootPolicy;
 use strict;
 use warnings;
 use xCAT::HTTPUtils qw(httpport_suffix);
+use JSON;
 
 sub kea_client_classes {
     my ( $class, %opts ) = @_;
@@ -75,6 +76,77 @@ sub kea_client_classes {
     push @classes, kea_fallback_client_class();
 
     return \@classes;
+}
+
+# The boot file for a DHCPv6 client that matches no reservation.
+#
+# RFC 5970 gives DHCPv6 the client system architecture in option 61, from the same registry as
+# option 93 on DHCPv4, and the boot file URL in option 59. So the shape of kea_client_classes
+# above carries over: one class per architecture, each naming what that architecture can load.
+#
+# The URL is absolute and carries the server, which option 59 requires and boot-file-name does
+# not. uri_host is already bracketed for a literal IPv6 address.
+#
+# Without these classes an unknown client is answered with an address from the pool and no option
+# 59 at all, which is what stops sequential discovery over IPv6: the node has to boot the Genesis
+# image before xCAT knows its DUID, and it cannot be given a reservation before it is known.
+sub kea_client_classes6 {
+    my ( $class, %opts ) = @_;
+
+    my $host = $opts{uri_host};
+    return [] unless $host;
+    # One network's classes must not take another's names: the server in each URL is the address
+    # of the network the class was built for.
+    my $sfx = defined( $opts{suffix} ) && length( $opts{suffix} ) ? "-$opts{suffix}" : '';
+
+    my @classes;
+
+    # A UEFI client is the only x86 client that solicits over DHCPv6, so the BIOS loader has no
+    # DHCPv6 class. Both architecture ids are in use: firmware reports 0x0007, and 0x0009 appears
+    # on the same machines once the loader chainloads.
+    if ( $opts{ipxe_uefi} ) {
+        my $loader = $class->x86_loader( method => 'ipxe' )->{uefi};
+        if ($loader) {
+            foreach my $arch (qw(0x0007 0x0009)) {
+                push @classes, {
+                    name          => "xcat-uefi6-x64-$arch$sfx",
+                    test          => "option[61].hex == $arch",
+                    'option-data' => [ kea_bootfile_url6_option("tftp://$host/$loader") ],
+                };
+            }
+        }
+    }
+
+    # grub2 ships these two names for every build, so they are named unconditionally. A client
+    # whose loader is missing gets a timeout either way, and leaving the class out would make an
+    # aarch64 node look unserved rather than unprovisioned.
+    push @classes, (
+        {
+            name          => "xcat-aarch64-6$sfx",
+            test          => 'option[61].hex == 0x000b',
+            'option-data' => [ kea_bootfile_url6_option("tftp://$host/boot/grub2/grub2.aarch64") ],
+        },
+        {
+            name          => "xcat-riscv64-6$sfx",
+            test          => 'option[61].hex == 0x001b',
+            'option-data' => [ kea_bootfile_url6_option("tftp://$host/boot/grub2/grub2.riscv64") ],
+        },
+        {
+            name          => "xcat-ppc64-6$sfx",
+            test          => 'option[61].hex == 0x000c',
+            'option-data' => [ kea_bootfile_url6_option("tftp://$host/boot/grub2/grub2.ppc") ],
+        },
+    );
+
+    return \@classes;
+}
+
+# always-send, because a client that does not ask for option 59 by name still needs it: the
+# reservations written by kea_node_reservations6 set the same flag for the same reason.
+sub kea_bootfile_url6_option {
+    my ($url) = @_;
+
+    return { name => 'bootfile-url', data => $url, 'always-send' => JSON::true() };
 }
 
 #: Every client architecture some class here, or in the per-network classes

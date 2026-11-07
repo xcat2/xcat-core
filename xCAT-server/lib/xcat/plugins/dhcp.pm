@@ -3260,12 +3260,18 @@ sub kea_build_dhcp6_intent
     }
     $nettab->close;
 
+    my @subnet_classes;
+    foreach my $subnet (@subnets) {
+        push @subnet_classes, @{ delete $subnet->{client_classes} || [] };
+    }
+
     my $intent = {
         interfaces           => \@interfaces,
         preferred_lifetime   => kea_dhcp_lease_time(),
         valid_lifetime       => kea_dhcp_lease_time(),
         subnets              => \@subnets,
     };
+    $intent->{'client-classes'} = \@subnet_classes if @subnet_classes;
 
     # As for DHCPv4: the socket is how a reload is confirmed, so it is not
     # conditional on the Control Agent.
@@ -3322,6 +3328,15 @@ sub kea_subnet6_intent
         option_data  => \@option_data,
     );
     $subnet{interface} = $interface unless $remote || $interface eq '*';
+
+    # A client with no reservation is answered from the pool above, and option 59 is written only
+    # inside a reservation, so without these classes it is told an address and nothing to boot.
+    # That is what stops discovery: the node must boot Genesis before xCAT can know its DUID.
+    my @classes = @{ kea_boot_client_classes6( $net, $id ) };
+    if (@classes) {
+        $subnet{client_classes}            = \@classes;
+        $subnet{additional_client_classes} = [ map { $_->{name} } @classes ];
+    }
 
     return \%subnet;
 }
@@ -5279,6 +5294,27 @@ sub kea_onie_url_for_node
 sub kea_boot_client_classes
 {
     return xCAT::DHCP::BootPolicy->kea_client_classes( kea_ipxe_loader_flags() );
+}
+
+# The DHCPv6 classes for one network. The boot URL carries a server, so it is built per network
+# from the address of the management node facing that network -- the same source
+# dhcp6_boot_server_for_node uses for a node.
+sub kea_boot_client_classes6
+{
+    my ( $net, $id ) = @_;
+
+    my $peer = defined($net) ? $net : '';
+    $peer =~ s{/.*$}{};
+    return [] unless length($peer);
+
+    my @facing = xCAT::NetworkUtils->my_ip_facing_family( $peer, 6 );
+    return [] unless @facing && !$facing[0] && $facing[1];
+
+    my $uri_host = xCAT::NetworkUtils->format_uri_host( $facing[1] );
+    return [] unless $uri_host;
+
+    return xCAT::DHCP::BootPolicy->kea_client_classes6(
+        kea_ipxe_loader_flags(), uri_host => $uri_host, suffix => $id );
 }
 
 # Which upstream loader files the local TFTP tree has, as the Kea class builders take them.

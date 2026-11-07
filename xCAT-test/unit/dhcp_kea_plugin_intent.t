@@ -266,6 +266,27 @@ my %network_entry = (
     is_deeply( [ grep { /^xcat-ipxe-net-/ } @{ $subnet->{additional_client_classes} } ], [],
         'without the upstream loader on this server, the Kea subnet names no network script' );
 
+    # The DHCPv6 subnet answers an unknown client the same way, with option 59 instead of a boot
+    # file name. Without these a node being discovered gets a pool address and nothing to boot,
+    # which is where seq_discovery_ipv6 stops: the DUID cannot be reserved before it is known.
+    my %entry6 = ( net => '2001:db8:188::/64', mgtifname => 'eth1', mask => '64',
+                   dynamicrange => '2001:db8:188::1000-2001:db8:188::1fff' );
+    my $subnet6 = xCAT_plugin::dhcp::kea_subnet6_intent( \%entry6, 'eth1', 0, 10001 );
+    my %classes6 = map { $_->{name} => $_ } @{ $subnet6->{client_classes} || [] };
+    ok( $classes6{'xcat-aarch64-6-10001'},
+        'the Kea DHCPv6 subnet carries boot classes for an unreserved client' )
+        or diag 'classes: ' . join( ' ', sort keys %classes6 );
+    is( $classes6{'xcat-aarch64-6-10001'} && $classes6{'xcat-aarch64-6-10001'}{'option-data'}[0]{name},
+        'bootfile-url', 'and each one supplies bootfile-url, which is option 59' );
+    is( $classes6{'xcat-aarch64-6-10001'} && $classes6{'xcat-aarch64-6-10001'}{'option-data'}[0]{data},
+        'tftp://[2001:db8::1]/boot/grub2/grub2.aarch64',
+        'naming the management node facing this network, bracketed for a URL' );
+    is_deeply(
+        [ grep { /^xcat-aarch64-6/ } @{ $subnet6->{additional_client_classes} || [] } ],
+        ['xcat-aarch64-6-10001'],
+        'and the class is evaluated only for the subnet it was built for',
+    );
+
     local *xCAT_plugin::dhcp::kea_ipxe_loader_flags = sub { return ( ipxe_bios => 1, ipxe_uefi => 1 ); };
     $subnet = xCAT_plugin::dhcp::kea_subnet4_intent( $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80 );
     %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
