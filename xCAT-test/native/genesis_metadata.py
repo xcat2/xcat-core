@@ -195,7 +195,7 @@ class GenesisMetadata(unittest.TestCase):
 
     def test_runtime_dependencies(self):
         for recipe, expected in {
-            "xcat-genesis-network": "networkmanager-daemon networkmanager-nmcli",
+            "xcat-genesis-network": "bash coreutils networkmanager-daemon networkmanager-nmcli util-linux-logger",
             "xcat-genesis-protocol": "bash openssl-bin",
             "xcat-genesis-extensions": "bash coreutils jq openssl-bin systemd xcat-genesis-init",
             "xcat-genesis-hardware-control": "bash coreutils jq mstflint nvme-cli util-linux-flock",
@@ -366,7 +366,18 @@ class GenesisMetadata(unittest.TestCase):
         config = self.unit(file)
         self.assertEqual(config["connection"]["ipv4.dhcp-timeout"], "20")
         self.assertEqual(config["connection"]["ipv6.dhcp-timeout"], "20")
+        # A node with no SMBIOS UUID gets a hw-address reservation, which Kea matches by
+        # reading the hardware address out of a DUID-LL. genesis-duid overrides this from
+        # 15-xcat-genesis-duid.conf, which NetworkManager reads later.
         self.assertEqual(config["connection"]["ipv6.dhcp-duid"], "ll")
+        self.installed(data, root, "libexecdir", "xcat/genesis-duid", 0o755)
+        service = self.unit(self.installed(data, root, "systemd_system_unitdir",
+                                           "xcat-genesis-duid.service", 0o644))
+        self.assertEqual(service["Service"]["ExecStart"], "/usr/libexec/xcat/genesis-duid")
+        self.assertEqual(set(service["Unit"]["Before"].split()),
+                         {"NetworkManager.service", "xcat-genesis-network-state.service"})
+        self.assertEqual(self.words(data, "SYSTEMD_SERVICE:" + data.getVar("PN")),
+                         {"xcat-genesis-duid.service"})
 
     def test_installed_hardware_providers(self):
         data, root = self.install("xcat-genesis-hardware-control")

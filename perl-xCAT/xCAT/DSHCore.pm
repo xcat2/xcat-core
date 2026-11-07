@@ -12,7 +12,17 @@ use strict;
 use Socket;
 
 use xCAT::MsgUtils;
+use xCAT::NetworkUtils;
 use xCAT::Utils;
+use Text::ParseWords qw(shellwords);
+
+=head1 NAME
+
+xCAT::DSHCore - distributed command execution and reachability helpers
+
+=head1 FUNCTIONS
+
+=head2 Process and ping helpers
 
 #---------------------------------------------------------------------------
 
@@ -679,6 +689,166 @@ sub ping_hostnames
 #---------------------------------------------------------------------------
 
 =head3
+        partition_ping_targets
+
+        Resolves ping targets and separates them into the address family that
+        should be probed.  IPv4 remains preferred for dual-stack targets so
+        existing behavior is preserved.
+
+        Arguments:
+                @targets - hostnames or address literals
+
+        Returns:
+                references to the IPv4, IPv6, and unresolved target arrays
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub partition_ping_targets
+{
+    my ($class, @targets) = @_;
+    my (@ipv4, @ipv6, @unresolved);
+
+    foreach my $target (@targets)
+    {
+        my $family = xCAT::NetworkUtils->node_address_family($target);
+        if (defined($family) && $family == 4)
+        {
+            push @ipv4, $target;
+        }
+        elsif (defined($family) && $family == 6)
+        {
+            push @ipv6, $target;
+        }
+        else
+        {
+            push @unresolved, $target;
+        }
+    }
+
+    return (\@ipv4, \@ipv6, \@unresolved);
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
+        nmap_ping_command
+
+        Builds the nmap command pping runs for one address family.
+
+        Arguments:
+                $family - 4 or 6
+                $more_options - the site nmapoptions value, or undef
+                $targets - reference to the target list
+
+        Returns:
+                the command as a list
+
+        Comments:
+                The command is a list, not a string, so pping can exec it
+                without a shell. nmap needs -6 for an IPv6 target: it reads an
+                IPv6 literal as a hostname otherwise.
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub nmap_ping_command
+{
+    my ($class, $family, $more_options, $targets) = @_;
+
+    my @command = ('nmap');
+    push @command, '-6' if defined($family) && $family == 6;
+
+    # Port 22 is here for the unprivileged case (#4324).
+    push @command, qw(-PE --system-dns --send-ip -sP --unprivileged -PA80,443,22);
+    push @command, shellwords($more_options)
+      if defined($more_options) && length($more_options);
+    push @command, @{ $targets || [] };
+    return @command;
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
+        fping_ping_command
+
+        Builds the fping command pping runs for one address family.
+
+        Arguments:
+                $family - 4 or 6
+                $binaries - reference to a hash with the fping and fping6
+                            paths that exist on this host, either one undef
+                $targets - reference to the target list
+
+        Returns:
+                the command as a list, or an empty list when no fping on this
+                host can probe that family
+
+        Comments:
+                fping6 is a separate program on an older distribution. A
+                current fping takes -6 instead and ships no fping6.
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub fping_ping_command
+{
+    my ($class, $family, $binaries, $targets) = @_;
+    $binaries ||= {};
+
+    my @command;
+    if (defined($family) && $family == 6)
+    {
+        if ($binaries->{fping6})
+        {
+            @command = ($binaries->{fping6});
+        }
+        elsif ($binaries->{fping})
+        {
+            @command = ($binaries->{fping}, '-6');
+        }
+    }
+    elsif ($binaries->{fping})
+    {
+        @command = ($binaries->{fping});
+    }
+    return () unless @command;
+
+    push @command, '-a', @{ $targets || [] };
+    return @command;
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
+        parse_pping_result_line
+
+        Parses the stable C<target: ping|noping> output contract.  The greedy
+        target match intentionally accepts IPv6 address literals containing
+        colons.
+
+=cut
+
+#---------------------------------------------------------------------------
+
+sub parse_pping_result_line
+{
+    my ($class, $line) = @_;
+    return unless defined($line);
+    return ($1, $2) if $line =~ /^(.+):\s+(ping|noping)\s*$/;
+    return;
+}
+
+
+#---------------------------------------------------------------------------
+
+=head3
         pping_hostnames
 
         Executes pping on a given list of hostnames and returns a list of those
@@ -735,9 +905,8 @@ sub pping_hostnames
     my @no_response = ();
     foreach my $line (@output)
     {
-        my ($hostname, $result) = split ':', $line;
-        my ($token,    $status) = split ' ', $result;
-        chomp($token);
+        my ($hostname, $token) = $class->parse_pping_result_line($line);
+        next unless defined($hostname);
         if ($token ne 'ping') {
             push @no_response, $hostname;
         }

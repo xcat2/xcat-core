@@ -1603,6 +1603,15 @@ sub updatenoderunps
             next;
         }
         my $nodestring = join(',', @{ $servernodes{$snkey} });
+        my $httpendpoint = xCAT::NetworkUtils->format_host_port($snkey, $httpport);
+        unless (defined($httpendpoint)) {
+            my $rsp = {
+                errorcode => [1],
+                error => ["Unable to format the xCAT HTTP endpoint for $nodestring. Will skip these nodes."],
+            };
+            $callback->($rsp);
+            next;
+        }
         my $args;
         my $mode;
 
@@ -1630,10 +1639,10 @@ sub updatenoderunps
 
         if ($::SETSERVER) { # update the xcatinfo file on the node and run setuppostbootscripts
             $runpscmd =
-"$installdir/postscripts/xcatdsklspost $mode -M $snkey:$httpport '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+"$installdir/postscripts/xcatdsklspost $mode -M '$httpendpoint' '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
         } else {
             $runpscmd =
-"$installdir/postscripts/xcatdsklspost $mode -m $snkey:$httpport '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
+"$installdir/postscripts/xcatdsklspost $mode -m '$httpendpoint' '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
         }
 
         # add flowcontrol flag
@@ -2125,10 +2134,19 @@ sub updatenodesoftware
         foreach my $snkey (keys %servernodes)
         {
             my $nodestring = join(',', @{ $servernodes{$snkey} });
+            my $httpendpoint = xCAT::NetworkUtils->format_host_port($snkey, $httpport);
+            unless (defined($httpendpoint)) {
+                my $rsp = {
+                    errorcode => [1],
+                    error => ["Unable to format the xCAT HTTP endpoint for $nodestring. Will skip these nodes."],
+                };
+                $callback->($rsp);
+                next;
+            }
             my $cmd;
             my $args1;
             $cmd =
-"$installdir/postscripts/xcatdsklspost 2 -m $snkey:$httpport 'ospkgs,otherpkgs,syscloneimgupdate' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+"$installdir/postscripts/xcatdsklspost 2 -m '$httpendpoint' 'ospkgs,otherpkgs,syscloneimgupdate' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
 
             # add flowcontrol flag
             if ($flowcontrol == 1) {
@@ -3573,4 +3591,3 @@ sub updatenodeappstat
 
     return 0;
 }
-

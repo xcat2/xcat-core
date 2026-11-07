@@ -878,6 +878,29 @@ sub upstream_loader_warnings {
     return @warnings;
 }
 
+# Why one NODE gets no DHCPv6 boot file. dhcp6_bootfile_url_for_node drops the option when the
+# UEFI loader is not under the tftpdir of that node, and makedhcp exits 0, so the node reaches a
+# firmware timeout with nothing naming the file it asked for.
+#
+# upstream_loader_warnings cannot cover this. It reads the SITE TFTP directory and runs on
+# makedhcp -n and -a only, so a node with its own noderes.tftpdir is never examined, and
+# makedhcp <node> examines nothing.
+#
+# A node can load from another TFTP server, so this is a warning and not an error.
+sub dhcp6_missing_loader_warning {
+    my ( $class, %opts ) = @_;
+
+    my $tftpdir = $opts{tftpdir};
+    my $loader  = $opts{loader};
+    return unless defined $tftpdir && length $tftpdir;
+    return unless defined $loader  && length $loader;
+    $tftpdir =~ s{/+$}{};
+    return if -e "$tftpdir/$loader";
+    return "$tftpdir/$loader is missing, so $opts{node} gets no DHCPv6 boot file and its"
+      . " firmware times out with nothing to load. Install ipxe-xcat on the TFTP server"
+      . " of $opts{node}.";
+}
+
 # Whether this server has a loader that can SAN-boot an x86 node without iSCSI boot data: an
 # undionly.kpxe that the administrator put in the TFTP root, or the BIOS file of the loader of the
 # netboot method of the node.
@@ -903,6 +926,30 @@ sub grub2_node_loader {
     return $loader if $suffix eq '';
     return $loader if defined $opts{tftpdir} && !-e "$opts{tftpdir}/boot/grub2/$loader$suffix";
     return "$loader$suffix";
+}
+
+# The IPv6 boot server of a grub2 node. A dual-stack node keeps an IPv4 tftpserver, which
+# has no IPv6 address, so a configured value that does not resolve falls back to the address
+# of the management node that faces the node. Returns the server, or nothing and a reason.
+sub dhcp6_boot_server {
+    my ( $class, %opts ) = @_;
+
+    return $opts{configured_v6} if $opts{configured_v6};
+
+    my $named = ( defined $opts{configured} && length $opts{configured} ) ? $opts{configured} : undef;
+
+    # The fallback is reported even when it succeeds. A dual-stack node keeps an IPv4
+    # tftpserver and the fallback is expected there, but so is a typo and a DNS outage, and
+    # without this the boot server silently stops being the configured one.
+    if ( $opts{facing_v6} ) {
+        return ( $opts{facing_v6}, undef ) unless defined $named;
+        return ( $opts{facing_v6},
+            "$named has no IPv6 address, so the DHCPv6 boot server is $opts{facing_v6}" );
+    }
+
+    my $reason = $opts{reason} || 'no IPv6-facing address was found';
+    return ( undef, "$named has no IPv6 address and $reason" ) if defined $named;
+    return ( undef, $reason );
 }
 
 # The ISC host statements that choose the boot file of a node with netboot ipxe, xnba or pxe. They

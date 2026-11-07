@@ -8,6 +8,7 @@ use xCAT::TableUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
+use xCAT::BootUtils;
 use xCAT::MsgUtils;
 use File::Path;
 use Socket;
@@ -61,6 +62,75 @@ sub _slow_get_tftpdir {    #make up for paths where tftpdir is not passed in
     } else {
         return $globaltftpdir;
     }
+}
+
+sub grub2_server_for_node {
+    my ($node, $tftpserver) = @_;
+    my $family = xCAT::NetworkUtils->node_address_family($node);
+
+    # Preserve the legacy IPv4 path and its error reporting when the node does
+    # not resolve in either family.
+    $family = 4 unless defined($family);
+
+    if ($family == 6) {
+        my $cachekey = "6:$tftpserver";
+        return (0, $tftpserverip{$cachekey})
+          if $tftpserver ne '<xcatmaster>'
+          && defined($tftpserverip{$cachekey});
+
+        my $serverip = xCAT::NetworkUtils->ipv6_server_for_node(
+            $node, $tftpserver
+        );
+        if ($serverip) {
+            $tftpserverip{$cachekey} = $serverip
+              if $tftpserver ne '<xcatmaster>';
+            return (0, $serverip);
+        }
+
+        if ($tftpserver eq '<xcatmaster>') {
+            my @facing = xCAT::NetworkUtils->my_ip_facing_family($node, 6);
+            return (1, $facing[1]) if @facing > 1;
+        }
+        return (1, "xCAT unable to resolve $tftpserver");
+    }
+
+    if ($tftpserver eq '<xcatmaster>') {
+        my @facing = xCAT::NetworkUtils->my_ip_facing($node);
+        return (0, $facing[1]) unless $facing[0];
+        return (1, $facing[1]);
+    }
+
+    my $cachekey = $tftpserver;
+    return (0, $tftpserverip{$cachekey}) if defined($tftpserverip{$cachekey});
+
+    my $serverip = xCAT::NetworkUtils->getipaddr($tftpserver);
+    return (1, "xCAT unable to resolve $tftpserver") unless $serverip;
+
+    $tftpserverip{$cachekey} = $serverip;
+    return (0, $serverip);
+}
+
+sub grub2_root_spec {
+    my ($protocol, $serverip, $httpport) = @_;
+
+    my $authority;
+    if ($protocol eq 'http' && $httpport ne '80') {
+        $authority = xCAT::NetworkUtils->format_host_port($serverip, $httpport);
+    } else {
+        $authority = xCAT::NetworkUtils->format_uri_host($serverip);
+    }
+    return unless $authority;
+
+    return "$protocol,$authority";
+}
+
+sub grub2_ipv4_config_name {
+    my $ip = shift;
+    return unless xCAT::NetworkUtils->isIpaddr($ip);
+
+    my @octets = split(/\./, $ip);
+    return unless @octets == 4;
+    return "grub.cfg-" . sprintf("%02X%02X%02X%02X", @octets);
 }
 
 sub getstate {
@@ -129,7 +199,13 @@ sub setstate {
     my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
-        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        # The facing address has to be looked up in the family the node has. my_ip_facing
+        # resolves with inet_aton, so an IPv6-only node is reported unresolvable and the
+        # node gets no configuration at all.
+        my @ipfnd =
+          ( ( xCAT::NetworkUtils->node_address_family($node) || 4 ) == 6 )
+          ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+          : xCAT::NetworkUtils->my_ip_facing($node);
 
         if ($ipfnd[0] ==  1) {
             return (1, $ipfnd[1]);
@@ -150,7 +226,8 @@ sub setstate {
             }
         } else {
             $ipfn = $ipfnd[1];
-            $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
+            $kern->{kcmdline} =
+              xCAT::NetworkUtils::substitute_facing_address($kern->{kcmdline}, $ipfn);
         }
     }
 
@@ -199,24 +276,9 @@ sub setstate {
             $tftpserver = "<xcatmaster>";
         }
 
-        if($tftpserver eq "<xcatmaster>"){
-            my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
-            unless ($nxtsrvd[0]) {
-                $serverip = $nxtsrvd[1];
-            } else {
-                return (1, $nxtsrvd[1]);
-            }
-        } else {
-            if (defined($tftpserverip{$tftpserver})) {
-                $serverip = $tftpserverip{$tftpserver};
-            } else {
-                $serverip = xCAT::NetworkUtils->getipaddr($tftpserver);
-                unless ($serverip) {
-                    return (1, "xCAT unable to resolve $tftpserver");
-                }
-                $tftpserverip{$tftpserver} = $serverip;
-            }
-        }
+        my $server_rc;
+        ($server_rc, $serverip) = grub2_server_for_node($node, $tftpserver);
+        return ($server_rc, $serverip) if $server_rc;
 
         unless($serverip){
             return (1, "Unable to determine the tftpserver for $node");
@@ -242,8 +304,9 @@ sub setstate {
         return (1, "Stop grub2 configuration for this node, \"$grub2bin\" does not exits.");
     }
 
-    my $ip = xCAT::NetworkUtils->getipaddr($node);
-    unless ($ip) {
+    my $ip = xCAT::NetworkUtils->getipaddr($node, OnlyV4 => 1);
+    my $ipv6 = $ip ? undef : xCAT::NetworkUtils->getipaddr($node, OnlyV6 => 1);
+    unless ($ip || $ipv6) {
         return (1, "xCAT unable to resolve IP in grub2 plugin");
     }
 
@@ -278,11 +341,12 @@ sub setstate {
             print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
             print $pcfg "    insmod http\n";
             print $pcfg "    insmod tftp\n";
-            if ($grub2protocol eq "http" && $httpport ne "80") {
-                print $pcfg "    set root=http,$serverip:$httpport\n";
-            } else {
-                print $pcfg "    set root=$grub2protocol,$serverip\n";
+            my $root_spec = grub2_root_spec($grub2protocol, $serverip, $httpport);
+            unless ($root_spec) {
+                close($pcfg);
+                return (1, "Unable to format the grub2 server for $node");
             }
+            print $pcfg "    set root=$root_spec\n";
             print $pcfg "    echo Loading Install kernel ...\n";
 
             my $protocolrootdir = "";
@@ -291,20 +355,20 @@ sub setstate {
                 $protocolrootdir = $tftpdir;
             }
 
-            my $efi = "";
-            if ($nodearch =~ /x86/i) {
-                $efi = "efi";
-            }
+            # The commands come from the image served to this node, not from its
+            # architecture: an image built from upstream grub has no linuxefi.
+            my ($kernelcmd, $initrdcmd) =
+              xCAT::BootUtils::grub2_kernel_commands($grub2bin, $nodearch);
 
             if ($kern and $kern->{kcmdline}) {
                 my $kcmdline = quote_kcmdline($kern->{kcmdline});
-                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} $kcmdline BOOTIF=\$net_default_mac\n";
+                print $pcfg "    $kernelcmd $protocolrootdir/$kern->{kernel} $kcmdline BOOTIF=\$net_default_mac\n";
             } else {
-                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
+                print $pcfg "    $kernelcmd $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
             }
             print $pcfg "    echo Loading initial ramdisk ...\n";
             if ($kern and $kern->{initrd}) {
-                print $pcfg "    initrd$efi $protocolrootdir/$kern->{initrd}\n";
+                print $pcfg "    $initrdcmd $protocolrootdir/$kern->{initrd}\n";
             }
 
             print $pcfg "}";
@@ -340,7 +404,7 @@ sub setstate {
     #my $mactab = xCAT::Table->new('mac');
     my %ipaddrs;
     my $macstring;
-    $ipaddrs{$ip} = 1;
+    $ipaddrs{$ip} = 1 if $ip;
 
     my $ment = $machash{$node}->[0];
     if ($ment and $ment->{mac}) {
@@ -348,7 +412,7 @@ sub setstate {
         my @macs = split(/\|/, $ment->{mac});
         foreach (@macs) {
             if (/!(.*)/) {
-                my $ipaddr = xCAT::NetworkUtils->getipaddr($1);
+                my $ipaddr = xCAT::NetworkUtils->getipaddr($1, OnlyV4 => 1);
                 if ($ipaddr) {
                     $ipaddrs{$ipaddr} = 1;
                 }
@@ -359,8 +423,8 @@ sub setstate {
     # Do not use symbolic link, p5 does not support symbolic link in /tftpboot
     #  my $hassymlink = eval { symlink("",""); 1 };
     foreach $ip (keys %ipaddrs) {
-        my @ipa = split(/\./, $ip);
-        my $pname = "grub.cfg-" . sprintf("%02X%02X%02X%02X", @ipa);
+        my $pname = grub2_ipv4_config_name($ip);
+        next unless $pname;
 
         # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
         unlink("$bootloader_root/" . $pname);

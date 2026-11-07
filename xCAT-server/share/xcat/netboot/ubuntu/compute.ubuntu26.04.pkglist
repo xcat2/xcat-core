@@ -15,3 +15,5 @@ gawk
 tar
 gzip
 xz-utils
+dracut
+dracut-network

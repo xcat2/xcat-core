@@ -13,6 +13,25 @@ export HTTPPORT="#TABLEBLANKOKAY:site:key=httpport:value#"
 
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
+# An IPv6 management node address already contains colons, so it has to be bracketed
+# before it goes in a URL. The same helper is in post.xcat.rhels10: a node has no shared
+# shell library at the point this script runs.
+format_uri_host()
+{
+    case "$1" in
+    \[*\]) printf '%s' "$1" ;;
+    *:*) printf '[%s]' "$1" ;;
+    *) printf '%s' "$1" ;;
+    esac
+}
+
+MASTER_HTTP_HOST="$(format_uri_host "$MASTER_IP")"
+
+format_host_port()
+{
+    printf '%s:%s' "$(format_uri_host "$1")" "$2"
+}
+
 umask 0022
 
 case "$XCATDEBUGMODE" in
@@ -139,10 +158,10 @@ function download_recursive()
     return 0
 }
 
-download_recursive "http://$MASTER_IP:${HTTPPORT}$INSTALLDIR/postscripts/" "/xcatpost" 2>/tmp/download.log
+download_recursive "http://${MASTER_HTTP_HOST}:${HTTPPORT}$INSTALLDIR/postscripts/" "/xcatpost" 2>/tmp/download.log
 if [ "$?" -ne "0" ]
 then
-    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, check /tmp/download.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
+    msgutil_r "$MASTER_IP" "error" "failed to download postscripts from http://${MASTER_HTTP_HOST}:${HTTPPORT}$INSTALLDIR/postscripts/, check /tmp/download.log on the node,  halt ..." "/var/log/xcat/xcat.log" "$log_label"
     /tmp/updateflag "$MASTER_IP" "$XCATIPORT" "installstatus failed"
     sleep infinity
 fi
@@ -158,7 +177,7 @@ export NODE="#TABLE:nodelist:THISNODE:node#"
 
 msgutil_r "$MASTER_IP" "info" "trying to get mypostscript from $MASTER_IP..." "/var/log/xcat/xcat.log" "$log_label"
 
-curl --fail --retry 20 --max-time 60 "http://$MASTER_IP:${HTTPPORT}$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
+curl --fail --retry 20 --max-time 60 "http://${MASTER_HTTP_HOST}:${HTTPPORT}$TFTPDIR/mypostscripts/mypostscript.$NODE" -o "/xcatpost/mypostscript.$NODE" 2> /tmp/download.log
 if [ "$?" = "0" ]
 then
     case "$XCATDEBUGMODE" in
@@ -173,7 +192,7 @@ fi
 # Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
 USEOPENSSLFORXCAT=1
 export USEOPENSSLFORXCAT
-XCATSERVER=$MASTER_IP:3001
+XCATSERVER="$(format_host_port "$MASTER_IP" 3001)"
 export XCATSERVER
 
 # If mypostscript doesn't exist, we will get it through getpostscript.awk

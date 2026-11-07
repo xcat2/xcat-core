@@ -5,6 +5,37 @@ fi
 
 #!/bin/sh
 
+#--- xcat_start_installer_rsyslog
+# Start the log forwarder in its own cgroup, with a memory limit.
+#
+# The forwarder cannot be bounded from its own configuration. Measured in the 24.04 live
+# installer: rsyslogd holds 11.9G of a 16G node while its message queue is empty -- impstats
+# reported "main Q: size=0 enqueued=7 maxqsize=6" beside "maxrss=11951868" -- and AppArmor
+# refuses it the journal socket, so it forwards almost nothing for that memory.
+#
+# rsyslogd runs in snap.subiquity.subiquity-server.service's cgroup, so the kernel OOM killer
+# stopped the installer: systemd started a second subiquity-server, and that server ran curtin
+# partitioning while the first server's curtin still held the root partition. The install died
+# with curtin.util.NotExclusiveError on /dev/sda3.
+#
+# In its own cgroup the kernel kills the forwarder alone. Without systemd-run there is no limit
+# to put it in, and the install is worth more than its remote log.
+#---
+xcat_start_installer_rsyslog() {
+    if ! command -v systemd-run >/dev/null 2>&1; then
+        echo "xcat: no systemd-run, so this install forwards no syslog" >&2
+        return 0
+    fi
+
+    systemd-run --quiet --collect --unit=xcat-installer-syslog \
+        --property=MemoryMax=128M --property=MemorySwapMax=0 \
+        -- rsyslogd -n -f "$1"
+}
+
+# A bats test sources this script to drive the routine above. The installer sets nothing here,
+# so an install runs the whole script.
+[ -n "${XCAT_PRE_SOURCE_ONLY:-}" ] && return 0
+
 # syslog is probably running from the syslog.socket service
 systemctl stop syslog.socket
 systemctl stop rsyslog
@@ -17,7 +48,7 @@ module(load="imuxsock")
 module(load="imklog" permitnonkernelfacility="on")
 *.* @#XCATVAR:XCATMASTER#
 EOF
-rsyslogd -f /etc/rsyslog.conf
+xcat_start_installer_rsyslog /etc/rsyslog.conf
 log_label="xcat.deployment"
 logger -t $log_label -p "info" "============deployment starting============"
 logger -t $log_label -p "info" "Running preseeding early_command Installation script..."

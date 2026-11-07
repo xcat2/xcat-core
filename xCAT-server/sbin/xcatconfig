@@ -1344,12 +1344,12 @@ sub initDB
             if (($otherpkgsprocessed == 1) || ($otherpkgsexist == 2))
             {
                 $chtabcmds .=
-"$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,syncfiles';";
+"$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,configdhcpv6duid,syncfiles';";
             }
             else
             {    # put otherpkgs in postscripts attr
                 $chtabcmds .=
-"$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,otherpkgs,syncfiles';";
+"$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,configdhcpv6duid,otherpkgs,syncfiles';";
             }
 
             # add servicenode default

@@ -31,6 +31,14 @@ BEGIN {
     sub checkNodeIPaddress { return { ip => '192.0.2.10' } }
     sub nodeonmynet        { return 1 }
 
+    # setstate asks which family the node has, so the iPXE script names a server the node
+    # can reach. These nodes are IPv4, which keeps ${next-server} in the script.
+    sub node_address_family { return 4 }
+    sub my_ip_facing_family { return (0, '192.0.2.1') }
+    # This file replaces the whole module through %INC, so the decision xnba.pm asks for has to
+    # be here too. These nodes are IPv4, and the real sub answers the iPXE variable for IPv4.
+    sub ipxe_script_server_for_node { return ('${next-server}', undef) }
+
     package xCAT::TableUtils;
     sub getTftpDir         { return $tftp }
     sub get_site_attribute { return $_[1] eq 'dhcpsetup' ? ('n') : () }    # no makedhcp from nodeset here

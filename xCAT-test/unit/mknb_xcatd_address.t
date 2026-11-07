@@ -29,22 +29,36 @@ BEGIN {
     }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 
+    # The real xCAT::NetworkUtils is loaded, so format_uri_host and
+    # xcatd_cmdline_address are the implementations under test. Only the host
+    # probes are replaced: they read the running host's interfaces.
+    require xCAT::NetworkUtils;
     package xCAT::NetworkUtils;
-    our ($normnet_addresses, $hexnet_addresses, @master_addresses);
-    sub my_nets {
+    our ($normnet_addresses, $normnet6_addresses, $hexnet_addresses,
+        @master_addresses, @master6_addresses);
+    no warnings 'redefine';    ## no critic (TestingAndDebugging::ProhibitNoWarnings)
+    *my_nets = sub {
         die "mknb did not request all normalized-network addresses"
           unless $_[-1] eq 'all';
         return $normnet_addresses;
-    }
-    sub my_hexnets {
+    };
+    *my_nets6 = sub {
+        die "mknb did not request all IPv6-network addresses"
+          unless $_[-1] eq 'all';
+        return $normnet6_addresses;
+    };
+    *my_hexnets = sub {
         die "mknb did not request all hexadecimal-network addresses"
           unless $_[-1] eq 'all';
         return $hexnet_addresses;
-    }
-    sub getipaddr { return @master_addresses; }
+    };
+    *getipaddr = sub {
+        my %options = @_[ 2 .. $#_ ];
+        return @master6_addresses if $options{OnlyV6};
+        return @master_addresses;
+    };
     our $nic_ips;
-    sub get_nic_ip { return $nic_ips || {}; }
-    $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
+    *get_nic_ip = sub { return $nic_ips || {}; };
 
     package xCAT::NodeRange;
     sub import {
@@ -159,6 +173,11 @@ sub read_config {
     return $content;
 }
 
+sub read_config_if {
+    my ($path) = @_;
+    return -s $path ? read_config($path) : '';
+}
+
 sub generation_succeeded {
     my ($responses, $description) = @_;
     ok(
@@ -168,6 +187,8 @@ sub generation_succeeded {
 }
 
 sub use_reporter_address_maps {
+    $xCAT::NetworkUtils::normnet6_addresses = {};
+    @xCAT::NetworkUtils::master6_addresses = ();
     $xCAT::NetworkUtils::normnet_addresses = {
         '192.168.144.0/20' => [
             '192.168.148.10',
@@ -719,5 +740,116 @@ for my $case ([undef, ''], ['', ''], [0, ''], ['0', ''], ['80', ''], ['080', ':0
         qr/^    set root=\Qhttp,192.168.148.10$suffix\E$/m,
         'GRUB discovery preserves HTTP port defaulting');
 }
+
+
+$xCAT::TableUtils::site_httpport = undef;
+
+# An IPv6 provisioning network: mknb writes the same nets/ scripts for it, named after the
+# network and its prefix length the way DHCP names them, and the xcatd= endpoint is bracketed.
+# "xcatd=2001:db8:177::1:3001" is a valid IPv6 literal with no port, so an unbracketed value
+# sends the node to a different address and nothing reports a problem.
+use_reporter_address_maps();
+$xCAT::NetworkUtils::normnet_addresses = {};
+$xCAT::NetworkUtils::hexnet_addresses  = {};
+$xCAT::NetworkUtils::normnet6_addresses = {
+    '2001:db8:177::/64' => ['2001:db8:177::1'],
+};
+prepare_tftpdir($tmpdir, 'tftpboot-x86-v6', 'x86_64');
+$responses = run_mknb('x86_64');
+generation_succeeded($responses, 'x86 configuration generation succeeds for an IPv6 network');
+
+foreach my $loader (qw(xnba ipxe)) {
+    my $path = "$xCAT::TableUtils::tftpdir/xcat/$loader/nets/2001:db8:177::_64";
+    ok(-s $path, "mknb writes xcat/$loader/nets for an IPv6 network");
+    my $script = read_config_if($path);
+    like(
+        $script,
+        qr/\Qxcatd=[2001:db8:177::1]:3001\E/,
+        "the $loader script brackets the IPv6 xcatd endpoint",
+    );
+    unlike(
+        $script,
+        qr/xcatd=2001:db8:177::1:3001/,
+        "the $loader script does not write an IPv6 endpoint that parses as an address",
+    );
+    my $uefi = "$xCAT::TableUtils::tftpdir/xcat/$loader/nets/2001:db8:177::_64.uefi";
+    like(
+        read_config_if($uefi),
+        qr/\Qimgargs kernel xcatd=[2001:db8:177::1]:3001\E/,
+        "the $loader UEFI script brackets the IPv6 xcatd endpoint",
+    );
+    my $elilo = "$xCAT::TableUtils::tftpdir/xcat/$loader/nets/2001:db8:177::_64.elilo";
+    like(
+        read_config_if($elilo),
+        qr/\Qappend="xcatd=[2001:db8:177::1]:3001 destiny=discover\E/,
+        "the $loader elilo entry brackets the IPv6 xcatd endpoint",
+    );
+}
+
+# site.master resolves to an IPv6 address on an IPv6-only management node, and that address
+# is the one the node has to reach.
+$xCAT::NetworkUtils::normnet6_addresses = {
+    '2001:db8:177::/64' => ['2001:db8:177::1', '2001:db8:177::9'],
+};
+@xCAT::NetworkUtils::master6_addresses = ('2001:db8:177::9');
+prepare_tftpdir($tmpdir, 'tftpboot-x86-v6-master', 'x86_64');
+generation_succeeded(run_mknb('x86_64'), 'x86 generation succeeds with an IPv6 site.master');
+like(
+    read_config_if("$xCAT::TableUtils::tftpdir/xcat/ipxe/nets/2001:db8:177::_64"),
+    qr/\Qxcatd=[2001:db8:177::9]:3001\E/,
+    'an IPv6 site.master address is selected as the xcatd endpoint',
+);
+@xCAT::NetworkUtils::master6_addresses = ();
+
+# A POWER network puts the address in an HTTP URL as well, where an unbracketed literal
+# makes the last group of the address read as the port.
+use_reporter_address_maps();
+$xCAT::NetworkUtils::normnet_addresses = {};
+$xCAT::NetworkUtils::hexnet_addresses  = {};
+$xCAT::NetworkUtils::normnet6_addresses = {
+    '2001:db8:177::/64' => ['2001:db8:177::1'],
+};
+prepare_tftpdir($tmpdir, 'tftpboot-power-v6', 'ppc64');
+generation_succeeded(run_mknb('ppc64'), 'POWER configuration generation succeeds for an IPv6 network');
+my $power_v6 = read_config_if("$xCAT::TableUtils::tftpdir/pxelinux.cfg/p/2001:db8:177::_64");
+like($power_v6, qr{\Qkernel http://[2001:db8:177::1]/\E}, 'the POWER kernel URL brackets the IPv6 address');
+like($power_v6, qr{\Qinitrd http://[2001:db8:177::1]/\E}, 'the POWER initrd URL brackets the IPv6 address');
+like($power_v6, qr/\Qappend "xcatd=[2001:db8:177::1]:3001\E/, 'the POWER append line brackets the IPv6 xcatd endpoint');
+unlike($power_v6, qr{http://2001:db8:177::1/}, 'no POWER URL leaves the IPv6 address unbracketed');
+
+# s390x and grub2 build their command line in their own helper, so each is asked directly.
+my $s390x_v6_root = "$tmpdir/tftpboot-s390x-v6";
+make_path("$s390x_v6_root/pxelinux.cfg/s390x", "$s390x_v6_root/xcat");
+my ($s390x_v6_path, $s390x_v6_error) = xCAT_plugin::mknb::_write_s390x_discovery_config(
+    tftpdir        => $s390x_v6_root,
+    network        => '2001:db8:177::_64',
+    xcatd_address  => '2001:db8:177::1',
+    xcatdport      => 3001,
+    kernel         => 'xcat/genesis.kernel.s390x',
+    initrd         => "$s390x_v6_root/xcat/genesis.fs.s390x.gz",
+);
+is($s390x_v6_error, undef, 's390x writes a configuration for an IPv6 network');
+like(
+    read_config($s390x_v6_path),
+    qr/^  APPEND \Qxcatd=[2001:db8:177::1]:3001\E /m,
+    's390x brackets the IPv6 xcatd endpoint',
+);
+
+my $grub_v6_root = "$tmpdir/tftpboot-grub-v6";
+make_path("$grub_v6_root/boot/grub2", "$grub_v6_root/xcat");
+foreach my $artifact ('genesis.kernel.riscv64', 'genesis.fs.riscv64.gz') {
+    write_text("$grub_v6_root/xcat/$artifact", '');
+}
+my $grub_v6_path = xCAT_plugin::mknb::_write_grub2_discovery_config(
+    tftpdir       => $grub_v6_root,
+    hexnet        => 'c0a89',
+    xcatd_address => '2001:db8:177::1',
+    xcatdport     => 3001,
+);
+ok(defined($grub_v6_path), 'grub2 writes a discovery configuration for an IPv6 xcatd address');
+my $grub_v6 = read_config($grub_v6_path);
+like($grub_v6, qr/\Qxcatd=[2001:db8:177::1]:3001\E/, 'grub2 brackets the IPv6 xcatd endpoint');
+like($grub_v6, qr/^    set root=\Qhttp,[2001:db8:177::1]\E$/m, 'the grub2 HTTP root brackets the IPv6 address');
+like($grub_v6, qr/^    set root=\Qtftp,[2001:db8:177::1]\E$/m, 'the grub2 TFTP root brackets the IPv6 address');
 
 done_testing();
