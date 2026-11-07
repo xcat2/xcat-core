@@ -124,7 +124,7 @@ my $cache_dir    = "/var/cache/xcat";
 use xCAT::data::ibmleds;
 use xCAT::data::ipmigenericevents;
 use xCAT::data::ipmisensorevents;
-my $cache_version = 4;
+my $cache_version = 5;
 my %sdr_caches; #store sdr cachecs in memory indexed such that identical nodes do not hit the disk multiple times
 
 #my $status_noop="XXXno-opXXX";
@@ -8106,7 +8106,7 @@ sub got_sdr_rep_info {
     }
     my @returnd = @{ $rsp->{data} };
     $sessdata->{sdr_info}->{version}   = $returnd[0];
-    $sessdata->{sdr_info}->{rec_count} = $returnd[1] + $returnd[2] << 8;
+    $sessdata->{sdr_info}->{rec_count} = $returnd[1] + ($returnd[2] << 8);
     $sessdata->{sdr_info}->{resv_sdr}  = ($returnd[13] & 0b00000010) >> 1;
     initsdr_withrepinfo($sessdata);
 }

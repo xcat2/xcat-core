@@ -6,11 +6,15 @@ use warnings;
 no warnings qw(once redefine);
 
 use File::Spec;
+use File::Temp qw(tempdir);
 use FindBin;
+use Storable qw(nstore_fd);
 use Test::More;
 
 # Get SDR Repository Info can leave the reservation bit clear on a BMC that grants Reserve
-# SDR Repository. The SDR read must still ask for the reservation and use it.
+# SDR Repository. The SDR read must still ask for the reservation and use it. The record count
+# of the reply names the SDR cache, so a changed count must select another cache, and a cache
+# named with the record count of an earlier release must be read again.
 
 BEGIN {
     for my $module (qw(
@@ -73,6 +77,8 @@ BEGIN {
 
     package main;
     *CORE::GLOBAL::chmod = sub (@) { return 1; };
+    # storsdrcache creates the cache directory of the management node.
+    *CORE::GLOBAL::system = sub { return 0; };
 }
 
 package FakeSession;
@@ -101,10 +107,12 @@ sub new_sessdata {
 }
 
 # The Get SDR Repository Info reply of an OpenBMC that grants reservations, with the
-# operation support byte last.
+# record count (43 by default) and the operation support byte last.
 sub repository_info {
-    my ($operation_support) = @_;
-    return { code => 0, data => [ 0x51, 0x2b, 0x00, 0xff, 0xff, (0) x 8, $operation_support ] };
+    my ($operation_support, $records) = @_;
+    $records //= 0x2b;
+    return { code => 0,
+        data => [ 0x51, $records & 0xff, $records >> 8, 0xff, 0xff, (0) x 8, $operation_support ] };
 }
 
 sub requests { return $_[0]->{ipmisession}->{calls}; }
@@ -170,6 +178,49 @@ subtest 'a BMC that advertises the reservation is still asked for one' => sub {
     is_deeply(\@xCAT::SvrUtils::messages, [], 'no error is reported');
     my $request = requests($sessdata)->[0] || {};
     is($request->{command}, 0x22, 'the request is Reserve SDR Repository');
+};
+
+sub cache_file_for {
+    my ($records) = @_;
+    my $sessdata = new_sessdata();
+    local @xCAT::SvrUtils::messages = ();
+    xCAT_plugin::ipmi::got_sdr_rep_info(repository_info(0x02, $records), $sessdata);
+    return $sessdata->{sdrcache_file};
+}
+
+subtest 'a changed record count selects another SDR cache' => sub {
+    for my $change ([ 39, 294 ], [ 1, 256 ]) {
+        my ($before, $after) = @$change;
+        isnt(cache_file_for($after), cache_file_for($before),
+            "a BMC that goes from $before to $after records does not reuse its SDR cache");
+    }
+    is(cache_file_for(294), cache_file_for(294), 'the same record count keeps the SDR cache');
+};
+
+sub sdr_record {
+    return SDR->new(sensor_owner_id => 0x20, sensor_owner_lun => 0, sensor_number => 1);
+}
+
+subtest 'an SDR cache of an earlier release is read again' => sub {
+    my $dir = tempdir(CLEANUP => 1);
+
+    # Earlier releases wrote version 4 and named the cache of 257 records like that of 512.
+    my $legacy = "$dir/sdr_legacy";
+    open(my $fh, '>', $legacy) or die "$legacy: $!";
+    nstore_fd({ xcat_sdrcacheversion => 4 }, $fh);
+    nstore_fd(sdr_record(), $fh);
+    close($fh);
+    my $sessdata = new_sessdata();
+    is(xCAT_plugin::ipmi::loadsdrcache($sessdata, $legacy), 1, 'the cache is not loaded');
+    is_deeply($sessdata->{sdr_hash} || {}, {}, 'no SDR record comes from it');
+
+    my $current = "$dir/sdr_current";
+    my $writer  = new_sessdata();
+    $writer->{sdr_hash} = { '32.0.1' => sdr_record() };
+    is(xCAT_plugin::ipmi::storsdrcache($current, $writer), 0, 'a new cache is written');
+    my $reader = new_sessdata();
+    is(xCAT_plugin::ipmi::loadsdrcache($reader, $current), 0, 'the new cache is loaded');
+    is_deeply([ keys %{ $reader->{sdr_hash} || {} } ], ['32.0.1'], 'its SDR record is read back');
 };
 
 done_testing();
