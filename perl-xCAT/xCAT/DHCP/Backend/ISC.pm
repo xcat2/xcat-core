@@ -43,7 +43,10 @@ sub implemented {
 sub dhcp6_restart_needed {
     my ( $class, %args ) = @_;
 
-    return $args{changed} ? 1 : 0;
+    # xCAT writes the dhcpd6 configuration only for an IPv6 network. Without one the file
+    # stays absent, which the caller reads as a configuration to replace, and dhcpd6 has no
+    # subnet to serve.
+    return ( $args{changed} and $args{ipv6} ) ? 1 : 0;
 }
 
 1;
