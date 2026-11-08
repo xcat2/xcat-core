@@ -165,3 +165,55 @@ report()
     [ "$status" -eq 0 ]
     grep -qx 'netbooting' "$RECEIVED"
 }
+
+# ---------------------------------------------------------------------------
+# udpcat.awk -- the discovery packet.
+
+# recv_udp <family> <listen-address> -- take one datagram and record it. Prints the port.
+#
+# udpcat.awk sends from source port 301, so binding it needs root. CI runs as root.
+#
+# These two cases pass before and after any change: a /inet/ socket that CONNECTS resolves an
+# IPv6 literal, unlike the /inet/ LISTENER that allowcred.awk needed changed. They are here
+# because two of the three awk helpers did need the change, and nothing else holds the third
+# one to it.
+recv_udp()
+{
+    local family="$1" addr="$2" port i
+    port=$(( 20000 + RANDOM % 20000 ))
+    setsid socat -u "${family}-RECVFROM:${port},bind=${addr}" "CREATE:$RECEIVED" \
+        </dev/null >/dev/null 2>&1 &
+    SERVER_PID=$!
+    for i in $(seq 1 100); do
+        ss -Hlun "sport = :${port}" 2>/dev/null | grep -q . && break
+        sleep 0.1
+    done
+    printf '%s\n' "$port"
+}
+
+send_disco()
+{
+    printf 'findme\n' | timeout -k 2 10 gawk -f "$@" >/dev/null 2>&1
+}
+
+@test "the Genesis discovery packet reaches an IPv6 xcatd" {
+    [ "$(id -u)" -eq 0 ] || skip 'binding the source port of udpcat.awk requires root'
+    local script port
+    script="$(require_repo_file 'xCAT-genesis-scripts/usr/bin/udpcat.awk')"
+    RECEIVED="${BATS_TEST_TMPDIR}/received"
+    port="$(recv_udp UDP6 '[::1]')"
+    send_disco "$script" ::1 "$port"
+    for i in $(seq 1 50); do [ -s "$RECEIVED" ] && break; sleep 0.1; done
+    grep -q findme "$RECEIVED"
+}
+
+@test "the Genesis discovery packet still reaches an IPv4 xcatd" {
+    [ "$(id -u)" -eq 0 ] || skip 'binding the source port of udpcat.awk requires root'
+    local script port
+    script="$(require_repo_file 'xCAT-genesis-scripts/usr/bin/udpcat.awk')"
+    RECEIVED="${BATS_TEST_TMPDIR}/received"
+    port="$(recv_udp UDP4 127.0.0.1)"
+    send_disco "$script" 127.0.0.1 "$port"
+    for i in $(seq 1 50); do [ -s "$RECEIVED" ] && break; sleep 0.1; done
+    grep -q findme "$RECEIVED"
+}
