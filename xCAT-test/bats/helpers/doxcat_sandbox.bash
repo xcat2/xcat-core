@@ -9,7 +9,7 @@ setup_doxcat()
     local utility fips library
     fips=$(repo_path xCAT-genesis-scripts/usr/lib/xcat/fips.sh)
     [ -r "$fips" ]
-    mkdir -p "$fixture"/{etc/ssh,etc/pki/tls,real,links,addrs}
+    mkdir -p "$fixture"/{etc/ssh,etc/pki/tls,real,links,addrs,addrs6}
     # chmod is in this list because doxcat runs it: the sandbox has no /usr/bin on PATH, so a
     # command that is missing here is a command that silently does nothing under test. doxcat's
     # chmod of the sshd privilege separation directory was not exercised until it was added.
@@ -56,6 +56,9 @@ case "$*" in
     '-o addr show dev '*)
         [ ! -e "/run/fixture/addrs/$5.fail" ] || exit 19
         cat "/run/fixture/addrs/$5" ;;
+    '-6 -o addr show dev '*)
+        [ ! -e "/run/fixture/addrs6/$6.fail" ] || exit 19
+        cat "/run/fixture/addrs6/$6" ;;
     '-4 -o a show dev '*) printf '2: %s inet 192.0.2.20/24 scope global\n' "$6" ;;
     *) printf 'unexpected ip %s\n' "$*" >&2; exit 97 ;;
 esac
@@ -122,6 +125,7 @@ add_doxcat_link()
         cat "$fixture/links/$nic" >>"$fixture/link-list"
     fi
     : >"$fixture/addrs/$nic"
+    : >"$fixture/addrs6/$nic"
 }
 
 assert_doxcat_dhcp()
