@@ -229,6 +229,28 @@ secondary_nic_needs_dhcp() {
     return 0
 }
 
+# A DHCPv6 reservation is keyed on the DUID, and a DUID names the machine, not the nic. Every
+# nic of a node asks for the same reserved address, and Kea gives it to the first REQUEST. xcatd
+# identifies a node by the address its report comes from, so the boot nic must hold the
+# reservation before a secondary nic asks for one.
+genesis_nic_has_global_v6() {
+    local nic="$1"
+    ip -6 -o addr show dev "$nic" 2>/dev/null | grep -v 'scope link' | grep -q inet6
+}
+
+# Wait for one nic to hold a routable IPv6 address. Returns non-zero after the last try, which
+# on an IPv4-only network is every time.
+genesis_wait_nic_v6() {
+    local nic="$1"
+    local tries="${2:-600}"
+    while [ "$tries" -gt 0 ]; do
+        genesis_nic_has_global_v6 "$nic" && return 0
+        tries=$((tries - 1))
+        sleep 0.1
+    done
+    return 1
+}
+
 # RHEL 10 packages no ISC dhcp-client, so the image carries whichever client its release
 # ships. Print the command line for one interface and one address family, or nothing when
 # the image carries no client at all.
@@ -374,9 +396,10 @@ else
             fi
         else
 	    genesis_start_dhcp 4 "$bootnic" &
-	    #we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
+	    #we'll kick of IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
 	    #chances that we'll perform a partial discovery
 	    #in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
+	    #IPv6 on a secondary nic waits for the boot nic, see genesis_wait_nic_v6
 	    genesis_start_dhcp 6 "$bootnic" &
 	    NICCANDIDATES=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|awk -F: '{print $2}'`
 	    TSMNIC=$(cat /tmp/tsmhostnic 2>/dev/null)
@@ -389,7 +412,7 @@ else
 	    export NICSTOBRINGUP
 	    for nic in $NICSTOBRINGUP; do
 		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; genesis_start_dhcp 4 "$nic" ) &
-		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; genesis_start_dhcp 6 "$nic" ) &
+		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null && [ ! -f /tmp/netinitted ]; do sleep 5; done; genesis_wait_nic_v6 "$bootnic" && genesis_start_dhcp 6 "$nic" ) &
 	    done
 
             gripeiter=101
