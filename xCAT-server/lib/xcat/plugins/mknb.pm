@@ -843,6 +843,8 @@ sub process_request {
         # node reads the wrong address and reports nothing. Bracket it.
         my $xcatd_endpoint = xCAT::NetworkUtils::xcatd_cmdline_address($xcatd_address, $xcatdport);
         my $xcatd_uri_host = xCAT::NetworkUtils->format_uri_host($xcatd_address);
+        my $http_base =
+          xCAT::NetworkUtils::ipxe_script_http_base( $nicip, $xcatd_uri_host, $portsuffix );
         $net =~ s/\//_/;
         if (defined($nobootnicips{$nicip})
             || ($arch eq 's390x' && defined($nobootnicips{$xcatd_address}))) {
@@ -885,11 +887,11 @@ sub process_request {
                 open($cfg, ">", "$nets/$net");
                 print $cfg "#!gpxe\n";
                 if ($invisibletouch) {
-                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=$xcatd_endpoint $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . "\n";
-                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
+                    print $cfg 'imgfetch -n kernel ' . $http_base . '/tftpboot/xcat/genesis.kernel.' . "$arch xcatd=$xcatd_endpoint $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . "\n";
+                    print $cfg 'imgfetch -n nbfs ' . $http_base . "$initrd_file\n";
                 } else {
-                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/nbk.' . "$arch xcatd=$xcatd_endpoint $consolecmdline\n";
-                    print $cfg 'imgfetch -n nbfs http://${next-server}'.$portsuffix . "$initrd_file\n";
+                    print $cfg 'imgfetch -n kernel ' . $http_base . '/tftpboot/xcat/nbk.' . "$arch xcatd=$xcatd_endpoint $consolecmdline\n";
+                    print $cfg 'imgfetch -n nbfs ' . $http_base . "$initrd_file\n";
                 }
                 print $cfg "imgload kernel\n";
                 print $cfg "imgexec kernel\n";
@@ -905,15 +907,15 @@ sub process_request {
                     close($cfg);
                     open($cfg, ">", "$nets/$net.uefi");
                     print $cfg "#!gpxe\n";
-                    print $cfg 'imgfetch -n kernel http://${next-server}'.$portsuffix.'/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
+                    print $cfg 'imgfetch -n kernel ' . $http_base . '/tftpboot/xcat/genesis.kernel.' . "$arch\nimgload kernel\n";
                     # The shim command reads the selected image, so it comes after imgload.
                     # The loader of xnba does not know the shim command, and no key signs xnba.efi.
                     my $shim = ($method eq 'ipxe')
                       ? xCAT::SecureBoot->shim_url_path(arch => $arch, tftpdir => $tftpdir)
                       : undef;
-                    print $cfg 'shim http://${next-server}' . $portsuffix . $shim . "\n" if ($shim);
+                    print $cfg 'shim ' . $http_base . $shim . "\n" if ($shim);
                     print $cfg "imgargs kernel xcatd=$xcatd_endpoint $consolecmdline BOOTIF=01-" . '${netX/mac:hexhyp}' . " destiny=discover initrd=initrd\n";
-                    print $cfg 'imgfetch -n initrd http://${next-server}'.$portsuffix . "$initrd_file\nimgexec kernel\n";
+                    print $cfg 'imgfetch -n initrd ' . $http_base . "$initrd_file\nimgexec kernel\n";
                     close($cfg);
                 }
             }
