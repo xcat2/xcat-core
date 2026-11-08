@@ -282,6 +282,20 @@ sub findme {
             $sitetab->close();
         }
 
+        # dhcp6_client_duids builds the DHCPv6 identity of a node from vpd.uuid, and there is
+        # no other table holding it. Without this the reservation falls back to a DUID-LL built
+        # from the MAC, which no boot stage of the node sends, and the node takes a pool address
+        # that xcatd cannot map back to it.
+        my $vpdattribs = xCAT::DiscoveryUtils->vpd_attribs_from_findme($request);
+        if ( keys %{$vpdattribs} ) {
+            my $vpdtab = xCAT::Table->new( 'vpd', -create => 1 );
+            if ($vpdtab) {
+                $vpdtab->setNodeAttribs( $node, $vpdattribs );
+            } else {
+                xCAT::MsgUtils->message( "S", "Discovery Error: Could not open table: vpd." );
+            }
+        }
+
         #set the groups for the node
         my $nltab = xCAT::Table->new('nodelist');
         unless ($nltab) {

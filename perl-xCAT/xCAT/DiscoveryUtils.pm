@@ -214,4 +214,39 @@ sub _first_value {
     return $name;
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  vpd_attribs_from_findme
+
+      The vpd attributes a findme request carries for the node it discovers.
+
+    Arguments:
+      the findme request
+    Returns:
+      a hash reference of vpd attributes, empty when the request carries none
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub vpd_attribs_from_findme
+{
+    my $request = shift;
+    if ( defined($request) && !ref($request) && $request eq __PACKAGE__ )
+    {
+        $request = shift;
+    }
+    return {} unless ref($request) eq 'HASH';
+
+    my $uuid = $request->{uuid};
+    $uuid = $uuid->[0] if ref($uuid) eq 'ARRAY';
+    return {} unless defined($uuid);
+
+    # The OpenEmbedded image synthesises "<machine type>-<serial>-<first mac>" when the firmware
+    # reports no product_uuid. dhcp6_client_duids builds a DUID-UUID from this value, and a DUID
+    # built from that string matches no client, so only the SMBIOS form is recorded.
+    return {} unless $uuid =~ /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+    return { uuid => lc($uuid) };
+}
+
 1;
