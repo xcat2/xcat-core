@@ -197,6 +197,21 @@ local $xCAT_plugin::dhcp::callback = sub {
 use warnings 'redefine';
 
 my $backend = xCAT::DHCP::Backend::Kea->new();
+# The two per-node client classes of a chainloading node, keyed by the URL each one serves.
+# A chainloading node is answered by these and not by its reservation: Kea gives a reservation's
+# option data precedence over a class's, so one URL in the reservation would answer both boot
+# stages with it.
+sub boot_classes6 {
+    my (@nodes) = @_;
+    my %by_url;
+    foreach my $class ( @{ xCAT_plugin::dhcp::kea_node_boot_classes6_for_nodes( \@nodes ) } ) {
+        foreach my $option ( @{ $class->{'option-data'} || [] } ) {
+            $by_url{ $option->{data} } = $class if ( $option->{name} || '' ) eq 'bootfile-url';
+        }
+    }
+    return \%by_url;
+}
+
 sub empty_config {
     return JSON::decode_json( $backend->render_dhcp6_config(
             { interfaces => ['eth0'], subnets => [ { id => 1, subnet => '2001:db8:176::/64', interface => 'eth0' } ] } ) );
@@ -356,13 +371,16 @@ sub isc_hosts {
       grep { defined $_->{hostname} } @{ kea_reservations( $config, 'cn02', 'cn01' ) };
 
     my ($with) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn02}{'option-data'} || [] };
-    is( $with && $with->{data}, "tftp://[2001:db8:176::1]/$loader",
-        'an ipxe node gets the UEFI loader from the bracketed IPv6 server' );
+    is( $with, undef, 'the reservation of an ipxe node names no boot file' );
+    my $cn02_classes = boot_classes6('cn02');
+    ok( $cn02_classes->{"tftp://[2001:db8:176::1]/$loader"},
+        'an ipxe node gets the UEFI loader from the bracketed IPv6 server, through its class' );
 
     # Naming a file the TFTP server does not have costs the client a timeout it cannot
-    # diagnose, so no option is better than a wrong one.
-    my ($without) = grep { $_->{name} eq 'bootfile-url' } @{ $kea{cn01}{'option-data'} || [] };
-    is( $without, undef, 'an ipxe node whose loader is not on disk gets no bootfile-url' );
+    # diagnose, so no option is better than a wrong one. The node gets no class at all rather
+    # than a class naming a file that is not there.
+    is_deeply( xCAT_plugin::dhcp::kea_node_boot_classes6_for_nodes( ['cn01'] ), [],
+        'an ipxe node whose loader is not on disk gets no boot class' );
 
     # BUT IT MUST NOT BE SILENT. makedhcp exits 0 either way, so a node with no boot file and no
     # warning reaches a firmware timeout and no log on the management node says why. The warning
@@ -952,11 +970,25 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
         'an ipxe node is reserved for both of the DUIDs its two clients send' );
     my ($first)  = grep { $_->{duid} eq $firmware } @cn01;
     my ($second) = grep { $_->{duid} eq $canonical and !defined $_->{hostname} } @cn01;
-    is( $url{$firmware}, $shim_url,
-        'the firmware-order DUID is given the UEFI shim' );
+    is( $url{$firmware}, undef,
+        'neither reservation of a chainloading node names a boot file' );
     my ($second_option) = grep { $_->{name} eq 'bootfile-url' } @{ $second->{'option-data'} || [] };
-    is( $second_option && $second_option->{data}, $script_url,
-        'the RFC 4122-order DUID, which is the one iPXE sends, is given the boot script' );
+    is( $second_option, undef, '... including the one that holds no address' );
+
+    # Which order the firmware sends depends on how the platform stores its SMBIOS uuid, so both
+    # classes match both orders and option 15 alone decides the stage. Measured on xcat88-mn:
+    # the firmware sent 00:04:0c:3f:8d:41:... and iPXE sent 00:04:41:8d:3f:0c:..., the opposite
+    # of what a physical EDK2 machine sends.
+    my $cn01_classes = boot_classes6('cn01');
+    ( my $firmware_hex  = $firmware )  =~ s/://g;
+    ( my $canonical_hex = $canonical ) =~ s/://g;
+    foreach my $pair ( [ $shim_url, 'the UEFI shim' ], [ $script_url, 'the boot script' ] ) {
+        my $test = ( $cn01_classes->{ $pair->[0] } || {} )->{test} || '';
+        ok( ( $test =~ /\Q$firmware_hex\E/i && $test =~ /\Q$canonical_hex\E/i ),
+            "the class serving $pair->[1] matches both UUID orders of the node" );
+    }
+    ok( $cn01_classes->{$script_url}{test} =~ /option\[15\]/,
+        'and the boot script is given only to a client that reports itself as iPXE' );
 
     # Kea refuses a second reservation for one address, and _reservation_matches treats a shared
     # hostname as the same reservation, so the second entry carries neither.
@@ -973,8 +1005,11 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     my ($cn03_addressed) = grep { defined $_->{hostname} && $_->{hostname} eq 'cn03' } @all;
     is( $cn03_addressed->{duid}, $cn03_canonical,
         'mac.duid still decides which client keeps the reserved address' );
-    is( $url{$cn03_firmware}, $shim_url,
+    ok( exists $url{$cn03_firmware},
         '... and the other client is reserved for as well' );
+    is( $url{$cn03_firmware}, undef, '... carrying no boot file of its own' );
+    ok( boot_classes6('cn03')->{$shim_url},
+        '... because the loader comes from the class of the node' );
 
     # A grub2 node is loaded by the firmware and asks for nothing more, so a second reservation
     # would be an entry no client matches.
@@ -1055,10 +1090,15 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
         my ($found) = grep { $_->{name} eq 'bootfile-url' } @{ $_->{'option-data'} || [] };
         $found;
     } @cn01;
-    is( scalar( grep { $_ && $_->{'always-send'} } @option ), 3,
-        'each of the three clients is sent a boot file URL whether it asks for one or not' );
-    is( $option[0] && $option[0]->{data}, $shim_url, 'the firmware is given the UEFI shim' );
-    is( $option[1] && $option[1]->{data}, $script_url, 'iPXE is given the boot script instead' );
+    # Only the Genesis client is answered from its reservation. The two UUID-order clients are
+    # the chainload stages, and a reservation cannot tell them apart.
+    is( scalar( grep { $_ && $_->{'always-send'} } @option ), 1,
+        'one of the three clients is sent a boot file URL from its reservation' );
+    is( $option[0], undef, 'the firmware is not given one there' );
+    is( $option[1], undef, '... nor is iPXE' );
+    my $classes = boot_classes6('cn01');
+    ok( $classes->{$shim_url},   'the firmware is given the UEFI shim by its class' );
+    ok( $classes->{$script_url}, 'and iPXE the boot script by its own' );
     is( $option[2] && $option[2]->{data}, $shim_url,
         'and the Genesis client the same file as the firmware' );
 
