@@ -4402,6 +4402,36 @@ sub neighbour_table_text
 =cut
 
 #-------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
+
+=head3  ipxe_script_http_base
+
+      The http base a per-network iPXE boot script uses to reach the management node.
+
+    Arguments:
+      the address of the management node facing the network, its URI host form, the port suffix
+    Returns:
+      the base of every URL in the script, with no trailing slash
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub ipxe_script_http_base
+{
+    my ( $nicip, $uri_host, $portsuffix ) = @_;
+    if ( defined($nicip) && $nicip eq __PACKAGE__ )
+    {
+        ( $nicip, $uri_host, $portsuffix ) = ( $uri_host, $portsuffix, shift );
+    }
+    $portsuffix = '' unless defined($portsuffix);
+
+    # DHCPv6 has no next-server option. iPXE leaves ${next-server} empty on an IPv6 network, so
+    # every URL in the script loses its host and fetches nothing.
+    return 'http://' . '${next-server}' . $portsuffix
+      unless defined($nicip) && xCAT::NetworkUtils->isIpv6addr($nicip);
+    return 'http://' . ( defined($uri_host) ? $uri_host : '' ) . $portsuffix;
+}
+
 sub mac_of_neighbour
 {
     my $address = shift;
