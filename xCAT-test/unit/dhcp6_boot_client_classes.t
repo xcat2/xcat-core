@@ -18,7 +18,7 @@
 # So classes could not reach the config even once something built them.
 use strict;
 use warnings;
-use Test::More tests => 11;
+use Test::More tests => 15;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use JSON;
@@ -89,3 +89,27 @@ is( $rv && $rv->{'option-data'}[0]{data}, "tftp://$host/boot/grub2/grub2.riscv64
 my $no_loader = classes6( uri_host => $host, ipxe_uefi => 0, tftpdir => '/tftpboot' );
 is( scalar( grep { $_->{test} =~ /0x0007/ } @$no_loader ), 0,
     'with no iPXE shim on disk the x86_64 class is left out rather than pointing at nothing' );
+
+# --- the SECOND stage, which is what a findme needs ---------------------------------------------
+# The class above answers the firmware and hands it the shim. The shim starts iPXE, which solicits
+# again carrying the iPXE user class. A client xCAT has never seen matches no per-node class, so
+# its only match is the architecture class above and it is handed the shim a second time. It never
+# fetches a kernel and never sends a findme. mknb writes a per-network script that carries
+# destiny=discover and no node name; nothing named it over DHCPv6.
+my $withnet = classes6( uri_host => $host, ipxe_uefi => 1, tftpdir => '/tftpboot',
+                        net => '2001:db8:188::', prefix => 64 );
+my ($second) = grep { $_->{test} =~ /iPXE/ } @$withnet;
+ok( $second, 'an iPXE second-stage class is built for the network' );
+is( $second && $second->{'option-data'}[0]{data},
+    "http://$host/tftpboot/xcat/ipxe/nets/2001:db8:188::_64.uefi",
+    'and it names the per-network script mknb wrote, the one carrying destiny=discover' );
+like( $second ? $second->{test} : '', qr/option\[61\]/,
+      'it is scoped to an x86_64 UEFI client, not to every iPXE client' );
+
+# Ordering is half the fix. Kea takes the first class that defines an option, so the second stage
+# must be offered before the architecture class that names the shim.
+my ($ipxe_at) = grep { $withnet->[$_]{test} =~ /iPXE/ } 0 .. $#$withnet;
+my ($arch_at) =
+  grep { $withnet->[$_]{test} =~ /0x0007/ && $withnet->[$_]{test} !~ /iPXE/ } 0 .. $#$withnet;
+ok( defined($ipxe_at) && defined($arch_at) && $ipxe_at < $arch_at,
+    'the second stage is matched before the first, or iPXE is handed the shim again' );
