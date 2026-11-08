@@ -975,10 +975,9 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     my ($second_option) = grep { $_->{name} eq 'bootfile-url' } @{ $second->{'option-data'} || [] };
     is( $second_option, undef, '... including the one that holds no address' );
 
-    # Which order the firmware sends depends on how the platform stores its SMBIOS uuid, so both
-    # classes match both orders and option 15 alone decides the stage. Measured on xcat88-mn:
-    # the firmware sent 00:04:0c:3f:8d:41:... and iPXE sent 00:04:41:8d:3f:0c:..., the opposite
-    # of what a physical EDK2 machine sends.
+    # Which order the firmware sends does not follow from vpd.uuid: it reports the SMBIOS bytes
+    # of the domain uuid, and getNodeUUID writes that as the byte-swap of vpd.uuid for a KVM
+    # guest. So both classes match both orders and option 15 alone decides the stage.
     my $cn01_classes = boot_classes6('cn01');
     ( my $firmware_hex  = $firmware )  =~ s/://g;
     ( my $canonical_hex = $canonical ) =~ s/://g;

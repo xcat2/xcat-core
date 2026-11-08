@@ -4120,9 +4120,10 @@ sub kea_node_boot_classes6_for_nodes
         next unless dhcp6_chainloads($nrent);
         my $ntent = $ntents && $ntents->{$node} ? $ntents->{$node}->[0] : undef;
 
-        # Both UUID orders, because either one can be the firmware: the order depends on how the
-        # platform stores its SMBIOS uuid. The DUID-LL of the Genesis image is left out -- it is
-        # the booted operating system and asks for no boot file.
+        # Both UUID orders, because either one can be the firmware: that depends on whether the
+        # domain was given vpd.uuid or its byte-swap, which xCAT's own getNodeUUID decides for a
+        # KVM guest. The DUID-LL of the Genesis image is left out -- it is the booted operating
+        # system and asks for no boot file.
         my @duids =
           map  { $_->{duid} }
           grep { $_->{duid} && ( $_->{client} || '' ) =~ /\A(?:firmware|ipxe)\z/ }

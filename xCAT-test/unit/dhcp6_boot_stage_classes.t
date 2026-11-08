@@ -2,19 +2,24 @@
 # A UEFI node that chainloads is two DHCPv6 clients, and the byte order of the DUID cannot tell
 # them apart.
 #
-# dhcp6_client_duid_list assumes EDK2 sends vpd.uuid with its first three fields in SMBIOS
-# little-endian order and iPXE sends the same uuid in RFC 4122 network order, so it labels one
-# DUID 'firmware' and the other 'ipxe' and gives each the boot file of that stage. Measured on
-# xcat88-mn with Kea DHCPv6 at DEBUG, one boot of xcat88-cn sends the opposite pair:
+# dhcp6_client_duid_list derives both DUIDs from vpd.uuid and labels the byte-swapped one
+# 'firmware' and the unswapped one 'ipxe', then gives each the boot file of that stage. Which
+# label is right does not follow from vpd.uuid. Measured on xcat88-mn with Kea DHCPv6 at DEBUG,
+# one boot of xcat88-cn:
 #
-#   SOLICIT  client-id 00:04:0c:3f:8d:41:...   <- the firmware, RFC 4122 order, no option 15
-#   SOLICIT  client-id 00:04:41:8d:3f:0c:...   <- iPXE, SMBIOS order, option 15 = "iPXE"
+#   SOLICIT  client-id 00:04:0c:3f:8d:41:...   <- the firmware, no option 15
+#   SOLICIT  client-id 00:04:41:8d:3f:0c:...   <- iPXE, option 15 = 00:04:69:50:58:45
 #
-# The order depends on how the platform stores its SMBIOS uuid, so on QEMU the two come out
-# swapped against physical EDK2 hardware. The firmware therefore matched the reservation labelled
-# 'ipxe' and was given an http:// URL, which a UEFI PXEv6 boot option cannot fetch:
-# "PXE-E53: No boot filename received". iPXE matched the one labelled 'firmware', was given the
-# shim a second time and stopped at "Failed to open ipxe.efi".
+# vpd.uuid is 0c3f8d41-6a52-4e7b-9f10-2d8c54ab7731 and the libvirt domain carries its byte-swap,
+# because getNodeUUID in kvm.pm swaps vpd.uuid when it writes the domain. The firmware reports the
+# SMBIOS bytes of the domain uuid, which is vpd.uuid unswapped, and iPXE converts those to RFC
+# 4122, which is the swap. A domain created from vpd.uuid directly gives the opposite pair, so
+# both orders are real.
+#
+# The firmware therefore matched the reservation labelled 'ipxe' and was given an http:// URL,
+# which a UEFI PXEv6 boot option cannot fetch: "PXE-E53: No boot filename received". iPXE matched
+# the one labelled 'firmware', was given the shim a second time and stopped at
+# "Failed to open ipxe.efi".
 #
 # The DHCPv4 path never had this problem because it splits the stages on what the client reports,
 # the iPXE feature sub-options of option 175. Over DHCPv6 the equivalent report is option 15, the
