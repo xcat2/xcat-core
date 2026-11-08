@@ -136,6 +136,8 @@ is( $mac{cn13}, '02:00:00:00:01:2d', 'the MAC that the explicit-ll case is built
 is( $mac{cn14}, '02:00:00:00:01:2e', 'the MAC that the no-uuid case is built from' );
 is( $mac{cn15}, '02:00:00:00:01:2f', 'the MAC that the nil-uuid case is built from' );
 
+our %mgt_of;
+
 sub node_rows {
     my (%duid) = @_;
     return (
@@ -144,6 +146,9 @@ sub node_rows {
         vpd     => { map { $_ => ( defined $case{$_}[2] ? { uuid => $case{$_}[2] } : {} ) } @nodes },
         # The architecture decides which identifier the firmware of the node sends.
         nodetype => { map { $_ => { arch => ( $case{$_}[5] || 'x86_64' ) } } @nodes },
+        # mgt says whether xCAT defines the domain of the node, which decides the byte order its
+        # firmware reads back out of SMBIOS.
+        nodehm => { map { $_ => { mgt => ( $mgt_of{$_} || '' ) } } @nodes },
     );
 }
 my %settings = map { $_->[0] => $_->[1] } @cases;
@@ -1323,6 +1328,37 @@ is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', { '*' => 1 } ), 1,
     xCAT_plugin::dhcp::configure_router_advertisements( $cb, { eth0 => 1 } );
     is_deeply( \@stopped, [], 'a radvd configuration that xCAT did not write is left alone' );
     ok( -s $file, '... and stays on disk' );
+}
+
+# A KVM guest that xCAT defines reads its own UUID back in the other order. getNodeUUID writes
+# the byte swap of vpd.uuid into the libvirt domain and qemu stores that little-endian in SMBIOS,
+# so the two swaps cancel and the firmware sends vpd.uuid unswapped. Measured on xcat88-cn: the
+# firmware and the Genesis image both sent the canonical order while iPXE sent the swap. The
+# reserved address has to be on the order the firmware sends, because a host reservation is what
+# applies to every IA of a client and the image solicits with a different IAID than the firmware.
+{
+    # The address holder of cn01 with each mgt value. node_rows reads %mgt_of, so %mgt_of is set
+    # before the rows are built.
+    my %holder_for;
+    foreach my $mgt ( 'kvm', '' ) {
+        local %mgt_of          = ( cn01 => $mgt );
+        local %DUIDTable::rows = node_rows();
+        $DUIDTable::rows{noderes}{cn01} =
+          { netboot => 'ipxe', tftpserver => '2001:db8:176::1' };
+
+        my $config = empty_config();
+        my ($holder) = grep { $_->{'ip-addresses'} }
+          @{ kea_reservations( $config, 'cn01' ) };
+        $holder_for{$mgt} = $holder;
+    }
+
+    ok( $holder_for{kvm}, 'a kvm node still reserves its address' );
+    is( ( $holder_for{kvm} || {} )->{duid}, $canonical,
+        'the address of a kvm node is reserved for the canonical order, which its firmware sends' );
+    is_deeply( ( $holder_for{kvm} || {} )->{'ip-addresses'}, [ $address{cn01} ],
+        '... and it is the address of the node' );
+    is( ( $holder_for{''} || {} )->{duid}, $firmware,
+        'a node xCAT does not define keeps the address on the byte-swapped order' );
 }
 
 done_testing();
