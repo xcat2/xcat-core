@@ -3038,6 +3038,7 @@ sub kea_process_request
             push @deleted6, @{ $backend->delete_reservations($loaded6, $match) } if $loaded6;
         }
         $client_classes_changed = kea_remove_node_client_classes($loaded4, $nodes);
+        kea_remove_node_boot_classes6($loaded6, $nodes) if $loaded6;
     } else {
         # An upgrade keeps the option definitions of an older makedhcp -n.
         ( $option_defs_added, my $defs_error ) = xCAT::DHCP::BootPolicy->kea_declare_ipxe_features($loaded4->{Dhcp4});
@@ -3052,6 +3053,7 @@ sub kea_process_request
         if ($loaded6) {
             $reservations6 = kea_build_node_reservations6($backend, $loaded6, $nodes);
             $backend->upsert_reservations($loaded6, $reservations6, \@replaced6);
+            kea_sync_node_boot_classes6($loaded6, $nodes);
         }
     }
 
@@ -4087,6 +4089,124 @@ sub kea_build_node_reservations6
     return \@reservations;
 }
 
+#: The purposes of a per-node DHCPv6 client class, so a resync finds the classes of this node
+#: set and leaves every other class alone.
+my %KEA_NODE_CLASS_PURPOSES6 = ( boot6 => 1 );
+
+#---
+# =head3 kea_node_boot_classes6_for_nodes
+# Descriptions: The per-node DHCPv6 client classes of every chainloading node in the range, two
+#               for each: one for the firmware and one for the iPXE it loads. A node loaded
+#               directly by its firmware has one client and keeps the boot file in its
+#               reservation, so it gets no class here.
+# Arguments: $nodes -- the node range
+# Returns: an arrayref of class definitions
+#---
+sub kea_node_boot_classes6_for_nodes
+{
+    my ($nodes) = @_;
+
+    my $nrtab = xCAT::Table->new('noderes');
+    return [] unless $nrtab;
+    my $nttab  = xCAT::Table->new( 'nodetype', -create => 0 );
+    my $nrents = $nrtab->getNodesAttribs( $nodes,
+        [ 'tftpserver', 'netboot', 'xcatmaster', 'servicenode', 'tftpdir' ] );
+    my $ntents = $nttab ? $nttab->getNodesAttribs( $nodes, ['arch'] ) : undef;
+    my $duids  = dhcp6_client_duids($nodes);
+
+    my @classes;
+    foreach my $node (@$nodes) {
+        my $nrent = $nrents && $nrents->{$node} ? $nrents->{$node}->[0] : undef;
+        next unless dhcp6_chainloads($nrent);
+        my $ntent = $ntents && $ntents->{$node} ? $ntents->{$node}->[0] : undef;
+
+        # Both UUID orders, because either one can be the firmware: the order depends on how the
+        # platform stores its SMBIOS uuid. The DUID-LL of the Genesis image is left out -- it is
+        # the booted operating system and asks for no boot file.
+        my @duids =
+          map  { $_->{duid} }
+          grep { $_->{duid} && ( $_->{client} || '' ) =~ /\A(?:firmware|ipxe)\z/ }
+          @{ ( $duids->{$node} || {} )->{duids} || [] };
+        next unless @duids;
+
+        my $loader = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, 'firmware' );
+        my $script = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, 'ipxe' );
+        next unless defined($loader) && defined($script);
+
+        foreach my $class (
+            @{  xCAT::DHCP::BootPolicy->kea_node_boot_classes6(
+                    node       => $node,
+                    duids      => \@duids,
+                    loader_url => $loader,
+                    script_url => $script,
+                )
+            }
+          )
+        {
+            $class->{'user-context'} = { 'xcat-node' => $node, 'xcat-purpose' => 'boot6' };
+            push @classes, $class;
+        }
+    }
+
+    return \@classes;
+}
+
+#---
+# =head3 kea_remove_node_boot_classes6
+# Descriptions: Take the per-node DHCPv6 boot classes of one node set out of the configuration,
+#               so a resync or a makedhcp -d leaves nothing behind for a node that changed its
+#               netboot method or went away.
+# Arguments: $config -- the parsed Kea DHCPv6 configuration, $nodes -- the node range
+# Returns: 1 when it removed a class
+#---
+sub kea_remove_node_boot_classes6
+{
+    my ( $config, $nodes ) = @_;
+
+    return 0 unless $config && $config->{Dhcp6};
+    my %wanted = map { $_ => 1 } @$nodes;
+    my @kept;
+    my $changed = 0;
+    foreach my $class ( @{ $config->{Dhcp6}{'client-classes'} || [] } ) {
+        my $context = $class->{'user-context'} || {};
+        if (   $KEA_NODE_CLASS_PURPOSES6{ $context->{'xcat-purpose'} || '' }
+            && $wanted{ $context->{'xcat-node'} || '' } )
+        {
+            $changed = 1;
+            next;
+        }
+        push @kept, $class;
+    }
+    $config->{Dhcp6}{'client-classes'} = \@kept if $changed;
+
+    return $changed;
+}
+
+#---
+# =head3 kea_sync_node_boot_classes6
+# Descriptions: Replace the per-node DHCPv6 boot classes of one node set. The new ones go first:
+#               Kea takes an option from the first class that defines it, and the per-network
+#               architecture classes define the same bootfile-url for every client of that
+#               architecture.
+# Arguments: $config -- the parsed Kea DHCPv6 configuration, $nodes -- the node range
+# Returns: 1 when the configuration changed
+#---
+sub kea_sync_node_boot_classes6
+{
+    my ( $config, $nodes ) = @_;
+
+    my $changed = kea_remove_node_boot_classes6( $config, $nodes );
+    my $classes = kea_node_boot_classes6_for_nodes($nodes);
+    if (@$classes) {
+        $config->{Dhcp6} ||= {};
+        $config->{Dhcp6}{'client-classes'} =
+          [ @$classes, @{ $config->{Dhcp6}{'client-classes'} || [] } ];
+        $changed = 1;
+    }
+
+    return $changed;
+}
+
 sub kea_prepare_reservation_ownership
 {
     my ($nodes) = @_;
@@ -4696,8 +4816,17 @@ sub kea_node_reservations6
             } else {
                 $reservation{'hw-address'} = $client->{'hw-address'};
             }
+            # A chainloading node is answered by its two per-node client classes, not here.
+            # Kea gives a reservation's option data precedence over a class's, so a boot file
+            # written here would answer both boot stages with one URL -- and the DUID byte order
+            # that the stage label is derived from is not the same on every platform.
+            my $answered_by_class =
+              dhcp6_chainloads($nrent)
+              && ( $client->{client} || '' ) =~ /\A(?:firmware|ipxe)\z/;
             my $bootfile_url =
-              dhcp6_bootfile_url_for_node( $node, $hname, $nrent, $ntent, $client->{client} );
+              $answered_by_class
+              ? undef
+              : dhcp6_bootfile_url_for_node( $node, $hname, $nrent, $ntent, $client->{client} );
             if ($bootfile_url) {
                 $reservation{'option-data'} = [
                     {
@@ -4708,8 +4837,10 @@ sub kea_node_reservations6
                 ];
             }
 
-            # A client that needs no boot file and holds no address reserves nothing.
-            next unless $first or $bootfile_url;
+            # A client that needs no boot file and holds no address reserves nothing. A client
+            # a class answers still gets an entry: its DUID is what an update or a delete of the
+            # node finds the client by after the netboot method changed.
+            next unless $first or $bootfile_url or $answered_by_class;
             $first = 0;
             push @reservations, \%reservation;
         }

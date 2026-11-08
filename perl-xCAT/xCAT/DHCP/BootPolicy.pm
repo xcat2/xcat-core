@@ -149,6 +149,67 @@ sub kea_bootfile_url6_option {
     return { name => 'bootfile-url', data => $url, 'always-send' => JSON::true() };
 }
 
+#---
+# =head3 dhcp6_ipxe_user_class_test
+# Descriptions: The Kea DHCPv6 expression that is true for iPXE and false for the firmware that
+#               loaded it. iPXE sends option 15, the User Class, holding the length-prefixed
+#               string iPXE: 00:04:69:50:58:45. EDK2 sends no option 15 at all. The two length
+#               octets are skipped, so the comparison reads the string itself.
+#
+#               The byte order of the DUID cannot do this job. Both clients build a DUID-UUID
+#               from one vpd.uuid, and which of them sends SMBIOS order and which sends RFC 4122
+#               order depends on the order the platform stores the uuid in: measured on QEMU, the
+#               firmware sends RFC 4122 order and iPXE sends SMBIOS order, the opposite of a
+#               physical EDK2 machine. The DHCPv4 path splits the same two stages on the iPXE
+#               feature sub-options of option 175, which is the same kind of test as this one.
+# Arguments: none
+# Returns: the expression
+#---
+sub dhcp6_ipxe_user_class_test { return "substring(option[15].hex, 2, 4) == 'iPXE'"; }
+
+#---
+# =head3 kea_node_boot_classes6
+# Descriptions: The two DHCPv6 client classes that give one chainloading node its boot file, one
+#               for each stage. A reservation cannot do this: Kea gives a reservation's option
+#               data precedence over a class's, so a reservation naming either URL would answer
+#               both stages with it. The classes carry the boot file and the reservation keeps the
+#               address.
+#
+#               Each class matches every DUID the node can send, and the stage is decided by
+#               option 15 alone. The tests are mutually exclusive, so the order of the two in the
+#               configuration does not matter.
+# Arguments: node       -- the node name, which names the classes
+#            duids      -- every DUID of the node, as colon-separated hexadecimal octets
+#            loader_url -- the first-stage loader, which the firmware fetches over tftp
+#            script_url -- the boot script of the node, which only iPXE can fetch
+# Returns: an arrayref of class definitions, empty unless the node has a DUID and both URLs
+#---
+sub kea_node_boot_classes6 {
+    my ( $class, %opts ) = @_;
+
+    my @duids = grep { defined($_) && length($_) } @{ $opts{duids} || [] };
+    return [] unless @duids && $opts{node};
+    return [] unless defined( $opts{loader_url} ) && defined( $opts{script_url} );
+
+    # Kea compares option[1].hex against a hexadecimal literal, not against a DUID written with
+    # colons. Either order identifies the node, so both are accepted here and neither decides
+    # which stage is answering.
+    my $identity = join ' or ',
+      map { my $hex = $_; $hex =~ s/://g; "option[1].hex == 0x$hex" } @duids;
+    my $ipxe = $class->dhcp6_ipxe_user_class_test();
+
+    return [
+        {   name          => "$opts{node}-ipxe6",
+            test          => "($identity) and $ipxe",
+            'option-data' => [ kea_bootfile_url6_option( $opts{script_url} ) ],
+        },
+        {   name          => "$opts{node}-firmware6",
+            test          => "($identity) and not ($ipxe)",
+            'option-data' => [ kea_bootfile_url6_option( $opts{loader_url} ) ],
+        },
+    ];
+}
+
 #: Every client architecture some class here, or in the per-network classes
 #: beside it, already answers. The fallback is what is left over.
 my @RECOGNISED_ARCH_IDS = qw(
