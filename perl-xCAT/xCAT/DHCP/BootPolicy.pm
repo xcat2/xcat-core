@@ -213,6 +213,60 @@ sub kea_node_boot_classes6 {
 
 #: Every client architecture some class here, or in the per-network classes
 #: beside it, already answers. The fallback is what is left over.
+#---
+# =head3 kea_node_address_class6
+# Descriptions: The Kea DHCPv6 client class that matches every DUID form of one node.
+#
+#               A node solicits under more than one DUID. The firmware and the Genesis image send
+#               the DUID-UUID in firmware byte order, iPXE sends the other order, and an installed
+#               NetworkManager can send the DUID-LL. Kea holds a reserved address for ONE
+#               identifier and refuses the same address on a second reservation, so a class that
+#               matches them all is what lets one address reach whichever client solicits.
+# Arguments:    node  - the node name
+#               duids - the DUIDs of the node, in colon notation
+# Returns:      A client class hash, or undef when the node has fewer than two DUID forms and its
+#               reservation can therefore hold the address by itself.
+# =cut
+#---
+sub kea_node_address_class6 {
+    my ( $class, %opts ) = @_;
+
+    my @duids = grep { defined($_) && length($_) } @{ $opts{duids} || [] };
+    return undef unless $opts{node} && @duids > 1;
+
+    my $test = join ' or ',
+      map { my $hex = $_; $hex =~ s/://g; "option[1].hex == 0x$hex" } @duids;
+
+    return {
+        name           => "$opts{node}-addr6",
+        test           => $test,
+        'user-context' => { 'xcat-node' => $opts{node}, 'xcat-purpose' => 'addr6' },
+    };
+}
+
+#---
+# =head3 kea_node_address_pool6
+# Descriptions: The Kea DHCPv6 pool of exactly the address of one node, gated on the address class
+#               of that node.
+#
+#               Kea excludes a reserved address from every pool, so the address of a node that
+#               needs this pool must not also sit in its reservation.
+# Arguments:    node - the node name
+#               ip   - the IPv6 address of the node
+# Returns:      A pool hash, or undef when either argument is missing.
+# =cut
+#---
+sub kea_node_address_pool6 {
+    my ( $class, %opts ) = @_;
+
+    return undef unless $opts{node} && defined( $opts{ip} ) && length( $opts{ip} );
+
+    return {
+        pool           => "$opts{ip} - $opts{ip}",
+        'client-class' => "$opts{node}-addr6",
+    };
+}
+
 my @RECOGNISED_ARCH_IDS = qw(
   0x0000 0x0002 0x0007 0x0009 0x000b 0x000c 0x000e 0x0010 0x001b 0x001c 0x001f
 );

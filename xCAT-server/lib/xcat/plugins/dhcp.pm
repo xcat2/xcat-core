@@ -3038,7 +3038,10 @@ sub kea_process_request
             push @deleted6, @{ $backend->delete_reservations($loaded6, $match) } if $loaded6;
         }
         $client_classes_changed = kea_remove_node_client_classes($loaded4, $nodes);
-        kea_remove_node_boot_classes6($loaded6, $nodes) if $loaded6;
+        if ($loaded6) {
+            kea_remove_node_boot_classes6($loaded6, $nodes);
+            kea_remove_node_address_pools6($loaded6, $nodes);
+        }
     } else {
         # An upgrade keeps the option definitions of an older makedhcp -n.
         ( $option_defs_added, my $defs_error ) = xCAT::DHCP::BootPolicy->kea_declare_ipxe_features($loaded4->{Dhcp4});
@@ -3054,6 +3057,7 @@ sub kea_process_request
             $reservations6 = kea_build_node_reservations6($backend, $loaded6, $nodes);
             $backend->upsert_reservations($loaded6, $reservations6, \@replaced6);
             kea_sync_node_boot_classes6($loaded6, $nodes);
+            kea_sync_node_address6($loaded6, $nodes);
         }
     }
 
@@ -4091,7 +4095,12 @@ sub kea_build_node_reservations6
 
 #: The purposes of a per-node DHCPv6 client class, so a resync finds the classes of this node
 #: set and leaves every other class alone.
-my %KEA_NODE_CLASS_PURPOSES6 = ( boot6 => 1 );
+my %KEA_NODE_CLASS_PURPOSES6 = ( boot6 => 1, addr6 => 1 );
+
+# What kea_node_reservations6 decided each node needs from a pool of its own, keyed by node.
+# It is filled while the reservations are built, so the pool and the reservation cannot
+# disagree about the address or the subnet.
+my %kea_node_address6;
 
 #---
 # =head3 kea_node_boot_classes6_for_nodes
@@ -4208,9 +4217,98 @@ sub kea_sync_node_boot_classes6
     return $changed;
 }
 
+#---
+# =head3 kea_node_address_classes6_for_nodes
+# Descriptions: The per-node DHCPv6 address classes of every node that needs a pool of its own.
+# Arguments: $nodes -- the node range
+# Returns: an arrayref of class definitions
+#---
+sub kea_node_address_classes6_for_nodes
+{
+    my ($nodes) = @_;
+
+    my @classes;
+    foreach my $node (@$nodes) {
+        my $want = $kea_node_address6{$node} or next;
+        my $class = xCAT::DHCP::BootPolicy->kea_node_address_class6(
+            node  => $node,
+            duids => $want->{duids},
+        );
+        push @classes, $class if $class;
+    }
+
+    return \@classes;
+}
+
+#---
+# =head3 kea_remove_node_address_pools6
+# Descriptions: Take the single address pools of one node set out of the subnets, so a resync or a
+#               makedhcp -d leaves no pool behind for a node that changed its address or went away.
+# Arguments: $config -- the parsed Kea DHCPv6 configuration, $nodes -- the node range
+# Returns: 1 when it removed a pool
+#---
+sub kea_remove_node_address_pools6
+{
+    my ( $config, $nodes ) = @_;
+
+    return 0 unless $config && $config->{Dhcp6};
+    my %gate = map { ( "$_-addr6" => 1 ) } @$nodes;
+    my $changed = 0;
+    foreach my $subnet ( @{ $config->{Dhcp6}{subnet6} || [] } ) {
+        my $pools = $subnet->{pools} || [];
+        my @kept = grep { !$gate{ $_->{'client-class'} || '' } } @$pools;
+        next if scalar(@kept) == scalar(@$pools);
+        $subnet->{pools} = \@kept;
+        $changed = 1;
+    }
+
+    return $changed;
+}
+
+#---
+# =head3 kea_sync_node_address6
+# Descriptions: Replace the address class and the single address pool of one node set. It runs
+#               after kea_sync_node_boot_classes6, which takes every per-node class of the range
+#               out of the configuration, including these.
+# Arguments: $config -- the parsed Kea DHCPv6 configuration, $nodes -- the node range
+# Returns: 1 when the configuration changed
+#---
+sub kea_sync_node_address6
+{
+    my ( $config, $nodes ) = @_;
+
+    my $changed = kea_remove_node_address_pools6( $config, $nodes );
+    my $classes = kea_node_address_classes6_for_nodes($nodes);
+    if (@$classes) {
+        $config->{Dhcp6} ||= {};
+        $config->{Dhcp6}{'client-classes'} =
+          [ @$classes, @{ $config->{Dhcp6}{'client-classes'} || [] } ];
+        $changed = 1;
+    }
+
+    foreach my $node (@$nodes) {
+        my $want = $kea_node_address6{$node} or next;
+        my $pool = xCAT::DHCP::BootPolicy->kea_node_address_pool6(
+            node => $node,
+            ip   => $want->{ip},
+        ) or next;
+        foreach my $subnet ( @{ $config->{Dhcp6}{subnet6} || [] } ) {
+            next unless defined( $subnet->{id} )
+              && defined( $want->{subnet_id} )
+              && $subnet->{id} eq $want->{subnet_id};
+            $subnet->{pools} = [ $pool, @{ $subnet->{pools} || [] } ];
+            $changed = 1;
+        }
+    }
+
+    return $changed;
+}
+
 sub kea_prepare_reservation_ownership
 {
     my ($nodes) = @_;
+
+    %kea_node_address6 = ();
 
     $kea_disjoint_reservations = 0;
     $kea_local_dynamic_dhcp_owner = 0;
@@ -4803,14 +4901,31 @@ sub kea_node_reservations6
         # the same identifier in the subnet twice.
         @identities = ( $identities[0] ) if $others_written;
 
+        # Several clients of one node cannot share a reserved address: Kea refuses the second
+        # reservation. The address goes in a pool of its own instead, gated on a class that matches
+        # every DUID of the node, so it reaches whichever client solicits.
+        my $use_pool = ( @identities > 1 ) ? 1 : 0;
+        if ($use_pool) {
+            $kea_node_address6{$node} = {
+                ip        => $ip,
+                subnet_id => $subnet_id,
+                duids     => [ map { $_->{duid} } grep { $_->{duid} } @identities ],
+            };
+        }
+
         my $first = 1;
         foreach my $client (@identities) {
             # An entry without an address carries no hostname, so nothing else in it names the
             # node. The owner lets an update or a delete find it after the netboot method changed.
             my %reservation = ( 'subnet-id' => $subnet_id, 'user-context' => { 'xcat-node' => $node } );
             if ($first) {
-                $reservation{hostname}       = $hname;
-                $reservation{'ip-addresses'} = [$ip];
+                # The hostname stays on one entry only: _reservation_matches treats a shared
+                # hostname as the same reservation, so upsert_reservations would replace one entry
+                # of the node with another.
+                $reservation{hostname} = $hname;
+                # Kea leaves a reserved address out of every pool, so a node answered by its own
+                # pool must not also reserve the address.
+                $reservation{'ip-addresses'} = [$ip] unless $use_pool;
             }
             if ( $client->{duid} ) {
                 $reservation{duid} = $client->{duid};
