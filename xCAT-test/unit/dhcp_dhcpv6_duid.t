@@ -201,30 +201,6 @@ my $backend = xCAT::DHCP::Backend::Kea->new();
 # A chainloading node is answered by these and not by its reservation: Kea gives a reservation's
 # option data precedence over a class's, so one URL in the reservation would answer both boot
 # stages with it.
-# Where the address of a node is. A node with one DHCPv6 client keeps it in its reservation. A
-# node with several is answered by a pool of exactly that address, gated on a class matching every
-# DUID of the node, because Kea refuses the same address on a second reservation.
-sub address6_for {
-    my ( $config, $node, $reservations ) = @_;
-
-    foreach my $reservation ( @{ $reservations || [] } ) {
-        next unless ref($reservation) eq 'HASH';
-        next unless ( ( $reservation->{'user-context'} || {} )->{'xcat-node'} || '' ) eq $node;
-        return $reservation->{'ip-addresses'} if $reservation->{'ip-addresses'};
-    }
-
-    xCAT_plugin::dhcp::kea_sync_node_address6( $config, [$node] );
-    foreach my $subnet ( @{ ( $config->{Dhcp6} || {} )->{subnet6} || [] } ) {
-        foreach my $pool ( @{ $subnet->{pools} || [] } ) {
-            next unless ( $pool->{'client-class'} || '' ) eq "$node-addr6";
-            my ($ip) = split / - /, ( $pool->{pool} || '' );
-            return [$ip];
-        }
-    }
-
-    return undef;
-}
-
 sub boot_classes6 {
     my (@nodes) = @_;
     my %by_url;
@@ -447,7 +423,7 @@ sub isc_hosts {
         } elsif ( defined($want) ) {
             is( $kea{$node}{duid}, $want, "Kea: $node reserves its address for the DUID: $label" );
             is( $isc->{$node}, $want, "ISC: $node reserves its address for the DUID: $label" );
-            is_deeply( address6_for( $config, $node, [ $kea{$node} ] ), [ $address{$node} ], "Kea: $node has its address" );
+            is_deeply( $kea{$node}{'ip-addresses'}, [ $address{$node} ], "Kea: $node keeps its address" );
         } else {
             is( $kea{$node}{'hw-address'}, $mac{$node}, "Kea: $node falls back to its MAC: $label" );
             ok( !exists( $kea{$node}{duid} ), "Kea: $node has no DUID: $label" );
@@ -494,7 +470,7 @@ sub isc_hosts {
     my @kept = @{ $config->{Dhcp6}{subnet6}[0]{reservations} };
     is( scalar(@kept), 2, 'Kea: a node keeps one reservation for each of its clients after its duid attribute changes' );
     is( $kept[0]{duid}, $canonical, 'Kea: the reservation matches the new DUID' );
-    is_deeply( address6_for( $config, 'cn01', \@kept ), [ $address{cn01} ], 'Kea: the node still has its address' );
+    is_deeply( $kept[0]{'ip-addresses'}, [ $address{cn01} ], 'Kea: the reservation keeps the address' );
     is( $kept[0]{'option-data'}[0]{data}, 'tftp://[2001:db8:176::1]/boot/grub2/grub2-cn01', 'Kea: the reservation keeps the bootfile-url' );
     # The DUID-LL is not built from vpd.uuid, so it is rewritten unchanged. The entry of the old
     # UUID order is the one that goes.
@@ -1017,8 +993,8 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     # hostname as the same reservation, so the second entry carries neither.
     is( $second->{'ip-addresses'}, undef, 'the second client reserves no address' );
     is( $second->{hostname},       undef, '... and no hostname' );
-    is_deeply( address6_for( $config, 'cn01', [ $first, $second ] ), [ $address{cn01} ],
-        'the address reaches the node through a pool of its own' );
+    is_deeply( $first->{'ip-addresses'}, [ $address{cn01} ],
+        'the address stays on the reservation of the first client' );
     is( $first->{hostname}, 'cn01', '... with the hostname' );
 
     # mac.duid names the client that keeps the address. cn03 asks for the canonical order, so its
@@ -1104,7 +1080,7 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
 
     # Kea refuses a second reservation for one address, and _reservation_matches treats a shared
     # hostname as the same reservation, so only the first client carries either.
-    is_deeply( address6_for( $config, 'cn01', \@cn01 ), [ $address{cn01} ], 'the node has its address' );
+    is_deeply( $cn01[0]->{'ip-addresses'}, [ $address{cn01} ], 'the first client keeps the address' );
     is( $cn01[0]->{hostname}, 'cn01', '... and the hostname' );
     is( scalar( grep { defined $_->{hostname} || $_->{'ip-addresses'} } @cn01 ), 1,
         'and no other client of the node carries either' );
@@ -1131,8 +1107,8 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     is_deeply( [ map { $_->{duid} } @cn02 ],
         [ '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ac', $ll_cn02 ],
         'a grub2 node is reserved for its firmware and for Genesis, and not for iPXE' );
-    is_deeply( address6_for( $config, 'cn02', \@cn02 ), [ $address{cn02} ],
-        'that node still has its address' );
+    is_deeply( $cn02[0]->{'ip-addresses'}, [ $address{cn02} ],
+        'the firmware of that node still keeps its address' );
     is( $cn02[1]->{hostname}, undef, 'and the Genesis client of it holds none' );
 
     # mac.duid names one client and one DUID. Neither value is built from vpd.uuid, so there is
