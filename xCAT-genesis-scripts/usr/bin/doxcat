@@ -243,11 +243,18 @@ genesis_nic_has_global_v4() {
     ip -4 -o addr show dev "$nic" 2>/dev/null | grep -v 'scope link' | grep -q inet
 }
 
-# xcatd is reached over whichever family the provisioning network serves, so net init is over
-# when the boot nic holds an address of either one.
+# Net init is over when the boot nic can reach xcatd, so wait for the family xcatd is on. An
+# address of the other family is not enough: on a dual stack network the node would go on to
+# getcert and getdestiny with no route to the management node. With no xcatd address to read,
+# either family ends the wait, which is what an IPv4-only network needs.
 genesis_nic_has_address() {
     local nic="$1"
-    genesis_nic_has_global_v4 "$nic" || genesis_nic_has_global_v6 "$nic"
+    local master="${2:-${XCATMASTER:-}}"
+    case $master in
+        *:*) genesis_nic_has_global_v6 "$nic" ;;
+        ?*)  genesis_nic_has_global_v4 "$nic" ;;
+        *)   genesis_nic_has_global_v4 "$nic" || genesis_nic_has_global_v6 "$nic" ;;
+    esac
 }
 
 # Wait for one nic to hold a routable IPv6 address. Returns non-zero after the last try, which
