@@ -156,12 +156,13 @@ sub kea_bootfile_url6_option {
 #               string iPXE: 00:04:69:50:58:45. EDK2 sends no option 15 at all. The two length
 #               octets are skipped, so the comparison reads the string itself.
 #
-#               The byte order of the DUID cannot do this job. Both clients build a DUID-UUID
-#               from one vpd.uuid, and which of them sends SMBIOS order and which sends RFC 4122
-#               order depends on the order the platform stores the uuid in: measured on QEMU, the
-#               firmware sends RFC 4122 order and iPXE sends SMBIOS order, the opposite of a
-#               physical EDK2 machine. The DHCPv4 path splits the same two stages on the iPXE
-#               feature sub-options of option 175, which is the same kind of test as this one.
+#               The byte order of the DUID cannot do this job, because it does not follow from
+#               vpd.uuid. The firmware sends the SMBIOS bytes of the uuid the hypervisor gave the
+#               guest, and on KVM getNodeUUID writes that domain uuid as the byte-swap of
+#               vpd.uuid. So the firmware sends vpd.uuid unswapped and iPXE sends the swap, while
+#               a domain created from vpd.uuid directly gives the opposite pair. Both orders are
+#               real and neither names a stage. The DHCPv4 path splits the same two stages on the
+#               iPXE feature sub-options of option 175, which is the same kind of test as this.
 # Arguments: none
 # Returns: the expression
 #---
