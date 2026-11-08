@@ -5,6 +5,8 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/EPL-1.0;md5=57f8d5e2b3e98ac6e08
 SRC_URI = "file://10-xcat-genesis.conf \
            file://genesis-duid \
            file://xcat-genesis-duid.service \
+           file://genesis-bootnic \
+           file://xcat-genesis-bootnic.service \
 "
 S = "${UNPACKDIR}"
 
@@ -12,7 +14,7 @@ inherit systemd
 
 RDEPENDS:${PN} = "bash coreutils networkmanager-daemon networkmanager-nmcli util-linux-logger"
 
-SYSTEMD_SERVICE:${PN} = "xcat-genesis-duid.service"
+SYSTEMD_SERVICE:${PN} = "xcat-genesis-duid.service xcat-genesis-bootnic.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
 do_install() {
@@ -23,13 +25,19 @@ do_install() {
     install -d ${D}${libexecdir}/xcat
     install -m 0755 ${UNPACKDIR}/genesis-duid \
         ${D}${libexecdir}/xcat/genesis-duid
+    install -m 0755 ${UNPACKDIR}/genesis-bootnic \
+        ${D}${libexecdir}/xcat/genesis-bootnic
 
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/xcat-genesis-duid.service \
         ${D}${systemd_system_unitdir}/xcat-genesis-duid.service
+    install -m 0644 ${UNPACKDIR}/xcat-genesis-bootnic.service \
+        ${D}${systemd_system_unitdir}/xcat-genesis-bootnic.service
 }
 
 FILES:${PN} = "${sysconfdir}/NetworkManager/conf.d/10-xcat-genesis.conf \
                ${libexecdir}/xcat/genesis-duid \
+               ${libexecdir}/xcat/genesis-bootnic \
                ${systemd_system_unitdir}/xcat-genesis-duid.service \
+               ${systemd_system_unitdir}/xcat-genesis-bootnic.service \
 "

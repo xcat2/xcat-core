@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Keep the DHCPv6 reservation on the nic the node booted from.
+#
+# A DHCPv6 reservation is keyed on the DUID, and a DUID names the machine, not the nic.
+# 10-xcat-genesis.conf sets the DHCPv6 defaults in [connection], which applies to every nic, so
+# each nic of a node asks for the same reserved address and Kea gives it to the first REQUEST.
+# When that is not the boot nic, the node holds its reserved address on a nic xcatd does not
+# reach it on, and the report xcatd receives comes from a pool address it cannot match to a node.
+set -u
+
+LC_ALL=C
+export LC_ALL
+
+cmdline_file=${XCAT_CMDLINE_FILE:-/proc/cmdline}
+conf_dir=${XCAT_NM_CONF_DIR:-/etc/NetworkManager/conf.d}
+# NetworkManager reads conf.d in name order and a later file wins, so this sorts after
+# 15-xcat-genesis-duid.conf, which the DUID is written to.
+conf_file=$conf_dir/16-xcat-genesis-bootnic.conf
+
+log() {
+    logger -t xcat-genesis-bootnic -- "$*" || true
+}
+
+[ -r "$cmdline_file" ] || { log "no kernel command line at $cmdline_file"; exit 0; }
+
+# BOOTIF is the hardware type and the address, hyphen separated: 01-aa-bb-cc-dd-ee-ff.
+bootif=""
+for word in $(cat "$cmdline_file"); do
+    case $word in
+        BOOTIF=*) bootif=${word#BOOTIF=} ;;
+    esac
+done
+
+if [ -z "$bootif" ]; then
+    log "no BOOTIF on the command line, leaving DHCPv6 on every nic"
+    exit 0
+fi
+
+mac=$(printf '%s' "${bootif#01-}" | tr 'A-F-' 'a-f:')
+case $mac in
+    [0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]) ;;
+    *) log "BOOTIF $bootif is not a hardware address, leaving DHCPv6 on every nic"; exit 0 ;;
+esac
+
+mkdir -p "$conf_dir" || exit 1
+# link-local, not disabled: a secondary nic keeps IPv6 on the link and the node still reports
+# it to xcatd for the nic data, it just does not ask for an address the reservation holds.
+cat >"$conf_file" <<EOF
+# Written by xcat-genesis-bootnic from BOOTIF=$bootif. A DHCPv6 reservation is keyed on the
+# DUID, which names the machine, so only the boot nic may ask for one.
+[connection-xcat-genesis-bootnic]
+match-device=mac:$mac
+ipv6.method=auto
+
+[connection-xcat-genesis-secondary]
+match-device=except:mac:$mac
+ipv6.method=link-local
+EOF
+log "DHCPv6 restricted to the boot nic $mac"
