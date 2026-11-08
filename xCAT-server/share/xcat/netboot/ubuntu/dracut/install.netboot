@@ -19,3 +19,7 @@ fi
 if [ -f "$moddir/../40network/netroot.sh" ]; then
     inst "$moddir/../40network/netroot.sh" "/sbin/netroot"
 fi
+# Only network-legacy's ifup calls that dispatcher, and Ubuntu 25.10 and later ship no
+# network-legacy, so on 26.04 nothing reaches /sbin/xcatroot. Call it from the online hook,
+# which systemd-networkd and NetworkManager both reach.
+inst_hook initqueue/online 90 "$moddir/xcat-online.sh"
