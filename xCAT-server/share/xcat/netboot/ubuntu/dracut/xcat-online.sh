@@ -8,12 +8,15 @@
 # three seconds in. This hook runs from initqueue/online, which every network module reaches.
 type getarg >/dev/null 2>&1 || . /lib/dracut-lib.sh
 
+# dracut SOURCES a hook -- source_all runs `. "$f" "$@"` -- so `exit` here would end
+# networkd-run.sh, the script that is bringing the network up. Leave with `return`.
+#
 # One interface is enough, and a second call would download the image again.
-[ -e /tmp/xcat.rootimg.done ] && exit 0
-[ -x /sbin/xcatroot ] || exit 0
+[ -e /tmp/xcat.rootimg.done ] && return 0
+[ -x /sbin/xcatroot ] || return 0
 
 netif=$1
-[ -n "$netif" ] || exit 0
+[ -n "$netif" ] || return 0
 
 # dracut calls a netroot handler as <interface> <netroot> <NEWROOT>.
 if /sbin/xcatroot "$netif" "${netroot:-xcat}" "${NEWROOT:-/sysroot}"; then

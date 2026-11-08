@@ -74,7 +74,7 @@ SH
         sed -e 's#/lib/dracut-lib.sh#${BATS_TEST_TMPDIR}/lib/dracut-lib.sh#' \
             -e 's#/sbin/xcatroot#${bin}/sbin/xcatroot#g' \
             -e 's#/tmp/xcat.rootimg.done#${BATS_TEST_TMPDIR}/done#' '$hook' > ./hook.sh
-        sh ./hook.sh eth0"
+        sh -c '. ./hook.sh eth0'"
     [ "$status" -eq 0 ]
     [ "$(cat "${BATS_TEST_TMPDIR}/called")" = 'eth0 xcat /sysroot' ]
 }
@@ -93,7 +93,23 @@ SH
         sed -e 's#/lib/dracut-lib.sh#${BATS_TEST_TMPDIR}/lib/dracut-lib.sh#' \
             -e 's#/sbin/xcatroot#${bin}/sbin/xcatroot#g' \
             -e 's#/tmp/xcat.rootimg.done#${BATS_TEST_TMPDIR}/done#' '$hook' > ./hook.sh
-        sh ./hook.sh eth0; sh ./hook.sh eth1"
+        sh -c '. ./hook.sh eth0; . ./hook.sh eth1'"
     [ "$status" -eq 0 ]
     [ "$(wc -l < "${BATS_TEST_TMPDIR}/count")" -eq 1 ]
+}
+
+@test "the hook leaves its caller running, because dracut sources it" {
+    # source_all runs `. "$f" "$@"`, so an `exit` in a hook ends networkd-run.sh, which is the
+    # script bringing the network up. The early return path is the one that would do it.
+    local hook="$MOD/xcat-online.sh"
+    mkdir -p "${BATS_TEST_TMPDIR}/lib"
+    printf 'getarg() { return 1; }\n' >"${BATS_TEST_TMPDIR}/lib/dracut-lib.sh"
+    run env bash -c "
+        cd '${BATS_TEST_TMPDIR}'
+        sed -e 's#/lib/dracut-lib.sh#${BATS_TEST_TMPDIR}/lib/dracut-lib.sh#' \
+            -e 's#/tmp/xcat.rootimg.done#${BATS_TEST_TMPDIR}/done#' '$hook' > ./hook.sh
+        : > ./done
+        sh -c '. ./hook.sh eth0; echo CALLER-SURVIVED'"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *CALLER-SURVIVED* ]]
 }
