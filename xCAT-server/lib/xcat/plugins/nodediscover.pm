@@ -287,7 +287,10 @@ sub process_request {
 
     my $macstring = "";
     if (defined($request->{mac})) {
-        if (!inet_aton($node)) {
+        # inet_aton answers for IPv4 only, so a node whose only address is IPv6 failed here and
+        # update_discovery_data, at the end of this routine, was never reached.
+        my $nodeaddr = xCAT::NetworkUtils->getipaddr($node);
+        if (!xCAT::DiscoveryUtils::discovery_address_usable($nodeaddr)) {
             xCAT::MsgUtils->message("S", "xcat.discovery.nodediscover: Can not resolve IP for the matching node:$node. Make sure \"makehosts\" and \"makedns\" have been run for $node.");
             $request->{error} = [0];
             $request->{error_msg} = ["Can not resolve IP for the matching node:$node."];
@@ -334,19 +337,30 @@ sub process_request {
             my $currmac = lc($ifinfo[2]);
             if ($ifinfo[3]) {
                 (my $ip, my $netbits) = split /\//, $ifinfo[3];
-                if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {
-                    my $ipn = unpack("N", inet_aton($ip));
-                    my $mask = 2**$netbits - 1 << (32 - $netbits);
-                    my $netn = inet_ntoa(pack("N", $ipn & $mask));
-                    my $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
-                    unless ($hosttag) {
-                        my $nettagname = $usednames_for_net{$netn};
-                        # For nics not in the install network, don't deal with them if not an available hostname get
-                        # In case another nic in install network get a hosttag other than nodename, need to compare the IP address they can convert to
-                        if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
-                            $hosttag = "$node-$ifinfo[1]";
-                            push @hostnames_to_update, $hosttag;
+                # The address of a nic used to be matched with a dotted-quad pattern, so a nic
+                # reported as 2001:db8:188::31/64 skipped this whole branch, $localnic stayed 0
+                # and the node was reported as not on the deploy network.
+                my $netn = xCAT::DiscoveryUtils::nic_network_key($ip, $netbits);
+                if (defined($netn)) {
+                    my $hosttag;
+                    if (xCAT::NetworkUtils->isIpaddr($ip)) {
+                        $hosttag = gethosttag($node, $netn, @ifinfo[1], \%usednames);
+                        unless ($hosttag) {
+                            my $nettagname = $usednames_for_net{$netn};
+                            # For nics not in the install network, don't deal with them if not an available hostname get
+                            # In case another nic in install network get a hosttag other than nodename, need to compare the IP address they can convert to
+                            if ($nettagname and (inet_aton($nettagname) eq inet_aton($node))) {
+                                $hosttag = "$node-$ifinfo[1]";
+                                push @hostnames_to_update, $hosttag;
+                            }
                         }
+                    } else {
+                        # gethosttag reads an A record and my_if_netmap, which is netstat -rn and
+                        # prints IPv4 routes only, so an IPv6 nic is matched on the addresses.
+                        $hosttag = xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
+                            $node, $nodeaddr, $ifinfo[1], $ip, $netbits, \%usednames);
+                        push @hostnames_to_update, $hosttag
+                          if defined($hosttag) && $hosttag ne $node;
                     }
                     #print Dumper($hosttag) . "\n";
                     if ($hosttag) {
