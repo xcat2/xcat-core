@@ -101,6 +101,32 @@ sub kea_client_classes6 {
 
     my @classes;
 
+    # The second stage, before the first. The architecture class below answers the firmware and
+    # hands it the shim. The shim starts iPXE, which solicits again with the iPXE user class, and
+    # a client xCAT has never seen matches no per-node class: its only other match is that
+    # architecture class, so it is handed the shim a second time and never fetches a kernel. mknb
+    # writes a per-network script carrying destiny=discover and no node name, and nothing else
+    # names it over DHCPv6. Kea takes the first class that defines an option, so this one is
+    # offered first.
+    if (   $opts{ipxe_uefi}
+        && defined( $opts{net} )
+        && length( $opts{net} )
+        && defined( $opts{prefix} )
+        && length( $opts{prefix} ) )
+    {
+        my $scripts    = $class->x86_loader( method => 'ipxe' )->{scripts};
+        my $network_id = $opts{net} . '_' . $opts{prefix};
+        my $safe       = $network_id;
+        $safe =~ s/[^A-Za-z0-9_.-]/_/g;
+        push @classes, {
+            name => "xcat-ipxe6-net-$safe$sfx",
+            test => dhcp6_ipxe_user_class_test()
+              . " and (option[61].hex == 0x0007 or option[61].hex == 0x0009)",
+            'option-data' =>
+              [ kea_bootfile_url6_option("http://$host/tftpboot/$scripts/nets/$network_id.uefi") ],
+        };
+    }
+
     # A UEFI client is the only x86 client that solicits over DHCPv6, so the BIOS loader has no
     # DHCPv6 class. Both architecture ids are in use: firmware reports 0x0007, and 0x0009 appears
     # on the same machines once the loader chainloads.

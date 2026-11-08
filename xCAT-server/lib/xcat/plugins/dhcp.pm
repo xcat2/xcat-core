@@ -5454,8 +5454,13 @@ sub kea_boot_client_classes6
     my $uri_host = xCAT::NetworkUtils->format_uri_host( $facing[1] );
     return [] unless $uri_host;
 
+    # mknb names the per-network boot script after the network and its prefix length, so the
+    # class that offers it needs both.
+    my ( $netaddr, $prefixlen ) = split( m{/}, ( defined($net) ? $net : '' ), 2 );
+
     return xCAT::DHCP::BootPolicy->kea_client_classes6(
-        kea_ipxe_loader_flags(), uri_host => $uri_host, suffix => $id );
+        kea_ipxe_loader_flags(), uri_host => $uri_host, suffix => $id,
+        net                     => $netaddr, prefix  => $prefixlen );
 }
 
 # Which upstream loader files the local TFTP tree has, as the Kea class builders take them.
