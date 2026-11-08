@@ -63,3 +63,11 @@ dhcp6_nics()
     [ "$status" -eq 0 ]
     [ "$output" = 2 ]
 }
+
+@test "the boot nic finishes net init with an IPv6 address and no IPv4 address" {
+    # The provisioning network of an IPv6 cell declares no IPv4 pool, so no IPv4 address can
+    # arrive. doxcat has to go on with the address it has, or Genesis never reaches xcatd.
+    : >"$fixture/addrs4/boot0"
+    printf '2: boot0 inet6 2001:db8:188::20/64 scope global\n' >"$fixture/addrs6/boot0"
+    boot_genesis
+}
