@@ -127,6 +127,10 @@ sub render_dhcp6_config {
         'preferred-lifetime' => _integer( _first_defined( $intent->{'preferred-lifetime'}, $intent->{preferred_lifetime}, 43200 ) ),
         'valid-lifetime'     => _integer( _first_defined( $intent->{'valid-lifetime'},     $intent->{valid_lifetime},     43200 ) ),
         'host-reservation-identifiers' => _first_defined( $intent->{'host-reservation-identifiers'}, [ 'duid', 'hw-address' ] ),
+        # A boot chain is one DUID in several stages, and each stage asks for its own IA. Kea
+        # holds a reclaimed lease for an hour, so the reserved address a boot loader released
+        # stays bound to the IAID of the loader and the next stage is given a pool address.
+        'expired-leases-processing' => _expired_leases6( $intent->{'expired-leases-processing'} ),
         subnet6              => [ map { $self->_render_subnet6($_) } @{ _first_defined( $intent->{subnet6}, $intent->{subnets}, [] ) } ],
     );
 
@@ -1185,6 +1189,22 @@ sub _kea_command_output {
     }
 
     return $output;
+}
+
+sub _expired_leases6 {
+    my ($override) = @_;
+
+    my %processing = (
+        'reclaim-timer-wait-time'         => 5,
+        'flush-reclaimed-timer-wait-time' => 5,
+        'hold-reclaimed-time'             => 0,
+    );
+
+    if ( ref($override) eq 'HASH' ) {
+        @processing{ keys %{$override} } = values %{$override};
+    }
+
+    return { map { $_ => _integer( $processing{$_} ) } keys %processing };
 }
 
 sub _first_defined {
