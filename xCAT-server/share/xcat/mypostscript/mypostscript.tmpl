@@ -50,6 +50,9 @@ MASTER=#TABLE:noderes:$NODE:xcatmaster#
 # configdhcpv6duid writes the one makedhcp reserved rather than deriving another.
 DHCP6DUID=#TABLE:mac:$NODE:duid#
 export DHCP6DUID
+# makedhcp builds a DUID-UUID from vpd.uuid, so configdhcpv6duid reads the same value.
+VPDUUID=#TABLE:vpd:$NODE:uuid#
+export VPDUUID
 export MASTER
 SERVICEGROUP=#TABLE:noderes:$NODE:servicenode#
 export SERVICEGROUP

@@ -73,15 +73,21 @@ esac
 if [ -n "$literal" ]; then
     duid=$literal
 else
-    if [ ! -r "$uuid_file" ]; then
-        log "no SMBIOS UUID at $uuid_file, leaving the DHCPv6 client identifier alone"
-        exit 0
-    fi
-
-    uuid=$(tr -d -c '[:xdigit:]' <"$uuid_file" | tr 'A-F' 'a-f')
+    # makedhcp applies the policy to vpd.uuid, and mypostscript exports it as VPDUUID.
+    # product_uuid is not always the same value: a KVM domain that an earlier mkvm defined
+    # holds the byte swap of vpd.uuid.
+    uuid=$(printf '%s' "${VPDUUID:-}" | tr -d -c '[:xdigit:]' | tr 'A-F' 'a-f')
     if [ "${#uuid}" -ne 32 ]; then
-        log "no usable SMBIOS UUID at $uuid_file, leaving the DHCPv6 client identifier alone"
-        exit 0
+        if [ ! -r "$uuid_file" ]; then
+            log "no SMBIOS UUID at $uuid_file, leaving the DHCPv6 client identifier alone"
+            exit 0
+        fi
+
+        uuid=$(tr -d -c '[:xdigit:]' <"$uuid_file" | tr 'A-F' 'a-f')
+        if [ "${#uuid}" -ne 32 ]; then
+            log "no usable SMBIOS UUID at $uuid_file, leaving the DHCPv6 client identifier alone"
+            exit 0
+        fi
     fi
 
     # makedhcp refuses the nil UUID, because nodeimport writes it to every PowerKVM node, and
@@ -94,9 +100,9 @@ else
     esac
 
     # SMBIOS 2.6 and later store the first three UUID fields little-endian, and EDK2 copies
-    # those bytes into its DUID. product_uuid prints the fields in canonical order, so the first
-    # three go back into firmware order here. makedhcp, doxcat and genesis-duid do the same
-    # swap. The canonical setting keeps the order product_uuid printed.
+    # those bytes into its DUID. The UUID text is in canonical order, so the first three fields
+    # go back into firmware order here. makedhcp, doxcat and genesis-duid do the same swap. The
+    # canonical setting keeps the order of the text.
     if [ "$duid_setting" = canonical ]; then
         octets=${uuid:0:2}:${uuid:2:2}:${uuid:4:2}:${uuid:6:2}
         octets=$octets:${uuid:8:2}:${uuid:10:2}
