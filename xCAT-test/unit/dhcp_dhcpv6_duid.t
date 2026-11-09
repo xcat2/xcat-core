@@ -1028,6 +1028,17 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
       @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['cn01'] ) };
     ok( $matched{$firmware} && $matched{$canonical},
         'makedhcp -d of an ipxe node names both of its DUIDs' );
+
+    # A node with no MAC has no reservation, and its classes must go with it. The classes match
+    # the DUID, not the MAC, so a node kept only by its classes still boots its own script, takes
+    # its own destiny and never sends the findme that sequential discovery waits for.
+    {
+        local $DUIDTable::rows{mac}{cn01}{mac} = '';
+        is_deeply( kea_reservations( empty_config(), 'cn01' ), [],
+            'a node with no MAC gets no DHCPv6 reservation' );
+        is_deeply( boot_classes6('cn01'), {}, '... and no per-node boot class' );
+    }
+    ok( boot_classes6('cn01')->{$script_url}, 'the same node with its MAC back gets its classes' );
     my %grub2 = map { ( $_->{duid} || '' ) => 1 }
       @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['cn02'] ) };
     is_deeply( [ sort grep { length } keys %grub2 ], [ sort ( $cn02_duid, '00:03:00:01:' . $mac{cn02} ) ],
