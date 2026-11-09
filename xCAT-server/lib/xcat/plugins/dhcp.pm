@@ -4112,12 +4112,20 @@ sub kea_node_boot_classes6_for_nodes
     my $nrents = $nrtab->getNodesAttribs( $nodes,
         [ 'tftpserver', 'netboot', 'xcatmaster', 'servicenode', 'tftpdir' ] );
     my $ntents = $nttab ? $nttab->getNodesAttribs( $nodes, ['arch'] ) : undef;
+    my $mactab = xCAT::Table->new( 'mac', -create => 0 );
+    my $macents = $mactab ? $mactab->getNodesAttribs( $nodes, ['mac'] ) : undef;
     my $duids  = dhcp6_client_duids($nodes);
 
     my @classes;
     foreach my $node (@$nodes) {
         my $nrent = $nrents && $nrents->{$node} ? $nrents->{$node}->[0] : undef;
         next unless dhcp6_chainloads($nrent);
+
+        # kea_node_reservations6 writes nothing for a node with no MAC, and the classes go with
+        # the reservation. They match the DUID, so a node kept by its classes alone still boots
+        # its own script and never sends the findme that discovery waits for.
+        my $macent = $macents && $macents->{$node} ? $macents->{$node}->[0] : undef;
+        next unless $macent && $macent->{mac};
         my $ntent = $ntents && $ntents->{$node} ? $ntents->{$node}->[0] : undef;
 
         # Both UUID orders, because either one can be the firmware: that depends on whether the
