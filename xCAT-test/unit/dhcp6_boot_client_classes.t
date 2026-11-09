@@ -18,7 +18,7 @@
 # So classes could not reach the config even once something built them.
 use strict;
 use warnings;
-use Test::More tests => 17;
+use Test::More tests => 18;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use JSON;
@@ -129,3 +129,13 @@ my $rendered = decode_json($two)->{Dhcp6}{'client-classes'} || [];
 is( scalar(@$rendered), scalar(@$withnet), 'every per-network class is rendered' );
 is_deeply( [ map { $_->{name} } grep { !( $_->{'only-in-additional-list'} ) } @$rendered ], [],
     'and each one is evaluated only for a subnet that lists it' );
+
+# --- the discovery script is fetched from the HTTP port of the site -----------------------------
+# The per-node script URL follows site.httpport. The per-network one must too, or with
+# httpport=8080 an unknown node loads iPXE and cannot fetch its network script.
+my $on8080 = classes6( uri_host => $host, ipxe_uefi => 1, tftpdir => '/tftpboot',
+                       net => '2001:db8:188::', prefix => 64, httpport => 8080 );
+my ($second8080) = grep { $_->{test} =~ /iPXE/ } @$on8080;
+is( $second8080 && $second8080->{'option-data'}[0]{data},
+    "http://$host:8080/tftpboot/xcat/ipxe/nets/2001:db8:188::_64.uefi",
+    'the second-stage URL carries site.httpport' );

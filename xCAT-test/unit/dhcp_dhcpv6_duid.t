@@ -1372,4 +1372,26 @@ is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', { '*' => 1 } ), 1,
         'a node xCAT does not define keeps the address on the byte-swapped order' );
 }
 
+
+# ---- The per-network discovery script follows site.httpport ---------------------------------
+# The per-node script URL reads site.httpport. The per-network classes that kea_boot_client_classes6
+# builds for an unknown node must read it too, or with httpport=8080 that node loads iPXE and
+# cannot fetch the script of its network.
+{
+    no warnings 'redefine';
+    local *xCAT::NetworkUtils::my_ip_facing_family = sub { return ( 0, '2001:db8:176::1' ); };
+    local *xCAT_plugin::dhcp::kea_ipxe_loader_flags = sub { return ( ipxe_bios => 0, ipxe_uefi => 1 ); };
+    local *xCAT::TableUtils::get_site_attribute = sub {
+        my ( $class, $attribute ) = @_;
+        return $attribute eq 'httpport' ? ('8080') : ();
+    };
+    use warnings 'redefine';
+
+    my ($second) = grep { $_->{test} =~ /iPXE/ }
+      @{ xCAT_plugin::dhcp::kea_boot_client_classes6( '2001:db8:176::/64', 1 ) };
+    is( $second && $second->{'option-data'}[0]{data},
+        'http://[2001:db8:176::1]:8080/tftpboot/xcat/ipxe/nets/2001:db8:176::_64.uefi',
+        'the discovery script of a network is fetched from site.httpport' );
+}
+
 done_testing();
