@@ -13,10 +13,9 @@ LC_ALL=C
 export LC_ALL
 
 cmdline_file=${XCAT_CMDLINE_FILE:-/proc/cmdline}
-conf_dir=${XCAT_NM_CONF_DIR:-/etc/NetworkManager/conf.d}
-# NetworkManager reads conf.d in name order and a later file wins, so this sorts after
-# 15-xcat-genesis-duid.conf, which the DUID is written to.
-conf_file=$conf_dir/16-xcat-genesis-bootnic.conf
+# NetworkManager.conf(5) does not accept ipv6.method as a [connection] default, so the
+# restriction is two connection profiles. The DHCPv6 defaults in conf.d still apply to both.
+connection_dir=${XCAT_NM_CONNECTION_DIR:-/etc/NetworkManager/system-connections}
 
 log() {
     logger -t xcat-genesis-bootnic -- "$*" || true
@@ -43,18 +42,44 @@ case $mac in
     *) log "BOOTIF $bootif is not a hardware address, leaving DHCPv6 on every nic"; exit 0 ;;
 esac
 
-mkdir -p "$conf_dir" || exit 1
-# link-local, not disabled: a secondary nic keeps IPv6 on the link and the node still reports
-# it to xcatd for the nic data, it just does not ask for an address the reservation holds.
-cat >"$conf_file" <<EOF
+mkdir -p "$connection_dir" || exit 1
+# NetworkManager does not load a keyfile that other users can read.
+umask 077
+
+# The boot nic profile is bound to the address and has the higher priority, so NetworkManager
+# picks it on the boot nic. The secondary profile matches every ethernet nic, and
+# multi-connect=3 (multiple) lets it be active on all of them at once. link-local, not
+# disabled: a secondary nic keeps IPv6 on the link and the node still reports it to xcatd.
+cat >"$connection_dir/xcat-genesis-bootnic.nmconnection" <<EOF
 # Written by xcat-genesis-bootnic from BOOTIF=$bootif. A DHCPv6 reservation is keyed on the
 # DUID, which names the machine, so only the boot nic may ask for one.
-[connection-xcat-genesis-bootnic]
-match-device=mac:$mac
-ipv6.method=auto
+[connection]
+id=xcat-genesis-bootnic
+type=ethernet
+autoconnect-priority=100
 
-[connection-xcat-genesis-secondary]
-match-device=except:mac:$mac
-ipv6.method=link-local
+[ethernet]
+mac-address=$mac
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+EOF
+
+cat >"$connection_dir/xcat-genesis-secondary.nmconnection" <<EOF
+# Written by xcat-genesis-bootnic. Every nic other than $mac.
+[connection]
+id=xcat-genesis-secondary
+type=ethernet
+autoconnect-priority=0
+multi-connect=3
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=link-local
 EOF
 log "DHCPv6 restricted to the boot nic $mac"
