@@ -1373,6 +1373,47 @@ is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', { '*' => 1 } ), 1,
 }
 
 
+# ---- ISC: the boot stage, not the DUID, decides the boot file --------------------------------
+# Which UUID order the firmware of a guest sends depends on the UUID its libvirt domain was given,
+# so the label of a DUID does not name the client that sends it. With mgt=kvm the labels were
+# reversed: ISC gave the boot script to the firmware and the shim to iPXE, and the node booted
+# neither. Kea splits the stages on option 15, which iPXE sends and the firmware does not. ISC
+# must make the same split on every host that holds a UUID order of the node.
+{
+    local %mgt_of = ( cn01 => 'kvm' );
+    local %DUIDTable::rows = node_rows(%settings);
+
+    my $present = tempdir( CLEANUP => 1 );
+    my $shim    = 'xcat/ipxe/x86_64-sb/snponly-shim.efi';
+    make_path( dirname("$present/$shim") );
+    open( my $fh, '>', "$present/$shim" ) or die "cannot write the loader: $!";
+    print {$fh} "loader\n";
+    close($fh);
+    $DUIDTable::rows{noderes}{cn01} =
+      { netboot => 'ipxe', tftpserver => '2001:db8:176::1', tftpdir => $present };
+
+    my $shim_url   = "tftp://[2001:db8:176::1]/$shim";
+    my $script_url = 'http://[2001:db8:176::1]/tftpboot/xcat/ipxe/nodes/cn01.uefi';
+    my $by_stage   = 'if substring(option dhcp6.user-class, 2, 4) = \\"iPXE\\" { '
+      . 'option dhcp6.bootfile-url \\"' . $script_url . '\\"; } else { '
+      . 'option dhcp6.bootfile-url \\"' . $shim_url . '\\"; }';
+
+    my $session = ( isc_commands('cn01') )->[1] // '';
+    my %host_of = reverse %{ isc_hosts($session) };
+    my %statements;
+    while ( $session =~ /^set name = "([^"]+)"\nset dhcp-client-identifier = \S+\nset statements = "(.*)";$/mg ) {
+        $statements{$1} = $2;
+    }
+
+    foreach my $order ( [ $canonical, 'canonical' ], [ $firmware, 'firmware' ] ) {
+        my $host = $host_of{ $order->[0] } // '';
+        my $text = $statements{$host} // '';
+        $text =~ s/^ddns-hostname \\"cn01\\"; //;
+        is( $text, $by_stage,
+            "ISC: the host of the $order->[1] order gives the boot script to iPXE and the shim to any other client" );
+    }
+}
+
 # ---- The per-network discovery script follows site.httpport ---------------------------------
 # The per-node script URL reads site.httpport. The per-network classes that kea_boot_client_classes6
 # builds for an unknown node must read it too, or with httpport=8080 that node loads iPXE and
