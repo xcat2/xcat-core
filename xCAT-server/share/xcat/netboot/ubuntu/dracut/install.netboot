@@ -23,3 +23,4 @@ fi
 # network-legacy, so on 26.04 nothing reaches /sbin/xcatroot. Call it from the online hook,
 # which systemd-networkd and NetworkManager both reach.
 inst_hook initqueue/online 90 "$moddir/xcat-online.sh"
+inst_simple "$moddir/xcat-bootif-dhcp.conf" /etc/systemd/network/70-BOOTIF.network.d/xcat-bootif-dhcp.conf
