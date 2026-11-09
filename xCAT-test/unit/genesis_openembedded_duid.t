@@ -46,8 +46,11 @@ like( $service_contents, qr/^Type=oneshot$/m,
     'the client identifier is written once per boot' );
 
 my $recipe_contents = contents_of("$NETWORK/xcat-genesis-network_1.0.bb");
-like( $recipe_contents, qr/^SYSTEMD_SERVICE:\$\{PN\} = "xcat-genesis-duid\.service"$/m,
-    'the recipe enables the client identifier service' );
+# The recipe enables more than one unit, so the list is read as a list.
+my ($enabled) = $recipe_contents =~ /^SYSTEMD_SERVICE:\$\{PN\} = "([^"]*)"$/m;
+my %enabled = map { $_ => 1 } split( ' ', $enabled // '' );
+ok( $enabled{'xcat-genesis-duid.service'}, 'the recipe enables the client identifier service' )
+  or diag( 'SYSTEMD_SERVICE: ' . ( $enabled // 'absent' ) );
 like( $recipe_contents, qr{\$\{D\}\$\{libexecdir\}/xcat/genesis-duid$}m,
     'the recipe installs the client identifier script' );
 
