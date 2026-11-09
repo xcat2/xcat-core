@@ -25,6 +25,7 @@ run_install()
         dracut_install() { printf "dracut_install %s\n" "$*" >>"$LOG"; }
         inst()           { printf "inst %s %s\n" "$1" "$2" >>"$LOG"; }
         inst_hook()      { printf "inst_hook %s %s %s\n" "$1" "$2" "$3" >>"$LOG"; }
+        inst_simple()    { printf "inst_simple %s %s\n" "$1" "$2" >>"$LOG"; }
         [ -n "$EXTRA" ] && eval "$EXTRA"
         . "$MODDIR/install.netboot"
     '

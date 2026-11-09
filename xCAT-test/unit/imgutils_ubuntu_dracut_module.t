@@ -17,11 +17,12 @@ use imgutils;
 my $tmp    = realpath(tempdir(CLEANUP => 1));
 my $srcdir = realpath("$FindBin::Bin/../../xCAT-server/share/xcat/netboot/ubuntu/dracut");
 
-# Returns the files that the install script $install gives to inst_hook, relative to its module.
-# dracut stops the build with "Cannot install a hook ... that does not exist" when one is absent.
+# Returns the module files that the install script $install gives to inst_hook or inst_simple.
+# dracut stops the build with "Cannot install a hook ... that does not exist" when a hook is absent,
+# and leaves a missing inst_simple source out of the initial ramdisk.
 sub hook_files {
     my ($install) = @_;
-    return map { m{inst_hook\s+\S+\s+\d+\s+"\$moddir/([^"]+)"} ? $1 : () } split(/\n/, read_text($install));
+    return map { m{^\s*inst_(?:hook\s+\S+\s+\d+|simple)\s+"\$moddir/([^"]+)"} ? $1 : () } split(/\n/, read_text($install));
 }
 
 foreach my $mode (qw(stateless statelite)) {
@@ -35,7 +36,7 @@ foreach my $mode (qw(stateless statelite)) {
     my @hooks = hook_files("$moduledir/install");
     ok(scalar(@hooks), "the $mode install script installs a hook");
     foreach my $hook (@hooks) {
-        ok(-f "$moduledir/$hook", "the $mode module carries $hook, which its install script hooks in");
+        ok(-f "$moduledir/$hook", "the $mode module carries $hook, which its install script installs");
     }
 }
 
