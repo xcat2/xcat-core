@@ -7,7 +7,7 @@
 # $localnic and stops process_request returning "No nic found in deploy network".
 use strict;
 use warnings;
-use Test::More tests => 6;
+use Test::More tests => 9;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 
@@ -38,3 +38,20 @@ my %taken = ( seqdisc1 => 1 );
 is( xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
         'seqdisc1', '2001:db8:188::21', 'eth2', '2001:db8:188::32', 64, \%taken ),
     'seqdisc1-eth2', 'a second nic on that network takes an interface-qualified name' );
+
+# NetworkManager installs a DHCPv6 lease as a /128 and takes the on-link route from the router
+# advertisement, so Genesis reports the boot nic as 2001:db8:188::1004/128. A /128 names one
+# address and no network, so the network comes from the xCAT networks table.
+my @networks = ( [ '2001:db8:188::', 64 ] );
+my %fresh;
+is( xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
+        'seqdisc1', '2001:db8:188::21', 'eth0', '2001:db8:188::1004', 128, \%fresh, \@networks ),
+    'seqdisc1', 'a /128 DHCPv6 lease in the network of the node is the node itself' );
+
+is( xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
+        'seqdisc1', '2001:db8:188::21', 'eth0', '2001:db8:99::1004', 128, \%fresh, \@networks ),
+    undef, 'a /128 lease on another network is not the node' );
+
+is( xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
+        'seqdisc1', '2001:db8:188::21', 'eth0', '2001:db8:188::1004', 128, \%fresh ),
+    undef, 'with no networks to compare a /128 against, it is not the node' );
