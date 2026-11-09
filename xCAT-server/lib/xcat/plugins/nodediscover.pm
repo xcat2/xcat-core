@@ -304,6 +304,7 @@ sub process_request {
         my %bydriverindex;
         my $forcenic = 0; #-1 is force skip, 0 is use default behavior, 1 is force to be declared even if hosttag is skipped to do so
         my $localnic = 0;
+        my $ipv6_networks;
         foreach (@{ $request->{mac} }) {
             @ifinfo = split /\|/;
 
@@ -357,8 +358,14 @@ sub process_request {
                     } else {
                         # gethosttag reads an A record and my_if_netmap, which is netstat -rn and
                         # prints IPv4 routes only, so an IPv6 nic is matched on the addresses.
+                        unless ($ipv6_networks) {
+                            my $nettab = xCAT::Table->new('networks');
+                            my @rows = $nettab ? $nettab->getAllAttribs( 'net', 'mask' ) : ();
+                            $ipv6_networks = xCAT::DiscoveryUtils::ipv6_networks( \@rows );
+                        }
                         $hosttag = xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
-                            $node, $nodeaddr, $ifinfo[1], $ip, $netbits, \%usednames);
+                            $node, $nodeaddr, $ifinfo[1], $ip, $netbits, \%usednames,
+                            $ipv6_networks);
                         push @hostnames_to_update, $hosttag
                           if defined($hosttag) && $hosttag ne $node;
                     }

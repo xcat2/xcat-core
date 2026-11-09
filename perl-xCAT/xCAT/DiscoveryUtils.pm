@@ -327,6 +327,37 @@ sub nic_network_key
 
 #--------------------------------------------------------------------------------
 
+=head3  ipv6_networks
+
+      The IPv6 networks of networks table rows, as [network, prefix length] pairs.
+
+    Arguments:
+      the rows, each a hash with net and mask. An IPv6 net may carry its own /len, and an
+      IPv6 mask is written /len.
+    Returns:
+      an arrayref of pairs
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub ipv6_networks
+{
+    my $rows = shift;
+    $rows = shift if defined($rows) && !ref($rows) && $rows eq __PACKAGE__;
+
+    my @networks;
+    foreach my $row ( @{ $rows || [] } ) {
+        my ( $net, $bits ) = split m{/}, ( $row->{net} || '' ), 2;
+        next unless defined($net) && xCAT::NetworkUtils->isIpv6addr($net);
+        ($bits) = ( $row->{mask} || '' ) =~ m{\A/?(\d+)\z} unless defined($bits) && length($bits);
+        next unless defined($bits) && $bits =~ /\A\d+\z/ && $bits <= 128;
+        push @networks, [ $net, $bits ];
+    }
+    return \@networks;
+}
+
+#--------------------------------------------------------------------------------
+
 =head3  hosttag_for_ipv6_nic
 
       The hostname tag a discovered IPv6 NIC takes.
@@ -337,7 +368,8 @@ sub nic_network_key
 
     Arguments:
       the node, its address, the interface name, the address of the NIC, the prefix length,
-      and the names already taken
+      the names already taken, and the IPv6 networks of the networks table as
+      [network, prefix length] pairs
     Returns:
       the node, an interface-qualified name, or undef when the NIC is on another network
 
@@ -348,7 +380,7 @@ sub hosttag_for_ipv6_nic
 {
     my $node = shift;
     $node = shift if defined($node) && !ref($node) && $node eq __PACKAGE__;
-    my ( $nodeaddr, $ifname, $nicaddr, $netbits, $usednames ) = @_;
+    my ( $nodeaddr, $ifname, $nicaddr, $netbits, $usednames, $networks ) = @_;
 
     return undef unless defined($node) && length($node);
     return undef unless defined($nicaddr) && length($nicaddr);
@@ -360,7 +392,24 @@ sub hosttag_for_ipv6_nic
 
     my $nicnet  = nic_network_key( $nicaddr,  $netbits );
     my $nodenet = nic_network_key( $nodeaddr, $netbits );
-    return undef unless defined($nicnet) && defined($nodenet) && $nicnet eq $nodenet;
+    my $same = defined($nicnet) && defined($nodenet) && $nicnet eq $nodenet;
+
+    # NetworkManager installs a DHCPv6 lease as a /128. That prefix names one address and no
+    # network, so take the network from the networks table instead.
+    if ( !$same && defined($netbits) && $netbits eq '128' ) {
+        foreach my $network ( @{ $networks || [] } ) {
+            my ( $net, $bits ) = @$network;
+            my $key = nic_network_key( $net, $bits );
+            next unless defined($key);
+            my $nic  = nic_network_key( $nicaddr,  $bits );
+            my $node = nic_network_key( $nodeaddr, $bits );
+            if ( defined($nic) && defined($node) && $nic eq $key && $node eq $key ) {
+                $same = 1;
+                last;
+            }
+        }
+    }
+    return undef unless $same;
 
     return $node unless $usednames && $usednames->{$node};
     return "$node-$ifname" if defined($ifname) && length($ifname);

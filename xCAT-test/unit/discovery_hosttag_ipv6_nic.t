@@ -7,7 +7,7 @@
 # $localnic and stops process_request returning "No nic found in deploy network".
 use strict;
 use warnings;
-use Test::More tests => 9;
+use Test::More tests => 10;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 
@@ -55,3 +55,12 @@ is( xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
 is( xCAT::DiscoveryUtils::hosttag_for_ipv6_nic(
         'seqdisc1', '2001:db8:188::21', 'eth0', '2001:db8:188::1004', 128, \%fresh ),
     undef, 'with no networks to compare a /128 against, it is not the node' );
+
+# The rows as makenetworks writes them: an IPv6 net carries its own /len and the mask is /len.
+is_deeply( xCAT::DiscoveryUtils::ipv6_networks( [
+            { net => '192.168.88.0',      mask => '255.255.255.0' },
+            { net => '2001:db8:188::/64', mask => '/64' },
+            { net => '2001:db8:99::',     mask => '/56' },
+        ] ),
+    [ [ '2001:db8:188::', 64 ], [ '2001:db8:99::', 56 ] ],
+    'the IPv6 rows of the networks table, with the IPv4 row left out' );
