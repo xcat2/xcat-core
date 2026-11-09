@@ -284,6 +284,43 @@ sub disable_auto_profiles {
     return;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 stage_dracut_module
+
+    Descriptions:
+        Copies the files of the Ubuntu xCAT dracut module for a mode into the module directory
+        of an image. The install script of the mode is copied as "install".
+    Arguments:
+        $srcdir:    the dracut directory under share/xcat/netboot/ubuntu
+        $moduledir: the 97xcat directory in the image
+        $mode:      statelite or stateless
+    Returns:
+        the names of the files copied; dies on an unknown mode or a failed copy
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_dracut_module {
+    my ($srcdir, $moduledir, $mode) = @_;
+    my %files = (
+        statelite => [qw(xcat-prepivot.sh)],
+        stateless => [qw(xcat-cmdline.sh xcatroot installkernel)],
+    );
+    die("Error: the mode $mode is not supported by genimage\n") unless $files{$mode};
+    my $install = $mode eq 'statelite' ? 'install.statelite' : 'install.netboot';
+    my @copy = (['check', 'check'], [$install, 'install']);
+    push(@copy, ['module-setup.sh', 'module-setup.sh']) if -f "$srcdir/module-setup.sh";
+    push(@copy, map { [$_, $_] } @{ $files{$mode} });
+    foreach my $pair (@copy) {
+        my ($from, $to) = ("$srcdir/$pair->[0]", "$moduledir/$pair->[1]");
+        my $perm = (stat($from))[2];
+        (defined($perm) && File::Copy::copy($from, $to) && chmod($perm & 07777, $to))
+          or die("Error: cannot copy $from to $to: $!\n");
+    }
+    return map { $_->[1] } @copy;
+}
+
 # The netboot dracut.conf names an exclusive module list, so a module nothing in the list depends
 # on is left out of the initial ramdisk. dracut reads the list and nothing else.
 #

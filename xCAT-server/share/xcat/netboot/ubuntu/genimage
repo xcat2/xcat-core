@@ -994,14 +994,7 @@ sub mkinitrd_dracut {
     my $uftp_receiver = eval { imgutils::add_uftp_receiver($rootimg_dir, $arch, $dracutmpath, $mode eq 'stateless') };
     xdie($@) if $@;
 
-    my $perm = (stat("$fullpath/$dracutdir/check"))[2];
-    cp("$fullpath/$dracutdir/check", $dracutmpath);
-    chmod($perm & 07777, "$dracutmpath/check");
-    if (-f "$fullpath/$dracutdir/module-setup.sh") {
-        $perm = (stat("$fullpath/$dracutdir/module-setup.sh"))[2];
-        cp("$fullpath/$dracutdir/module-setup.sh", $dracutmpath);
-        chmod($perm & 07777, "$dracutmpath/module-setup.sh");
-    }
+    imgutils::stage_dracut_module("$fullpath/$dracutdir", $dracutmpath, $mode);
 
     foreach (@ndrivers) { s/\.ko$//; }
 
@@ -1009,15 +1002,6 @@ sub mkinitrd_dracut {
     my $DRACUTCONF;
 
     if ($mode eq "statelite") {
-
-        # for statelite
-        cp("$fullpath/$dracutdir/install.statelite", "$dracutmpath/install");
-        $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
-        chmod($perm & 07777, "$dracutmpath/install");
-
-        cp("$fullpath/$dracutdir/xcat-prepivot.sh", $dracutmpath);
-        $perm = (stat("$fullpath/$dracutdir/xcat-prepivot.sh"))[2];
-        chmod($perm & 07777, "$dracutmpath/xcat-prepivot.sh");
 
         # update etc/dracut.conf
         my $dracutmodulelist = imgutils::dracut_netboot_modules(dirname($dracutmpath), -x "$rootimg_dir/usr/sbin/wicked");
@@ -1027,28 +1011,12 @@ sub mkinitrd_dracut {
         print $DRACUTCONF qq{filesystems+=" nfs "\n};
         close $DRACUTCONF;
     } elsif ($mode eq "stateless") {
-        cp("$fullpath/$dracutdir/install.netboot", "$dracutmpath/install");
-        $perm = (stat("$fullpath/$dracutdir/install.netboot"))[2];
-        chmod($perm & 07777, "$dracutmpath/install");
-
-        cp("$fullpath/$dracutdir/xcat-cmdline.sh", "$dracutmpath/");
-        $perm = (stat("$fullpath/$dracutdir/xcat-cmdline.sh"))[2];
-        chmod($perm & 07777, "$dracutmpath/xcat-cmdline.sh");
-
         if ($prinic) {
             my $optspec;
             open($optspec, '>>', "$dracutmpath/xcat-cmdline.sh");
             print $optspec "PRINIC=$prinic\n";
             close $optspec;
         }
-
-        cp("$fullpath/$dracutdir/xcatroot", "$dracutmpath/");
-        $perm = (stat("$fullpath/$dracutdir/xcatroot"))[2];
-        chmod($perm & 07777, "$dracutmpath/xcatroot");
-
-        cp("$fullpath/$dracutdir/installkernel", "$dracutmpath/");
-        $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
-        chmod($perm & 07777, "$dracutmpath/installkernel");
 
         # update etc/dracut.conf
         my $dracutmodulelist = imgutils::dracut_netboot_modules(dirname($dracutmpath), -x "$rootimg_dir/usr/sbin/wicked");
