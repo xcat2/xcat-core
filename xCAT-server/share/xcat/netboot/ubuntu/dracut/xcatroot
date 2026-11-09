@@ -43,6 +43,42 @@ xcat_static_ip6_fields()
 
 NEWROOT=$3
 RWDIR=.statelite
+
+# The kernel gives init the arguments without a dot as variables. A systemd initial ramdisk
+# runs this script from dracut-initqueue, which does not get them, so getarg reads them.
+for xcat_arg in XCAT imgurl rootimgchecksum STATEMNT BOOTIF ifname netdev; do
+	eval "xcat_value=\${$xcat_arg}"
+	[ -z "$xcat_value" ] || continue
+	xcat_value=$(. /lib/dracut-lib.sh && getarg "$xcat_arg=") || continue
+	eval "$xcat_arg=\$xcat_value"
+done
+unset xcat_arg xcat_value
+
+# Writes resolv.conf from the systemd-networkd leases when it names no server. dhclient wrote
+# it, but systemd-networkd keeps the servers in its lease files, and the initial ramdisk has no
+# resolver service to read them.
+xcat_resolv_from_leases() {
+	local leases="${XCAT_NETWORKD_LEASES:-/run/systemd/netif/leases}"
+	local resolv="${XCAT_RESOLV_CONF:-/etc/resolv.conf}"
+	local dns="" domain="" lease value server
+	grep -qs '^nameserver' "$resolv" && return 0
+	for lease in "$leases"/*; do
+		[ -r "$lease" ] || continue
+		value=$(sed -n 's/^DNS=//p' "$lease")
+		[ -n "$value" ] && dns="$dns $value"
+		value=$(sed -n 's/^DOMAINNAME=//p' "$lease")
+		[ -n "$value" ] && [ -z "$domain" ] && domain=$value
+	done
+	[ -n "$dns" ] || return 0
+	{
+		[ -z "$domain" ] || echo "search $domain"
+		for server in $dns; do
+			echo "nameserver $server"
+		done
+	} >"$resolv"
+}
+xcat_resolv_from_leases
+
 XCATMASTER=$XCAT
 
 # Downloads the checksum file published for the image at $1 to $2.
@@ -367,7 +403,24 @@ XCATNETPLAN
   fi
 fi
 
-cp /etc/resolv.conf "$NEWROOT/etc/"
+# The image links resolv.conf to the systemd-resolved stub, and that stub does not send a short
+# name such as the name of the server to the DNS server. Replace the link, not the file it names.
+xcat_resolv="${XCAT_RESOLV_CONF:-/etc/resolv.conf}"
+if grep -qs '^nameserver' "$xcat_resolv" && [ -L "$NEWROOT/etc/resolv.conf" ]; then
+  rm -f "$NEWROOT/etc/resolv.conf"
+fi
+cp "$xcat_resolv" "$NEWROOT/etc/resolv.conf"
+
+# genimage leaves the hostname file empty, and systemd then names the node localhost. The
+# postscripts identify the node by its hostname.
+if [ ! -s "$NEWROOT/etc/hostname" ]; then
+  for xcat_lease in "${XCAT_NETWORKD_LEASES:-/run/systemd/netif/leases}"/*; do
+    xcat_name=$(sed -n 's/^HOSTNAME=//p' "$xcat_lease" 2>/dev/null)
+    [ -n "$xcat_name" ] || continue
+    echo "${xcat_name%%.*}" >"$NEWROOT/etc/hostname"
+    break
+  done
+fi
 
 
 if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
