@@ -1347,12 +1347,11 @@ is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', { '*' => 1 } ), 1,
     ok( -s $file, '... and stays on disk' );
 }
 
-# A KVM guest that xCAT defines reads its own UUID back in the other order. getNodeUUID writes
-# the byte swap of vpd.uuid into the libvirt domain and qemu stores that little-endian in SMBIOS,
-# so the two swaps cancel and the firmware sends vpd.uuid unswapped. Measured on xcat88-cn: the
-# firmware and the Genesis image both sent the canonical order while iPXE sent the swap. The
-# reserved address has to be on the order the firmware sends, because a host reservation is what
-# applies to every IA of a client and the image solicits with a different IAID than the firmware.
+# mkvm gives a KVM guest the domain UUID that its guest reports as vpd.uuid, through
+# xCAT::KVMUtils::guest_uuid. So the firmware of the guest copies the same SMBIOS bytes as a
+# physical node, and sends the byte swap of vpd.uuid. The reserved address has to be on the
+# order the firmware sends, because a host reservation is what applies to every IA of a client
+# and the image solicits with a different IAID than the firmware.
 {
     # The address holder of cn01 with each mgt value. node_rows reads %mgt_of, so %mgt_of is set
     # before the rows are built.
@@ -1370,8 +1369,8 @@ is( xCAT_plugin::dhcp::ra_interface_is_served( 'eth0', { '*' => 1 } ), 1,
     }
 
     ok( $holder_for{kvm}, 'a kvm node still reserves its address' );
-    is( ( $holder_for{kvm} || {} )->{duid}, $canonical,
-        'the address of a kvm node is reserved for the canonical order, which its firmware sends' );
+    is( ( $holder_for{kvm} || {} )->{duid}, $firmware,
+        'the address of a kvm node is reserved for the byte-swapped order, which its firmware sends' );
     is_deeply( ( $holder_for{kvm} || {} )->{'ip-addresses'}, [ $address{cn01} ],
         '... and it is the address of the node' );
     is( ( $holder_for{''} || {} )->{duid}, $firmware,
