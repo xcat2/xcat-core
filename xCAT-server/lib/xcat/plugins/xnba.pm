@@ -400,7 +400,9 @@ sub _write_uefi_exit_script {
     open(my $ucfg, '>', "$bootloader_root/$node.uefi");
     print $ucfg "#!gpxe\n";
     print $ucfg "#$state\n" if $state;
-    print $ucfg "exit\n";
+    # UEFI firmware stops at its boot manager menu when a boot option returns success. A
+    # failure status makes it try the next boot option, which is the disk.
+    print $ucfg "exit 1\n";
     close($ucfg);
 }
 
