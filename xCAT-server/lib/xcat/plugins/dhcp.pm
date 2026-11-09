@@ -952,13 +952,12 @@ sub addnode6 {
     # to load, so EDK2 reports "PXE-E21: Remote boot cancelled" and tries the next boot entry.
     my $nrent        = $nrhash       ? $nrhash->{$node}->[0]       : undef;
     my $ntent        = $nodetypeents ? $nodetypeents->{$node}->[0] : undef;
-    # mac.duid decides which client this host answers. With canonical it is iPXE, which needs the
-    # boot script of the node and not the shim.
     my ($primary)    = dhcp6_node_clients( $identity->{duids}, $nrent );
-    my $bootfile_url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent,
+    my $bootfile     = isc_dhcp6_bootfile_statement( $node, $nrent, $ntent,
         $primary ? $primary->{client} : undef );
-    my $statements6  = 'ddns-hostname \"' . $node . '\";';
-    $statements6 .= ' option dhcp6.bootfile-url \"' . $bootfile_url . '\";' if $bootfile_url;
+    my $statements6  = 'ddns-hostname "' . $node . '";';
+    $statements6 .= " $bootfile" if $bootfile;
+    $statements6 =~ s/"/\\"/g;
     $commands .= 'set statements = "' . $statements6 . '";' . "\n";
 
     if ($ip) {
@@ -969,6 +968,31 @@ sub addnode6 {
     $commands .= addnode6_other_clients( $node, $identity, $nrent, $ntent );
 
     return $commands;
+}
+
+#---
+# =head3 isc_dhcp6_bootfile_statement
+# Descriptions: The ISC DHCPv6 statement that names the boot file for one client of a node. The
+#               firmware and iPXE of a chainloading node send the two UUID orders, but which one
+#               sends which depends on the libvirt domain, so their hosts choose the file by boot
+#               stage and not by the label of the DUID.
+# Arguments: $node, $nrent -- noderes, $ntent -- nodetype, $client -- the client label
+# Returns: the statement, unescaped, or undef when the client needs no boot file
+#---
+sub isc_dhcp6_bootfile_statement
+{
+    my ( $node, $nrent, $ntent, $client ) = @_;
+
+    $client ||= 'firmware';
+    if ( dhcp6_chainloads($nrent) && $client =~ /\A(?:firmware|ipxe)\z/ ) {
+        return xCAT::DHCP::BootPolicy->isc_dhcp6_boot_stage_statement(
+            loader_url => dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, 'firmware' ),
+            script_url => dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, 'ipxe' ),
+        );
+    }
+    my $url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, $client );
+    return unless $url;
+    return qq(option dhcp6.bootfile-url "$url";);
 }
 
 #---
@@ -991,8 +1015,9 @@ sub addnode6_other_clients
     my %created;
     foreach my $client (@clients) {
         next unless $client->{duid};
-        my $url = dhcp6_bootfile_url_for_node( $node, $node, $nrent, $ntent, $client->{client} );
-        next unless $url;
+        my $statement = isc_dhcp6_bootfile_statement( $node, $nrent, $ntent, $client->{client} );
+        next unless $statement;
+        $statement =~ s/"/\\"/g;
 
         my $name = "$node-$client->{client}";
         $created{$name} = 1;
@@ -1002,7 +1027,7 @@ sub addnode6_other_clients
         $commands .= "new host\n";
         $commands .= "set name = \"$name\"\n";
         $commands .= "set dhcp-client-identifier = $client->{duid}\n";
-        $commands .= 'set statements = "option dhcp6.bootfile-url \"' . $url . '\";";' . "\n";
+        $commands .= 'set statements = "' . $statement . '";' . "\n";
         $commands .= "create\n";
         $commands .= "close\n";
     }

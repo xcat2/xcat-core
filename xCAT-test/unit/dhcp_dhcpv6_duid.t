@@ -1053,8 +1053,10 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     is( $hosts->{'cn02-ipxe'}, undef, 'ISC: a grub2 node has one host' );
     my ($statements) = ( $sessions->[1] // '' ) =~
       /^set name = "cn01-ipxe"\nset dhcp-client-identifier = \S+\nset statements = "(.*)";\ncreate$/m;
-    is( $statements, 'option dhcp6.bootfile-url \\"' . $script_url . '\\";',
-        'ISC: that host is given the boot script' );
+    is( $statements, 'if substring(option dhcp6.user-class, 2, 4) = \\"iPXE\\" { '
+          . 'option dhcp6.bootfile-url \\"' . $script_url . '\\"; } else { '
+          . 'option dhcp6.bootfile-url \\"' . $shim_url . '\\"; }',
+        'ISC: that host gives iPXE the boot script and any other client the shim' );
 }
 
 # ---- The Genesis image is a third client, and it sends a DUID-LL ----------------------------
@@ -1183,8 +1185,8 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
 
 # ---- mac.duid=canonical makes iPXE the client that holds the address ------------------------
 # The canonical order is the DUID that iPXE sends, so the host named after the node answers iPXE
-# and the firmware gets the host <node>-firmware. Each host carries the boot file of its own
-# client: iPXE that is given the shim again never reaches the boot script of the node.
+# and the firmware gets the host <node>-firmware. iPXE that is given the shim again never reaches
+# the boot script of the node.
 {
     local %DUIDTable::rows = node_rows(%settings);
 
@@ -1207,12 +1209,16 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     is( $hosts->{cn03}, $cn03_canonical, 'ISC: the host of a canonical node is keyed on the DUID iPXE sends' );
     is( $hosts->{'cn03-firmware'}, $cn03_firmware, '... and the firmware has a host of its own' );
 
-    my %url;
-    while ( $session =~ /^set name = "([^"]+)"\nset dhcp-client-identifier = \S+\nset statements = "[^\n]*?bootfile-url \\"([^\\]+)\\"/mg ) {
-        $url{$1} = $2;
+    # Option 15 decides the stage on both hosts, so each gives iPXE the boot script and the
+    # firmware the shim, whichever client its DUID belongs to.
+    my %stage;
+    while ( $session =~ /^set name = "([^"]+)"\nset dhcp-client-identifier = \S+\nset statements = "[^\n]*?if substring\(option dhcp6\.user-class, 2, 4\) = \\"iPXE\\" \{ option dhcp6\.bootfile-url \\"([^\\]+)\\"; \} else \{ option dhcp6\.bootfile-url \\"([^\\]+)\\"; \}";$/mg ) {
+        $stage{$1} = [ $2, $3 ];
     }
-    is( $url{cn03}, $script_url, 'ISC: the host that answers iPXE is given the boot script' );
-    is( $url{'cn03-firmware'}, $shim_url, 'ISC: the host that answers the firmware is given the shim' );
+    is_deeply( $stage{cn03}, [ $script_url, $shim_url ],
+        'ISC: the host of the canonical order gives iPXE the boot script and the firmware the shim' );
+    is_deeply( $stage{'cn03-firmware'}, [ $script_url, $shim_url ],
+        'ISC: and so does the host of the firmware order' );
 
     # makedhcp -d removes the DHCPv6 hosts by name, so a name it does not list stays behind with
     # the boot file of a node that makedhcp reported as removed.

@@ -200,6 +200,26 @@ sub kea_bootfile_url6_option {
 sub dhcp6_ipxe_user_class_test { return "substring(option[15].hex, 2, 4) == 'iPXE'"; }
 
 #---
+# =head3 isc_dhcp6_boot_stage_statement
+# Descriptions: The ISC DHCPv6 host statement that gives a chainloading node its boot file by
+#               boot stage. It makes the same split as kea_node_boot_classes6: iPXE sends option
+#               15, the User Class, as the length-prefixed string iPXE, and the firmware sends no
+#               option 15. The DUID cannot make this split, because which UUID order the firmware
+#               sends depends on the UUID of the libvirt domain.
+# Arguments: loader_url -- the first-stage loader, which the firmware fetches over tftp
+#            script_url -- the boot script of the node, which only iPXE can fetch
+# Returns: the statement, unescaped, or undef unless both URLs are given
+#---
+sub isc_dhcp6_boot_stage_statement {
+    my ( $class, %opts ) = @_;
+
+    return unless defined( $opts{loader_url} ) && defined( $opts{script_url} );
+    return 'if substring(option dhcp6.user-class, 2, 4) = "iPXE" { '
+      . qq(option dhcp6.bootfile-url "$opts{script_url}"; } else { )
+      . qq(option dhcp6.bootfile-url "$opts{loader_url}"; });
+}
+
+#---
 # =head3 kea_node_boot_classes6
 # Descriptions: The two DHCPv6 client classes that give one chainloading node its boot file, one
 #               for each stage. A reservation cannot do this: Kea gives a reservation's option
