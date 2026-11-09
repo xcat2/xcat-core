@@ -18,7 +18,7 @@
 # So classes could not reach the config even once something built them.
 use strict;
 use warnings;
-use Test::More tests => 15;
+use Test::More tests => 17;
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
 use JSON;
@@ -113,3 +113,19 @@ my ($arch_at) =
   grep { $withnet->[$_]{test} =~ /0x0007/ && $withnet->[$_]{test} !~ /iPXE/ } 0 .. $#$withnet;
 ok( defined($ipxe_at) && defined($arch_at) && $ipxe_at < $arch_at,
     'the second stage is matched before the first, or iPXE is handed the shim again' );
+
+# --- each class answers only the network that lists it ------------------------------------------
+# The classes of every network are global in Dhcp6, and the subnet list only adds them to its own
+# clients. A class without the additional-only flag is also evaluated for every client of every
+# subnet, so a discovery client on the second network is handed the URL of the first.
+my $two = $backend->render_dhcp6_config({
+    interfaces => ['eth1'],
+    subnets    => [
+        { id => 1, subnet => '2001:db8:188::/64', additional_client_classes => [ map { $_->{name} } @$withnet ] },
+    ],
+    'client-classes' => $withnet,
+});
+my $rendered = decode_json($two)->{Dhcp6}{'client-classes'} || [];
+is( scalar(@$rendered), scalar(@$withnet), 'every per-network class is rendered' );
+is_deeply( [ map { $_->{name} } grep { !( $_->{'only-in-additional-list'} ) } @$rendered ], [],
+    'and each one is evaluated only for a subnet that lists it' );
