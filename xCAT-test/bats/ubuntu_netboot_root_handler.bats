@@ -74,7 +74,7 @@ SH
         sed -e 's#/lib/dracut-lib.sh#${BATS_TEST_TMPDIR}/lib/dracut-lib.sh#' \
             -e 's#/sbin/xcatroot#${bin}/sbin/xcatroot#g' \
             -e 's#/tmp/xcat.rootimg.done#${BATS_TEST_TMPDIR}/done#' '$hook' > ./hook.sh
-        sh -c '. ./hook.sh eth0'"
+        bash -c '. ./hook.sh eth0'"
     [ "$status" -eq 0 ]
     [ "$(cat "${BATS_TEST_TMPDIR}/called")" = 'eth0 xcat /sysroot' ]
 }
@@ -93,7 +93,7 @@ SH
         sed -e 's#/lib/dracut-lib.sh#${BATS_TEST_TMPDIR}/lib/dracut-lib.sh#' \
             -e 's#/sbin/xcatroot#${bin}/sbin/xcatroot#g' \
             -e 's#/tmp/xcat.rootimg.done#${BATS_TEST_TMPDIR}/done#' '$hook' > ./hook.sh
-        sh -c '. ./hook.sh eth0; . ./hook.sh eth1'"
+        bash -c '. ./hook.sh eth0; . ./hook.sh eth1'"
     [ "$status" -eq 0 ]
     [ "$(wc -l < "${BATS_TEST_TMPDIR}/count")" -eq 1 ]
 }
