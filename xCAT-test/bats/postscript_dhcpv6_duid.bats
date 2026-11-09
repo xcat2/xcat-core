@@ -26,7 +26,7 @@ setup()
     export XCAT_NM_CONF_DIR="$BATS_TEST_TMPDIR/nm"
     export XCAT_NETWORKD_CONF_DIR="$BATS_TEST_TMPDIR/nd"
     export XCAT_TEST_LOG="$BATS_TEST_TMPDIR/commands.log"
-    unset DHCP6DUID MACMAC ARCH
+    unset DHCP6DUID MACMAC ARCH VPDUUID
     : >"$XCAT_TEST_LOG"
     mkdir -p "$XCAT_NM_CONF_DIR" "$XCAT_NETWORKD_CONF_DIR"
 }
@@ -284,4 +284,49 @@ DUIDRawData=00:01:52:54:00:aa:bb:cc" ]
     [ ! -e "$XCAT_NM_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
     [ ! -e "$XCAT_NETWORKD_CONF_DIR/15-xcat-dhcpv6-duid.conf" ]
     grep -q 'is not firmware, canonical, ll, or a DUID' "$XCAT_TEST_LOG"
+}
+
+# ---- the UUID policies read vpd.uuid, as makedhcp does ------------------------------------
+# makedhcp applies firmware and canonical to vpd.uuid. A KVM domain that an earlier mkvm defined
+# holds the byte swap of vpd.uuid, so product_uuid in the guest is that swap, and a policy applied
+# to product_uuid gives the other order. mypostscript exports vpd.uuid as VPDUUID.
+
+@test "canonical applies to vpd.uuid when product_uuid is its byte swap" {
+    export DHCP6DUID=canonical VPDUUID=00112233-4455-6677-8899-aabbccddeeff
+    run_duid 33221100-5544-7766-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$CANONICAL" ]
+}
+
+@test "firmware applies to vpd.uuid when product_uuid is its byte swap" {
+    export DHCP6DUID=firmware VPDUUID=00112233-4455-6677-8899-aabbccddeeff
+    run_duid 33221100-5544-7766-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$DUID" ]
+}
+
+@test "the unset attribute applies the firmware order to vpd.uuid too" {
+    export VPDUUID=00112233-4455-6677-8899-aabbccddeeff
+    run_duid 33221100-5544-7766-8899-aabbccddeeff
+    [ "$status" -eq 0 ]
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$DUID" ]
+}
+
+@test "vpd.uuid is read without a SMBIOS UUID on the node" {
+    export DHCP6DUID=canonical VPDUUID=00112233-4455-6677-8899-AABBCCDDEEFF
+    rm -f "$XCAT_PRODUCT_UUID_FILE"
+    run /bin/bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$(nm_file | sed -n 's/^ipv6.dhcp-duid=//p')" = "$CANONICAL" ]
+}
+
+@test "mypostscript exports VPDUUID to the postscripts it runs" {
+    tmpl="$(repo_path 'xCAT-server/share/xcat/mypostscript/mypostscript.tmpl')"
+    rendered="$BATS_TEST_TMPDIR/mypostscript"
+    sed -e '/^tabdump(/d' \
+        -e 's/#TABLE:\([^:]*\):\$NODE:\([^#]*\)#/\1.\2/g' \
+        -e 's/=#[A-Z_]*#/=/g' "$tmpl" >"$rendered"
+    run /bin/bash -c '. "$1" && /bin/bash -c "printf %s \"\${VPDUUID-unset}\""' _ "$rendered"
+    [ "$status" -eq 0 ]
+    [ "$output" = "vpd.uuid" ]
 }
