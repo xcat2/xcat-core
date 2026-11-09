@@ -287,11 +287,11 @@ cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup1|grep 19998"
 check:output=~1
 cmd:xdsh $$CN "cat /etc/group |grep -i bogusgroup|grep 29999"
 check:rc==0
-cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/passwd /etc/passwd"
+cmd:xdsh $$CN "cp -f /tmp/updatenode_syncfile_MERGE/passwd /etc/passwd"
 check:rc==0
-cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/group /etc/group"
+cmd:xdsh $$CN "cp -f /tmp/updatenode_syncfile_MERGE/group /etc/group"
 check:rc==0
-cmd:xdsh $$CN "mv -f /tmp/updatenode_syncfile_MERGE/shadow /etc/shadow"
+cmd:xdsh $$CN "cp -f /tmp/updatenode_syncfile_MERGE/shadow /etc/shadow"
 check:rc==0
 cmd:xdsh  $$CN "rm -rf /tmp/updatenode_syncfile_MERGE"
 check:rc==0
