@@ -5468,7 +5468,8 @@ sub kea_boot_client_classes6
 
     return xCAT::DHCP::BootPolicy->kea_client_classes6(
         kea_ipxe_loader_flags(), uri_host => $uri_host, suffix => $id,
-        net                     => $netaddr, prefix  => $prefixlen );
+        net                     => $netaddr, prefix  => $prefixlen,
+        httpport                => dhcp6_site_http_port() );
 }
 
 # Which upstream loader files the local TFTP tree has, as the Kea class builders take them.

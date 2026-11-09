@@ -115,6 +115,7 @@ sub kea_client_classes6 {
         && length( $opts{prefix} ) )
     {
         my $scripts    = $class->x86_loader( method => 'ipxe' )->{scripts};
+        my $portsuffix = httpport_suffix( $opts{httpport} || '80' );
         my $network_id = $opts{net} . '_' . $opts{prefix};
         my $safe       = $network_id;
         $safe =~ s/[^A-Za-z0-9_.-]/_/g;
@@ -123,7 +124,7 @@ sub kea_client_classes6 {
             test => dhcp6_ipxe_user_class_test()
               . " and (option[61].hex == 0x0007 or option[61].hex == 0x0009)",
             'option-data' =>
-              [ kea_bootfile_url6_option("http://$host/tftpboot/$scripts/nets/$network_id.uefi") ],
+              [ kea_bootfile_url6_option("http://$host$portsuffix/tftpboot/$scripts/nets/$network_id.uefi") ],
         };
     }
 
