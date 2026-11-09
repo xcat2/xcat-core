@@ -981,8 +981,8 @@ is( xCAT_plugin::dhcp::radvd_needs_restart( 0, 1 ), 0, 'an unchanged file with t
     is( $second_option, undef, '... including the one that holds no address' );
 
     # Which order the firmware sends does not follow from vpd.uuid: it reports the SMBIOS bytes
-    # of the domain uuid, and getNodeUUID writes that as the byte-swap of vpd.uuid for a KVM
-    # guest. So both classes match both orders and option 15 alone decides the stage.
+    # of the domain uuid, and a domain that an earlier mkvm defined holds the byte-swap of
+    # vpd.uuid. So both classes match both orders and option 15 alone decides the stage.
     my $cn01_classes = boot_classes6('cn01');
     ( my $firmware_hex  = $firmware )  =~ s/://g;
     ( my $canonical_hex = $canonical ) =~ s/://g;

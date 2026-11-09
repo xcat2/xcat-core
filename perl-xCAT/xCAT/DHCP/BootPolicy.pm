@@ -189,10 +189,10 @@ sub kea_bootfile_url6_option {
 #
 #               The byte order of the DUID cannot do this job, because it does not follow from
 #               vpd.uuid. The firmware sends the SMBIOS bytes of the uuid the hypervisor gave the
-#               guest, and on KVM getNodeUUID writes that domain uuid as the byte-swap of
-#               vpd.uuid. So the firmware sends vpd.uuid unswapped and iPXE sends the swap, while
-#               a domain created from vpd.uuid directly gives the opposite pair. Both orders are
-#               real and neither names a stage. The DHCPv4 path splits the same two stages on the
+#               guest. A domain that an earlier mkvm defined holds the byte-swap of vpd.uuid, so
+#               its firmware sends vpd.uuid unswapped and iPXE sends the swap, while a domain
+#               created from vpd.uuid gives the opposite pair. Both orders are real and neither
+#               names a stage. The DHCPv4 path splits the same two stages on the
 #               iPXE feature sub-options of option 175, which is the same kind of test as this.
 # Arguments: none
 # Returns: the expression
@@ -264,28 +264,6 @@ sub kea_node_boot_classes6 {
 
 #: Every client architecture some class here, or in the per-network classes
 #: beside it, already answers. The fallback is what is left over.
-#---
-# =head3 dhcp6_firmware_uuid_order
-# Descriptions: The byte order of vpd.uuid that the firmware of a node sends in its DUID-UUID.
-#
-#               EDK2 copies the SMBIOS UUID bytes into its DUID, and SMBIOS 2.6 and later store
-#               the first three fields little-endian, so a physical node sends the byte swap of
-#               the vpd.uuid text.
-#
-#               A KVM guest that xCAT defines is the other way round. getNodeUUID writes the byte
-#               swap of vpd.uuid into the libvirt domain, qemu stores that little-endian, and the
-#               two swaps cancel: the firmware of the guest sends vpd.uuid unswapped.
-# Arguments:    $mgt - the mgt attribute of the nodehm table
-# Returns:      'canonical' when xCAT defines the domain of the node, otherwise 'firmware'.
-# =cut
-#---
-sub dhcp6_firmware_uuid_order {
-    my ( $class, $mgt ) = @_;
-
-    return 'firmware' unless defined($mgt);
-    return ( lc($mgt) eq 'kvm' ) ? 'canonical' : 'firmware';
-}
-
 my @RECOGNISED_ARCH_IDS = qw(
   0x0000 0x0002 0x0007 0x0009 0x000b 0x000c 0x000e 0x0010 0x001b 0x001c 0x001f
 );

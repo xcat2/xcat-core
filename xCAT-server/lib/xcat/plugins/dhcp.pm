@@ -4154,8 +4154,8 @@ sub kea_node_boot_classes6_for_nodes
         my $ntent = $ntents && $ntents->{$node} ? $ntents->{$node}->[0] : undef;
 
         # Both UUID orders, because either one can be the firmware: that depends on whether the
-        # domain was given vpd.uuid or its byte-swap, which xCAT's own getNodeUUID decides for a
-        # KVM guest. The DUID-LL of the Genesis image is left out -- it is the booted operating
+        # domain was given vpd.uuid or its byte-swap, and a domain that an earlier mkvm defined
+        # keeps the byte-swap. The DUID-LL of the Genesis image is left out -- it is the booted operating
         # system and asks for no boot file.
         my @duids =
           map  { $_->{duid} }
@@ -5082,7 +5082,7 @@ sub dhcp6_firmware_duid_is_link_layer
 
 sub dhcp6_client_duid
 {
-    my ( $setting, $uuid, $mac, $arch, $mgt ) = @_;
+    my ( $setting, $uuid, $mac, $arch ) = @_;
 
     my $choice = lc( defined($setting) ? $setting : '' );
     $choice =~ s/^\s+|\s+$//g;
@@ -5093,10 +5093,9 @@ sub dhcp6_client_duid
         # The warning below is about the order of vpd.uuid, which this firmware does not read.
         return ( kea_duid_ll_from_mac($mac), undef, undef )
           if dhcp6_firmware_duid_is_link_layer($arch);
-        # Which order the firmware sends is not the same on a physical node and on a KVM guest
-        # that xCAT defines, so the default follows the node and not one platform.
-        my $order = xCAT::DHCP::BootPolicy->dhcp6_firmware_uuid_order($mgt);
-        my $duid = kea_duid_from_uuid( $uuid, $order eq 'firmware' ? 'firmware' : undef );
+        # mkvm gives a KVM guest the UUID that vpd.uuid holds, so its firmware sends the same
+        # order as a physical node.
+        my $duid = kea_duid_from_uuid( $uuid, 'firmware' );
         return ( $duid, undef, dhcp6_uuid_order_warning($uuid) );
     }
     if ( $choice eq 'firmware' ) {
@@ -5209,10 +5208,6 @@ sub dhcp6_client_duids
     my $uuids    = $vpdtab ? $vpdtab->getNodesAttribs($nodes, ['uuid']) : undef;
     # The architecture, because it decides which identifier the firmware of the node sends.
     my $arches   = $nttab ? $nttab->getNodesAttribs($nodes, ['arch']) : undef;
-    # mgt says whether xCAT defines the domain of the node, which decides the byte order the
-    # firmware of the node reads back out of SMBIOS.
-    my $hmtab    = xCAT::Table->new('nodehm', -create => 0);
-    my $mgts     = $hmtab ? $hmtab->getNodesAttribs($nodes, ['mgt']) : undef;
 
     my %duids;
     foreach my $node (@$nodes) {
@@ -5221,10 +5216,9 @@ sub dhcp6_client_duids
         my $ntent   = $arches && $arches->{$node} ? $arches->{$node}->[0] : undef;
         my $setting = $macent ? $macent->{duid} : undef;
         my $uuid    = $vpdent ? $vpdent->{uuid} : undef;
-        my $hment   = $mgts && $mgts->{$node} ? $mgts->{$node}->[0] : undef;
         my ( $duid, $error, $warning ) = dhcp6_client_duid(
             $setting, $uuid, ( $macent ? $macent->{mac} : undef ),
-            ( $ntent ? $ntent->{arch} : undef ), ( $hment ? $hment->{mgt} : undef ) );
+            ( $ntent ? $ntent->{arch} : undef ) );
         $duids{$node} = {
             duid    => $duid,
             duids   => dhcp6_client_duid_list(
