@@ -376,8 +376,15 @@ class GenesisMetadata(unittest.TestCase):
         self.assertEqual(service["Service"]["ExecStart"], "/usr/libexec/xcat/genesis-duid")
         self.assertEqual(set(service["Unit"]["Before"].split()),
                          {"NetworkManager.service", "xcat-genesis-network-state.service"})
+        # genesis-bootnic writes the connection profiles that keep DHCPv6 on the boot nic, so
+        # NetworkManager has to start after it.
+        self.installed(data, root, "libexecdir", "xcat/genesis-bootnic", 0o755)
+        bootnic = self.unit(self.installed(data, root, "systemd_system_unitdir",
+                                           "xcat-genesis-bootnic.service", 0o644))
+        self.assertEqual(bootnic["Service"]["ExecStart"], "/usr/libexec/xcat/genesis-bootnic")
+        self.assertIn("NetworkManager.service", bootnic["Unit"]["Before"].split())
         self.assertEqual(self.words(data, "SYSTEMD_SERVICE:" + data.getVar("PN")),
-                         {"xcat-genesis-duid.service"})
+                         {"xcat-genesis-duid.service", "xcat-genesis-bootnic.service"})
 
     def test_installed_hardware_providers(self):
         data, root = self.install("xcat-genesis-hardware-control")
