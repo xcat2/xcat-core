@@ -3038,7 +3038,7 @@ sub kea_process_request
             push @deleted6, @{ $backend->delete_reservations($loaded6, $match) } if $loaded6;
         }
         $client_classes_changed = kea_remove_node_client_classes($loaded4, $nodes);
-        kea_remove_node_boot_classes6($loaded6, $nodes) if $loaded6;
+        $client_classes_changed = 1 if $loaded6 && kea_remove_node_boot_classes6($loaded6, $nodes);
     } else {
         # An upgrade keeps the option definitions of an older makedhcp -n.
         ( $option_defs_added, my $defs_error ) = xCAT::DHCP::BootPolicy->kea_declare_ipxe_features($loaded4->{Dhcp4});
@@ -3053,7 +3053,7 @@ sub kea_process_request
         if ($loaded6) {
             $reservations6 = kea_build_node_reservations6($backend, $loaded6, $nodes);
             $backend->upsert_reservations($loaded6, $reservations6, \@replaced6);
-            kea_sync_node_boot_classes6($loaded6, $nodes);
+            $client_classes_changed = 1 if kea_sync_node_boot_classes6($loaded6, $nodes);
         }
     }
 
