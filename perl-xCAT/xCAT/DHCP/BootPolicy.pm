@@ -164,6 +164,10 @@ sub kea_client_classes6 {
         },
     );
 
+    # The classes are global in Dhcp6. Without this flag Kea evaluates them for the clients of
+    # every subnet, and the subnet list only adds them a second time.
+    $_->{additional_only} = 1 foreach @classes;
+
     return \@classes;
 }
 
