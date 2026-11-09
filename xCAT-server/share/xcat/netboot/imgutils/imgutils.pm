@@ -305,7 +305,7 @@ sub stage_dracut_module {
     my ($srcdir, $moduledir, $mode) = @_;
     my %files = (
         statelite => [qw(xcat-prepivot.sh)],
-        stateless => [qw(xcat-cmdline.sh xcatroot installkernel)],
+        stateless => [qw(xcat-cmdline.sh xcat-online.sh xcatroot installkernel)],
     );
     die("Error: the mode $mode is not supported by genimage\n") unless $files{$mode};
     my $install = $mode eq 'statelite' ? 'install.statelite' : 'install.netboot';
