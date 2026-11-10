@@ -51,6 +51,7 @@ case "$1 $2" in
     'lan6 set')
         [ ! -f /run/fixture/lan6-fails ] || exit 1
         ;;
+    'lan6 print') cat "/run/fixture/lan6.$device" 2>/dev/null ;;
     'channel getaccess') echo 'Fixed Name : No' ;;
     'user list') cat /run/fixture/users ;;
     'user disable') printf '%s\n' "$3" >>/run/fixture/disabled ;;
@@ -83,9 +84,17 @@ else
 fi
 SH
     local utility
-    for utility in modprobe updateflag.awk remoteimmsetup allowcred.awk; do
+    for utility in modprobe remoteimmsetup; do
         printf '#!/bin/sh\nexit 0\n' >"$fixture/bin/$utility"
     done
+    cat >"$fixture/bin/updateflag.awk" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>/run/fixture/flags
+SH
+    cat >"$fixture/bin/allowcred.awk" <<'SH'
+#!/bin/sh
+printf '%s\n' "$XCATMASTER" >>/run/fixture/allowcred
+SH
     cat >"$fixture/bin/sleep" <<'SH'
 #!/bin/sh
 printf '%s\n' "$*" >>/run/fixture/sleeps
@@ -401,4 +410,73 @@ XML
     [ "$(grep -c -- '^-d 0 lan6 set 1 nolock static_addr 0 enable 2001:db8:1::20 64$' "$fixture/calls")" = 16 ]
     grep -F 'ipmitool lan6 set 1 static_addr 0 enable 2001:db8:1::20 64 failed' "$fixture/messages"
     grep -Fx -- '-d 0 user enable 2' "$fixture/calls"
+}
+
+# doxcat starts bmcsetup with XCATMASTER already exported. bmcsetup reads the
+# address from the xcatd= kernel argument again.
+doxcat_master()
+{
+    echo "BOOTIF=01-52-54-00-00-00-01 xcatd=$1" >"$fixture/cmdline"
+    sandbox+=(--setenv XCATMASTER "$2")
+}
+
+@test 'bmcsetup reports BMC status to an IPv6 xcatd' {
+    ipv6_config
+    doxcat_master '[2001:db8::1]:3001' '2001:db8::1'
+    run_genesis 0
+    run cat "$fixture/flags"
+    [ "$output" = '2001:db8::1 3002 installstatus bmcready' ]
+    run cat "$fixture/allowcred"
+    [ "$output" = '2001:db8::1' ]
+}
+
+@test 'bmcsetup reports BMC status to an IPv4 xcatd' {
+    doxcat_master '192.0.2.1:3001' '192.0.2.1'
+    run_genesis 0
+    run cat "$fixture/flags"
+    [ "$output" = '192.0.2.1 3002 installstatus bmcready' ]
+    run cat "$fixture/allowcred"
+    [ "$output" = '192.0.2.1' ]
+}
+
+openbmc()
+{
+    printf '%s\n' 'IPMI Version : 2.0' 'Manufacturer ID : 42817' 'Product ID : 16975' >"$fixture/mcinfo"
+}
+
+@test 'bmcsetup reports an OpenBMC ready when it reads back its IPv6 address' {
+    openbmc
+    ipv6_config
+    cat >"$fixture/lan6.0" <<'LAN'
+IPv6 Static Address 0:
+    Enabled: yes
+    Address: 2001:db8:1::20/64
+    Status:  active
+LAN
+    doxcat_master '[2001:db8::1]:3001' '2001:db8::1'
+    run_genesis 0
+    run cat "$fixture/flags"
+    [ "$output" = '2001:db8::1 3002 installstatus bmcready' ]
+}
+
+@test 'bmcsetup reports an OpenBMC failed when its IPv6 address does not read back' {
+    openbmc
+    ipv6_config
+    cat >"$fixture/lan6.0" <<'LAN'
+IPv6 Static Address 0:
+    Enabled: no
+    Address: ::/0
+LAN
+    doxcat_master '[2001:db8::1]:3001' '2001:db8::1'
+    run_genesis 0
+    run cat "$fixture/flags"
+    [ "$output" = '2001:db8::1 3002 installstatus failed' ]
+}
+
+@test 'bmcsetup reports an OpenBMC ready when it reads back its IPv4 address' {
+    openbmc
+    doxcat_master '192.0.2.1:3001' '192.0.2.1'
+    run_genesis 0
+    run cat "$fixture/flags"
+    [ "$output" = '192.0.2.1 3002 installstatus bmcready' ]
 }
