@@ -758,34 +758,53 @@ sub copycd
 
 =head3 static_ip6_boot_arg
 
-    The dracut ip= argument that gives an IPv6-only node a static address.
+    The dracut arguments that give an IPv6-only node a static address.
 
     networks.gateway holds what the administrator wrote, and '<xcatmaster>' is the common
     value. Unresolved it reaches the boot argument as "[<xcatmaster>]", and the node has no
     route to a server off its own link. A gateway that does not resolve is dropped: an
     address with no route still reaches an image server on the same link.
 
+    grub2 adds BOOTIF= to every node. The systemd-network-generator of Ubuntu 26.04 turns
+    it into 70-BOOTIF.network, which has no address and sorts before the file of a named
+    interface, and it drops an ip= that names no interface. rd.bootif=0 removes that file.
+    A node with no installnic gets the name xcatboot0 from its MAC, as on EL.
+
     Arguments:
-        $node     the node being installed
-        $nicname  the name of the provisioning NIC
-        $cfg6     optional coderef, for tests; defaults to getNodeNetworkCfg6
-        $resolve  optional coderef, for tests; defaults to ipv6_server_for_node
+        $node        the node being installed
+        $net_params  the hash from gen_net_boot_params; reads nicname and mac
+        $cfg6        optional coderef, for tests; defaults to getNodeNetworkCfg6
+        $resolve     optional coderef, for tests; defaults to ipv6_server_for_node
     Returns:
-        the argument, or undef when the node has no usable address
+        the arguments, or undef when the node has no usable address
 
 =cut
 
 #-------------------------------------------------------------------------------
 sub static_ip6_boot_arg {
-    my ($node, $nicname, $cfg6, $resolve) = @_;
+    my ($node, $net_params, $cfg6, $resolve) = @_;
 
+    $net_params ||= {};
     $cfg6    ||= sub { return xCAT::NetworkUtils->getNodeNetworkCfg6($_[0]); };
     $resolve ||= sub { return xCAT::NetworkUtils->ipv6_server_for_node($_[0], $_[1]); };
+
+    my $nicname = $net_params->{nicname};
+    my @args;
+    unless ($nicname) {
+        my $mac = lc(defined($net_params->{mac}) ? $net_params->{mac} : '');
+        $mac =~ tr/-/:/;
+        if ($mac =~ /\A(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\z/) {
+            $nicname = 'xcatboot0';
+            push @args, "ifname=$nicname:$mac";
+        }
+    }
 
     my ($address, undef, $gateway, $prefix) = $cfg6->($node);
     $gateway = $resolve->($node, $gateway)
       if defined($gateway) && length($gateway);
-    return xCAT::NetworkUtils::dracut_static_ip6($address, $gateway, $prefix, $nicname);
+    my $ip = xCAT::NetworkUtils::dracut_static_ip6($address, $gateway, $prefix, $nicname);
+    return unless $ip;
+    return join(' ', @args, 'rd.bootif=0', $ip);
 }
 
 #-------------------------------------------------------------------------------
@@ -2171,7 +2190,7 @@ sub mknetboot
         # advertisement, so a node that takes the DHCPv6 answer alone cannot reach its
         # server.
         if (xCAT::NetworkUtils->node_is_ipv6_only($node)) {
-            my $ip6 = static_ip6_boot_arg($node, $net_params->{nicname})
+            my $ip6 = static_ip6_boot_arg($node, $net_params)
               || $net_params->{ip6};
             $kcmdline .= "$ip6 " if $ip6;
         }
