@@ -89,6 +89,45 @@ ask()
     [ "$output" = 'CREDOKBYME' ]
 }
 
+# listen_doxcat <script> <port> <master> -- start the listener with only the
+# variables doxcat exports to getcert and bmcsetup. doxcat sets no MASTER_IP and
+# no MASTER. XCAT_CREDENTIAL_CALLBACK_PORT moves the listener off port 300.
+listen_doxcat()
+{
+    local script="$1" port="$2" master="$3" dest i
+    dest="$master:3001"
+    [[ $master == *:* ]] && dest="[$master]:3001"
+    env -i PATH="$PATH" XCATMASTER="$master" XCATPORT=3001 XCATDEST="$dest" \
+        XCAT_CREDENTIAL_CALLBACK_PORT="$port" \
+        setsid gawk -f "$script" </dev/null >/dev/null 2>&1 &
+    SERVER_PID=$!
+    for i in $(seq 1 100); do
+        ss -Hltn "sport = :${port}" 2>/dev/null | grep -q . && return 0
+        sleep 0.1
+    done
+    return 1
+}
+
+@test "the Genesis credential listener answers over IPv6 with the doxcat environment" {
+    local script port
+    script="$(require_repo_file 'xCAT-genesis-scripts/usr/bin/allowcred.awk')"
+    port=$(( 20000 + RANDOM % 20000 ))
+    listen_doxcat "$script" "$port" '2001:db8::1'
+    run ask "TCP6:[::1]:${port}"
+    [ "$status" -eq 0 ]
+    [ "$output" = 'CREDOKBYME' ]
+}
+
+@test "the Genesis credential listener answers over IPv4 with the doxcat environment" {
+    local script port
+    script="$(require_repo_file 'xCAT-genesis-scripts/usr/bin/allowcred.awk')"
+    port=$(( 20000 + RANDOM % 20000 ))
+    listen_doxcat "$script" "$port" '192.0.2.1'
+    run ask "TCP4:127.0.0.1:${port}"
+    [ "$status" -eq 0 ]
+    [ "$output" = 'CREDOKBYME' ]
+}
+
 # ---------------------------------------------------------------------------
 # updateflag.awk -- the state report.
 
