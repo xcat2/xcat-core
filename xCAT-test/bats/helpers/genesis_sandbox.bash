@@ -53,7 +53,8 @@ run_genesis()
     if [ "$expected_status" -gt 128 ]; then
         alternate_status=$((expected_status - 128))
     fi
-    run "${sandbox[@]}" "$@" timeout 20 /bin/bash /run/script </dev/null
+    # A slow host needs over 30 s for one run. GENESIS_SANDBOX_TIMEOUT overrides the cap.
+    run "${sandbox[@]}" "$@" timeout "${GENESIS_SANDBOX_TIMEOUT:-120}" /bin/bash /run/script </dev/null
     if [ "$status" -ne "$expected_status" ] && [ "$status" -ne "$alternate_status" ]; then
         printf 'Expected exit %s or %s, got %s\n%s\n' \
             "$expected_status" "$alternate_status" "$status" "$output" >&2
