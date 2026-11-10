@@ -204,6 +204,15 @@ is_deeply(
     ['nodev6mastergw', 6],
     'static IPv6 xcatmaster gateway lookup is constrained to IPv6'
 );
+# dracut does not retry a static ip= that found no carrier, and a slow link drops the
+# installer into the emergency shell.
+like(
+    xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
+        'nodev6nogw', { mac => '02:00:00:00:00:63' }
+    ),
+    qr/(?:\A| )rd\.net\.timeout\.carrier=120(?: |\z)/,
+    'static IPv6 boot waits up to 120 s for carrier on the boot interface'
+);
 ok(
     !defined(xCAT_plugin::anaconda::_el10_static_ipv6_boot_args('nodev6nogw', {})),
     'static IPv6 boot rendering refuses an unbound interface when no NIC name or MAC exists'
