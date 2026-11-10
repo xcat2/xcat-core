@@ -138,7 +138,8 @@ sub _el10_static_ipv6_boot_args
     return unless $client_field && (!$gateway || $gateway_field);
 
     $hostname ||= $node;
-    push @args, 'rd.neednet=1';
+    # dracut does not retry a static ip= that found no carrier.
+    push @args, 'rd.neednet=1', 'rd.net.timeout.carrier=120';
     push @args, "ip=${client_field}::${gateway_field}:$prefix:$hostname:$interface:none";
     return join(' ', @args);
 }

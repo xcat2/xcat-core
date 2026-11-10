@@ -182,21 +182,21 @@ is(
     xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
         'nodev6', { nicname => 'eno1', mac => '02:00:00:00:00:61' }
     ),
-    'rd.neednet=1 ip=[2001:db8:1::50]::[2001:db8:1::fe]:64:nodev6:eno1:none',
+    'rd.neednet=1 rd.net.timeout.carrier=120 ip=[2001:db8:1::50]::[2001:db8:1::fe]:64:nodev6:eno1:none',
     'named install interface receives the configured static IPv6 boot address'
 );
 is(
     xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
         'nodev6nogw', { mac => '02-00-00-00-00-63' }
     ),
-    'ifname=xcatboot0:02:00:00:00:00:63 rd.neednet=1 ip=[2001:db8:3::50]:::64:nodev6nogw:xcatboot0:none',
+    'ifname=xcatboot0:02:00:00:00:00:63 rd.neednet=1 rd.net.timeout.carrier=120 ip=[2001:db8:3::50]:::64:nodev6nogw:xcatboot0:none',
     'unspecified install interface is deterministically named and bound to its MAC'
 );
 is(
     xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
         'nodev6mastergw', { nicname => 'ens3' }
     ),
-    'rd.neednet=1 ip=[2001:db8:2::50]::[2001:db8::1]:64:nodev6mastergw:ens3:none',
+    'rd.neednet=1 rd.net.timeout.carrier=120 ip=[2001:db8:2::50]::[2001:db8::1]:64:nodev6mastergw:ens3:none',
     'xcatmaster gateway resolves to the IPv6-facing address and is bracketed'
 );
 is_deeply(
