@@ -138,6 +138,19 @@ set_rows( 'noderes',  { map { $_ => { netboot => 'grub2', tftpserver => '2001:db
     $nettab->close;
 }
 
+# The Kea classes of the network give a client without a reservation the iPXE loader, but only when
+# the loader is in site.tftpdir. A private tftpdir with the loader makes the answer the same on every host.
+my $discovery = 'tftp://[2001:db8:176::1]/xcat/ipxe/x86_64-sb/snponly-shim.efi';
+{
+    my $tftpdir = "$work/tftpboot";
+    make_path("$tftpdir/xcat/ipxe/x86_64-sb");
+    open( my $loader, '>', "$tftpdir/xcat/ipxe/x86_64-sb/snponly-shim.efi" ) or die "Cannot create the loader: $!";
+    close($loader) or die "Cannot close the loader: $!";
+    my $sitetab = xCAT::Table->new( 'site', -create => 1 ) or die 'Unable to open the site table';
+    $sitetab->setAttribs( { key => 'tftpdir' }, { value => $tftpdir } );
+    $sitetab->close;
+}
+
 # Run makedhcp in the server namespace: options for kea_process_request, or the ISC host commands.
 sub makedhcp {
     my (%args) = @_;
@@ -179,11 +192,16 @@ sub check_reserved {
     is( $url, $bootfile->($name), "$label: the client gets the bootfile-url of $name" ) unless $opts{no_bootfile};
 }
 
+# $bootfile is the boot file for a client without a reservation, or undef for none.
 sub check_pool {
-    my ( $label, $duid ) = @_;
+    my ( $label, $duid, $bootfile ) = @_;
     my ( $address, $url ) = offered($duid);
     like( $address, $pool, "$label: the client gets a pool address" );
-    is( $url, 'NO-BOOTFILE', "$label: the client gets no bootfile-url" );
+    if ( defined $bootfile ) {
+        is( $url, $bootfile, "$label: the client gets the discovery loader" );
+    } else {
+        is( $url, 'NO-BOOTFILE', "$label: the client gets no bootfile-url" );
+    }
 }
 
 sub wait_for_answer {
@@ -243,10 +261,10 @@ if ( grep { $_ eq 'kea' } @backends ) {
 
     # Without mac.duid the reservation keeps the UEFI behaviour: firmware order only.
     check_reserved( 'Kea, cn01 without duid, UEFI firmware', $firmware{cn01}, 'cn01' );
-    check_pool( 'Kea, cn01 without duid, canonical client', $canonical{cn01} );
+    check_pool( 'Kea, cn01 without duid, canonical client', $canonical{cn01}, $discovery );
     check_reserved( 'Kea, cn02 with a DUID, its client', $node{cn02}{duid}, 'cn02' );
     check_reserved( 'Kea, cn03 with duid=canonical, canonical client', $canonical{cn03}, 'cn03' );
-    check_pool( 'Kea, cn03 with duid=canonical, UEFI firmware', $firmware{cn03} );
+    check_pool( 'Kea, cn03 with duid=canonical, UEFI firmware', $firmware{cn03}, $discovery );
 
     # cn04 has only an IPv4 address and the vpd.uuid of cn01. It needs no DHCPv6 reservation, so it
     # leaves the reservation of cn01 alone.
@@ -275,7 +293,7 @@ if ( grep { $_ eq 'kea' } @backends ) {
     # A changed duid replaces the reservation, as nodeset does when it runs makedhcp again.
     set_duid( 'cn01', 'canonical' );
     $run->( 'makedhcp after duid=canonical', nodes => ['cn01'] );
-    check_pool( 'Kea, cn01 after duid=canonical, UEFI firmware', $firmware{cn01} );
+    check_pool( 'Kea, cn01 after duid=canonical, UEFI firmware', $firmware{cn01}, $discovery );
 
     # The firmware still holds a lease on the reserved address. Kea revokes it and gives the address
     # to the new DUID, and the old DUID gets a pool address.
@@ -302,8 +320,8 @@ if ( grep { $_ eq 'kea' } @backends ) {
 
     # makedhcp -d removes the reservation of the selected DUID.
     $run->( 'makedhcp -d', nodes => [ 'cn01', 'cn03' ], options => ['d'] );
-    check_pool( 'Kea, cn01 after makedhcp -d, canonical client', $canonical{cn01} );
-    check_pool( 'Kea, cn03 after makedhcp -d, canonical client', $canonical{cn03} );
+    check_pool( 'Kea, cn01 after makedhcp -d, canonical client', $canonical{cn01}, $discovery );
+    check_pool( 'Kea, cn03 after makedhcp -d, canonical client', $canonical{cn03}, $discovery );
     check_reserved( 'Kea, cn02 after makedhcp -d of other nodes, its client', $node{cn02}{duid}, 'cn02' );
 
     stop_daemons( \%children );
