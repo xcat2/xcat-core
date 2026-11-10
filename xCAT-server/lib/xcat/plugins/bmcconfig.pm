@@ -37,8 +37,14 @@ sub net_parms {
     my @nets = $nettab->getAllAttribs('net', 'mask', 'gateway');
     my @parms = xCAT::BMCUtils::bmc_net_params(
         $bmc, \@nets,
+        resolve6 => sub {
+            return xCAT::NetworkUtils->getipaddr($_[0], OnlyV6 => 1);
+        },
         facing => sub {
-            my @facing = xCAT::NetworkUtils->my_ip_facing($_[0]);
+            my ($ip, $family) = @_;
+            my @facing = $family == 6
+              ? xCAT::NetworkUtils->my_ip_facing_family($ip, 6)
+              : xCAT::NetworkUtils->my_ip_facing($ip);
             return $facing[0] ? undef : $facing[1];
         });
     return @parms if defined $parms[0];
@@ -132,7 +138,7 @@ sub process_request {
     }
     my $bmcport_counter = 0;
     foreach my $sbmc (split /,/, $bmc) {
-        (my $ip, my $mask, my $gw) = net_parms($sbmc);
+        my ($ip, $mask, $gw, $routerprefix) = net_parms($sbmc);
         unless ($ip and $mask and $username and $password) {
             my $passtate = defined($password) && length($password) ? "set" : "missing";
             xCAT::MsgUtils->message('S', "Unable to determine IP, Netmask, Username, or Password for $sbmc. Ensure that hostname resolution is working. [IP=$ip Netmask=$mask User=$username Pass=$passtate]",);
@@ -144,6 +150,7 @@ sub process_request {
             return;
         }
         my $response = { bmcip => $ip, netmask => $mask, gateway => $gw, username => $username, password => $password };
+        $response->{routerprefix} = $routerprefix if defined $routerprefix;
         if (defined $bmcport) {
             if ($bmcport =~ /,/) {
                 my @sbmcport = (split /,/, $bmcport);

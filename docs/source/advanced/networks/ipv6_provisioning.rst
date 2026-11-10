@@ -77,3 +77,25 @@ Ubuntu, diskless  ``ip=`` with the address, from ``dracut_static_ip6``
 Ubuntu, diskful   ``ip6=dhcp``, and casper runs ``dhcpcd -6`` as a third client
 SLES, openSUSE    ``ipv6only=1 hostip=<address>/<prefix>``, from ``static_ipv6_boot_args``
 ================  =========================================================================
+
+A BMC on an IPv6 address
+------------------------
+
+Genesis gives a BMC a static IPv6 address when ``ipmi.bmc`` is an IPv6 address, or a name
+that resolves only to an IPv6 address. A name that also resolves to an IPv4 address keeps
+the IPv4 setup. All BMCs of one node use the same address family.
+
+``bmcconfig`` takes the prefix length and the gateway from the ``networks`` row that
+contains the address. ``bmcsetup`` then runs, on the LAN channel of the BMC::
+
+    ipmitool lan6 set <channel> nolock enables both
+    ipmitool lan6 set <channel> nolock static_addr 0 enable <address> <prefix length>
+    ipmitool lan6 set <channel> nolock rtr_cfg both
+    ipmitool lan6 set <channel> nolock static_rtr 1 <gateway> 00:00:00:00:00:00 <prefix> <prefix length>
+
+The last two commands run only when the network has a gateway. xCAT does not know the MAC
+address of the router, so the static router has the MAC address ``00:00:00:00:00:00``.
+``enables both`` keeps the IPv4 configuration of the BMC.
+
+The Genesis image must have ipmitool 1.8.19 or later, which adds the ``lan6`` command.
+Sequential discovery does not assign IPv6 BMC addresses from ``bmciprange``.

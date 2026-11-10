@@ -117,6 +117,40 @@ function snooze() {
     fi
 }
 
+#
+# Function: set_lan6
+#
+# Write one IPv6 LAN parameter of device $1 on $LANCHAN. ipmitool 1.8.19 added lan6.
+#
+function set_lan6() {
+    local dev=$1 tries=0
+    shift
+    while ! ipmitool -d "$dev" lan6 set "$LANCHAN" nolock "$@"; do
+        snooze
+        let tries=tries+1
+        if [ $tries -gt $TIMEOUT ]; then
+            logger -s -t $log_label -p local4.err "ipmitool lan6 set $LANCHAN $* failed"
+            return 1
+        fi
+    done
+}
+
+#
+# Function: configure_ipv6_bmc
+#
+# Give device $1 the static address $2/$3 and, when $4 is set, the router $4 for prefix $5.
+# xCAT does not know the MAC address of the router, so the static router has none.
+#
+function configure_ipv6_bmc() {
+    local dev=$1 addr=$2 prefix=$3 gw=$4 net=$5
+    set_lan6 "$dev" enables both
+    set_lan6 "$dev" static_addr 0 enable "$addr" "$prefix"
+    if [ -n "$gw" ] && [ -n "$net" ]; then
+        set_lan6 "$dev" rtr_cfg both
+        set_lan6 "$dev" static_rtr 1 "$gw" 00:00:00:00:00:00 "$net" "$prefix"
+    fi
+}
+
 if ! ipmitool -V 2>/dev/null| grep "version"; then
     echo "No ipmitool find, please install it first";
     exit 1;
@@ -395,7 +429,16 @@ done
 logger -s -t $log_label -p local4.info "Detected LAN channel $LANCHAN"
 
 let idev=NUMBMCS
-if [ $IPCFGMETHOD="static" ]; then
+if [[ "$BMCIP" == *:* ]]; then
+    mapfile -t BMCIPS < <(config_field bmcip)
+    mapfile -t BMCNMS < <(config_field netmask)
+    mapfile -t BMCGWS < <(config_field gateway)
+    mapfile -t BMCNETS < <(config_field routerprefix)
+    for idev in "${!BMCIPS[@]}"; do
+        configure_ipv6_bmc "$idev" "${BMCIPS[$idev]}" "${BMCNMS[$idev]}" \
+            "${BMCGWS[$idev]}" "${BMCNETS[$idev]}"
+    done
+elif [ $IPCFGMETHOD="static" ]; then
     while [ $idev -gt 0 ]; do
         let idev=idev-1
         TRIES=0
