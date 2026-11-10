@@ -159,13 +159,17 @@ sub _matching_host_indexes
         $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$key} };
     }
     # A dual-stack node has an A line and an AAAA line under one name, so a node name matches
-    # only lines of the family being written. A delete passes all_families.
+    # only lines of the family being written. A delete passes all_families. family_change
+    # also matches the other family when the node has no line of this one: then hosts.ip
+    # moved to the other family, and the old line is stale.
     if (exists($host_indexes_by_node{$node}))
     {
-        foreach my $idx (keys %{ $host_indexes_by_node{$node} })
+        my @same  = grep { _host_line_same_family($_, $ip) } keys %{ $host_indexes_by_node{$node} };
+        my @other = grep { !_host_line_same_family($_, $ip) } keys %{ $host_indexes_by_node{$node} };
+        $matches{$_} = 1 foreach @same;
+        if ($opts{all_families} || ($opts{family_change} && !@same))
         {
-            next unless $opts{all_families} || _host_line_same_family($idx, $ip);
-            $matches{$idx} = 1;
+            $matches{$_} = 1 foreach @other;
         }
     }
 
@@ -209,9 +213,10 @@ sub addnode
     my $othernames = shift;
     my $domain     = shift;
     my $nics       = shift;
+    my %opts       = @_;
 
     # if this ip was already added then just update the entry
-    my @matches = _matching_host_indexes($node, $ip);
+    my @matches = _matching_host_indexes($node, $ip, family_change => $opts{family_change});
     if (@matches)
     {
         my $idx = shift @matches;
@@ -431,7 +436,8 @@ sub add_hosts_content {
         {
             if (xCAT::NetworkUtils->isValidIp($ip))
             {
-                addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
+                addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain, undef,
+                  family_change => 1;
             }
             else
             {
@@ -501,7 +507,7 @@ sub add_all_hosts_content
         if (xCAT::NetworkUtils->isValidIp($hostent->{ip}))
         {
             addnode $callback, $hostent->{node}, $hostent->{ip},
-              $hostent->{hostnames}, $domain;
+              $hostent->{hostnames}, $domain, undef, family_change => 1;
         }
         else
         {

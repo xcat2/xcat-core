@@ -26,6 +26,12 @@ with Secure Boot on. ``netboot=grub2`` does not boot an x86_64 node at all, beca
 package installs an x86_64 grub2 image. On ppc64le, aarch64 and riscv64, grub2 is the only
 method and Secure Boot must be off.
 
+**The node must resolve only to its IPv6 address.** xCAT installs a node over IPv4 when the
+node name also resolves to an IPv4 address. After ``chdef <node> ip=<IPv6 address>``, run
+``makehosts <node>``: it replaces the IPv4 line of the node in ``/etc/hosts``. A node that
+already has a line of each family is dual-stack, and ``makehosts`` keeps both lines. To move
+such a node to IPv6 only, run ``makehosts -d <node>`` and then ``makehosts <node>``.
+
 The DHCPv6 client identifier
 ----------------------------
 
