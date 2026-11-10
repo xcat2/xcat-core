@@ -151,6 +151,20 @@ function configure_ipv6_bmc() {
     fi
 }
 
+#
+# Function: bmc_has_address
+#
+# Succeed when the BMC reports the address $1. lan print shows only the IPv4
+# parameters, so an IPv6 address is read with lan6 print on $LANCHAN.
+#
+function bmc_has_address() {
+    if [[ "$1" == *:* ]]; then
+        ipmitool lan6 print "$LANCHAN" | grep -qiF -- "$1"
+    else
+        ipmitool lan print 1 | grep $1 >/dev/null
+    fi
+}
+
 if ! ipmitool -V 2>/dev/null| grep "version"; then
     echo "No ipmitool find, please install it first";
     exit 1;
@@ -167,7 +181,14 @@ modprobe ipmi_devintf
 for parm in `cat /proc/cmdline`; do
     key=`echo $parm|awk -F= '{print $1}'`
     if [ "$key" = "xcatd" ]; then
-        XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
+        value=${parm#*=}
+        # An IPv6 address holds colons. doxcat reads "[<addr>]:<port>" the same way.
+        if [[ $value == \[*\]:* ]]; then
+            XCATMASTER=${value%%\]:*}
+            XCATMASTER=${XCATMASTER#\[}
+        else
+            XCATMASTER=${value%%:*}
+        fi
     fi
 done
 
@@ -565,7 +586,7 @@ if [ ! -z "$ISOPENBMC" ]; then
     if [ ! -z "$XCATMASTER" ]; then
         # Wait for some time for the new network setting is ready
         snooze
-        if ipmitool lan print 1 | grep $BMCIP >/dev/null; then
+        if bmc_has_address "$BMCIP"; then
             updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
         else
             updateflag.awk $XCATMASTER 3002 "installstatus failed"
