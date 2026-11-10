@@ -6,6 +6,8 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::PasswordUtils;
 use xCAT::IMMUtils;
+use xCAT::BMCUtils;
+use xCAT::NetworkUtils;
 use xCAT::TableUtils;
 use IO::Select;
 use Socket;
@@ -29,36 +31,19 @@ sub genpassword {
 }
 
 sub net_parms {
-    my $ip = shift;
-    if (inet_aton($ip)) {
-        $ip = inet_ntoa(inet_aton($ip));
-    } else {
-        xCAT::MsgUtils->message("S", "Unable to resolve $ip");
-        return undef;
-    }
+    my $bmc    = shift;
     my $nettab = xCAT::Table->new('networks');
     unless ($nettab) { return undef }
     my @nets = $nettab->getAllAttribs('net', 'mask', 'gateway');
-    foreach (@nets) {
-        my $net  = $_->{'net'};
-        my $mask = $_->{'mask'};
-        my $gw   = $_->{'gateway'};
-        $ip =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-        my $ipnum = ($1 << 24) + ($2 << 16) + ($3 << 8) + $4;
-        $mask =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-        my $masknum = ($1 << 24) + ($2 << 16) + ($3 << 8) + $4;
-        $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/ or next; #next if ipv6, TODO: IPv6 support
-        my $netnum = ($1 << 24) + ($2 << 16) + ($3 << 8) + $4;
-
-        if ($gw eq '<xcatmaster>') {
-            my @gwd = xCAT::NetworkUtils->my_ip_facing($ip);
-            unless ($gwd[0]) { $gw = $gwd[1]; }
-        }
-        if (($ipnum & $masknum) == $netnum) {
-            return ($ip, $mask, $gw);
-        }
-    }
-    xCAT::MsgUtils->message("S", "xCAT BMC configuration error, no appropriate network for $ip found in networks, unable to determine netmask");
+    my @parms = xCAT::BMCUtils::bmc_net_params(
+        $bmc, \@nets,
+        facing => sub {
+            my @facing = xCAT::NetworkUtils->my_ip_facing($_[0]);
+            return $facing[0] ? undef : $facing[1];
+        });
+    return @parms if defined $parms[0];
+    xCAT::MsgUtils->message("S", $parms[1]);
+    return;
 }
 
 

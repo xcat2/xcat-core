@@ -48,6 +48,9 @@ case "$1 $2" in
                 ;;
         esac
         ;;
+    'lan6 set')
+        [ ! -f /run/fixture/lan6-fails ] || exit 1
+        ;;
     'channel getaccess') echo 'Fixed Name : No' ;;
     'user list') cat /run/fixture/users ;;
     'user disable') printf '%s\n' "$3" >>/run/fixture/disabled ;;
@@ -326,4 +329,76 @@ XML
 10876|2437|1|raw 0x30 0x70 0x0c 1 0
 343|149|1|-d 0 lan print 3
 CASES
+}
+
+ipv6_config()
+{
+    cat >"$fixture/ipmicfg.xml" <<'XML'
+<bmcip>2001:db8:1::20</bmcip>
+<taggedvlan>off</taggedvlan>
+<gateway>2001:db8:1::1</gateway>
+<netmask>64</netmask>
+<routerprefix>2001:db8:1::</routerprefix>
+<username>USERID</username>
+<password>test-password</password>
+XML
+}
+
+lan_writes()
+{
+    grep -E -- '^-d [0-9]+ lan(6 set| print| set [0-9]+ (ipsrc|ipaddr|netmask|defgw))' "$fixture/calls"
+}
+
+@test 'bmcsetup gives the BMC a static IPv6 address and router' {
+    ipv6_config
+    run_genesis 0
+    run lan_writes
+    [ "$output" = '-d 0 lan6 set 1 nolock enables both
+-d 0 lan6 set 1 nolock static_addr 0 enable 2001:db8:1::20 64
+-d 0 lan6 set 1 nolock rtr_cfg both
+-d 0 lan6 set 1 nolock static_rtr 1 2001:db8:1::1 00:00:00:00:00:00 2001:db8:1:: 64' ]
+    grep -Fx -- '-d 0 user enable 2' "$fixture/calls"
+    [ ! -e "$fixture/tmp/ipmicfg.xml" ]
+}
+
+@test 'bmcsetup sets no IPv6 router when xCAT sends no gateway' {
+    ipv6_config
+    sed -i '/gateway\|routerprefix/d' "$fixture/ipmicfg.xml"
+    run_genesis 0
+    run lan_writes
+    [ "$output" = '-d 0 lan6 set 1 nolock enables both
+-d 0 lan6 set 1 nolock static_addr 0 enable 2001:db8:1::20 64' ]
+}
+
+@test 'bmcsetup keeps IPv6 device indexes and the selected channel' {
+    cat >"$fixture/ipmicfg.xml" <<'XML'
+<bmcip>2001:db8:1::20</bmcip>
+<gateway></gateway>
+<netmask>64</netmask>
+<routerprefix>2001:db8:1::</routerprefix>
+<bmcip>2001:db8:2::20</bmcip>
+<gateway>2001:db8:2::1</gateway>
+<netmask>80</netmask>
+<routerprefix>2001:db8:2::</routerprefix>
+<username>USERID</username>
+<password>test-password</password>
+XML
+    echo 3 >"$fixture/channel"
+    run_genesis 0
+    run lan_writes
+    [ "$output" = '-d 0 lan6 set 3 nolock enables both
+-d 0 lan6 set 3 nolock static_addr 0 enable 2001:db8:1::20 64
+-d 1 lan6 set 3 nolock enables both
+-d 1 lan6 set 3 nolock static_addr 0 enable 2001:db8:2::20 80
+-d 1 lan6 set 3 nolock rtr_cfg both
+-d 1 lan6 set 3 nolock static_rtr 1 2001:db8:2::1 00:00:00:00:00:00 2001:db8:2:: 80' ]
+}
+
+@test 'bmcsetup reports an IPv6 write that keeps failing and continues' {
+    ipv6_config
+    touch "$fixture/lan6-fails"
+    run_genesis 0
+    [ "$(grep -c -- '^-d 0 lan6 set 1 nolock static_addr 0 enable 2001:db8:1::20 64$' "$fixture/calls")" = 16 ]
+    grep -F 'ipmitool lan6 set 1 static_addr 0 enable 2001:db8:1::20 64 failed' "$fixture/messages"
+    grep -Fx -- '-d 0 user enable 2' "$fixture/calls"
 }
