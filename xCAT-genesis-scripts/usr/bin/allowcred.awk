@@ -8,7 +8,12 @@ BEGIN {
                 port = 300
         }
 
-        master = ("MASTER_IP" in ENVIRON) ? ENVIRON["MASTER_IP"] : ""
+        # doxcat exports XCATMASTER to getcert and bmcsetup. MASTER_IP and MASTER are the
+        # postscript names.
+        master = ("XCATMASTER" in ENVIRON) ? ENVIRON["XCATMASTER"] : ""
+        if (master == "") {
+                master = ("MASTER_IP" in ENVIRON) ? ENVIRON["MASTER_IP"] : ""
+        }
         if (master == "") {
                 master = ("MASTER" in ENVIRON) ? ENVIRON["MASTER"] : ""
         }
