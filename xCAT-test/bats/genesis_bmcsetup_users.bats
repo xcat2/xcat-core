@@ -480,3 +480,67 @@ LAN
     run cat "$fixture/flags"
     [ "$output" = '192.0.2.1 3002 installstatus bmcready' ]
 }
+
+# openbmc_status <configured> <read back> -- give the OpenBMC the IPv6 address
+# <configured>, let lan6 print report <read back>, and print the status that
+# bmcsetup sends.
+openbmc_status()
+{
+    openbmc
+    ipv6_config
+    sed -i "s|<bmcip>.*</bmcip>|<bmcip>$1</bmcip>|" "$fixture/ipmicfg.xml"
+    cat >"$fixture/lan6.0" <<LAN
+IPv6 Dynamic Address 0:
+    Source/Type:    DHCPv6
+    Address:        2001:db8:9::99/64
+    Status:         active
+IPv6 Static Address 0:
+    Enabled:        yes
+    Address:        $2
+    Status:         active
+LAN
+    rm -f "$fixture/flags"
+    doxcat_master '[2001:db8::1]:3001' '2001:db8::1'
+    run_genesis 0 || return 1
+    cat "$fixture/flags"
+}
+
+@test 'bmcsetup reports an OpenBMC ready for another spelling of its IPv6 address' {
+    local configured readback
+    while read -r configured readback; do
+        run openbmc_status "$configured" "$readback"
+        [ "$status" -eq 0 ]
+        [ "$output" = '2001:db8::1 3002 installstatus bmcready' ] || {
+            echo "$configured read back as $readback: $output"; return 1; }
+    done <<'CASES'
+2001:0db8:0001:0000:0000:0000:0000:0020 2001:db8:1::20/64
+2001:DB8:1::20 2001:db8:1::20/64
+2001:db8:1::20 2001:0DB8:1:0:0:0:0:20
+2001:db8:1::20/64 2001:db8:1::20
+2001:db8:1:0:0:0:0:20 2001:db8:1::20/64
+CASES
+}
+
+@test 'bmcsetup reports an OpenBMC failed for an IPv6 address that only shares a text prefix' {
+    local configured readback
+    while read -r configured readback; do
+        run openbmc_status "$configured" "$readback"
+        [ "$status" -eq 0 ]
+        [ "$output" = '2001:db8::1 3002 installstatus failed' ] || {
+            echo "$configured read back as $readback: $output"; return 1; }
+    done <<'CASES'
+2001:db8:1::2 2001:db8:1::20/64
+2001:db8:1::20 2001:db8:1::2/64
+2001:db8:1::20 2001:db8:1::200/64
+2001:db8:1::20 12001:db8:1::20/64
+CASES
+}
+
+@test 'bmcsetup reports an OpenBMC failed for an IPv4 address that only shares a text prefix' {
+    openbmc
+    sed -i 's/IP Address              : 192.0.2.2/IP Address              : 192.0.2.20/' "$fixture/lan.0"
+    doxcat_master '192.0.2.1:3001' '192.0.2.1'
+    run_genesis 0
+    run cat "$fixture/flags"
+    [ "$output" = '192.0.2.1 3002 installstatus failed' ]
+}
