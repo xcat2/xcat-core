@@ -152,17 +152,56 @@ function configure_ipv6_bmc() {
 }
 
 #
+# Function: ipv6_expand
+#
+# Print the IPv6 address $1 as eight 4-digit lowercase groups, without a /prefix.
+# Fail when $1 is not an IPv6 address. Genesis carries no IPv6 parser, so
+# this is bash only.
+#
+function ipv6_expand() {
+    local addr=${1%%/*} head tail group out= i
+    local -a groups=() tailgroups=()
+    addr=${addr,,}
+    [[ $addr =~ ^[0-9a-f:]+$ ]] || return 1
+    if [[ $addr == *::* ]]; then
+        head=${addr%%::*}
+        tail=${addr#*::}
+        [[ $tail == *::* ]] && return 1
+        IFS=: read -r -a groups <<< "$head"
+        IFS=: read -r -a tailgroups <<< "$tail"
+        for ((i = ${#groups[@]} + ${#tailgroups[@]}; i < 8; i++)); do
+            groups+=(0)
+        done
+        groups+=("${tailgroups[@]}")
+    else
+        IFS=: read -r -a groups <<< "$addr"
+    fi
+    [ ${#groups[@]} -eq 8 ] || return 1
+    for group in "${groups[@]}"; do
+        [[ $group =~ ^[0-9a-f]{1,4}$ ]] || return 1
+        out+=$(printf '%04x' $((16#$group))):
+    done
+    printf '%s\n' "${out%:}"
+}
+
+#
 # Function: bmc_has_address
 #
 # Succeed when the BMC reports the address $1. lan print shows only the IPv4
-# parameters, so an IPv6 address is read with lan6 print on $LANCHAN.
+# parameters, so an IPv6 address is read with lan6 print on $LANCHAN. One IPv6
+# address has many spellings, so both sides are expanded before the compare.
 #
 function bmc_has_address() {
+    local want key value
     if [[ "$1" == *:* ]]; then
-        ipmitool lan6 print "$LANCHAN" | grep -qiF -- "$1"
-    else
-        ipmitool lan print 1 | grep $1 >/dev/null
+        want=$(ipv6_expand "$1") || return 1
+        while read -r key value; do
+            [ "$key" = "Address:" ] || continue
+            [ "$(ipv6_expand "$value")" = "$want" ] && return 0
+        done < <(ipmitool lan6 print "$LANCHAN")
+        return 1
     fi
+    [ "$(lan_field 0 1 '^IP Address' Source)" = "$1" ]
 }
 
 if ! ipmitool -V 2>/dev/null| grep "version"; then
