@@ -156,12 +156,22 @@ function configure_ipv6_bmc() {
 #
 # Print the IPv6 address $1 as eight 4-digit lowercase groups, without a /prefix.
 # Fail when $1 is not an IPv6 address. Genesis carries no IPv6 parser, so
-# this is bash only.
+# this is bash only. RFC 4291 allows the last 32 bits as dotted decimal, and
+# ipmitool accepts that form.
 #
 function ipv6_expand() {
     local addr=${1%%/*} head tail group out= i
-    local -a groups=() tailgroups=()
+    local -a groups=() tailgroups=() octets=()
     addr=${addr,,}
+    if [[ $addr =~ ^(.*:)([0-9]{1,3}(\.[0-9]{1,3}){3})$ ]]; then
+        IFS=. read -r -a octets <<< "${BASH_REMATCH[2]}"
+        for i in "${octets[@]}"; do
+            [ $((10#$i)) -le 255 ] || return 1
+        done
+        addr=${BASH_REMATCH[1]}$(printf '%x:%x' \
+            $(((10#${octets[0]} << 8) + 10#${octets[1]})) \
+            $(((10#${octets[2]} << 8) + 10#${octets[3]})))
+    fi
     [[ $addr =~ ^[0-9a-f:]+$ ]] || return 1
     if [[ $addr == *::* ]]; then
         head=${addr%%::*}
