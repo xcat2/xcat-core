@@ -521,6 +521,35 @@ LAN
 CASES
 }
 
+@test 'bmcsetup reports an OpenBMC ready for a dotted-decimal spelling of its IPv6 address' {
+    local configured readback
+    while read -r configured readback; do
+        run openbmc_status "$configured" "$readback"
+        [ "$status" -eq 0 ]
+        [ "$output" = '2001:db8::1 3002 installstatus bmcready' ] || {
+            echo "$configured read back as $readback: $output"; return 1; }
+    done <<'CASES'
+2001:db8:1::192.0.2.20 2001:db8:1::c000:214/64
+2001:db8:1::c000:214 2001:db8:1::192.0.2.20/64
+2001:db8:1::192.0.2.20 2001:db8:1::192.0.2.20/64
+::ffff:192.0.2.20 ::ffff:c000:214
+CASES
+}
+
+@test 'bmcsetup reports an OpenBMC failed for a different dotted-decimal IPv6 address' {
+    local configured readback
+    while read -r configured readback; do
+        run openbmc_status "$configured" "$readback"
+        [ "$status" -eq 0 ]
+        [ "$output" = '2001:db8::1 3002 installstatus failed' ] || {
+            echo "$configured read back as $readback: $output"; return 1; }
+    done <<'CASES'
+2001:db8:1::192.0.2.20 2001:db8:1::c000:215/64
+2001:db8:1::c000:214 2001:db8:1::192.0.2.21/64
+2001:db8:1::c000:214 2001:db8:1::192.0.2.276/64
+CASES
+}
+
 @test 'bmcsetup reports an OpenBMC failed for an IPv6 address that only shares a text prefix' {
     local configured readback
     while read -r configured readback; do
