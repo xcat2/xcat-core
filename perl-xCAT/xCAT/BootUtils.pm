@@ -8,7 +8,7 @@ use Exporter qw(import);
 use xCAT::Utils;
 use xCAT::Table;
 
-our @EXPORT_OK = qw(find_genesis_boot_files);
+our @EXPORT_OK = qw(find_genesis_boot_files grub2_kernel_commands);
 
 sub find_genesis_boot_files {
     my ($tftpdir, $arch) = @_;
@@ -41,6 +41,69 @@ sub volatile_addkcmdline {
 
     my $cmdhashref = xCAT::Utils->splitkcmdline($kcmdline);
     return $cmdhashref->{volatile} // '';
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 grub2_kernel_commands
+
+    Descriptions: The commands a grub2 image provides to load a kernel and an
+                  initial ramdisk.
+
+                  linuxefi and initrdefi come from a downstream patch. An image
+                  built from upstream grub carries neither, and its linux command
+                  performs the EFI handover itself. A node offered a command its
+                  own image does not carry stops at the grub menu with
+                  "can't find command `linuxefi'" and never asks for the kernel.
+
+    Arguments:    $image the path of the grub2 image served to the node
+                  $arch the architecture of the node
+    Returns:      the kernel command and the initial ramdisk command
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub grub2_kernel_commands {
+    my ($image, $arch) = @_;
+
+    # linuxefi loads an EFI binary. x86 is the architecture whose grub2 loader is one, so
+    # a ppc node takes linux whatever its image carries.
+    return ('linux', 'initrd') unless defined($arch) && $arch =~ /x86/i;
+    return ('linux', 'initrd') unless grub2_image_provides($image, 'linuxefi');
+    return ('linuxefi', 'initrdefi');
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 grub2_image_provides
+
+    Descriptions: Whether a grub2 image carries a command. grub records the name
+                  of each command its modules register, so the name is present in
+                  the image exactly when the command can be run.
+
+    Arguments:    $image the path of the grub2 image
+                  $command the name of the command
+    Returns:      1 when the image carries the command, 0 otherwise
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub grub2_image_provides {
+    my ($image, $command) = @_;
+
+    return 0 unless defined($image) && defined($command) && length($command);
+    return 0 unless -r $image;
+    open(my $fh, '<:raw', $image) or return 0;
+    my $found = 0;
+    my $tail  = '';
+    while (read($fh, my $chunk, 1 << 20)) {
+        # A command name can straddle two reads, so keep the end of the last one.
+        $found = 1 if ($tail . $chunk) =~ /\0\Q$command\E\0/;
+        last if $found;
+        $tail = substr($chunk, -length($command) - 1);
+    }
+    close($fh);
+    return $found;
 }
 
 sub expand_node_template {

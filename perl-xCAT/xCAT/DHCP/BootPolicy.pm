@@ -3,6 +3,7 @@ package xCAT::DHCP::BootPolicy;
 use strict;
 use warnings;
 use xCAT::HTTPUtils qw(httpport_suffix);
+use JSON;
 
 sub kea_client_classes {
     my ( $class, %opts ) = @_;
@@ -75,6 +76,190 @@ sub kea_client_classes {
     push @classes, kea_fallback_client_class();
 
     return \@classes;
+}
+
+# The boot file for a DHCPv6 client that matches no reservation.
+#
+# RFC 5970 gives DHCPv6 the client system architecture in option 61, from the same registry as
+# option 93 on DHCPv4, and the boot file URL in option 59. So the shape of kea_client_classes
+# above carries over: one class per architecture, each naming what that architecture can load.
+#
+# The URL is absolute and carries the server, which option 59 requires and boot-file-name does
+# not. uri_host is already bracketed for a literal IPv6 address.
+#
+# Without these classes an unknown client is answered with an address from the pool and no option
+# 59 at all, which is what stops sequential discovery over IPv6: the node has to boot the Genesis
+# image before xCAT knows its DUID, and it cannot be given a reservation before it is known.
+sub kea_client_classes6 {
+    my ( $class, %opts ) = @_;
+
+    my $host = $opts{uri_host};
+    return [] unless $host;
+    # One network's classes must not take another's names: the server in each URL is the address
+    # of the network the class was built for.
+    my $sfx = defined( $opts{suffix} ) && length( $opts{suffix} ) ? "-$opts{suffix}" : '';
+
+    my @classes;
+
+    # The second stage, before the first. The architecture class below answers the firmware and
+    # hands it the shim. The shim starts iPXE, which solicits again with the iPXE user class, and
+    # a client xCAT has never seen matches no per-node class: its only other match is that
+    # architecture class, so it is handed the shim a second time and never fetches a kernel. mknb
+    # writes a per-network script carrying destiny=discover and no node name, and nothing else
+    # names it over DHCPv6. Kea takes the first class that defines an option, so this one is
+    # offered first.
+    if (   $opts{ipxe_uefi}
+        && defined( $opts{net} )
+        && length( $opts{net} )
+        && defined( $opts{prefix} )
+        && length( $opts{prefix} ) )
+    {
+        my $scripts    = $class->x86_loader( method => 'ipxe' )->{scripts};
+        my $portsuffix = httpport_suffix( $opts{httpport} || '80' );
+        my $network_id = $opts{net} . '_' . $opts{prefix};
+        my $safe       = $network_id;
+        $safe =~ s/[^A-Za-z0-9_.-]/_/g;
+        push @classes, {
+            name => "xcat-ipxe6-net-$safe$sfx",
+            test => dhcp6_ipxe_user_class_test()
+              . " and (option[61].hex == 0x0007 or option[61].hex == 0x0009)",
+            'option-data' =>
+              [ kea_bootfile_url6_option("http://$host$portsuffix/tftpboot/$scripts/nets/$network_id.uefi") ],
+        };
+    }
+
+    # A UEFI client is the only x86 client that solicits over DHCPv6, so the BIOS loader has no
+    # DHCPv6 class. Both architecture ids are in use: firmware reports 0x0007, and 0x0009 appears
+    # on the same machines once the loader chainloads.
+    if ( $opts{ipxe_uefi} ) {
+        my $loader = $class->x86_loader( method => 'ipxe' )->{uefi};
+        if ($loader) {
+            foreach my $arch (qw(0x0007 0x0009)) {
+                push @classes, {
+                    name          => "xcat-uefi6-x64-$arch$sfx",
+                    test          => "option[61].hex == $arch",
+                    'option-data' => [ kea_bootfile_url6_option("tftp://$host/$loader") ],
+                };
+            }
+        }
+    }
+
+    # grub2 ships these two names for every build, so they are named unconditionally. A client
+    # whose loader is missing gets a timeout either way, and leaving the class out would make an
+    # aarch64 node look unserved rather than unprovisioned.
+    push @classes, (
+        {
+            name          => "xcat-aarch64-6$sfx",
+            test          => 'option[61].hex == 0x000b',
+            'option-data' => [ kea_bootfile_url6_option("tftp://$host/boot/grub2/grub2.aarch64") ],
+        },
+        {
+            name          => "xcat-riscv64-6$sfx",
+            test          => 'option[61].hex == 0x001b',
+            'option-data' => [ kea_bootfile_url6_option("tftp://$host/boot/grub2/grub2.riscv64") ],
+        },
+        {
+            name          => "xcat-ppc64-6$sfx",
+            test          => 'option[61].hex == 0x000c',
+            'option-data' => [ kea_bootfile_url6_option("tftp://$host/boot/grub2/grub2.ppc") ],
+        },
+    );
+
+    # The classes are global in Dhcp6. Without this flag Kea evaluates them for the clients of
+    # every subnet, and the subnet list only adds them a second time.
+    $_->{additional_only} = 1 foreach @classes;
+
+    return \@classes;
+}
+
+# always-send, because a client that does not ask for option 59 by name still needs it: the
+# reservations written by kea_node_reservations6 set the same flag for the same reason.
+sub kea_bootfile_url6_option {
+    my ($url) = @_;
+
+    return { name => 'bootfile-url', data => $url, 'always-send' => JSON::true() };
+}
+
+#---
+# =head3 dhcp6_ipxe_user_class_test
+# Descriptions: The Kea DHCPv6 expression that is true for iPXE and false for the firmware that
+#               loaded it. iPXE sends option 15, the User Class, holding the length-prefixed
+#               string iPXE: 00:04:69:50:58:45. EDK2 sends no option 15 at all. The two length
+#               octets are skipped, so the comparison reads the string itself.
+#
+#               The byte order of the DUID cannot do this job, because it does not follow from
+#               vpd.uuid. The firmware sends the SMBIOS bytes of the uuid the hypervisor gave the
+#               guest. A domain that an earlier mkvm defined holds the byte-swap of vpd.uuid, so
+#               its firmware sends vpd.uuid unswapped and iPXE sends the swap, while a domain
+#               created from vpd.uuid gives the opposite pair. Both orders are real and neither
+#               names a stage. The DHCPv4 path splits the same two stages on the
+#               iPXE feature sub-options of option 175, which is the same kind of test as this.
+# Arguments: none
+# Returns: the expression
+#---
+sub dhcp6_ipxe_user_class_test { return "substring(option[15].hex, 2, 4) == 'iPXE'"; }
+
+#---
+# =head3 isc_dhcp6_boot_stage_statement
+# Descriptions: The ISC DHCPv6 host statement that gives a chainloading node its boot file by
+#               boot stage. It makes the same split as kea_node_boot_classes6: iPXE sends option
+#               15, the User Class, as the length-prefixed string iPXE, and the firmware sends no
+#               option 15. The DUID cannot make this split, because which UUID order the firmware
+#               sends depends on the UUID of the libvirt domain.
+# Arguments: loader_url -- the first-stage loader, which the firmware fetches over tftp
+#            script_url -- the boot script of the node, which only iPXE can fetch
+# Returns: the statement, unescaped, or undef unless both URLs are given
+#---
+sub isc_dhcp6_boot_stage_statement {
+    my ( $class, %opts ) = @_;
+
+    return unless defined( $opts{loader_url} ) && defined( $opts{script_url} );
+    return 'if substring(option dhcp6.user-class, 2, 4) = "iPXE" { '
+      . qq(option dhcp6.bootfile-url "$opts{script_url}"; } else { )
+      . qq(option dhcp6.bootfile-url "$opts{loader_url}"; });
+}
+
+#---
+# =head3 kea_node_boot_classes6
+# Descriptions: The two DHCPv6 client classes that give one chainloading node its boot file, one
+#               for each stage. A reservation cannot do this: Kea gives a reservation's option
+#               data precedence over a class's, so a reservation naming either URL would answer
+#               both stages with it. The classes carry the boot file and the reservation keeps the
+#               address.
+#
+#               Each class matches every DUID the node can send, and the stage is decided by
+#               option 15 alone. The tests are mutually exclusive, so the order of the two in the
+#               configuration does not matter.
+# Arguments: node       -- the node name, which names the classes
+#            duids      -- every DUID of the node, as colon-separated hexadecimal octets
+#            loader_url -- the first-stage loader, which the firmware fetches over tftp
+#            script_url -- the boot script of the node, which only iPXE can fetch
+# Returns: an arrayref of class definitions, empty unless the node has a DUID and both URLs
+#---
+sub kea_node_boot_classes6 {
+    my ( $class, %opts ) = @_;
+
+    my @duids = grep { defined($_) && length($_) } @{ $opts{duids} || [] };
+    return [] unless @duids && $opts{node};
+    return [] unless defined( $opts{loader_url} ) && defined( $opts{script_url} );
+
+    # Kea compares option[1].hex against a hexadecimal literal, not against a DUID written with
+    # colons. Either order identifies the node, so both are accepted here and neither decides
+    # which stage is answering.
+    my $identity = join ' or ',
+      map { my $hex = $_; $hex =~ s/://g; "option[1].hex == 0x$hex" } @duids;
+    my $ipxe = $class->dhcp6_ipxe_user_class_test();
+
+    return [
+        {   name          => "$opts{node}-ipxe6",
+            test          => "($identity) and $ipxe",
+            'option-data' => [ kea_bootfile_url6_option( $opts{script_url} ) ],
+        },
+        {   name          => "$opts{node}-firmware6",
+            test          => "($identity) and not ($ipxe)",
+            'option-data' => [ kea_bootfile_url6_option( $opts{loader_url} ) ],
+        },
+    ];
 }
 
 #: Every client architecture some class here, or in the per-network classes
@@ -878,6 +1063,29 @@ sub upstream_loader_warnings {
     return @warnings;
 }
 
+# Why one NODE gets no DHCPv6 boot file. dhcp6_bootfile_url_for_node drops the option when the
+# UEFI loader is not under the tftpdir of that node, and makedhcp exits 0, so the node reaches a
+# firmware timeout with nothing naming the file it asked for.
+#
+# upstream_loader_warnings cannot cover this. It reads the SITE TFTP directory and runs on
+# makedhcp -n and -a only, so a node with its own noderes.tftpdir is never examined, and
+# makedhcp <node> examines nothing.
+#
+# A node can load from another TFTP server, so this is a warning and not an error.
+sub dhcp6_missing_loader_warning {
+    my ( $class, %opts ) = @_;
+
+    my $tftpdir = $opts{tftpdir};
+    my $loader  = $opts{loader};
+    return unless defined $tftpdir && length $tftpdir;
+    return unless defined $loader  && length $loader;
+    $tftpdir =~ s{/+$}{};
+    return if -e "$tftpdir/$loader";
+    return "$tftpdir/$loader is missing, so $opts{node} gets no DHCPv6 boot file and its"
+      . " firmware times out with nothing to load. Install ipxe-xcat on the TFTP server"
+      . " of $opts{node}.";
+}
+
 # Whether this server has a loader that can SAN-boot an x86 node without iSCSI boot data: an
 # undionly.kpxe that the administrator put in the TFTP root, or the BIOS file of the loader of the
 # netboot method of the node.
@@ -903,6 +1111,30 @@ sub grub2_node_loader {
     return $loader if $suffix eq '';
     return $loader if defined $opts{tftpdir} && !-e "$opts{tftpdir}/boot/grub2/$loader$suffix";
     return "$loader$suffix";
+}
+
+# The IPv6 boot server of a grub2 node. A dual-stack node keeps an IPv4 tftpserver, which
+# has no IPv6 address, so a configured value that does not resolve falls back to the address
+# of the management node that faces the node. Returns the server, or nothing and a reason.
+sub dhcp6_boot_server {
+    my ( $class, %opts ) = @_;
+
+    return $opts{configured_v6} if $opts{configured_v6};
+
+    my $named = ( defined $opts{configured} && length $opts{configured} ) ? $opts{configured} : undef;
+
+    # The fallback is reported even when it succeeds. A dual-stack node keeps an IPv4
+    # tftpserver and the fallback is expected there, but so is a typo and a DNS outage, and
+    # without this the boot server silently stops being the configured one.
+    if ( $opts{facing_v6} ) {
+        return ( $opts{facing_v6}, undef ) unless defined $named;
+        return ( $opts{facing_v6},
+            "$named has no IPv6 address, so the DHCPv6 boot server is $opts{facing_v6}" );
+    }
+
+    my $reason = $opts{reason} || 'no IPv6-facing address was found';
+    return ( undef, "$named has no IPv6 address and $reason" ) if defined $named;
+    return ( undef, $reason );
 }
 
 # The ISC host statements that choose the boot file of a node with netboot ipxe, xnba or pxe. They

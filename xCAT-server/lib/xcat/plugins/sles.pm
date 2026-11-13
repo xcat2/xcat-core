@@ -17,6 +17,7 @@ use xCAT::NetworkUtils;
 use xCAT::SvrUtils;
 use xCAT::UFTP;
 use xCAT::MsgUtils;
+use xCAT::ConsolePolicy;
 use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -26,6 +27,84 @@ use File::Copy;
 use File::Temp qw/mkdtemp/;
 my $httpmethod     = "http";
 my $httpport       = "80";
+
+#-------------------------------------------------------
+
+=head3 rootimg_url
+
+    Descriptions: The imgurl= value a statelite or stateless node downloads its root image from.
+    Arguments: the method, the image server, the port, the image directory, the image file
+    Returns: the URL, with an IPv6 server bracketed
+=cut
+
+#-------------------------------------------------------
+sub rootimg_url
+{
+    my ($httpmethod, $imgsrv, $httpport, $rootimgdir, $image) = @_;
+    my $authority = xCAT::NetworkUtils::uri_authority($imgsrv, $httpport);
+    return "$httpmethod://$authority/$rootimgdir/$image";
+}
+
+#-------------------------------------------------------
+
+=head3 static_ipv6_boot_args
+
+    Descriptions: The linuxrc arguments that configure the installer network of an
+                  IPv6-only node.
+    Arguments: the node
+    Returns: the arguments, or an empty list when the node has no IPv6 configuration
+
+    linuxrc configures IPv4 by default, so an IPv6-only node reached no install
+    source. It is configured statically rather than with DHCPv6, for the reason
+    anaconda.pm configures EL statically: the firmware answers DHCPv6 with the
+    DUID-UUID of RFC 6355, which the reservation is keyed on, while the installer
+    builds a DUID of its own that matches no reservation.
+=cut
+
+#-------------------------------------------------------
+sub static_ipv6_boot_args
+{
+    my ($node) = @_;
+
+    my ( $ip, $hostname, $gateway, $prefix ) =
+      xCAT::NetworkUtils->getNodeNetworkCfg6($node);
+    return () unless $ip && defined($prefix) && $prefix =~ /^\d+$/ && $prefix <= 128;
+
+    my @args = ( 'ipv6only=1', "hostip=$ip/$prefix" );
+
+    if ( defined($gateway) && length($gateway) ) {
+        my $resolved = xCAT::NetworkUtils->ipv6_server_for_node( $node, $gateway );
+        push @args, "gateway=$resolved" if $resolved;
+    }
+
+    my $nameservers = xCAT::NetworkUtils->getNodeNameservers( [$node] );
+    my $servers = $nameservers ? $nameservers->{$node} : undef;
+    if ($servers) {
+        my ($first) = grep { /:/ } split( /,/, $servers );
+        push @args, "nameserver=$first" if $first;
+    }
+
+    return @args;
+}
+
+#-------------------------------------------------------
+
+=head3 autoyast_boot_args
+
+    Descriptions: The autoyast= and install= arguments of a diskful SLES or Leap install.
+    Arguments: the method, the install server, the port, the package directory prefix, the node
+    Returns: both arguments, with an IPv6 server bracketed
+=cut
+
+#-------------------------------------------------------
+sub autoyast_boot_args
+{
+    my ($httpmethod, $netserver, $httpport, $httpprefix, $node) = @_;
+    my $authority = xCAT::NetworkUtils::uri_authority($netserver, $httpport);
+    return "autoyast=$httpmethod://$authority/install/autoinst/$node"
+      . " install=$httpmethod://$authority$httpprefix/1";
+}
+
 my $useflowcontrol = "0";
 use File::Find;
 use File::Basename;
@@ -521,7 +600,7 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
                 }
             } else {
-                $kcmdline = "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                $kcmdline = "imgurl=" . rootimg_url($httpmethod, $imgsrv, $httpport, $rootimgdir, "rootimg-statelite.gz") . " STATEMNT=";
                 $kcmdline = $checksum_arg . $kcmdline;
             }
 
@@ -575,11 +654,11 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/$compressedrootimg ";
+              "imgurl=" . rootimg_url($httpmethod, $imgsrv, $httpport, $rootimgdir, $compressedrootimg) . " ";
             $kcmdline .= $checksum_arg;
             $kcmdline .= $uftp_args;
         }
-        $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+        $kcmdline .= "XCAT=" . xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport) . " ";
         $kcmdline .= " XCATHTTPPORT=$httpport ";
 
         #if site.nodestatus="n", append "nonodestatus" to kcmdline
@@ -650,13 +729,8 @@ sub mknetboot
                 xCAT::MsgUtils->report_node_error($callback, $node,"serialport defined, but no serialspeed for $node in nodehm table");
                 next;
             }
-            if ($arch =~ /ppc64le/i) {
-                $kcmdline .=
-                    "console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
-            } else {
-                $kcmdline .=
-                    "console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
-            }
+            $kcmdline .= xCAT::ConsolePolicy::kernel_console_arguments(
+                $arch, $sent->{serialport}, $sent->{serialspeed});
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {
                 $kcmdline .= "n8r";
@@ -1158,13 +1232,7 @@ sub mkinstall
                 $httpprefix =~ s/^$installroot/\/install/;
             }
             my $kcmdline =
-              "autoyast=$httpmethod://"
-              . $netserver . ":" . $httpport
-              . "/install/autoinst/"
-              . $node
-              . " install=$httpmethod://"
-              . $netserver . ":" . $httpport
-              . "$httpprefix/1";
+              autoyast_boot_args($httpmethod, $netserver, $httpport, $httpprefix, $node);
             if ($os =~ /^leap15/) {
                 $kcmdline .= " self_update=0";
             }
@@ -1191,6 +1259,11 @@ sub mkinstall
             my $net_params = xCAT::NetworkUtils->gen_net_boot_params($installnic, $primarynic, $mac);
             if (defined($net_params->{netdevice})) {
                 $kcmdline .= " $net_params->{netdevice} ";
+            }
+
+            if ( xCAT::NetworkUtils->node_is_ipv6_only($node) ) {
+                my @ipv6_args = static_ipv6_boot_args($node);
+                $kcmdline .= ' ' . join( ' ', @ipv6_args ) . ' ' if @ipv6_args;
             }
 
 
@@ -1265,18 +1338,8 @@ sub mkinstall
                     xCAT::MsgUtils->report_node_error($callback, $node, "serialport defined, but no serialspeed for this node in nodehm table");
                     next;
                 }
-                if ($arch =~ /ppc64le/i) {
-                    $kcmdline .=
-                      " console=tty0 console=hvc"
-                      . $sent->{serialport} . ","
-                      . $sent->{serialspeed};
-
-                } else {
-                    $kcmdline .=
-                      " console=tty0 console=ttyS"
-                      . $sent->{serialport} . ","
-                      . $sent->{serialspeed};
-                }
+                $kcmdline .= " " . xCAT::ConsolePolicy::kernel_console_arguments(
+                    $arch, $sent->{serialport}, $sent->{serialspeed});
                 if ($sent and ($sent->{serialflow} =~ /(ctsrts|cts|hard)/))
                 {
                     $kcmdline .= "n8r";
@@ -1529,15 +1592,15 @@ sub mksysclone
                 }
                 else {
                     #go cmdline if serial console is requested, the shiny ansi is just impractical
-                    $kcmdline .= " cmdline console=tty0 console=ttyS"
-                      . $sent->{serialport} . ","
-                      . $sent->{serialspeed};
+                    $kcmdline .= " cmdline " . xCAT::ConsolePolicy::kernel_console_arguments(
+                        $arch, $sent->{serialport}, $sent->{serialspeed});
                     if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/) {
                         $kcmdline .= "n8r";
                     }
                 }
             }
-            $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+            my $xcat_endpoint = xCAT::NetworkUtils::xcatd_cmdline_address($xcatmaster, $xcatdport);
+            $kcmdline .= " XCAT=$xcat_endpoint xcatd=$xcat_endpoint SCRIPTNAME=$imagename";
 
             $bootparams->{$node}->[0]->{kernel} = "xcat/$genesis_kernel";
             $bootparams->{$node}->[0]->{initrd} = "xcat/$genesis_initrd";

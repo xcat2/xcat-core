@@ -284,6 +284,70 @@ sub disable_auto_profiles {
     return;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3 stage_dracut_module
+
+    Descriptions:
+        Copies the files of the Ubuntu xCAT dracut module for a mode into the module directory
+        of an image. The install script of the mode is copied as "install".
+    Arguments:
+        $srcdir:    the dracut directory under share/xcat/netboot/ubuntu
+        $moduledir: the 97xcat directory in the image
+        $mode:      statelite or stateless
+    Returns:
+        the names of the files copied; dies on an unknown mode or a failed copy
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub stage_dracut_module {
+    my ($srcdir, $moduledir, $mode) = @_;
+    my %files = (
+        statelite => [qw(xcat-prepivot.sh)],
+        stateless => [qw(xcat-cmdline.sh xcat-online.sh xcat-bootif-dhcp.conf xcatroot installkernel)],
+    );
+    die("Error: the mode $mode is not supported by genimage\n") unless $files{$mode};
+    my $install = $mode eq 'statelite' ? 'install.statelite' : 'install.netboot';
+    my @copy = (['check', 'check'], [$install, 'install']);
+    push(@copy, ['module-setup.sh', 'module-setup.sh']) if -f "$srcdir/module-setup.sh";
+    push(@copy, map { [$_, $_] } @{ $files{$mode} });
+    foreach my $pair (@copy) {
+        my ($from, $to) = ("$srcdir/$pair->[0]", "$moduledir/$pair->[1]");
+        my $perm = (stat($from))[2];
+        (defined($perm) && File::Copy::copy($from, $to) && chmod($perm & 07777, $to))
+          or die("Error: cannot copy $from to $to: $!\n");
+    }
+    return map { $_->[1] } @copy;
+}
+
+# The netboot dracut.conf names an exclusive module list, so a module nothing in the list depends
+# on is left out of the initial ramdisk. dracut reads the list and nothing else.
+#
+# dracut-ng removed the network-legacy module. Without it 40network selects systemd-networkd, which
+# depends on the systemd module, and the base module installs the shell /init only when systemd is
+# out. systemd as /init needs initrd.target, which the systemd-initrd module installs, and the
+# dracut hooks need the units of the dracut-systemd module. The EL genimage names the same three.
+sub dracut_netboot_modules {
+    my ($moduledir, $wicked) = @_;
+    my $legacy  = -d "$moduledir/35network-legacy" ? 1 : 0;
+    my $netmod  = ($legacy && !$wicked) ? 'network-legacy' : 'network';
+    my @modules = ('xcat', 'nfs', 'base', $netmod, 'kernel-modules');
+    return join(' ', @modules) if $legacy;
+    my %present;
+    if (opendir(my $dh, $moduledir)) {
+
+        # A dracut module directory carries a number that orders it, and the number moves between
+        # dracut releases. The name after the number is what dracut.conf names.
+        foreach my $entry (readdir($dh)) {
+            $present{$1} = 1 if $entry =~ /^[0-9]+(.+)$/ && -d "$moduledir/$entry";
+        }
+        closedir($dh);
+    }
+    push @modules, grep { $present{$_} } qw(systemd systemd-initrd dracut-systemd);
+    return join(' ', @modules);
+}
+
 # debootstrap deletes $rootimg_dir/debootstrap when it finishes, and its tar -k fails over a finished root.
 sub debootstrap_finished {
     my ($rootimg_dir) = @_;

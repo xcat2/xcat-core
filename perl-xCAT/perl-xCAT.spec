@@ -14,6 +14,26 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %ifos linux
 BuildArch: noarch
 BuildRequires: perl perl-DBI perl-JSON
+# openSUSE has no perl-generators, so rpm derives no perl() requires from the module
+# sources the way EL does. Name the modules an openSUSE node does not already carry, or
+# xCAT::Table dies with "Can't locate JSON.pm" and xcatd never starts.
+%if 0%{?suse_version}
+Requires: perl(JSON) perl(Expect) perl(SNMP) perl(HTML::Form)
+%endif
+# xCAT::SLP, xCAT::Client and xCAT::NetworkUtils reach IPv6 only through Socket6 and
+# IO::Socket::INET6. Each one loads them with eval { require ... }, and perl-generators
+# reads a use statement, not a require inside an eval, so no family derives them.
+# A recommendation is enough where the package manager installs one. The openSUSE
+# Minimal-VM image sets solver.onlyRequires = true, so zypper installs no recommended
+# package and both modules stay absent, which leaves every IPv6 branch unreachable.
+%if 0%{?suse_version}
+Requires: perl(Socket6)
+Requires: perl(IO::Socket::INET6)
+%endif
+%if 0%{?fedora} || 0%{?rhel} >= 8 || 0%{?openEuler}
+Recommends: perl(Socket6)
+Recommends: perl(IO::Socket::INET6)
+%endif
 # Do not need the SOAP rpm require, because rpm will generate it automatically if hpoa.pm is included
 #Requires: perl-SOAP-Lite
 # openSUSE has no perl-generators, so no perl(...) requirement is generated here and nothing

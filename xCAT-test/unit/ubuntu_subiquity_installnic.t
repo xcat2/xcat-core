@@ -109,15 +109,25 @@ SKIP: {
     skip 'netplan late-command not found in the template', 5 unless $snippet;
     $snippet =~ s/''/'/g;    # undo the YAML single-quote escaping
 
+    # #SUBIQUITYTARGETDHCP# is rendered by Template.pm from the address family of the node.
+    # Unrendered it is a shell comment, which would swallow the redirect and write no file.
+    my $dhcp4 = '"      dhcp4: true" "      dhcp4-overrides:" "        use-domains: true"';
+    my $dhcp6 = '"      dhcp6: true" "      dhcp4: false" "      dhcp6-overrides:" "        use-domains: true"';
+
     for my $case (
-        { name => 'a resolved interface name', setname => 'eno1', mac => 'aa:bb:cc:dd:ee:01' },
-        { name => 'no interface name',         setname => '',     mac => 'aa:bb:cc:dd:ee:03' },
+        { name => 'a resolved interface name', setname => 'eno1', mac => 'aa:bb:cc:dd:ee:01',
+          dhcp => $dhcp4, keys => [ '      dhcp4: true', '      dhcp4-overrides:', '        use-domains: true' ] },
+        { name => 'no interface name',         setname => '',     mac => 'aa:bb:cc:dd:ee:03',
+          dhcp => $dhcp4, keys => [ '      dhcp4: true', '      dhcp4-overrides:', '        use-domains: true' ] },
+        { name => 'an IPv6-only node',         setname => 'eno1', mac => 'aa:bb:cc:dd:ee:05',
+          dhcp => $dhcp6, keys => [ '      dhcp6: true', '      dhcp4: false', '      dhcp6-overrides:', '        use-domains: true' ] },
       )
     {
         my $dir = tempdir(CLEANUP => 1);
         my $script = $snippet;
         $script =~ s/#SUBIQUITYINSTALLNIC#/$case->{setname}/g;
         $script =~ s/#SUBIQUITYINSTALLMAC#/$case->{mac}/g;
+        $script =~ s/#SUBIQUITYTARGETDHCP#/$case->{dhcp}/g;
         $script =~ s{/target/}{$dir/target/}g;
         system('sh', '-c', "set -e\n$script") == 0
           or die "netplan late-command failed for $case->{name}\n";
@@ -131,9 +141,7 @@ SKIP: {
             'network:', '  version: 2', '  ethernets:', '    xcat-install:',
             '      match:', qq(        macaddress: "$case->{mac}"),
             ($case->{setname} ne '' ? "      set-name: $case->{setname}" : ()),
-            '      dhcp4: true',
-            '      dhcp4-overrides:',
-            '        use-domains: true',
+            @{ $case->{keys} },
         );
         is($netplan, join("\n", @expected) . "\n",
             "the netplan written for $case->{name} matches the resolved values");

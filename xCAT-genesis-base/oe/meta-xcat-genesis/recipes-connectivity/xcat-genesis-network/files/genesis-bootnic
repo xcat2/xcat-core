@@ -1,0 +1,85 @@
+#!/bin/bash
+#
+# Keep the DHCPv6 reservation on the nic the node booted from.
+#
+# A DHCPv6 reservation is keyed on the DUID, and a DUID names the machine, not the nic.
+# 10-xcat-genesis.conf sets the DHCPv6 defaults in [connection], which applies to every nic, so
+# each nic of a node asks for the same reserved address and Kea gives it to the first REQUEST.
+# When that is not the boot nic, the node holds its reserved address on a nic xcatd does not
+# reach it on, and the report xcatd receives comes from a pool address it cannot match to a node.
+set -u
+
+LC_ALL=C
+export LC_ALL
+
+cmdline_file=${XCAT_CMDLINE_FILE:-/proc/cmdline}
+# NetworkManager.conf(5) does not accept ipv6.method as a [connection] default, so the
+# restriction is two connection profiles. The DHCPv6 defaults in conf.d still apply to both.
+connection_dir=${XCAT_NM_CONNECTION_DIR:-/etc/NetworkManager/system-connections}
+
+log() {
+    logger -t xcat-genesis-bootnic -- "$*" || true
+}
+
+[ -r "$cmdline_file" ] || { log "no kernel command line at $cmdline_file"; exit 0; }
+
+# BOOTIF is the hardware type and the address, hyphen separated: 01-aa-bb-cc-dd-ee-ff.
+bootif=""
+for word in $(cat "$cmdline_file"); do
+    case $word in
+        BOOTIF=*) bootif=${word#BOOTIF=} ;;
+    esac
+done
+
+if [ -z "$bootif" ]; then
+    log "no BOOTIF on the command line, leaving DHCPv6 on every nic"
+    exit 0
+fi
+
+mac=$(printf '%s' "${bootif#01-}" | tr 'A-F-' 'a-f:')
+case $mac in
+    [0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]) ;;
+    *) log "BOOTIF $bootif is not a hardware address, leaving DHCPv6 on every nic"; exit 0 ;;
+esac
+
+mkdir -p "$connection_dir" || exit 1
+# NetworkManager does not load a keyfile that other users can read.
+umask 077
+
+# The boot nic profile is bound to the address and has the higher priority, so NetworkManager
+# picks it on the boot nic. The secondary profile matches every ethernet nic, and
+# multi-connect=3 (multiple) lets it be active on all of them at once. link-local, not
+# disabled: a secondary nic keeps IPv6 on the link and the node still reports it to xcatd.
+cat >"$connection_dir/xcat-genesis-bootnic.nmconnection" <<EOF
+# Written by xcat-genesis-bootnic from BOOTIF=$bootif. A DHCPv6 reservation is keyed on the
+# DUID, which names the machine, so only the boot nic may ask for one.
+[connection]
+id=xcat-genesis-bootnic
+type=ethernet
+autoconnect-priority=100
+
+[ethernet]
+mac-address=$mac
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+EOF
+
+cat >"$connection_dir/xcat-genesis-secondary.nmconnection" <<EOF
+# Written by xcat-genesis-bootnic. Every nic other than $mac.
+[connection]
+id=xcat-genesis-secondary
+type=ethernet
+autoconnect-priority=0
+multi-connect=3
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=link-local
+EOF
+log "DHCPv6 restricted to the boot nic $mac"

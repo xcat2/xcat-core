@@ -8,6 +8,8 @@ use XML::Simple;
 $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 
 use xCAT::MsgUtils;
+use xCAT::NetworkUtils;
+use Socket qw(AF_INET6 inet_aton inet_ntoa inet_pton inet_ntop);
 
 sub is_findme_request {
     my ($request) = @_;
@@ -212,6 +214,206 @@ sub _first_value {
     my $name = $value->[0];
     return undef unless defined $name && $name ne '';
     return $name;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  vpd_attribs_from_findme
+
+      The vpd attributes a findme request carries for the node it discovers.
+
+    Arguments:
+      the findme request
+    Returns:
+      a hash reference of vpd attributes, empty when the request carries none
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub vpd_attribs_from_findme
+{
+    my $request = shift;
+    if ( defined($request) && !ref($request) && $request eq __PACKAGE__ )
+    {
+        $request = shift;
+    }
+    return {} unless ref($request) eq 'HASH';
+
+    my $uuid = $request->{uuid};
+    $uuid = $uuid->[0] if ref($uuid) eq 'ARRAY';
+    return {} unless defined($uuid);
+
+    # The OpenEmbedded image synthesises "<machine type>-<serial>-<first mac>" when the firmware
+    # reports no product_uuid. dhcp6_client_duids builds a DUID-UUID from this value, and a DUID
+    # built from that string matches no client, so only the SMBIOS form is recorded.
+    return {} unless $uuid =~ /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+    return { uuid => lc($uuid) };
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  discovery_address_usable
+
+      Can discovery record a node whose address is this?
+
+    Arguments:
+      the address a node resolved to
+    Returns:
+      1 when the address names a node, 0 when it does not
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub discovery_address_usable
+{
+    my $address = shift;
+    $address = shift if defined($address) && !ref($address) && $address eq __PACKAGE__;
+    return 0 unless defined($address) && length($address);
+
+    # A scoped link-local names an interface, not a node on the provisioning network.
+    return 0 if index( $address, '%' ) >= 0;
+    return 1 if xCAT::NetworkUtils->isIpaddr($address);
+    return 1 if xCAT::NetworkUtils->isIpv6addr($address);
+    return 0;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  nic_network_key
+
+      The network a discovered NIC is on, as a string two NICs on one network share.
+
+    Arguments:
+      the address of the NIC, and the prefix length
+    Returns:
+      the network address, or undef when the value is no address
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub nic_network_key
+{
+    my $address = shift;
+    $address = shift if defined($address) && !ref($address) && $address eq __PACKAGE__;
+    my ($netbits) = @_;
+
+    return undef unless defined($address) && length($address);
+    $netbits = 0 unless defined($netbits) && $netbits =~ /\A\d+\z/;
+
+    if ( xCAT::NetworkUtils->isIpaddr($address) ) {
+
+        # The arithmetic the caller used before, kept so an IPv4 key does not move.
+        my $ipn  = unpack( "N", inet_aton($address) );
+        my $mask = $netbits ? ( 2**$netbits - 1 << ( 32 - $netbits ) ) : 0;
+        return inet_ntoa( pack( "N", $ipn & $mask ) );
+    }
+
+    return undef if index( $address, '%' ) >= 0;
+    return undef unless xCAT::NetworkUtils->isIpv6addr($address);
+
+    my $packed = inet_pton( AF_INET6, $address );
+    return undef unless defined($packed) && length($packed) == 16;
+
+    # Mask bits, not bytes: a /60 keeps half of the fourth group.
+    my @byte = unpack( "C16", $packed );
+    foreach my $i ( 0 .. 15 ) {
+        my $bits = $netbits - $i * 8;
+        if    ( $bits <= 0 ) { $byte[$i] = 0; }
+        elsif ( $bits < 8 )  { $byte[$i] &= ( 0xFF << ( 8 - $bits ) ) & 0xFF; }
+    }
+    return inet_ntop( AF_INET6, pack( "C16", @byte ) );
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  ipv6_networks
+
+      The IPv6 networks of networks table rows, as [network, prefix length] pairs.
+
+    Arguments:
+      the rows, each a hash with net and mask. An IPv6 net may carry its own /len, and an
+      IPv6 mask is written /len.
+    Returns:
+      an arrayref of pairs
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub ipv6_networks
+{
+    my $rows = shift;
+    $rows = shift if defined($rows) && !ref($rows) && $rows eq __PACKAGE__;
+
+    my @networks;
+    foreach my $row ( @{ $rows || [] } ) {
+        my ( $net, $bits ) = split m{/}, ( $row->{net} || '' ), 2;
+        next unless defined($net) && xCAT::NetworkUtils->isIpv6addr($net);
+        ($bits) = ( $row->{mask} || '' ) =~ m{\A/?(\d+)\z} unless defined($bits) && length($bits);
+        next unless defined($bits) && $bits =~ /\A\d+\z/ && $bits <= 128;
+        push @networks, [ $net, $bits ];
+    }
+    return \@networks;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3  hosttag_for_ipv6_nic
+
+      The hostname tag a discovered IPv6 NIC takes.
+
+      gethosttag reads an A record and my_if_netmap, which prints IPv4 routes only, so the
+      decision for an IPv6 NIC is made from the addresses: a NIC on the network of the node is
+      the node, and that is what marks the node reachable on the provisioning network.
+
+    Arguments:
+      the node, its address, the interface name, the address of the NIC, the prefix length,
+      the names already taken, and the IPv6 networks of the networks table as
+      [network, prefix length] pairs
+    Returns:
+      the node, an interface-qualified name, or undef when the NIC is on another network
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub hosttag_for_ipv6_nic
+{
+    my $node = shift;
+    $node = shift if defined($node) && !ref($node) && $node eq __PACKAGE__;
+    my ( $nodeaddr, $ifname, $nicaddr, $netbits, $usednames, $networks ) = @_;
+
+    return undef unless defined($node) && length($node);
+    return undef unless defined($nicaddr) && length($nicaddr);
+
+    # The IPv4 path owns an IPv4 NIC, and its hostname rules are not reproduced here.
+    return undef if xCAT::NetworkUtils->isIpaddr($nicaddr);
+    return undef unless discovery_address_usable($nodeaddr);
+    return undef if xCAT::NetworkUtils->isIpaddr($nodeaddr);
+
+    my $nicnet  = nic_network_key( $nicaddr,  $netbits );
+    my $nodenet = nic_network_key( $nodeaddr, $netbits );
+    my $same = defined($nicnet) && defined($nodenet) && $nicnet eq $nodenet;
+
+    # NetworkManager installs a DHCPv6 lease as a /128. That prefix names one address and no
+    # network, so take the network from the networks table instead.
+    if ( !$same && defined($netbits) && $netbits eq '128' ) {
+        foreach my $network ( @{ $networks || [] } ) {
+            my ( $net, $bits ) = @$network;
+            my $key = nic_network_key( $net, $bits );
+            next unless defined($key);
+            my $nic  = nic_network_key( $nicaddr,  $bits );
+            my $node = nic_network_key( $nodeaddr, $bits );
+            if ( defined($nic) && defined($node) && $nic eq $key && $node eq $key ) {
+                $same = 1;
+                last;
+            }
+        }
+    }
+    return undef unless $same;
+
+    return $node unless $usednames && $usednames->{$node};
+    return "$node-$ifname" if defined($ifname) && length($ifname);
+    return undef;
 }
 
 1;

@@ -112,7 +112,8 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 	    echo $line > /tmp/cpumod
         done
         CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
-        UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
+        # makedhcp derives the firmware DUID from vpd.uuid, so report the UUID that dmidecode prints.
+        UUID=`cat /sys/devices/virtual/dmi/id/product_uuid`
 
 elif [ -r /proc/device-tree/model ]; then #POWER
         MTM=`cat /proc/device-tree/model -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
@@ -293,7 +294,7 @@ logger -s -t $log_label -p local4.info "Discovery packet file is ready."
 rm -f /tmp/discopacket.gz
 gzip -9 /tmp/discopacket
 	if [ ! -z "$XCATMASTER" ]; then
-		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT)..."
+		logger -s -t $log_label -p local4.info "Sending the discovery packet to xCAT (${XCATDEST:-$XCATMASTER:$XCATPORT})..."
 		(cat /tmp/discopacket.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do

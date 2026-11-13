@@ -10,3 +10,4 @@ Networking
    vlan/index.rst
    infiniband/index.rst
    getadapter.rst
+   ipv6_provisioning.rst

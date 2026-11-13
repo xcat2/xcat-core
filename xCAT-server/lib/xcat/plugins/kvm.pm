@@ -510,12 +510,9 @@ sub build_diskstruct {
 }
 
 sub getNodeUUID {
-    my $node = shift;
-    my $uuid;
+    my ($node, $machine) = @_;
     if ($confdata->{vpd}->{$node}->[0] and $confdata->{vpd}->{$node}->[0]->{uuid}) {
-        $uuid = $confdata->{vpd}->{$node}->[0]->{uuid};
-        $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
-        return $uuid;
+        return xCAT::KVMUtils::guest_uuid($confdata->{vpd}->{$node}->[0]->{uuid}, $machine);
     }
     if ($confdata->{mac}->{$node}->[0]->{mac}) { #a uuidv1 is possible, generate that for absolute uniqueness guarantee
         my $mac = $confdata->{mac}->{$node}->[0]->{mac};
@@ -525,10 +522,20 @@ sub getNodeUUID {
     } else {
         $updatetable->{vpd}->{$node} = { uuid => xCAT::Utils::genUUID() };
     }
-    $uuid = $updatetable->{vpd}->{$node}->{uuid};
-    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
-    return $uuid;
+    return xCAT::KVMUtils::guest_uuid($updatetable->{vpd}->{$node}->{uuid}, $machine);
 
+}
+
+# The machine type that libvirt gives a domain whose XML names none, or names an alias such as pc.
+sub domain_machine_type {
+    my ($machine, $arch, $domtype) = @_;
+    return $machine unless $hypconn and $parser;
+    my $resolved = eval {
+        my $capsxml = $hypconn->get_domain_capabilities(undef, $arch, $machine, $domtype);
+        my ($element) = $parser->parse_string($capsxml)->findnodes('/domainCapabilities/machine');
+        $element ? $element->textContent : undef;
+    };
+    return (defined($resolved) and length($resolved)) ? $resolved : $machine;
 }
 
 sub build_nicstruct {
@@ -613,7 +620,6 @@ sub build_xmldesc {
 
     $xtree{type}            = $profile->{domtype};
     $xtree{name}->{content} = $node;
-    $xtree{uuid}->{content} = getNodeUUID($node);
     if ($args{memory}) {
         $xtree{memory}->{content} = getUnits($args{memory}, "M", 1024);
         if ($confdata->{vm}->{$node}->[0]->{memory}) {
@@ -683,6 +689,8 @@ sub build_xmldesc {
         hyp_cpumodel => $hypcpumodel,
         bootorder    => $confdata->{vm}->{$node}->[0]->{bootorder},
         machine      => $machine_type);
+    $xtree{uuid}->{content} = getNodeUUID($node,
+        domain_machine_type($xtree{os}->{type}->{machine}, $profile->{arch}, $profile->{domtype}));
 
     #prepare the xml hash for memory binding
     if (defined $memnumanodes) {
@@ -1563,8 +1571,10 @@ sub rinv {
         return;
     }
     my $domain = $parser->parse_string($currxml);
-    my $uuid   = $domain->findnodes('/domain/uuid')->[0]->to_literal;
-    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+    my ($ostype) = $domain->findnodes('/domain/os/type');
+    my $uuid = xCAT::KVMUtils::guest_uuid($domain->findnodes('/domain/uuid')->[0]->to_literal,
+        domain_machine_type($ostype ? $ostype->getAttribute('machine') : undef,
+            $ostype ? $ostype->getAttribute('arch') : undef, $domain->findnodes('/domain')->[0]->getAttribute('type')));
     xCAT::SvrUtils::sendmsg("UUID/GUID: $uuid", $callback, $node);
     my $cpus = $domain->findnodes('/domain/vcpu')->[0]->to_literal;
     xCAT::SvrUtils::sendmsg("CPUs: $cpus", $callback, $node);
@@ -2875,7 +2885,9 @@ sub clone_vm_from_master {
     }
     my $newnodexml = $parser->parse_string($kvmmasteref->{xml});
     $newnodexml->findnodes("/domain/name/text()")->[0]->setData($node); #set name correctly
-    my $uuid = getNodeUUID($node);
+    my ($clonetype) = $newnodexml->findnodes('/domain/os/type');
+    my $uuid = getNodeUUID($node, domain_machine_type($clonetype ? $clonetype->getAttribute('machine') : undef,
+        $clonetype ? $clonetype->getAttribute('arch') : undef, $newnodexml->findnodes('/domain')->[0]->getAttribute('type')));
     $newnodexml->findnodes("/domain/uuid/text()")->[0]->setData($uuid); #put in correct uuid
         #set up mac addresses and such right...
     fixup_clone_network(mastername => $mastername, mastertableentry => $masteref, kvmmastertableentry => $kvmmasteref, xmlinprogress => $newnodexml);
@@ -3269,8 +3281,10 @@ sub rscan {
         my ($uuid, $node, $vmcpus, $vmmemory, $vmnics, $vmstorage, $arch, $mac, $vmnicnicmodel);
         my @uuidobj = $domain->findnodes("/domain/uuid");
         if (@uuidobj) {
-            $uuid = $uuidobj[0]->to_literal;
-            $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+            my ($ostype) = $domain->findnodes('/domain/os/type');
+            $uuid = xCAT::KVMUtils::guest_uuid($uuidobj[0]->to_literal,
+                domain_machine_type($ostype ? $ostype->getAttribute('machine') : undef,
+                    $ostype ? $ostype->getAttribute('arch') : undef, $domain->findnodes('/domain')->[0]->getAttribute('type')));
         }
         my $type = $domain->findnodes("/domain")->[0]->getAttribute("type");
         if (length($type) > $maxlength[0]) {
@@ -3400,7 +3414,7 @@ sub rscan {
             else {
                 if ($hash_vm2host{$node} eq $hypervisor) {
 
-                    #mark this node to delete in 'vm' 'mac' vpd' 'nodelist' 'nodetype' 'nodehm' tables
+                    #mark this node to delete in 'vm' vpd' 'nodelist' 'nodetype' 'nodehm' tables; its mac row keeps duid
                     $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
 
                     $updatetable->{vm}->{$node}->{host}     = $hypervisor;
@@ -3410,7 +3424,6 @@ sub rscan {
                     $updatetable->{vm}->{$node}->{nics}     = $vmnics;
                     $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
                     $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
-                    $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                     $updatetable->{mac}->{$node}->{mac} = $mac;
                     $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                     $updatetable->{vpd}->{$node}->{uuid} = $uuid;
@@ -3440,7 +3453,6 @@ sub rscan {
                 $updatetable->{vm}->{$node}->{nics}          = $vmnics;
                 $updatetable->{vm}->{$node}->{nicmodel}      = $vmnicnicmodel;
                 $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
-                $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{mac}->{$node}->{mac}                     = $mac;
                 $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{vpd}->{$node}->{uuid}                    = $uuid;

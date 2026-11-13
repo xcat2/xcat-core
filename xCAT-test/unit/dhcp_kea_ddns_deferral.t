@@ -35,6 +35,7 @@ BEGIN {
         *{"${caller}::getipaddr"} = \&getipaddr;
     }
     sub getipaddr { return '10.0.0.1'; }
+    sub isValidIp { my $addr = $_[-1]; return defined($addr) && $addr =~ /^[0-9a-fA-F:.]+$/ ? 1 : 0; }
     sub my_ip_facing { return ( 0, '10.0.0.1' ); }
     sub thishostisnot { return 0; }
     sub ip_forwarding_enabled { return 0; }
@@ -214,6 +215,8 @@ $xCAT::Table::networks = DDNSNetworksTable->new( \%provision_network );
         return $key_secret ? ( 'HMAC-SHA256', $key_secret ) : ();
     };
     local *xCAT::MsgUtils::message = sub { return; };
+    # makedhcp reconciles radvd on every call. Without this the test reads and can change the host's.
+    local *xCAT_plugin::dhcp::configure_router_advertisements = sub { return; };
     local *xCAT::MsgUtils::trace   = sub { return; };
 
     # process_request is the only way to set the plugin callback.

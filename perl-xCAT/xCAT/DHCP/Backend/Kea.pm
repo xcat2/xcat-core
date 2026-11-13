@@ -127,11 +127,19 @@ sub render_dhcp6_config {
         'preferred-lifetime' => _integer( _first_defined( $intent->{'preferred-lifetime'}, $intent->{preferred_lifetime}, 43200 ) ),
         'valid-lifetime'     => _integer( _first_defined( $intent->{'valid-lifetime'},     $intent->{valid_lifetime},     43200 ) ),
         'host-reservation-identifiers' => _first_defined( $intent->{'host-reservation-identifiers'}, [ 'duid', 'hw-address' ] ),
+        # A boot chain is one DUID in several stages, and each stage asks for its own IA. Kea
+        # holds a reclaimed lease for an hour, so the reserved address a boot loader released
+        # stays bound to the IAID of the loader and the next stage is given a pool address.
+        'expired-leases-processing' => _expired_leases6( $intent->{'expired-leases-processing'} ),
         subnet6              => [ map { $self->_render_subnet6($_) } @{ _first_defined( $intent->{subnet6}, $intent->{subnets}, [] ) } ],
     );
 
     $dhcp6{'control-socket'}  = $intent->{'control-socket'}  if $intent->{'control-socket'};
     $dhcp6{'hooks-libraries'} = $intent->{'hooks-libraries'} if $intent->{'hooks-libraries'};
+    # Without this a DHCPv6 client that matches no reservation is answered with an address and no
+    # option 59, so it boots nothing. render_dhcp4_config has always carried the classes.
+    $dhcp6{'client-classes'} = [ map { $self->_render_client_class($_) } @{ $intent->{'client-classes'} } ]
+      if $intent->{'client-classes'};
     $dhcp6{'option-data'} = _render_option_data( $intent->{'option-data'} )
       if $intent->{'option-data'};
     $dhcp6{'dhcp-ddns'}       = $intent->{'dhcp-ddns'}       if $intent->{'dhcp-ddns'};
@@ -660,10 +668,25 @@ sub check_services {
 }
 
 sub upsert_reservations {
-    my ( $self, $config, $reservations ) = @_;
+    my ( $self, $config, $reservations, $deleted ) = @_;
+
+    # Remove stale matches before adding the complete requested set.  A DHCPv6
+    # client DUID is valid in more than one subnet, so deleting while adding
+    # would otherwise remove an earlier reservation from the same batch.
+    # The entries of a node are replaced as a set: an entry of a client that the
+    # node no longer has matches no reservation of the new set.
+    my %owners;
+    foreach my $owner ( grep { defined } map { _owner_of($_) } @$reservations ) {
+        next if $owners{$owner}++;
+        my $removed = $self->delete_reservations( $config, { 'user-context' => { 'xcat-node' => $owner } } );
+        push @$deleted, @$removed if $deleted;
+    }
+    foreach my $reservation (@$reservations) {
+        my $removed = $self->delete_reservations($config, $reservation);
+        push @$deleted, @$removed if $deleted;
+    }
 
     foreach my $reservation (@$reservations) {
-        $self->delete_reservations($config, $reservation);
         my $subnet = _find_subnet_by_id( $config, $reservation->{'subnet-id'} );
         next unless $subnet;
         $subnet->{reservations} ||= [];
@@ -740,7 +763,9 @@ sub control_agent_url {
 
     my $host = $opts{host} || $self->{control_agent_host} || '127.0.0.1';
     my $port = $opts{port} || $self->{control_agent_port} || 8000;
-    return "http://$host:$port/";
+    my $authority = xCAT::NetworkUtils->format_host_port($host, $port);
+    return unless $authority;
+    return "http://$authority/";
 }
 
 sub control_agent_command {
@@ -781,10 +806,34 @@ sub live_upsert_reservations {
     my ( $self, $reservations, %opts ) = @_;
 
     my $service = $opts{service} || ['dhcp4'];
-    foreach my $reservation (@$reservations) {
+    my @delete = (
+        @{ $opts{stale_reservations} || [] },
+        @$reservations,
+    );
+    my %seen;
+    foreach my $reservation (@delete) {
+        my ( $identifier_type, $identifier );
+        if ($reservation->{'hw-address'}) {
+            ( $identifier_type, $identifier ) = ( 'hw-address', $reservation->{'hw-address'} );
+        } elsif ($reservation->{duid}) {
+            ( $identifier_type, $identifier ) = ( 'duid', $reservation->{duid} );
+        } elsif ($reservation->{'ip-address'}) {
+            ( $identifier_type, $identifier ) = ( 'ip-address', $reservation->{'ip-address'} );
+        } elsif (ref($reservation->{'ip-addresses'}) eq 'ARRAY' && @{ $reservation->{'ip-addresses'} }) {
+            ( $identifier_type, $identifier ) = ( 'ip-address', $reservation->{'ip-addresses'}[0] );
+        }
+        my $key = join('|',
+            # Copy before lc: an aliased $_ makes JSON send the subnet-id as a string, which
+            # Kea rejects.
+            map { my $v = $_; defined($v) ? lc($v) : '' }
+              $reservation->{'subnet-id'}, $identifier_type, $identifier,
+        );
+        next if $seen{$key}++;
         my $delete = $self->_live_delete_reservation($reservation, service => $service, ignore_not_found => 1);
         return $delete if $delete->{error};
+    }
 
+    foreach my $reservation (@$reservations) {
         my ($stored) = @{ _render_entry_option_data( [$reservation] ) };
         my $result = $self->control_agent_command(
             'reservation-add',
@@ -962,6 +1011,16 @@ sub _render_subnet6 {
     $rendered{'option-data'} = _render_option_data(
         _first_defined( $subnet->{'option-data'}, $subnet->{option_data} )
     );
+    # The boot file of one provisioning network must not be offered on another: the server address
+    # in the URL belongs to the network the class was built for.
+    my $additional_classes = _first_defined(
+        $subnet->{additional_client_classes},
+        $subnet->{'evaluate-additional-classes'},
+        $subnet->{evaluate_additional_classes},
+        $subnet->{'require-client-classes'},
+        $subnet->{require_client_classes},
+    );
+    $rendered{ $self->_additional_class_list_field() } = $additional_classes if defined $additional_classes;
     $rendered{reservations} = _render_entry_option_data( $subnet->{reservations} )
       if $subnet->{reservations};
     delete $rendered{'option-data'} unless defined $rendered{'option-data'};
@@ -1012,6 +1071,16 @@ sub _reservation_matches {
         }
         return 1 if $have eq $want;
     }
+
+    # makedhcp names the node that owns an entry in its user context. An entry that holds no
+    # address has no hostname, so this is the only field that ties it to the node. Only a match
+    # that names the owner alone uses it: one node has several entries, and a reservation that
+    # is compared with the entries of its own node must not match all of them.
+    my $owner = _owner_of($match);
+    if ( defined($owner) && !grep { defined $match->{$_} } 'hostname', 'hw-address', 'duid', 'ip-address' ) {
+        my $have = _owner_of($reservation);
+        return 1 if defined($have) && $have eq $owner;
+    }
     if ( defined $match->{'ip-address'} && ref( $reservation->{'ip-addresses'} ) eq 'ARRAY' ) {
         foreach my $ip ( @{ $reservation->{'ip-addresses'} } ) {
             return 1 if lc($ip) eq lc( $match->{'ip-address'} );
@@ -1019,6 +1088,15 @@ sub _reservation_matches {
     }
 
     return 0;
+}
+
+sub _owner_of {
+    my ($entry) = @_;
+
+    my $context = $entry->{'user-context'};
+    return unless ref($context) eq 'HASH';
+    my $owner = $context->{'xcat-node'};
+    return ( defined($owner) && $owner ne '' ) ? $owner : undef;
 }
 
 sub _normalize_control_agent_response {
@@ -1111,6 +1189,22 @@ sub _kea_command_output {
     }
 
     return $output;
+}
+
+sub _expired_leases6 {
+    my ($override) = @_;
+
+    my %processing = (
+        'reclaim-timer-wait-time'         => 5,
+        'flush-reclaimed-timer-wait-time' => 5,
+        'hold-reclaimed-time'             => 0,
+    );
+
+    if ( ref($override) eq 'HASH' ) {
+        @processing{ keys %{$override} } = values %{$override};
+    }
+
+    return { map { $_ => _integer( $processing{$_} ) } keys %processing };
 }
 
 sub _first_defined {

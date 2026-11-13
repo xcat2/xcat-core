@@ -178,11 +178,13 @@ run_xcatroot()
     echo "$IMAGE_PLAN" >"$FX/image.plan"
     echo "$CHECKSUM_PLAN" >"$FX/checksum.plan"
     echo "${MAXWAITS:-100}" >"$FX/maxwaits"
-    rm -f "$FX/downloads" "$FX/sleep" "$FX/logger" "$FX/extracted"
+    rm -f "$FX/downloads" "$FX/sleep" "$FX/logger" "$FX/extracted" "$FX/newroot-resolv.conf" "$FX/newroot-hostname"
     timeout 60 "${sandbox[@]}" /bin/bash -c "
         [ ! -e /fx/stale ] || cp /fx/stale /rootimg.cpio.gz
         $shell /xcatroot eth0 xcat /sysroot </dev/null >/fx/console 2>&1
         cat /sysroot/etc/marker >/fx/extracted 2>/dev/null
+        cp -P /sysroot/etc/resolv.conf /fx/newroot-resolv.conf 2>/dev/null
+        cp -P /sysroot/etc/hostname /fx/newroot-hostname 2>/dev/null
         true"
 }
 
@@ -316,4 +318,73 @@ check_each_script()
     check_each_script 'packed image' "$URL.sha256 $URL $URL.sha256 " 0 ''
     run grep -E 'dhclient|network-scripts' "$FX/console"
     [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+}
+
+@test 'the Ubuntu xcatroot reads its kernel arguments when systemd starts it without them' {
+    # On a systemd initial ramdisk the kernel arguments reach init as variables, and init does
+    # not pass them to dracut-initqueue, which runs xcatroot.
+    run_xcatroot xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash \
+        --unsetenv imgurl --unsetenv XCAT --unsetenv rootimgchecksum
+    [ "$(cat "$FX/extracted" 2>/dev/null)" = 'packed image' ]
+    [ "$(tr '\n' ' ' <"$FX/downloads")" = "$URL.sha256 $URL $URL.sha256 " ]
+}
+
+@test 'the Ubuntu xcatroot writes resolv.conf from the networkd lease, so the node can resolve its server' {
+    # dhclient wrote resolv.conf. systemd-networkd keeps the servers in its lease file only.
+    mkdir -p "$FX/leases"
+    printf 'ADDRESS=192.0.2.50\nDNS=192.0.2.53 192.0.2.54\nDOMAINNAME=cluster.example\n' >"$FX/leases/2"
+    run_xcatroot xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash \
+        --setenv XCAT_NETWORKD_LEASES /fx/leases --setenv XCAT_RESOLV_CONF /fx/resolv.conf
+    [ "$(cat "$FX/extracted" 2>/dev/null)" = 'packed image' ]
+    [ "$(cat "$FX/resolv.conf")" = "$(printf 'search cluster.example\nnameserver 192.0.2.53\nnameserver 192.0.2.54')" ]
+}
+
+@test 'the Ubuntu xcatroot keeps a resolv.conf that already names a server' {
+    mkdir -p "$FX/leases"
+    printf 'DNS=192.0.2.53\n' >"$FX/leases/2"
+    printf 'nameserver 192.0.2.99\n' >"$FX/resolv.conf"
+    run_xcatroot xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash \
+        --setenv XCAT_NETWORKD_LEASES /fx/leases --setenv XCAT_RESOLV_CONF /fx/resolv.conf
+    [ "$(cat "$FX/extracted" 2>/dev/null)" = 'packed image' ]
+    [ "$(cat "$FX/resolv.conf")" = 'nameserver 192.0.2.99' ]
+}
+
+@test 'the Ubuntu xcatroot gives the new root its resolv.conf in place of the resolver stub link' {
+    # The image links resolv.conf to the systemd-resolved stub, which cannot resolve the short
+    # name of the server. A copy through that link writes into the empty run directory.
+    ln -s ../run/systemd/resolve/stub-resolv.conf "$FX/tree/etc/resolv.conf"
+    (cd "$FX/tree" && find . | cpio -H newc -o 2>/dev/null | gzip -c) >"$FX/served/rootimg.cpio.gz"
+    (cd "$FX/served" && sha256sum rootimg.cpio.gz >rootimg.cpio.gz.sha256)
+    mkdir -p "$FX/leases"
+    printf 'DNS=192.0.2.53\nDOMAINNAME=cluster.example\n' >"$FX/leases/2"
+    run_xcatroot xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash \
+        --setenv XCAT_NETWORKD_LEASES /fx/leases --setenv XCAT_RESOLV_CONF /fx/resolv.conf
+    [ "$(cat "$FX/extracted" 2>/dev/null)" = 'packed image' ]
+    [ ! -L "$FX/newroot-resolv.conf" ]
+    [ "$(cat "$FX/newroot-resolv.conf")" = "$(printf 'search cluster.example\nnameserver 192.0.2.53')" ]
+}
+
+@test 'the Ubuntu xcatroot names the node from its networkd lease when the image has no hostname' {
+    # genimage leaves an empty hostname file, and systemd then names the node localhost.
+    : >"$FX/tree/etc/hostname"
+    (cd "$FX/tree" && find . | cpio -H newc -o 2>/dev/null | gzip -c) >"$FX/served/rootimg.cpio.gz"
+    (cd "$FX/served" && sha256sum rootimg.cpio.gz >rootimg.cpio.gz.sha256)
+    mkdir -p "$FX/leases"
+    printf 'DNS=192.0.2.53\nHOSTNAME=node01.cluster.example\n' >"$FX/leases/2"
+    run_xcatroot xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash \
+        --setenv XCAT_NETWORKD_LEASES /fx/leases --setenv XCAT_RESOLV_CONF /fx/resolv.conf
+    [ "$(cat "$FX/extracted" 2>/dev/null)" = 'packed image' ]
+    [ "$(cat "$FX/newroot-hostname")" = node01 ]
+}
+
+@test 'the Ubuntu xcatroot keeps a hostname that the image sets' {
+    printf 'fixed\n' >"$FX/tree/etc/hostname"
+    (cd "$FX/tree" && find . | cpio -H newc -o 2>/dev/null | gzip -c) >"$FX/served/rootimg.cpio.gz"
+    (cd "$FX/served" && sha256sum rootimg.cpio.gz >rootimg.cpio.gz.sha256)
+    mkdir -p "$FX/leases"
+    printf 'HOSTNAME=node01.cluster.example\n' >"$FX/leases/2"
+    run_xcatroot xCAT-server/share/xcat/netboot/ubuntu/dracut/xcatroot dash \
+        --setenv XCAT_NETWORKD_LEASES /fx/leases --setenv XCAT_RESOLV_CONF /fx/resolv.conf
+    [ "$(cat "$FX/extracted" 2>/dev/null)" = 'packed image' ]
+    [ "$(cat "$FX/newroot-hostname")" = fixed ]
 }

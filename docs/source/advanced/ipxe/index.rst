@@ -98,4 +98,4 @@ Known limits of the upstream loader
 -----------------------------------
 
 * Local boot on BIOS nodes: ``undionly.kpxe`` unloads the PXE stack of the network card. When a boot script runs ``exit`` to boot from the local disk, iPXE returns to the BIOS through INT 18h. The BIOS then boots the next device in its boot order. Make sure that local boot works on your BIOS hardware before you move nodes.
-* UEFI on some older Lenovo laptops: iPXE v2.0.0 stops the UEFI Dhcp6 driver, and some older Lenovo laptops hang (https://github.com/ipxe/ipxe/issues/1358). Use ``netboot=grub2`` for these nodes.
+* UEFI on some older Lenovo laptops: iPXE v2.0.0 stops the UEFI Dhcp6 driver, and some older Lenovo laptops hang (https://github.com/ipxe/ipxe/issues/1358). There is no workaround on x86_64. ``netboot=grub2`` does not boot an x86_64 node, because no package installs an x86_64 grub2 image: ``grub2-xcat`` ships ``powerpc-ieee1275``, ``riscv64-efi`` and ``aarch64-efi`` only, and ``copycds`` publishes a grub2 image for riscv64 alone. Boot these nodes from local media until the upstream issue is fixed.

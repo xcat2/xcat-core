@@ -170,6 +170,12 @@ sub process_request {
             $newreq->{command} = ['copycd'];  #Note the singular, it's different
             $newreq->{arg} = [ "-m", $mntpath ];
 
+            # The distro plugin links the ISO into the install tree. casper can fetch an ISO
+            # over HTTP with its own wget, which is the only way it reaches its root on an
+            # IPv6-only network: klibc nfsmount has no IPv6. A block device has no path to
+            # link, so only a file is passed.
+            push @{ $newreq->{arg} }, ("-I", $isofullpath) if (-f $file);
+
             if ($path)
             {
 

@@ -80,21 +80,9 @@ sub findme {
         xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Error: virtual machines is not supported");
         return;
     }
-    my $arptable;
-    if (-x "/usr/sbin/arp") {
-        $arptable = `/usr/sbin/arp -n`;
-    }
-    else {
-        $arptable = `/sbin/arp -n`;
-    }
-
-    my @arpents = split /\n/, $arptable;
-    foreach (@arpents) {
-        if (m/^($ip)\s+\S+\s+(\S+)\s/) {
-            $mac = $2;
-            last;
-        }
-    }
+    # arp(8) prints the IPv4 table only, and the address used to be interpolated
+    # into a regular expression, where every dot matched any character.
+    $mac = xCAT::NetworkUtils->mac_of_neighbour($ip);
 
     unless ($mac) {
         xCAT::MsgUtils->message("S", "xcat.discovery.seqdiscovery: ($request->{_xcat_clientmac}->[0]) Error: Could not find mac of the $ip");
@@ -292,6 +280,20 @@ sub findme {
             my $sitetab = xCAT::Table->new("site");
             $sitetab->setAttribs({ "key" => "__SEQDiscover" }, { "value" => "$textparam" });
             $sitetab->close();
+        }
+
+        # dhcp6_client_duids builds the DHCPv6 identity of a node from vpd.uuid, and there is
+        # no other table holding it. Without this the reservation falls back to a DUID-LL built
+        # from the MAC, which no boot stage of the node sends, and the node takes a pool address
+        # that xcatd cannot map back to it.
+        my $vpdattribs = xCAT::DiscoveryUtils->vpd_attribs_from_findme($request);
+        if ( keys %{$vpdattribs} ) {
+            my $vpdtab = xCAT::Table->new( 'vpd', -create => 1 );
+            if ($vpdtab) {
+                $vpdtab->setNodeAttribs( $node, $vpdattribs );
+            } else {
+                xCAT::MsgUtils->message( "S", "Discovery Error: Could not open table: vpd." );
+            }
         }
 
         #set the groups for the node

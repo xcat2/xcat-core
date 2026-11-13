@@ -1,5 +1,6 @@
 package xCAT_plugin::frusetter;
 use Data::Dumper;
+use xCAT::NetworkUtils;
 
 sub handled_commands {
     return {
@@ -19,9 +20,7 @@ sub ok_with_node {
     my $select = new IO::Select;
 
     #sleep 0.5; # gawk script race condition might exist, try to lose just in case
-    my $sock = new IO::Socket::INET(PeerAddr => $node,
-        Proto    => "tcp",
-        PeerPort => shift);
+    my $sock = xCAT::NetworkUtils->open_tcp_socket($node, shift);
     my $rsp;
     unless ($sock) { return 0 }
     $select->add($sock);
