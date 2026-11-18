@@ -43,6 +43,17 @@ real copy parser checks that executable before the test intercepts copy
 execution. Install rsync with the test dependencies; this test does not run it
 or connect to another node. The CI management-node install already includes it.
 
+`debian_control_declarations.t` requires `libdpkg-perl` on Debian and Ubuntu.
+It fails if the Dpkg modules are missing on those systems, and skips on other
+systems without them. The test checks package declarations for amd64, ppc64el
+and riscv64; it does not require those packages to be installed.
+
+The module requirements cover perl-xcat imports, Capture::Tiny for the client's
+z/VM helpers, and CGI for the server's REST API. nmap and ipmitool-xcat are hard
+requirements in the RPM packages too. The ipmitool-xcat floor in xcat's Debian
+package matches xCAT.spec at 1.8.18-4. The test also preserves xcatsn's declared
+floor of 1.8.18-4.
+
 Use `XCAT::Test::Process` when a test needs a command's exit code and combined
 standard output and standard error:
 
