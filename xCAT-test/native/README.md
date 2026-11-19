@@ -455,7 +455,8 @@ prove xCAT-test/native/install_profile_riscv64.t \
       xCAT-test/native/netboot_profile_postinstall.t \
       xCAT-test/native/builddebs_riscv64.t \
       xCAT-test/native/ubuntu_subiquity_template.t \
-      xCAT-test/native/ubuntu_subiquity_install_disk.t
+      xCAT-test/native/ubuntu_subiquity_install_disk.t \
+      xCAT-test/native/openeuler_pre_partition.t
 ```
 
 The renderers need the system Perl with the xCAT dependencies, XML::Simple,
@@ -467,6 +468,12 @@ The install-disk case runs the complete rendered pre-install scripts. It needs
 netcat at `/usr/bin/nc` (`netcat-openbsd` on Ubuntu) as a mount point for its
 network boundary stub. Service management, logging and the install monitor
 use stubs; partition selection and storage-layout validation run unchanged.
+The openEuler partition case runs the rendered Kickstart `%pre` block without
+rewriting paths. It supplies private firmware and partition tables, with
+command fixtures for disks, LVM and logging. It covers BIOS, UEFI and POWER
+layouts and administrator overrides for openEuler and the shared EL8 script.
+These architecture cases simulate firmware and disk discovery; they do not
+boot hardware or write a partition table.
 The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
 on non-Debian hosts. Each case creates its own temporary files and database.
 The temporary directory must allow execution; set TMPDIR if /tmp is noexec.
