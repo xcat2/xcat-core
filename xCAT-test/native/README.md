@@ -448,7 +448,12 @@ prove xCAT-test/native/install_profile_riscv64.t \
 The renderers need the system Perl with the xCAT dependencies, XML::Simple,
 DBD::SQLite, Capture::Tiny, and File::Slurper. The sandbox clears the environment
 and does not mount perlbrew or local::lib directories. The Subiquity cases also
-need /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
+need /usr/bin/python3 with PyYAML. On EL8, install python39 and python39-pyyaml,
+then select /usr/bin/python3.9 through the python3 alternatives group.
+The install-disk case runs the complete rendered pre-install scripts. It needs
+netcat at `/usr/bin/nc` (`netcat-openbsd` on Ubuntu) as a mount point for its
+network boundary stub. Service management, logging and the install monitor
+use stubs; partition selection and storage-layout validation run unchanged.
 The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
 on non-Debian hosts. Each case creates its own temporary files and database.
 The temporary directory must allow execution; set TMPDIR if /tmp is noexec.
