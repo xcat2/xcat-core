@@ -4,10 +4,12 @@ use warnings;
 use FindBin;
 use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils";
 use Test::More;
+use XCAT::Test::Process qw(run_command);
 use imgutils;
 
 plan skip_all => 'bash is not installed' unless -x '/bin/bash';
@@ -22,7 +24,8 @@ sub uname {
     my $script = tempdir(CLEANUP => 1) . '/uname';
     write_text($script, imgutils::uname_script($kernelver));
     local $ENV{PATH} = "$bin:$ENV{PATH}";
-    my $output = `/bin/bash $script @options`;
+    my ($status, $output) = run_command('/bin/bash', $script, @options);
+    is($status, 0, 'uname ' . join(' ', @options) . ' exits successfully') or diag($output);
     chomp($output);
     return $output;
 }

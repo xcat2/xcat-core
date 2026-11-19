@@ -131,6 +131,19 @@ sudo prove xCAT-test/native/ip_forwarding.t \
       xCAT-test/native/syslog_openeuler*.t
 ```
 
+The syslog receiver case runs the whole postscript with the native rsyslog
+parser and real TCP/UDP messages in a private network namespace. It checks
+temporary-file cleanup after success and parser failure, and injects an
+allocation failure at the `mktemp` command boundary. It isolates `/dev`, masks
+the kernel log, drops CAP_SYS_ADMIN and CAP_SYSLOG after setup, and uses a
+private PID namespace. The native rsyslog binary is bound at a fixture path
+to avoid the host service's AppArmor
+attachment; this test does not validate that service profile. CI runs it in a
+disposable Ubuntu container and rejects skips. It needs rsyslog, util-linux and
+iproute2; service activation uses a stub that starts only the test daemon.
+On EL10, install `util-linux`; `util-linux-core` alone does not provide `setpriv`.
+Use the CI container on AppArmor hosts instead of the direct-root command above.
+
 The mock result directory case needs the mock Python library, and root for its
 ownership checks. The staged sources case needs root to read the sources as uid
 1000. The `xcat_test` workflow runs both as root in a Fedora container:
@@ -442,13 +455,27 @@ prove xCAT-test/native/install_profile_riscv64.t \
       xCAT-test/native/netboot_profile_postinstall.t \
       xCAT-test/native/builddebs_riscv64.t \
       xCAT-test/native/ubuntu_subiquity_template.t \
-      xCAT-test/native/ubuntu_subiquity_install_disk.t
+      xCAT-test/native/ubuntu_subiquity_install_disk.t \
+      xCAT-test/native/openeuler_pre_partition.t
 ```
 
 The renderers need the system Perl with the xCAT dependencies, XML::Simple,
 DBD::SQLite, Capture::Tiny, and File::Slurper. The sandbox clears the environment
 and does not mount perlbrew or local::lib directories. The Subiquity cases also
-need /usr/bin/python3 with PyYAML; on EL8, install python36 for that path.
+need /usr/bin/python3 with PyYAML. On EL8, install python39 and python39-pyyaml,
+then select /usr/bin/python3.9 through the python3 alternatives group.
+The install-disk case runs the complete rendered pre-install scripts. It needs
+netcat at `/usr/bin/nc` (`netcat-openbsd` on Ubuntu) as a mount point for its
+network boundary stub. Service management, logging and the install monitor
+use stubs; partition selection and storage-layout validation run unchanged.
+The openEuler partition case runs the rendered Kickstart `%pre` block without
+rewriting paths. It supplies private firmware and partition tables, with
+command fixtures for disks, LVM and logging. Tool discovery uses native find
+over a private directory; the fallback case rejects calls to awk. It covers
+BIOS, UEFI and POWER layouts and administrator overrides for openEuler and
+the shared EL8 script.
+These architecture cases simulate firmware and disk discovery; they do not
+boot hardware or write a partition table.
 The Debian case needs debhelper, devscripts, fakeroot, and reprepro, and skips
 on non-Debian hosts. Each case creates its own temporary files and database.
 The temporary directory must allow execution; set TMPDIR if /tmp is noexec.

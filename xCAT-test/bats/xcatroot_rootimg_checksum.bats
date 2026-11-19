@@ -312,12 +312,59 @@ check_each_script()
     check_each_script 'packed image' "$URL " 0 'Cannot receive .*rootimg.cpio.gz over UFTP'
 }
 
-@test 'the EL10 initial ramdisk copies no dhclient lease and writes no ifcfg file' {
-    SCRIPTS='xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash'
+# Leave the legacy input and output paths usable, so a silent copy would succeed.
+check_el10_handoff()
+{
+    local script=$1 image=${2:-rootimg.cpio.gz}
+    local initrd_etc=(--tmpfs /etc --ro-bind "$FX/resolv.conf" /etc/resolv.conf)
+    [ ! -d /etc/alternatives ] || initrd_etc+=(--ro-bind /etc/alternatives /etc/alternatives)
+    mkdir -p "$FX/tree/etc/sysconfig/network-scripts" "$FX/tree/var/lib/dhclient" \
+        "$FX/tree/.statelite" "$FX/tree/etc/init.d" "$FX/initrd-tmp" "$FX/hooks/initqueue" "$FX/newroot"
+    printf 'existing lease\n' >"$FX/tree/var/lib/dhclient/dhclient-eth1.leases"
+    printf 'existing configuration\n' >"$FX/tree/etc/sysconfig/network-scripts/ifcfg-eth1"
+    printf 'lease for eth0\n' >"$FX/initrd-tmp/dhclient.eth0.lease"
+    printf 'nameserver 192.0.2.53\n' >"$FX/resolv.conf"
+    for tool in localdisk statelite; do
+        printf '#!/bin/sh\nprintf "%%s\\n" %s >>/fx/init-scripts\n' "$tool" >"$FX/tree/etc/init.d/$tool"
+        chmod +x "$FX/tree/etc/init.d/$tool"
+    done
+    printf '#!/bin/sh\nexit 0\n' >"$FX/bin/modprobe"
+    chmod +x "$FX/bin/modprobe"
+    (cd "$FX/tree" && find . | cpio -H newc -o 2>/dev/null | gzip -c) >"$FX/served/$image"
+    (cd "$FX/served" && sha256sum "$image" >"$image.sha256")
+    URL="http://192.0.2.1:80//install/netboot/img/$image"
+    case "$script" in *xcat-prepivot.sh) cp -a "$FX/tree/." "$FX/newroot/" ;; esac
     KERNEL_ARGS='ifname=eth0:52:54:00:12:34:56'
-    check_each_script 'packed image' "$URL.sha256 $URL $URL.sha256 " 0 ''
-    run grep -E 'dhclient|network-scripts' "$FX/console"
-    [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+    run_xcatroot "$script" bash \
+        --bind "$FX/newroot" /sysroot --bind "$FX/initrd-tmp" /tmp --bind "$FX/hooks" /hooks \
+        "${initrd_etc[@]}" --setenv hookdir /hooks \
+        --setenv BASH_ENV /lib/dracut-lib.sh --setenv ifname eth0:52:54:00:12:34:56
+    case "$script" in
+        *xcat-prepivot.sh) ;;
+        *) [ "$(cat "$FX/extracted")" = 'packed image' ] ;;
+    esac
+    cmp "$FX/resolv.conf" "$FX/newroot/etc/resolv.conf"
+    [ -s "$FX/hooks/initqueue/xcat.sh" ]
+    [ -f "$FX/hooks/initqueue/work" ]
+    [ "$(find "$FX/newroot/var/lib/dhclient" -mindepth 1 -printf '%f\n')" = dhclient-eth1.leases ]
+    [ "$(cat "$FX/newroot/var/lib/dhclient/dhclient-eth1.leases")" = 'existing lease' ]
+    [ "$(find "$FX/newroot/etc/sysconfig/network-scripts" -mindepth 1 -printf '%f\n')" = ifcfg-eth1 ]
+    [ "$(cat "$FX/newroot/etc/sysconfig/network-scripts/ifcfg-eth1")" = 'existing configuration' ]
+    case "$script" in
+        */statelite/*) [ "$(cat "$FX/init-scripts")" = "$(printf 'localdisk\nstatelite')" ] ;;
+    esac
+}
+
+@test 'the EL10 stateless handoff leaves leases and ifcfg files unchanged' {
+    check_el10_handoff xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot
+}
+
+@test 'the EL10 statelite image handoff leaves leases and ifcfg files unchanged' {
+    check_el10_handoff xCAT-server/share/xcat/netboot/rh/dracut_105/statelite/xcatroot rootimg-statelite.gz
+}
+
+@test 'the EL10 statelite prepivot handoff leaves leases and ifcfg files unchanged' {
+    check_el10_handoff xCAT-server/share/xcat/netboot/rh/dracut_105/statelite/xcat-prepivot.sh
 }
 
 @test 'the Ubuntu xcatroot reads its kernel arguments when systemd starts it without them' {

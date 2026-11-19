@@ -5,7 +5,9 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT", "$FindBin::Bin/../../xCAT-server/lib/perl";
+use File::Basename qw(dirname);
 use File::Path qw(make_path);
+use File::Spec;
 use File::Slurper qw(read_text write_text);
 use Test::More;
 use XCAT::Test::File qw(repo_path);
@@ -13,13 +15,19 @@ use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
 use XCAT::Test::Template qw(template_database render_template);
 
 plan skip_all => 'installer execution requires Linux namespaces' unless $^O eq 'linux';
+die 'Install netcat to provide the /usr/bin/nc sandbox mount point' unless -e '/usr/bin/nc';
+# Bubblewrap needs the alternatives target, with /bin kept as a separate mount.
+my $nc_mount = '/usr/bin/nc';
+while (-l $nc_mount) {
+    $nc_mount = File::Spec->rel2abs(readlink($nc_mount), dirname($nc_mount));
+}
 my $database = template_database();
 # Subiquity runs its early commands under dash.
 my ($shell) = grep { -x $_ } qw(/usr/bin/dash /bin/dash /bin/sh);
 my $sequence = 0;
 
-sub render_part {
-    my ($script, $pattern, @entries) = @_;
+sub render_preinstall {
+    my ($script, @entries) = @_;
     my $dir = "$database/case-" . ++$sequence;
     make_path($dir);
     my @partitionfile;
@@ -30,16 +38,22 @@ sub render_part {
     }
     render_template($database, repo_path("xCAT-server/share/xcat/install/scripts/$script"), "$dir/node.pre",
         'node', '', '', '', join(',', @partitionfile), {xcatmaster => '192.0.2.1'});
-    my ($part) = read_text("$dir/node.pre") =~ $pattern;
-    return $part;
+    return read_text("$dir/node.pre");
 }
 
 # getinstdisk has already chosen /dev/sdz.
 sub installer_root {
     my $root = sandbox_root();
     make_path("$root/efi", "$root/by-id");
-    write_text("$root/bin/logger", "#!/bin/sh\nexit 0\n");
+    for my $tool (qw(systemctl systemd-run killall syslogd debconf-get mknod)) {
+        write_text("$root/bin/$tool", "#!/bin/sh\nexit 0\n");
+        chmod 0755, "$root/bin/$tool" or die $!;
+    }
+    write_text("$root/bin/logger", '#!/bin/sh' . "\n" . 'printf "%s\n" "$*" >>/fixture/messages' . "\n");
     chmod 0755, "$root/bin/logger" or die $!;
+    # The monitor waits for a peer until the sandbox exits; it must not contact an xcatd.
+    write_text("$root/bin/nc", "#!/bin/sh\nexec /bin/sleep 300\n");
+    chmod 0755, "$root/bin/nc" or die $!;
     write_text("$root/tmp/xcat.install_disk", "/dev/sdz\n");
     write_text("$root/nvme7n1", '');
     symlink('../../nvme7n1', "$root/by-id/nvme-link") or die $!;
@@ -95,23 +109,26 @@ my @cases = (
 for my $case (@cases) {
     my ($label, $entries, $expected, $expected_layout) = @$case;
     subtest $label => sub {
-        my $part = render_part('pre.ubuntu.subiquity', qr/(^base64decode\(\)\n.*^exit 0$)/ms, @$entries);
-        ok($part, 'the rendered script defines base64decode before the partitioning') or return;
+        my $preinstall = render_preinstall('pre.ubuntu.subiquity', @$entries);
         my $root = installer_root();
-        write_text("$root/part.sh", $part);
+        write_text("$root/preinstall.sh", $preinstall);
         my ($rc, $output) = sandbox_run($root, {read_only => {"$root/efi" => '/sys/firmware/efi',
-            "$root/by-id" => '/dev/disk/by-id', "$root/nvme7n1" => '/dev/nvme7n1'}}, $shell, '/fixture/part.sh');
+            "$root/by-id" => '/dev/disk/by-id', "$root/nvme7n1" => '/dev/nvme7n1',
+            "$root/bin/nc" => $nc_mount}}, $shell, '/fixture/preinstall.sh');
         if (defined $expected_layout) {
-            is($rc, 0, "the partitioning runs under $shell") or diag($output);
+            is($rc, 0, "the pre-install script runs under $shell") or diag($output);
             is(storage_config($root), $expected_layout, 'the storage config is the expected layout');
             return;
         }
         if (!defined $expected) {
-            isnt($rc, 0, "the pre-install script fails under $shell");
+            is($rc, 1, "the pre-install script rejects the entry under $shell") or diag($output);
+            like(-e "$root/messages" ? read_text("$root/messages") : '',
+                qr/The partitionfile (?:disk|layout) entry .*stopping the install/,
+                'the installer reports the invalid partitionfile entry');
             ok(!-e "$root/tmp/partitionfile", 'and leaves no storage config to inject');
             return;
         }
-        is($rc, 0, "the partitioning runs under $shell") or diag($output);
+        is($rc, 0, "the pre-install script runs under $shell") or diag($output);
         my $config = storage_config($root);
         my ($disk) = $config =~ /^\s+type: disk\n(?:\s+\S+:.*\n)*?\s+path: (\S+)$/m;
         is($disk, $expected, "the storage config partitions $expected");
@@ -125,13 +142,13 @@ for my $case (@cases) {
 
 # The debian-installer path renders the same entries into pre.ubuntu, under a shell with read -n.
 subtest 'a debian-installer recipe file after a recipe script' => sub {
-    my $part = render_part('pre.ubuntu', qr/(^base64decode\(\)\n.*?^exit 0$)/ms,
+    my $preinstall = render_preinstall('pre.ubuntu',
         ['s:', "#!/bin/sh\nexit 0\n"], ['', "recipe ::\n    .\n"]);
-    ok($part, 'the rendered script defines base64decode before the recipe') or return;
     my $root = installer_root();
-    write_text("$root/part.sh", $part);
-    my ($rc, $output) = sandbox_run($root, '/bin/bash', '/fixture/part.sh');
-    is($rc, 0, 'the recipe step runs') or diag($output);
+    write_text("$root/preinstall.sh", $preinstall);
+    my ($rc, $output) = sandbox_run($root, {read_only => {"$root/bin/nc" => $nc_mount}},
+        '/bin/bash', '/fixture/preinstall.sh');
+    is($rc, 0, 'the debian-installer pre-install script runs') or diag($output);
     is(storage_config($root), "recipe ::\n    .\n", 'the later recipe file replaces the default recipe');
 };
 done_testing();
