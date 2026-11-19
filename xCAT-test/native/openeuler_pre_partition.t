@@ -17,12 +17,26 @@ my $database = template_database();
 set_row('site', {key => 'nodestatus'}, {value => 0});
 
 sub installer_root {
-    my ($efi, $sectors) = @_;
+    my ($efi, $sectors, $discover_awk) = @_;
     my $root = sandbox_root();
-    make_path("$root/proc", "$root/firmware", "$root/libexec", "$root/log/xcat");
+    make_path("$root/proc", "$root/firmware", "$root/libexec", "$root/log/xcat", "$root/discovery");
     make_path("$root/firmware/efi") if $efi;
     write_text("$root/proc/cmdline", "inst.ks=http://192.0.2.1/node.ks\n");
-    write_text("$root/proc/partitions", "major minor  #blocks  name\n252 0 " . ($sectors / 2) . " vda\n");
+    write_text("$root/proc/partitions", "major minor  #blocks  name\n\n 252 0 " . ($sectors / 2) . " vda\n");
+    write_text("$root/discovery/awk", '') if $discover_awk;
+    unless ($discover_awk) {
+        write_text("$root/bin/awk", "#!/bin/sh\n: > /fixture/awk-called\nexit 127\n");
+        chmod 0755, "$root/bin/awk" or die $!;
+    }
+    # Keep tool discovery independent of the host's installed software.
+    write_text("$root/bin/find", <<'SH');
+#!/bin/sh
+case "$1" in
+    /usr/*) exec /usr/bin/find /fixture/discovery -name awk ;;
+    *) exec /usr/bin/find "$@" ;;
+esac
+SH
+    chmod 0755, "$root/bin/find" or die $!;
     write_text("$root/libexec/platform-python", '#!/bin/sh' . "\n" . 'exec /usr/bin/python3 "$@"' . "\n");
     chmod 0755, "$root/libexec/platform-python" or die $!;
     write_text("$root/bin/double", <<'SH');
@@ -64,11 +78,13 @@ my @cases = (
     ['native BIOS script custom', 'openeuler', 'x86_64', 0, $small, 0, 0, 0, 'xfs', 'script'],
     ['native UEFI custom', 'openeuler', 'x86_64', 1, $small, 0, 0, 0, 'xfs', 'static'],
     ['native POWER custom', 'openeuler', 'ppc64le', 0, $large, 0, 0, 0, 'ext4', 'static'],
+    ['native BIOS without awk discovery', 'openeuler', 'x86_64', 0, $small, 1, 0, 0, 'xfs', undef, 0],
 );
 my $sequence = 0;
 for my $case (@cases) {
-    my ($label, $platform, $arch, $efi, $sectors, $bios, $esp, $prep, $fstype, $custom) = @$case;
-    my $fixture = installer_root($efi, $sectors);
+    my ($label, $platform, $arch, $efi, $sectors, $bios, $esp, $prep, $fstype, $custom, $discover_awk) = @$case;
+    $discover_awk //= 1;
+    my $fixture = installer_root($efi, $sectors, $discover_awk);
     my $render = "$database/case-" . ++$sequence;
     make_path($render);
     my $template = "$render/input.tmpl";
@@ -96,7 +112,11 @@ for my $case (@cases) {
             "$fixture/firmware" => '/sys/firmware', "$fixture/libexec" => '/usr/libexec'},
         env => {XCAT_PART_ARCH => $arch, XCAT_PART_SECTORS => $sectors},
     }, '/bin/bash', '/fixture/pre.sh');
-    is($rc, 0, "$label executes the complete generated pre-install script") or diag($output);
+    unless (is($rc, 0, "$label executes the complete generated pre-install script")) {
+        diag($output);
+        diag(read_text("$fixture/log/xcat/xcat.log")) if -f "$fixture/log/xcat/xcat.log";
+    }
+    ok(!-e "$fixture/awk-called", "$label does not require awk") unless $discover_awk;
     my $layout = -f "$fixture/tmp/partitionfile" ? read_text("$fixture/tmp/partitionfile") : '';
     is(scalar(() = $layout =~ /^part biosboot\b/gm), $bios, "$label BIOS boot partition count");
     is(scalar(() = $layout =~ m{^part /boot/efi\b}gm), $esp, "$label EFI system partition count");
