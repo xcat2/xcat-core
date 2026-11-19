@@ -131,6 +131,19 @@ sudo prove xCAT-test/native/ip_forwarding.t \
       xCAT-test/native/syslog_openeuler*.t
 ```
 
+The syslog receiver case runs the whole postscript with the native rsyslog
+parser and real TCP/UDP messages in a private network namespace. It checks
+temporary-file cleanup after success and parser failure, and injects an
+allocation failure at the `mktemp` command boundary. It isolates `/dev`, masks
+the kernel log, drops CAP_SYS_ADMIN and CAP_SYSLOG after setup, and uses a
+private PID namespace. The native rsyslog binary is bound at a fixture path
+to avoid the host service's AppArmor
+attachment; this test does not validate that service profile. CI runs it in a
+disposable Ubuntu container and rejects skips. It needs rsyslog, util-linux and
+iproute2; service activation uses a stub that starts only the test daemon.
+On EL10, install `util-linux`; `util-linux-core` alone does not provide `setpriv`.
+Use the CI container on AppArmor hosts instead of the direct-root command above.
+
 The mock result directory case needs the mock Python library, and root for its
 ownership checks. The staged sources case needs root to read the sources as uid
 1000. The `xcat_test` workflow runs both as root in a Fedora container:

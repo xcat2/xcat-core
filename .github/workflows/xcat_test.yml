@@ -55,6 +55,19 @@ jobs:
       - name: Prepare xCAT syslog directory
         if: ${{ !cancelled() }}
         run: sudo install -d -o syslog -g adm -m 0750 /var/log/xcat
+      - name: Test native syslog receiver cleanup
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          log=$(mktemp)
+          trap 'rm -f "$log"' EXIT
+          docker run --rm --init --privileged --security-opt apparmor=unconfined \
+            -v "$PWD:/src:ro" -w /src ubuntu:24.04 bash -ec '
+              apt-get update -qq
+              DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+                perl rsyslog iproute2 util-linux systemd gawk
+              prove -v xCAT-test/native/syslog_openeuler.t' 2>&1 | tee "$log"
+          ! grep -Eq 'skipped:|Result: NOTESTS' "$log"
       - name: Run Ubuntu image fixture tests
         if: ${{ !cancelled() }}
         run: >-

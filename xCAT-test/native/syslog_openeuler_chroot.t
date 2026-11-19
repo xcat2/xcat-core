@@ -16,6 +16,7 @@ my $source = $ENV{XCAT_SYSLOG_SOURCE_ROOT} || abs_path("$FindBin::Bin/../..");
 my $tmp = tempdir(DIR => '/var/tmp', CLEANUP => !$ENV{XCAT_SYSLOG_KEEP});
 diag("fixtures: $tmp") if $ENV{XCAT_SYSLOG_KEEP};
 make_path("$tmp/bin");
+symlink(abs_path('/usr/bin/awk'), "$tmp/bin/awk") or die $!;
 sub write_file {
     my ($path, $text) = @_;
     open(my $fh, '>', $path) or die "$path: $!";
