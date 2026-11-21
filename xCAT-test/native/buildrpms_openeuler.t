@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -16,7 +17,7 @@ my $wrapper = "$FindBin::Bin/fixtures/buildrpms-namespace.sh";
 
 my $root = tempdir(CLEANUP => 1);
 my $driver = "$root/driver.pl";
-write_file($driver, <<'PERL');
+write_binary($driver, <<'PERL');
 BEGIN {
     require Parallel::ForkManager;
     no warnings 'redefine';
@@ -96,21 +97,21 @@ sub run_builder {
     copy(repo_path('build-utils/lib/XCAT/BuildUtils.pm'), "$fixture/build-utils/lib/XCAT/BuildUtils.pm") or die $!;
     copy(repo_path('build-utils/lib/XCAT/NFSLock.pm'), "$fixture/build-utils/lib/XCAT/NFSLock.pm") or die $!;
     copy($driver, "$fixture/driver.pl") or die $!;
-    write_file("$fixture/Version", "2.18.0\n");
-    write_file("$fixture/Gitepoch", "1756000000\n");
-    write_file("$fixture/native-input/buildinfo.txt", "BUILD_TARGET=openeuler-24.03sp3-x86_64\n");
-    write_file("$fixture/os-release", "ID=$id\nVERSION=\"$version\"\nVERSION_ID=$version_id\n");
+    write_binary("$fixture/Version", "2.18.0\n");
+    write_binary("$fixture/Gitepoch", "1756000000\n");
+    write_binary("$fixture/native-input/buildinfo.txt", "BUILD_TARGET=openeuler-24.03sp3-x86_64\n");
+    write_binary("$fixture/os-release", "ID=$id\nVERSION=\"$version\"\nVERSION_ID=$version_id\n");
     for my $target ('openeuler-24.03sp3-x86_64', 'openeuler-24.03-ppc64le') {
         my $subdir = openeuler_repo_subdir($target);
         for my $key (['core', "$fixture/dist/$target/rpms"], ['dep', "$fixture/dep/$subdir"]) {
             make_path("$key->[1]/repodata");
-            write_file("$key->[1]/repodata/repomd.xml.key", 'existing exported key')
+            write_binary("$key->[1]/repodata/repomd.xml.key", 'existing exported key')
                 unless ($ENV{BUILD_MISSING_KEY} || '') eq $key->[0];
         }
     }
-    write_file("$fixture/bin/dnf", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> \"\$BUILD_FIXTURE/commands\"\nexit \"\${BUILD_DNF_FAILURE:-0}\"\n");
-    write_file("$fixture/bin/systemctl", "#!/bin/sh\nexit 0\n");
-    write_file("$fixture/bin/rpmdev-setuptree", "#!/bin/sh\nexit 0\n");
+    write_binary("$fixture/bin/dnf", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> \"\$BUILD_FIXTURE/commands\"\nexit \"\${BUILD_DNF_FAILURE:-0}\"\n");
+    write_binary("$fixture/bin/systemctl", "#!/bin/sh\nexit 0\n");
+    write_binary("$fixture/bin/rpmdev-setuptree", "#!/bin/sh\nexit 0\n");
     chmod 0755, map {"$fixture/bin/$_"} qw(dnf systemctl rpmdev-setuptree);
     local %ENV = (%ENV, HOME => "$fixture/home", BUILD_FIXTURE => $fixture, BUILD_ARCH => $arch, PATH => "$fixture/bin:$ENV{PATH}");
     my $pid = fork();
@@ -129,15 +130,8 @@ sub run_builder {
         && !$ENV{BUILD_STOP} && !grep {$_ eq '--merge-core-repos'} @args;
     return $result;
 }
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $fh, '>', $path) or die "$path: $!";
-    print {$fh} $contents;
-    close($fh) or die $!;
-}
 sub read_file {
     my ($path) = @_;
     return '' unless -f $path;
-    open(my $fh, '<', $path) or die $!;
-    return do {local $/; scalar <$fh>} || '';
+    return read_binary($path) || '';
 }

@@ -11,6 +11,7 @@ use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/lib";
 
 use File::Spec;
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use Test::More;
 use Time::HiRes qw(sleep);
@@ -56,8 +57,7 @@ my $secret = 'eGNhdC10ZXN0LW9tYXBpLXNlY3JldC0wMQ==';
 my $port   = 7911;
 my $configuration = File::Spec->catfile( $directory, 'dhcpd.conf' );
 {
-    open( my $fh, '>', $configuration ) or die "Cannot create $configuration: $!";
-    print {$fh} "option conf-file code 209 = text;\n",
+    write_binary($configuration, join('', "option conf-file code 209 = text;\n",
       "option space gpxe;\n",
       "option gpxe-encap-opts code 175 = encapsulate gpxe;\n",
       "option gpxe.bus-id code 177 = string;\n",
@@ -75,17 +75,14 @@ my $configuration = File::Spec->catfile( $directory, 'dhcpd.conf' );
             net         => '192.0.2.0',
             prefix      => 24,
         ) },
-      "}\n";
-    close($fh) or die "Cannot close $configuration: $!";
+      "}\n"));
 }
 
 sub omshell {
     my ($commands) = @_;
     my $input = File::Spec->catfile( $directory, 'omshell.in' );
-    open( my $fh, '>', $input ) or die "Cannot create $input: $!";
-    print {$fh} xCAT::DHCP::OmapiPolicy->omshell_preamble( $settings, secret => $secret, port => $port ),
-      "connect\n", $commands;
-    close($fh) or die "Cannot close $input: $!";
+    write_binary($input, join('', xCAT::DHCP::OmapiPolicy->omshell_preamble( $settings, secret => $secret, port => $port ),
+      "connect\n", $commands));
     return scalar `ip netns exec $namespace $settings->{omshell_path} < $input 2>&1`;
 }
 
@@ -103,6 +100,14 @@ sub start_dhcpd {
     BAIL_OUT("dhcpd did not open OMAPI port $port");
 }
 
+sub recorded_content {
+    my ($path) = @_;
+    local $@;
+    my $contents = eval { read_binary($path) };
+    warn $@ if $@;
+    return $contents // '';
+}
+
 my %common = ( netboot => 'ipxe', next_server => '192.0.2.1', portsuffix => '' );
 my @hosts = (
     [ bios          => { currstate => 'install rhels9' } ],
@@ -112,8 +117,7 @@ my @hosts = (
     [ winshell      => { uefi => 2, currstate => 'winshell' } ],
 );
 
-open( my $fresh, '>', $leases ) or die "Cannot create $leases: $!";
-close($fresh);
+write_binary($leases, '');
 start_dhcpd("$directory/dhcpd-first.log");
 
 my $commands = '';
@@ -130,7 +134,7 @@ unlike( $created, qr/can't|error|eof in string|unknown token|not connected/i, 'O
   or diag($created);
 stop_daemons( \%children );
 
-my $saved = do { local ( @ARGV, $/ ) = ($leases); <> } // '';
+my $saved = recorded_content($leases);
 for my $host (@hosts) {
     like( $saved, qr/^host cn-$host->[0] \{$/m, "dhcpd.leases holds the $host->[0] host" );
 }
@@ -146,6 +150,6 @@ for my $host (@hosts) {
     like( omshell("new host\nset name = \"cn-$host->[0]\"\nopen\n"), qr/^ip-address = /m,
         "dhcpd restarts with the $host->[0] host" );
 }
-unlike( do { local ( @ARGV, $/ ) = ($restart_log); <> } // '', qr/ line \d+: /, 'the restart reports no parse error' );
+unlike( recorded_content($restart_log), qr/ line \d+: /, 'the restart reports no parse error' );
 
 done_testing();

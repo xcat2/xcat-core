@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use FindBin;
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -22,7 +23,7 @@ unless (-x "$postscripts/otherpkgs") {
 
 my $dir = tempdir(CLEANUP => 1);
 make_path("$dir/bin");
-write_text("$dir/bin/dnf", <<'SH');
+write_binary("$dir/bin/dnf", <<'SH');
 #!/bin/sh
 printf '%s\n' "$*" >> "$DNF_TRACE"
 case " $* " in
@@ -31,7 +32,7 @@ case " $* " in
 esac
 exit 0
 SH
-write_text("$dir/bin/rpm", <<'SH');
+write_binary("$dir/bin/rpm", <<'SH');
 #!/bin/sh
 case "$1" in
     --version) echo 'RPM version 4.18.2'; exit 0 ;;
@@ -40,10 +41,10 @@ printf '%s\n' "$*" >> "$RPM_TRACE"
 exit 1
 SH
 for my $name (qw(logger mount)) {
-    write_text("$dir/bin/$name", "#!/bin/sh\nexit 0\n");
+    write_binary("$dir/bin/$name", "#!/bin/sh\nexit 0\n");
 }
-write_text("$dir/bin/dpkg", "#!/bin/sh\nexit 1\n");
-write_text("$dir/bin/wget", "#!/bin/sh\nprintf 'wget\\n' >> \"\$RPM_TRACE\"\nexit 1\n");
+write_binary("$dir/bin/dpkg", "#!/bin/sh\nexit 1\n");
+write_binary("$dir/bin/wget", "#!/bin/sh\nprintf 'wget\\n' >> \"\$RPM_TRACE\"\nexit 1\n");
 chmod 0755, glob("$dir/bin/*");
 my $wrapper = "$dir/run";
 copy("$FindBin::Bin/fixtures/postscript-root.sh", $wrapper) or die "copy isolation wrapper: $!";
@@ -123,20 +124,7 @@ sub run_case {
     my $output = do { local $/; <$pipe> } // '';
     close($pipe);
     my $rc = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
-    my $repos = join('', map { read_text($_) } sort glob("$run/repos/*.repo"));
-    return ($rc, $output, $repos, -f "$run/dnf" ? read_text("$run/dnf") : '',
-        -f "$run/rpm" ? read_text("$run/rpm") : '');
-}
-
-sub read_text {
-    my ($path) = @_;
-    open(my $file, '<', $path) or die "read $path: $!";
-    return do { local $/; <$file> };
-}
-
-sub write_text {
-    my ($path, $text) = @_;
-    open(my $file, '>', $path) or die "write $path: $!";
-    print {$file} $text or die "write $path: $!";
-    close($file) or die "close $path: $!";
+    my $repos = join('', map { read_binary($_) } sort glob("$run/repos/*.repo"));
+    return ($rc, $output, $repos, -f "$run/dnf" ? read_binary("$run/dnf") : '',
+        -f "$run/rpm" ? read_binary("$run/rpm") : '');
 }

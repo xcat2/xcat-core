@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use FindBin;
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -52,7 +53,7 @@ for my $package (
 ) {
     my ($name, $version, $requires, $repo) = @$package;
     my $spec = "$dir/$name-$version.spec";
-    write_text($spec, <<"SPEC");
+    write_binary($spec, <<"SPEC");
 Name: $name
 Version: $version
 Release: 1
@@ -81,18 +82,18 @@ for my $repo (qw(old os vendor other/native)) {
     copy("$dir/key.asc", "$dir/fixtures/$repo/repodata/repomd.xml.key") or die "copy key: $!";
 }
 copy("$FindBin::Bin/fixtures/dnf.pl", "$dir/bin/dnf") or die "copy DNF adapter: $!";
-write_text("$dir/bin/mount", <<'SH');
+write_binary("$dir/bin/mount", <<'SH');
 #!/bin/sh
 printf '%s on %s type nfs\n' "$NFSSERVER" "$INSTALLDIR"
 SH
-write_text("$dir/bin/rpm", <<'SH');
+write_binary("$dir/bin/rpm", <<'SH');
 #!/bin/sh
 case "$1" in --version) exec /usr/bin/rpm "$@" ;; esac
 printf '%s\n' "$*" >> "$RPM_TRACE"
 exit 79
 SH
 for my $name (qw(logger dpkg wget)) {
-    write_text("$dir/bin/$name", "#!/bin/sh\nexit 1\n");
+    write_binary("$dir/bin/$name", "#!/bin/sh\nexit 1\n");
 }
 copy("$FindBin::Bin/fixtures/postscript-root.sh", "$dir/run") or die "copy isolation wrapper: $!";
 chmod 0755, glob("$dir/bin/*"), "$dir/run";
@@ -177,12 +178,12 @@ sub run_case {
     make_path("$run/repos", "$run/root", "$run/media");
     my $key = $options{native_key} ? '/etc/pki/rpm-gpg/RPM-GPG-KEY-openEuler' : "$dir/key.asc";
     if ($options{empty_key}) {
-        write_text("$run/empty-key", '');
+        write_binary("$run/empty-key", '');
         $key = "$run/empty-key";
     }
     my $vendor = '[publisher]' . "\nname=publisher\nenabled=1\nskip_if_unavailable=False\ngpgcheck=1\ngpgkey=file://$dir/key.asc\nbaseurl=file://"
       . ($options{vendor_available} ? "$dir/fixtures/vendor" : "$run/unavailable") . "\n";
-    write_text("$run/repos/openEuler.repo", $vendor);
+    write_binary("$run/repos/openEuler.repo", $vendor);
     if ($options{seed_old}) {
         my ($rc, $output) = capture('/usr/bin/rpm', '--root', "$run/root", '--import', "$dir/key.asc");
         die $output if $rc;
@@ -237,13 +238,5 @@ sub capture {
 sub read_text {
     my ($path) = @_;
     return '' unless -f $path;
-    open(my $file, '<', $path) or die "read $path: $!";
-    return do { local $/; <$file> };
-}
-
-sub write_text {
-    my ($path, $text) = @_;
-    open(my $file, '>', $path) or die "write $path: $!";
-    print {$file} $text or die "write $path: $!";
-    close($file) or die "close $path: $!";
+    return read_binary($path);
 }

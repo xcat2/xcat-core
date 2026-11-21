@@ -35,19 +35,25 @@ sub read {
     return read_binary("$self->{root}/$path");
 }
 
-sub run {
-    my ($self, @command) = @_;
+sub sandbox_command {
+    my ($self, $xcatroot) = @_;
     my @sandbox = ('bwrap', '--unshare-all', '--die-with-parent', '--new-session', '--tmpfs', '/',
         (map { ('--ro-bind', $_, $_) } grep { -d $_ } qw(/usr /bin /sbin /lib /lib64)),
         '--proc', '/proc', '--dev', '/dev', '--dir', '/run', '--dir', '/sys', '--dir', '/opt',
         (map { ('--bind', "$self->{root}/$_", "/$_") } qw(etc install tmp work)),
         '--ro-bind', repo_path('.'), '/repo', '--chdir', '/work',
         '--setenv', 'PATH', '/work/bin:/usr/bin:/bin:/usr/sbin:/sbin',
-        '--setenv', 'LC_ALL', 'C', '--setenv', 'XCATROOT', '/repo/xCAT-server',
+        '--setenv', 'LC_ALL', 'C', '--setenv', 'XCATROOT', $xcatroot,
         '--setenv', 'XCATCFG', 'SQLite:/work/db',
         '--setenv', 'PERL5LIB', '/repo/perl-xCAT:/repo/xCAT-server/lib/perl');
     push @sandbox, '--ro-bind', '/etc/alternatives', '/etc/alternatives' if -d '/etc/alternatives';
     push @sandbox, @{ $self->{mounts} || [] };
+    return @sandbox;
+}
+
+sub run {
+    my ($self, @command) = @_;
+    my @sandbox = $self->sandbox_command('/repo/xCAT-server');
     local %ENV = (PATH => '/usr/bin:/bin:/usr/sbin:/sbin');
     return XCAT::Test::Lifecycle::command(@sandbox, 'timeout', '45', @command);
 }

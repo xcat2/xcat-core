@@ -8,15 +8,15 @@ use warnings;
 no warnings 'once';
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
 use Test::More;
 use Text::ParseWords qw(parse_line);
+use XCAT::Test::File qw(slurp_repo_file);
 
 use xCAT::DBobjUtils;
 use xCAT::ProfiledNodeUtils;
-
-my $root = "$FindBin::Bin/../..";
 
 # The image profiles and their operating system distributions, as the osimage and osdistro tables
 # hold them.
@@ -65,10 +65,7 @@ is( xCAT::ProfiledNodeUtils->profile_netboot( 'grub2', 'xnba' ), 'grub2', 'a nod
 
 sub template_netboot {
     my ( $file, $name ) = @_;
-    my $path = "$root/xCAT/templates/objects/node/$file.stanza";
-    open( my $fh, '<', $path ) or die "Cannot read $path: $!";
-    my $data = do { local $/; <$fh> };
-    close($fh);
+    my $data = slurp_repo_file("xCAT/templates/objects/node/$file.stanza");
     local %::FILEATTRS;
     xCAT::DBobjUtils->readFileInput($data);
     return $::FILEATTRS{$name}{netboot};
@@ -80,10 +77,7 @@ is( template_netboot( 'x86_64kvmguest', 'x86_64kvmguest-template' ), 'ipxe',
 is( template_netboot( 'ppc64le-ipmi', 'ppc64le-template' ), 'petitboot', 'the ppc64le template keeps its netboot method' );
 
 {
-    my $path = "$root/xCAT/templates/e1350/noderes.csv";
-    open( my $fh, '<', $path ) or die "Cannot read $path: $!";
-    chomp( my @lines = <$fh> );
-    close($fh);
+    chomp( my @lines = split /(?<=\n)/, slurp_repo_file('xCAT/templates/e1350/noderes.csv') );
     ( my $header = shift @lines ) =~ s/^#//;
     my @columns = parse_line( ',', 0, $header );
     my %compute;

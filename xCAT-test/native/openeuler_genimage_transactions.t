@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use FindBin;
 use File::Path qw(make_path);
 use File::Spec;
@@ -13,9 +14,10 @@ plan skip_all => 'requires native Linux DNF and trusted RPM keys'
 my $repo = File::Spec->rel2abs("$FindBin::Bin/../..");
 my $dir = tempdir(CLEANUP => 1);
 my $driver = "$dir/driver.pl";
-write_file($driver, <<'PERL');
+write_binary($driver, <<'PERL');
 use strict;
 use warnings;
+use File::Slurper qw(read_binary);
 use Storable qw(nstore);
 use Text::ParseWords qw(shellwords);
 our (@commands, $reached, $config, $restored);
@@ -32,9 +34,7 @@ BEGIN {
             my @args = shellwords($command);
             my ($index) = grep { $args[$_] eq '-c' } 0 .. $#args - 1;
             die 'Package command omitted its configuration' unless defined($index);
-            open(my $file, '<', $args[$index + 1]) or die $!;
-            $config = do { local $/; <$file> };
-            close($file);
+            $config = read_binary($args[$index + 1]);
             my $phase = $command =~ / erase .*pre-remove/ ? 'pre-remove'
               : $command =~ / erase .*post-remove/ ? 'post-remove'
               : $command =~ / install .*native-extra/ ? 'extra-install'
@@ -55,11 +55,7 @@ BEGIN {
     };
 }
 END {
-    my $uname = '';
-    if (open(my $file, '<', "$ENV{GENIMAGE_ROOT}/bin/uname")) {
-        $uname = do { local $/; <$file> };
-        close($file);
-    }
+    my $uname = eval { read_binary("$ENV{GENIMAGE_ROOT}/bin/uname") } // '';
     nstore({ commands => \@commands, reached => $reached, config => $config, uname => $uname },
         "$ENV{GENIMAGE_CASE}/result");
     unlink("/tmp/genimage.$$.yum.conf");
@@ -110,10 +106,10 @@ sub run_case {
     my $case = tempdir(DIR => $dir, CLEANUP => 1);
     my $root = "$case/image/rootimg";
     make_path("$root/bin", "$root/etc", "$root/dev", "$root/run", "$root/sbin");
-    write_file("$root/bin/uname", "original uname\n");
+    write_binary("$root/bin/uname", "original uname\n");
     chmod 0755, "$root/bin/uname";
-    write_file("$case/os.pkglist", "native-os\n");
-    write_file("$case/extra.pkglist", "-pre-remove\nvendor/native-extra\n--post-remove\n");
+    write_binary("$case/os.pkglist", "native-os\n");
+    write_binary("$case/extra.pkglist", "-pre-remove\nvendor/native-extra\n--post-remove\n");
     local %ENV = %ENV;
     @ENV{qw(GENIMAGE_SCRIPT GENIMAGE_ROOT GENIMAGE_CASE GENIMAGE_FAILURE XCATROOT)} =
       ("$repo/xCAT-server/share/xcat/netboot/rh/genimage", $root, $case, $failure, "$repo/xCAT-server");
@@ -131,15 +127,6 @@ sub run_case {
     }
     waitpid($pid, 0);
     my $status = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
-    open(my $file, '<', "$case/output") or die $!;
-    my $output = do { local $/; <$file> };
-    close($file);
+    my $output = read_binary("$case/output");
     return ($status, retrieve("$case/result"), $output);
-}
-
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $file, '>', $path) or die "write $path: $!";
-    print {$file} $contents or die $!;
-    close($file) or die $!;
 }

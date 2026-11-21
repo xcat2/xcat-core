@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use Cwd qw(abs_path);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -20,30 +21,18 @@ my $tmp = tempdir(DIR => '/var/tmp', CLEANUP => !$ENV{XCAT_FORWARD_KEEP});
 diag("fixtures: $tmp") if $ENV{XCAT_FORWARD_KEEP};
 make_path("$tmp/bin");
 
-sub write_file {
-    my ($path, $data) = @_;
-    open(my $f, '>', $path) or die "$path: $!";
-    print {$f} $data;
-    close($f) or die "$path: $!";
-}
-sub read_file {
-    my ($path) = @_;
-    open(my $f, '<', $path) or die "$path: $!";
-    local $/;
-    return <$f> // '';
-}
-my $host_config = read_file('/etc/sysctl.conf');
-my $host_forwarding = read_file('/proc/sys/net/ipv4/ip_forward');
+my $host_config = read_binary('/etc/sysctl.conf');
+my $host_forwarding = read_binary('/proc/sys/net/ipv4/ip_forward');
 my $host_mount = readlink('/proc/self/ns/mnt');
 my $host_net = readlink('/proc/self/ns/net');
 my $sysctl = `command -v sysctl`; chomp $sysctl;
 
-write_file("$tmp/bin/no", <<'SH');
+write_binary("$tmp/bin/no", <<'SH');
 #!/bin/sh
 printf '%s\n' "$*" >> "$XCAT_FORWARD_FIXTURE/no.log"
 exit "${XCAT_FORWARD_AIX_RC:-0}"
 SH
-write_file("$tmp/namespace", <<'SH');
+write_binary("$tmp/namespace", <<'SH');
 #!/bin/bash
 set -eu
 [ "$(readlink /proc/self/ns/mnt)" != "$XCAT_FORWARD_HOST_MOUNT" ]
@@ -53,7 +42,7 @@ mount --bind "$XCAT_FORWARD_FIXTURE/etc" /etc
 "$XCAT_FORWARD_SYSCTL" -qw net.ipv4.ip_forward="$XCAT_FORWARD_INITIAL"
 exec /usr/bin/perl "$XCAT_FORWARD_RUNNER"
 SH
-write_file("$tmp/call-helper.pl", <<'CHILD');
+write_binary("$tmp/call-helper.pl", <<'CHILD');
 use strict;
 use warnings;
 use lib "$ENV{XCAT_FORWARD_SOURCE_ROOT}/perl-xCAT";
@@ -105,7 +94,7 @@ for my $case (@cases) {
     $expected //= "net.ipv4.ip_forward = $enable\n";
     my $fixture = "$tmp/case-" . ++$number;
     make_path("$fixture/etc/sysctl.d");
-    write_file("$fixture/etc/sysctl.conf", $input);
+    write_binary("$fixture/etc/sysctl.conf", $input);
     symlink '../sysctl.conf', "$fixture/etc/sysctl.d/99-sysctl.conf" or die $!;
     for my $file (qw(ld.so.cache os-release openEuler-release)) {
         copy("/etc/$file", "$fixture/etc/$file") or die $! if -f "/etc/$file";
@@ -129,26 +118,26 @@ for my $case (@cases) {
             waitpid($pid, 0);
             my $status = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
             is($status, 0, "pass $pass invokes the full production module in isolation");
-            if ($status) { diag(read_file("$fixture/stderr-$pass.log")); next; }
-            my $result = decode_json(read_file("$fixture/result-$pass.json"));
+            if ($status) { diag(read_binary("$fixture/stderr-$pass.log")); next; }
+            my $result = decode_json(read_binary("$fixture/result-$pass.json"));
             is($result->{rc}, 0, "pass $pass preserves the helper return contract");
             isnt($result->{mount_namespace}, $host_mount, "pass $pass uses a separate mount namespace");
             isnt($result->{network_namespace}, $host_net, "pass $pass uses a separate network namespace");
-            is(read_file("$fixture/etc/sysctl.conf"), $expected, "pass $pass persists only the expected assignment");
-            is(read_file("$fixture/etc/sysctl.d/99-sysctl.conf"), $expected, "pass $pass retains the sysctl.d alias");
+            is(read_binary("$fixture/etc/sysctl.conf"), $expected, "pass $pass persists only the expected assignment");
+            is(read_binary("$fixture/etc/sysctl.d/99-sysctl.conf"), $expected, "pass $pass retains the sysctl.d alias");
             is(0 + $result->{forwarding}, $aix ? 1 - $enable : $enable,
                 "pass $pass has the expected real kernel forwarding state");
         }
         if ($aix) {
-            is(read_file("$fixture/no.log"), "-o ipforwarding=$enable\n" x 2,
+            is(read_binary("$fixture/no.log"), "-o ipforwarding=$enable\n" x 2,
                 'AIX keeps its existing native command and arguments');
         } else {
             ok(!-e "$fixture/no.log", 'Linux never invokes the AIX command');
         }
     };
 }
-is(read_file('/etc/sysctl.conf'), $host_config, 'host sysctl configuration is unchanged');
-is(read_file('/proc/sys/net/ipv4/ip_forward'), $host_forwarding, 'host forwarding state is unchanged');
+is(read_binary('/etc/sysctl.conf'), $host_config, 'host sysctl configuration is unchanged');
+is(read_binary('/proc/sys/net/ipv4/ip_forward'), $host_forwarding, 'host forwarding state is unchanged');
 is(readlink('/proc/self/ns/mnt'), $host_mount, 'test process retained its original mount namespace');
 is(readlink('/proc/self/ns/net'), $host_net, 'test process retained its original network namespace');
 done_testing();

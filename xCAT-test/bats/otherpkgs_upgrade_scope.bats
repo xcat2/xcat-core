@@ -1,39 +1,12 @@
 #!/usr/bin/env bats
 
-load 'helpers/shell_source'
+load 'helpers/script_sandbox'
 
 setup()
 {
-    [ "$(uname -s)" = Linux ] || skip 'otherpkgs filesystem isolation requires Linux'
-    local utility executable
-    local utilities=(bash sh basename dirname cat cp expr grep ls mkdir rm uname wc)
-    local bwrap
-    bwrap=$(PATH=/usr/bin:/bin type -P bwrap) || {
-        echo 'Install bubblewrap to run the otherpkgs test' >&2
-        return 1
-    }
+    setup_script_sandbox --no-chdir basename dirname cat cp expr grep ls mkdir rm uname wc
     postscripts=$(repo_path xCAT/postscripts)
-    fixture="$BATS_TEST_TMPDIR/fixture"
-    mkdir -p "$fixture/bin"
-    sandbox=(env -i PATH=/usr/bin:/bin LC_ALL=C "$bwrap"
-        --unshare-all --die-with-parent --new-session
-        --ro-bind / / --tmpfs /etc --tmpfs /usr/bin --tmpfs /tmp
-        --proc /proc --dev /dev --setenv PATH /usr/bin --setenv LC_ALL C)
-    if PATH=/usr/bin:/bin type -P coreutils >/dev/null; then
-        utilities+=(coreutils)
-    fi
-    for utility in "${utilities[@]}"; do
-        executable=$(PATH=/usr/bin:/bin type -P "$utility") || {
-            echo "Required utility is unavailable: $utility" >&2
-            return 1
-        }
-        sandbox+=(--ro-bind "$executable" "/usr/bin/$utility")
-    done
-    run "${sandbox[@]}" /usr/bin/sh -c 'test ! -e /etc/os-release'
-    if [ "$status" -ne 0 ]; then
-        echo "Cannot isolate otherpkgs: $output" >&2
-        return 1
-    fi
+    sandbox+=(--setenv PATH /usr/bin)
 }
 
 run_case()
@@ -83,10 +56,6 @@ SH
     local command=("${sandbox[@]}"
         --bind "$fixture" /tmp/fixture
         --ro-bind "$postscripts" /tmp/postscripts --chdir /tmp/fixture)
-    local tool
-    for tool in logger dpkg rpm mount "$manager"; do
-        command+=(--ro-bind "$fixture/bin/$tool" "/usr/bin/$tool")
-    done
     command+=(
         --setenv OSVER rhel9 --setenv ARCH x86_64 --setenv UPDATENODE 1
         --setenv NFSSERVER package-server --setenv HTTPPORT 80

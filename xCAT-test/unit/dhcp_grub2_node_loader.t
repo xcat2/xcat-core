@@ -14,6 +14,7 @@ use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
 use File::Path qw(make_path);
+use File::Slurper qw(write_binary);
 use File::Temp qw(tempdir);
 use Test::More;
 use XCAT::Test::File qw(repo_path);
@@ -37,8 +38,7 @@ require( repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm') );
 
 for my $dir ( $site_tftp, $node_tftp ) {
     make_path("$dir/boot/grub2");
-    open( my $loader, '>', "$dir/boot/grub2/grub2.aarch64" ) or die "Cannot create the loader: $!";
-    close($loader) or die "Cannot close the loader: $!";
+    write_binary("$dir/boot/grub2/grub2.aarch64", '');
 }
 
 # The node loader links in a TFTP directory, as a nodeset left them.
@@ -125,13 +125,11 @@ sub kea_boot_url6 {
 
 my $dir = tempdir( CLEANUP => 1 );
 my $conf = "$dir/dhcpd.conf";
-open( my $fh, '>', $conf ) or die "Cannot create $conf: $!";
-print {$fh} "#xCAT generated dhcp configuration\n",
+write_binary($conf, join('', "#xCAT generated dhcp configuration\n",
   "option space gpxe;\n",
   @{ xCAT::DHCP::BootPolicy->isc_ipxe_feature_option_lines() },
   "subnet 192.0.2.0 netmask 255.255.255.0 {\n",
-  "} # 192.0.2.0/255.255.255.0 subnet_end\n";
-close($fh) or die "Cannot close $conf: $!";
+  "} # 192.0.2.0/255.255.255.0 subnet_end\n"));
 
 # The boot file of every host that makedhcp creates for cn1 through OMAPI.
 sub isc_boot_files {

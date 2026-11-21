@@ -3,19 +3,20 @@ use strict;
 use warnings;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use File::Slurper qw(write_text);
 use File::Temp qw(tempdir);
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
 BEGIN {
-    $ENV{XCATROOT} = "$FindBin::Bin/../../xCAT-server";
+    $ENV{XCATROOT} = repo_path('xCAT-server');
     $ENV{XCATCFG} = 'SQLite:' . tempdir(CLEANUP => 1);
 }
 
-my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
-require $plugin;
+require(repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm'));
 
 my $directory = tempdir(CLEANUP => 1);
 local $xCAT_plugin::dhcp::kea_ddns_key_path = "$directory/ddns.key";

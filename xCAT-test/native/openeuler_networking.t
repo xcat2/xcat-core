@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use Cwd qw(abs_path);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
@@ -18,22 +19,13 @@ my $tmp = tempdir(CLEANUP => 1);
 my $bin = "$tmp/bin";
 make_path($bin);
 
-sub write_file {
-    my ($path, $text) = @_;
-    open(my $fh, '>', $path) or die "$path: $!";
-    print {$fh} $text;
-    close($fh) or die "$path: $!";
-}
-
 sub read_file {
     my ($path) = @_;
     return '' unless -f $path;
-    open(my $fh, '<', $path) or die "$path: $!";
-    local $/;
-    return <$fh> // '';
+    return scalar read_binary($path);
 }
 
-write_file("$bin/double", <<'SH');
+write_binary("$bin/double", <<'SH');
 #!/bin/bash
 command=${0##*/}
 printf '%s' "$command" >> "$XCAT_NET_LOG"
@@ -84,7 +76,7 @@ for my $command (qw(ip nmcli systemctl logger route ifup ifdown modprobe sleep))
     symlink 'double', "$bin/$command" or die $!;
 }
 
-write_file("$tmp/namespace", <<'SH');
+write_binary("$tmp/namespace", <<'SH');
 #!/bin/bash
 set -e
 mount --make-rprivate /
@@ -95,7 +87,7 @@ exec "$@"
 SH
 chmod 0755, "$tmp/namespace";
 
-write_file("$tmp/local-route", <<'PERL');
+write_binary("$tmp/local-route", <<'PERL');
 use strict;
 use warnings;
 use JSON::PP;
@@ -117,10 +109,10 @@ sub run_case {
     make_path(map { "$fixture/$_" } qw(etc/sysconfig/network-scripts etc/sysconfig/network
         etc/network/interfaces.d etc/modprobe.d etc/NetworkManager/system-connections
         etc/systemd/system run install/postscripts db));
-    write_file("$fixture/etc/os-release", $case{release} // "ID=openEuler\nVERSION_ID=24.03\nNAME=openEuler\n");
-    write_file("$fixture/etc/network/interfaces", "auto eth8\niface eth8 inet static\n");
-    write_file("$fixture/etc/systemd/system/NetworkManager.service", '');
-    write_file("$fixture/etc/$case{marker}", $case{marker_text} // '') if $case{marker};
+    write_binary("$fixture/etc/os-release", $case{release} // "ID=openEuler\nVERSION_ID=24.03\nNAME=openEuler\n");
+    write_binary("$fixture/etc/network/interfaces", "auto eth8\niface eth8 inet static\n");
+    write_binary("$fixture/etc/systemd/system/NetworkManager.service", '');
+    write_binary("$fixture/etc/$case{marker}", $case{marker_text} // '') if $case{marker};
     for my $file (qw(routeop xcatlib.sh)) {
         symlink "$source/xCAT/postscripts/$file", "$fixture/install/postscripts/$file" or die $!;
     }

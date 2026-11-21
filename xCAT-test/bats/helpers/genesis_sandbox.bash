@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 
-load 'helpers/shell_source'
+load 'helpers/script_sandbox'
 
 setup_genesis_sandbox()
 {
-    [ "$(uname -s)" = Linux ] || skip 'Genesis filesystem isolation requires Linux'
-    local bwrap utility source
-    bwrap=$(PATH=/usr/bin:/bin type -P bwrap) || {
-        echo 'Install bubblewrap to run the Genesis script tests' >&2
-        return 1
-    }
+    setup_filesystem_sandbox || return
+    local utility source
     for utility in bash cat cp awk grep sed sort tr tail rm wc cut head uname timeout; do
         PATH=/usr/bin:/bin type -P "$utility" >/dev/null || {
             echo "Required utility is unavailable: $utility" >&2
@@ -21,15 +17,10 @@ setup_genesis_sandbox()
         echo "Required Genesis script is unreadable: $source" >&2
         return 1
     }
-    fixture="${BATS_TEST_TMPDIR:?bats-core 1.4 or newer is required}/fixture"
-    mkdir -p "$fixture"/{bin,etc/xcat,sys/class/net/lo,tmp,var/lib/dhclient}
-    : >"$fixture/cmdline"
-    sandbox=(env -i PATH=/usr/bin:/bin LC_ALL=C "$bwrap"
-        --unshare-all --die-with-parent --new-session
-        --ro-bind / / --tmpfs /run --proc /proc --dev /dev
-        --bind "$fixture" /run/fixture --bind "$fixture/tmp" /tmp
-        --bind "$fixture/etc" /etc --ro-bind "$fixture/sys" /sys
-        --bind "$fixture/var" /var
+    mkdir -p "$fixture"/{etc/xcat,sys/class/net/lo,var/lib/dhclient} || return
+    : >"$fixture/cmdline" || return
+    sandbox+=(--tmpfs /run --bind "$fixture" /run/fixture
+        --ro-bind "$fixture/sys" /sys
         --ro-bind "$fixture/cmdline" /proc/cmdline
         --ro-bind "$source" /run/script --chdir /tmp
         --setenv PATH /run/fixture/bin:/usr/bin:/bin --setenv LC_ALL C)

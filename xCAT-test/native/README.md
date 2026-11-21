@@ -17,6 +17,11 @@ It can run as root or an ordinary user with user namespaces enabled. This case
 checks service policy and ordering; it does not boot or reinstall an OS.
 The client steps cannot access the source tree or the server postscripts directory.
 
+`image_fixture_contract.t` checks the shared image fixture's file contents,
+mount isolation and caller-specific results. UbuntuImage returns raw wait
+status and merged output; ImageSandbox returns a decoded status and separate
+output streams. CI runs this case and `postinstall_bootstrap.t` explicitly.
+
 ## Ubuntu media and image fixtures
 
 The pull-request workflow runs these four tests explicitly:

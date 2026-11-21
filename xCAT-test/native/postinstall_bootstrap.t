@@ -5,11 +5,11 @@ use Capture::Tiny qw(capture);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Slurper qw(read_binary write_binary);
-use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Sandbox qw(sandbox_root sandbox_command);
 
 plan skip_all => 'installer execution requires Linux' unless $^O eq 'linux';
 die 'Install bubblewrap to run this test' unless -x '/usr/bin/bwrap';
@@ -22,7 +22,7 @@ sub executable {
 }
 
 sub fixture {
-    my $root = tempdir(CLEANUP => 1);
+    my $root = sandbox_root();
     make_path(map { "$root/$_" } qw(bin db opt/xcat etc/systemd/system/multi-user.target.wants
         etc/init.d etc/rc2.d etc/rc.d/rc3.d etc/rc.d/rc4.d etc/rc.d/rc5.d
         xcatpost log/xcat boot));
@@ -66,26 +66,14 @@ SH
 
 sub isolated {
     my ($root, $stage, $environment, @command) = @_;
-    my @args = ('/usr/bin/bwrap', '--unshare-all', '--die-with-parent', '--new-session',
-        '--tmpfs', '/', '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp',
-        '--tmpfs', '/run', '--bind', $root, '/fixture', '--chdir', '/fixture',
-        '--setenv', 'PATH', '/fixture/bin:/usr/bin:/bin:/usr/sbin:/sbin',
-        '--setenv', 'LC_ALL', 'C');
-    if ($stage eq 'render') {
-        push @args, '--ro-bind', repo_path('xCAT/postscripts'), '/install/postscripts',
-            '--ro-bind', repo_path('.'), repo_path('.');
-    }
-    for my $directory (qw(/usr /bin /sbin /lib /lib64)) {
-        if (-l $directory) {
-            push @args, '--symlink', readlink($directory), $directory;
-        } elsif (-d $directory) {
-            push @args, '--ro-bind', $directory, $directory;
-        }
-    }
-    push @args, '--bind', "$root/$_", "/$_" for qw(opt etc xcatpost boot);
-    push @args, '--bind', "$root/log", '/var/log';
-    push @args, '--ro-bind', '/etc/alternatives', '/etc/alternatives' if -d '/etc/alternatives';
-    push @args, '--setenv', $_, $environment->{$_} for sort keys %$environment;
+    my %read_only = $stage eq 'render'
+        ? (repo_path('xCAT/postscripts') => '/install/postscripts',
+            repo_path('.') => repo_path('.')) : ();
+    my @args = sandbox_command($root, {
+        preserve_links => 1, directories => [qw(opt etc xcatpost boot)],
+        tmpfs => ['/tmp'], read_only => \%read_only,
+        env => {PATH => '/fixture/bin:/usr/bin:/bin:/usr/sbin:/sbin', %$environment},
+    });
     local %ENV = (PATH => '/usr/bin:/bin', LC_ALL => 'C');
     my ($out, $err, $status) = capture { system(@args, @command) };
     return ($status, $out . $err);
@@ -109,6 +97,24 @@ my @cases = (
     {name => 'missing node file', run => 'no', status => 'no', no_node => 1, ubuntu_only => 1},
     {name => 'missing postboot file', no_post => 1, disable => 1},
 );
+
+{
+    my $root = fixture();
+    for my $stage (qw(render client)) {
+        my ($status, $output) = isolated($root, $stage, {}, '/bin/sh', '-c',
+            'test ! -e /etc/os-release && test ! -e /tmp/fixture-marker && '
+            . 'printf private > /tmp/fixture-marker && '
+            . 'if test -r /install/postscripts/xcatlib.sh; then printf visible; else printf hidden; fi');
+        is($status, 0, "$stage has private configuration and temporary files");
+        is($output, $stage eq 'render' ? 'visible' : 'hidden', "$stage retains its postscripts visibility");
+        ($status, $output) = isolated($root, $stage, {}, '/bin/sh', '-c',
+            'test -r "$1/Version"', 'visibility', repo_path('.'));
+        is($status, $stage eq 'render' ? 0 : 1 << 8, "$stage retains its repository visibility");
+    }
+    my ($status, $output) = isolated($root, 'client', {}, '/bin/sh', '-c',
+        'printf error >&2; printf output; exit 7');
+    is_deeply([$status, $output], [7 << 8, 'outputerror'], 'retains raw status and stdout-before-stderr capture');
+}
 
 for my $owner (qw(post.xcat post.xcat.ng post.xcat.rhels10)) {
     my $build = fixture();

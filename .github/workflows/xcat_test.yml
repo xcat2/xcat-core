@@ -38,6 +38,9 @@ jobs:
       - name: Exercise image chroot mounts
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/rh_genimage_chroot_mounts.t
+      - name: Check shared test fixtures
+        if: ${{ !cancelled() }}
+        run: prove xCAT-test/native/image_fixture_contract.t xCAT-test/native/postinstall_bootstrap.t
       - name: Check Debian probe payload permissions
         if: ${{ !cancelled() }}
         run: bats xCAT-test/native/probe_debian_permissions.bats

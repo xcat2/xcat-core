@@ -1,21 +1,11 @@
 #!/usr/bin/env bats
 
-load 'helpers/shell_source'
+load 'helpers/script_sandbox'
 
 setup()
 {
-    [ "$(uname -s)" = Linux ] || skip 'routeop filesystem isolation requires Linux'
-    local bwrap utility
-    bwrap=$(PATH=/usr/bin:/bin type -P bwrap) || {
-        echo 'Install bubblewrap to run the routeop test' >&2
-        return 1
-    }
-    for utility in bash cat dirname grep sed tr uname; do
-        PATH=/usr/bin:/bin type -P "$utility" >/dev/null || {
-            echo "Required utility is unavailable: $utility" >&2
-            return 1
-        }
-    done
+    setup_script_sandbox --no-chdir cat dirname grep sed tr uname
+    local utility
     postscripts=$(repo_path xCAT/postscripts)
     for utility in routeop xcatlib.sh; do
         [ -r "$postscripts/$utility" ] || {
@@ -23,7 +13,6 @@ setup()
             return 1
         }
     done
-    fixture="$BATS_TEST_TMPDIR/fixture"
     mkdir -p "$fixture/bin" "$fixture/etc/sysconfig/network"
     printf '%s\n' SLE VERSION=15 >"$fixture/etc/SUSE-brand"
     saved_routes="$fixture/etc/sysconfig/network/routes"
@@ -65,13 +54,9 @@ printf '%s\n' "unexpected nmcli $*" >>/tmp/fixture/commands
 exit 97
 SH
     chmod +x "$fixture/bin/ip" "$fixture/bin/logger" "$fixture/bin/nmcli"
-    sandbox=(env -i PATH=/usr/bin:/bin LC_ALL=C "$bwrap"
-        --unshare-all --die-with-parent --new-session
-        --ro-bind / / --tmpfs /tmp --tmpfs /run --proc /proc --dev /dev
-        --bind "$fixture" /tmp/fixture --bind "$fixture/etc" /etc
+    sandbox+=(--bind "$fixture" /tmp/fixture
         --ro-bind "$postscripts" /tmp/postscripts --chdir /tmp/fixture
-        --setenv PATH /tmp/fixture/bin:/usr/bin:/bin --setenv LC_ALL C
-        --setenv OSVER sles15)
+        --setenv PATH /tmp/fixture/bin:/usr/bin:/bin --setenv OSVER sles15)
     run "${sandbox[@]}" /bin/sh -c 'test -f /etc/SUSE-brand && test ! -e /etc/os-release'
     if [ "$status" -ne 0 ]; then
         echo "Cannot isolate routeop: $output" >&2

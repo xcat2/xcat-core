@@ -3,6 +3,7 @@ use strict;
 use warnings;
 ## no critic (TestingAndDebugging::ProhibitNoWarnings)
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use FindBin;
 use Storable qw(dclone);
@@ -24,15 +25,13 @@ my %attribs = (
 
 # The genimage client prints build output on stdout and its own errors on stderr.
 my $bindir = tempdir(CLEANUP => 1);
-open(my $script, '>', "$bindir/genimage") or die "genimage: $!";
-print $script <<'EOS';
+write_binary("$bindir/genimage", <<'EOS');
 #!/bin/sh
 echo "$@" > "$GENIMAGE_ARGS"
 echo 'the initial ramdisks are built'
 echo 'Error: genimage command failed' >&2
 exit "$GENIMAGE_RC"
 EOS
-close($script) or die "genimage: $!";
 chmod(0755, "$bindir/genimage") or die "genimage: $!";
 my $emptydir = tempdir(CLEANUP => 1);
 
@@ -55,10 +54,8 @@ sub geninitrd_with {
             sub { push @responses, dclone($_[0]) }, sub { die "Unexpected subrequest\n" });
     }
     my %result;
-    if (open(my $fh, '<', $args)) {
-        $result{args} = do { local $/; <$fh> };
-        close($fh);
-    }
+    my $arguments = eval { read_binary($args) };
+    $result{args} = $arguments unless $@;
     for my $key (qw(info error errorcode)) {
         $result{$key} = [ map { @{ $_->{$key} // [] } } @responses ];
     }

@@ -7,7 +7,7 @@ use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use XCAT::Test::Process qw(run_command);
 
-our @EXPORT_OK = qw(sandbox_root sandbox_run);
+our @EXPORT_OK = qw(sandbox_root sandbox_command sandbox_run);
 
 sub sandbox_root {
     my $root = tempdir(CLEANUP => 1);
@@ -15,9 +15,10 @@ sub sandbox_root {
     return $root;
 }
 
-sub sandbox_run {
-    my ($root, @command) = @_;
-    my $options = ref($command[0]) eq 'HASH' ? shift @command : {};
+# Return arguments so raw-status callers can keep their own capture policy.
+sub sandbox_command {
+    my ($root, $options) = @_;
+    $options ||= {};
     my $bwrap = -x '/usr/bin/bwrap' ? '/usr/bin/bwrap' : '/bin/bwrap';
     die 'Install bubblewrap to run this test' unless -x $bwrap;
     my @sandbox = ($bwrap, '--unshare-all', '--die-with-parent', '--new-session',
@@ -25,12 +26,17 @@ sub sandbox_run {
         '--setenv', 'PATH', '/fixture/bin:/usr/bin:/bin',
         '--setenv', 'LC_ALL', 'C', '--bind', $root, '/fixture', '--chdir', '/fixture');
     for my $directory (qw(/usr /bin /sbin /lib /lib64)) {
-        push @sandbox, '--ro-bind', $directory, $directory if -d $directory;
+        if ($options->{preserve_links} && -l $directory) {
+            push @sandbox, '--symlink', readlink($directory), $directory;
+        } elsif (-d $directory) {
+            push @sandbox, '--ro-bind', $directory, $directory;
+        }
     }
-    for my $mount (qw(boot etc target tmp)) {
+    for my $mount (@{$options->{directories} // [qw(boot etc target tmp)]}) {
         push @sandbox, '--bind', "$root/$mount", "/$mount";
     }
     push @sandbox, '--bind', "$root/log", '/var/log';
+    push @sandbox, map { ('--tmpfs', $_) } @{$options->{tmpfs} // []};
     push @sandbox, '--ro-bind', '/etc/alternatives', '/etc/alternatives' if -d '/etc/alternatives';
     my @mounts;
     for my $kind (qw(read_only writable)) {
@@ -41,9 +47,16 @@ sub sandbox_run {
     for my $mount (sort { length($a->[2]) <=> length($b->[2]) || $a->[2] cmp $b->[2] } @mounts) {
         push @sandbox, @$mount;
     }
-    for my $name (keys %{$options->{env} // {}}) {
+    for my $name (sort keys %{$options->{env} // {}}) {
         push @sandbox, '--setenv', $name, $options->{env}{$name};
     }
+    return @sandbox;
+}
+
+sub sandbox_run {
+    my ($root, @command) = @_;
+    my $options = ref($command[0]) eq 'HASH' ? shift @command : {};
+    my @sandbox = sandbox_command($root, $options);
     local %ENV;
     return run_command(@sandbox, '/usr/bin/timeout', '--kill-after=5', '45', @command);
 }

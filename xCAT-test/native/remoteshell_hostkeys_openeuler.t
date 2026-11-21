@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use Cwd qw(abs_path);
 use Digest::SHA qw(sha256_hex);
 use File::Copy qw(copy);
@@ -17,18 +18,10 @@ my $tmp = tempdir(DIR => '/var/tmp', CLEANUP => 1);
 chmod 0700, $tmp;
 make_path("$tmp/keys", "$tmp/bin");
 
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $fh, '>', $path) or die "$path: $!";
-    print {$fh} $contents;
-    close($fh) or die "$path: $!";
-}
 sub read_file {
     my ($path) = @_;
     return '' unless -f $path;
-    open(my $fh, '<', $path) or die "$path: $!";
-    local $/;
-    return <$fh> // '';
+    return scalar read_binary($path);
 }
 sub public_identity {
     my ($path) = @_;
@@ -46,7 +39,7 @@ for my $name (qw(remoteshell xcatlib.sh remoteshell-sshd-config)) {
     copy("$source/xCAT/postscripts/$name", "$tmp/bin/$name") or die $!;
     chmod 0755, "$tmp/bin/$name";
 }
-write_file("$tmp/bin/namespace", <<'SH');
+write_binary("$tmp/bin/namespace", <<'SH');
 #!/bin/bash
 set -e
 mount --make-rprivate /
@@ -55,7 +48,7 @@ mount --bind "$XCAT_KEY_FIXTURE/root" /root
 mount --bind "$XCAT_KEY_FIXTURE/tmp" /tmp
 exec "$@"
 SH
-write_file("$tmp/bin/getcredentials.awk", <<'SH');
+write_binary("$tmp/bin/getcredentials.awk", <<'SH');
 #!/bin/bash
 case "$1" in
     ssh_dsa_hostkey) cat "$XCAT_KEY_INPUT/dsa" ;;
@@ -66,12 +59,12 @@ case "$1" in
     *) printf '<error>unexpected credential request</error>\n'; exit 1 ;;
 esac
 SH
-write_file("$tmp/bin/allowcred.awk", "#!/bin/sh\nexec /bin/sleep 60\n");
-write_file("$tmp/bin/logger", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> \"\$XCAT_KEY_FIXTURE/logger.log\"\n");
-write_file("$tmp/bin/systemctl", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> \"\$XCAT_KEY_FIXTURE/services.log\"\nexit 0\n");
-write_file("$tmp/bin/sleep", "#!/bin/sh\nexit 0\n");
+write_binary("$tmp/bin/allowcred.awk", "#!/bin/sh\nexec /bin/sleep 60\n");
+write_binary("$tmp/bin/logger", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> \"\$XCAT_KEY_FIXTURE/logger.log\"\n");
+write_binary("$tmp/bin/systemctl", "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> \"\$XCAT_KEY_FIXTURE/services.log\"\nexit 0\n");
+write_binary("$tmp/bin/sleep", "#!/bin/sh\nexit 0\n");
 for my $command (qw(chown chmod)) {
-    write_file("$tmp/bin/$command", "#!/bin/bash\n" .
+    write_binary("$tmp/bin/$command", "#!/bin/bash\n" .
         'if [ "$XCAT_KEY_FAIL_COMMAND" = "${0##*/}" ] && [[ "${!#}" = "/etc/ssh/ssh_host_${XCAT_KEY_FAIL_TYPE}_key" ]]; then exit 42; fi' . "\n" .
         'exec /usr/bin/' . $command . ' "$@"' . "\n");
 }
@@ -92,12 +85,12 @@ for my $case (
     my ($label, $osver, $id, $group, $existing, $fail_command, $fail_type) = @$case;
     my $fixture = tempdir(DIR => $tmp, CLEANUP => 1);
     make_path(map { "$fixture/$_" } qw(etc/ssh root tmp));
-    write_file("$fixture/etc/passwd", "root:x:0:0:root:/root:/bin/bash\n");
-    write_file("$fixture/etc/group", "root:x:0:\n" . ($group ? "ssh_keys:x:4242:\n" : ''));
-    write_file("$fixture/etc/nsswitch.conf", "passwd: files\ngroup: files\n");
-    write_file("$fixture/etc/os-release", "ID=$id\n");
-    write_file("$fixture/etc/ssh/sshd_config", "Port 22\n");
-    write_file("$fixture/etc/ssh/ssh_config", "Host *\n");
+    write_binary("$fixture/etc/passwd", "root:x:0:0:root:/root:/bin/bash\n");
+    write_binary("$fixture/etc/group", "root:x:0:\n" . ($group ? "ssh_keys:x:4242:\n" : ''));
+    write_binary("$fixture/etc/nsswitch.conf", "passwd: files\ngroup: files\n");
+    write_binary("$fixture/etc/os-release", "ID=$id\n");
+    write_binary("$fixture/etc/ssh/sshd_config", "Port 22\n");
+    write_binary("$fixture/etc/ssh/ssh_config", "Host *\n");
     for my $type (@types) {
         next unless $existing;
         my $key = "$fixture/etc/ssh/ssh_host_${type}_key";
