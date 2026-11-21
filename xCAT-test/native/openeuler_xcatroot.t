@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use FindBin;
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -14,7 +15,7 @@ plan skip_all => 'requires Linux root and private mount namespaces'
 my $netboot = File::Spec->rel2abs("$FindBin::Bin/../../xCAT-server/share/xcat/netboot/rh");
 my $dir = tempdir(CLEANUP => 1);
 my $wrapper = "$dir/run";
-write_file($wrapper, <<'SH');
+write_binary($wrapper, <<'SH');
 #!/bin/bash
 set -e
 root=$1
@@ -48,16 +49,16 @@ for my $variant (qw(dracut_047 dracut_105/stateless dracut_105/statelite)) {
             symlink('usr/sbin', "$root/sbin") or die $!;
             symlink('usr/lib64', "$root/lib64") or die $!;
             make_path("$payload/etc/init.d", "$payload/etc/sysconfig/network-scripts", "$payload/var/lib/dhclient");
-            write_file("$payload/native-marker", "native payload\n");
-            write_file("$payload/etc/os-release", "ID=openEuler\nVERSION_ID=24.03\n");
+            write_binary("$payload/native-marker", "native payload\n");
+            write_binary("$payload/etc/os-release", "ID=openEuler\nVERSION_ID=24.03\n");
             if ($localdisk ne 'missing') {
-                write_file("$payload/etc/init.d/localdisk", "#!/bin/sh\ntouch /sysroot/localdisk-ran\n");
+                write_binary("$payload/etc/init.d/localdisk", "#!/bin/sh\ntouch /sysroot/localdisk-ran\n");
                 chmod($localdisk eq 'executable' ? 0755 : 0644, "$payload/etc/init.d/localdisk");
             }
-            write_file("$root/etc/resolv.conf", "nameserver 192.0.2.1\n");
-            write_file("$root/tmp/dhclient.eth0.lease", "fixture lease\n");
-            write_file("$root/var/lib/NetworkManager/$_-0f3e5a12-eth0.lease", "$_ lease\n") for qw(dhclient internal);
-            write_file("$root/lib/dracut-lib.sh", <<'SH');
+            write_binary("$root/etc/resolv.conf", "nameserver 192.0.2.1\n");
+            write_binary("$root/tmp/dhclient.eth0.lease", "fixture lease\n");
+            write_binary("$root/var/lib/NetworkManager/$_-0f3e5a12-eth0.lease", "$_ lease\n") for qw(dhclient internal);
+            write_binary("$root/lib/dracut-lib.sh", <<'SH');
 hookdir=/hooks
 logger() { :; }
 getarg()
@@ -89,9 +90,7 @@ SH
             }
             waitpid($pid, 0);
             my $rc = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
-            open(my $file, '<', "$case/output") or die $!;
-            my $output = do { local $/; <$file> };
-            close($file);
+            my $output = read_binary("$case/output");
             my $label = "$variant $method $localdisk localdisk";
             is($rc, 0, "$label completes the production xcatroot script") or diag($output);
             like($output, qr/^PAYLOAD=native payload$/m, "$label extracts the actual image payload");
@@ -110,10 +109,3 @@ SH
     }
 }
 done_testing();
-
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $file, '>', $path) or die "write $path: $!";
-    print {$file} $contents or die $!;
-    close($file) or die $!;
-}

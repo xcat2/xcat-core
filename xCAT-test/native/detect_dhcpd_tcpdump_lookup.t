@@ -5,6 +5,7 @@ use warnings;
 use Config;
 use File::Path qw(make_path);
 use File::Spec;
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use FindBin;
 use Test::More;
@@ -47,9 +48,7 @@ delete @ENV{qw(PERL5LIB PERLLIB PERL5OPT)};
 sub write_script {
     my ( $path, $body, $interpreter ) = @_;
     $interpreter ||= '/bin/sh';
-    open( my $fh, '>', $path ) or die "$path: $!";
-    print {$fh} "#!$interpreter\n$body";
-    close($fh);
+    write_binary($path, "#!$interpreter\n$body");
     chmod 0755, $path;
 }
 
@@ -87,10 +86,7 @@ sub run_with_path {
 }
 
 sub recorded_invocation {
-    open( my $fh, '<', $marker ) or return;
-    chomp( my @lines = <$fh> );
-    close($fh);
-    return @lines;
+    return slurp_lines($marker);
 }
 
 my $plain = fixture_bin();
@@ -203,9 +199,9 @@ sub run_isolated_status {
 
 sub slurp_lines {
     my ($path) = @_;
-    open( my $fh, '<', $path ) or return;
-    chomp( my @lines = <$fh> );
-    close($fh);
+    my $contents = eval { read_binary($path) };
+    return if $@;
+    chomp( my @lines = split /(?<=\n)/, $contents );
     return @lines;
 }
 

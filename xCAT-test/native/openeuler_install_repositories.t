@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurper qw(read_binary write_binary);
 use Digest::SHA qw(sha256_hex);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
@@ -30,11 +31,11 @@ my $error = xCAT::Template->subvars(repo_path('xCAT-server/share/xcat/install/sc
     "$tmp/post.rhels8", 'node', undef, '/install/media', 'openeuler', undef,
     {xcatmaster => '192.0.2.1'});
 die "Cannot render post.rhels8: $error" if $error;
-write_file("$tmp/bin/nmcli", "#!/bin/sh\nexit 0\n");
+write_binary("$tmp/bin/nmcli", "#!/bin/sh\nexit 0\n");
 chmod 0755, "$tmp/bin/nmcli" or die $!;
 is(system('/bin/bash', '-n', "$tmp/post.rhels8"), 0,
     'the complete rendered post owner has valid Bash syntax');
-write_file("$tmp/namespace", <<'SH');
+write_binary("$tmp/namespace", <<'SH');
 #!/bin/bash
 set -eu
 [ "$(readlink /proc/self/ns/mnt)" != "$XCAT_POST_HOST_MOUNT" ]
@@ -51,7 +52,7 @@ my $native = "[OS]\nenabled=1\ngpgcheck=1\n[update]\n \tenabled = 1\n[disabled]\
 my $native_expected = "[OS]\nenabled=0\ngpgcheck=1\n[update]\nenabled=0\n[disabled]\nenabled=0\n#enabled=1\n";
 my $host_mount = readlink('/proc/self/ns/mnt');
 my $host_net = readlink('/proc/self/ns/net');
-my %host_repos = map { $_ => sha256_hex(read_file($_)) }
+my %host_repos = map { $_ => sha256_hex(read_binary($_)) }
     glob('/etc/yum.repos.d/*.repo');
 
 for my $case (
@@ -65,10 +66,10 @@ for my $case (
     make_path($repos);
     copy('/etc/ld.so.cache', "$fixture/etc/ld.so.cache") or die $!
         if -f '/etc/ld.so.cache';
-    write_file("$repos/$_", $enabled) for @legacy;
-    write_file("$repos/openEuler.repo", $input) if defined $input;
+    write_binary("$repos/$_", $enabled) for @legacy;
+    write_binary("$repos/openEuler.repo", $input) if defined $input;
     my @preserved = qw(local-repository-0.repo xCAT-custom.repo administrator.repo);
-    write_file("$repos/$_", $enabled) for @preserved;
+    write_binary("$repos/$_", $enabled) for @preserved;
     subtest $name => sub {
         local %ENV = (%ENV, XCATDEBUGMODE => '0', MASTER_IP => '192.0.2.1',
             XCAT_POST_REPOS_FIXTURE => $fixture, XCAT_POST_REPOS_OWNER => "$tmp/post.rhels8",
@@ -84,36 +85,20 @@ for my $case (
             }
             waitpid($pid, 0);
             is($?, 0, "pass $pass runs the whole post owner in isolation")
-                or diag(read_file("$fixture/stderr-$pass.log"));
+                or diag(read_binary("$fixture/stderr-$pass.log"));
             if (defined $expected) {
-                is(read_file("$repos/openEuler.repo"), $expected,
+                is(read_binary("$repos/openEuler.repo"), $expected,
                     "pass $pass disables only active native repository assignments");
             } else {
                 ok(!-e "$repos/openEuler.repo", "pass $pass does not create an absent vendor file");
             }
-            is(read_file("$repos/$_"), $disabled, "pass $pass preserves policy for $_") for @legacy;
-            is(read_file("$repos/$_"), $enabled, "pass $pass leaves $_ unchanged") for @preserved;
+            is(read_binary("$repos/$_"), $disabled, "pass $pass preserves policy for $_") for @legacy;
+            is(read_binary("$repos/$_"), $enabled, "pass $pass leaves $_ unchanged") for @preserved;
         }
     };
 }
-is_deeply({map { $_ => sha256_hex(read_file($_)) } glob('/etc/yum.repos.d/*.repo')},
+is_deeply({map { $_ => sha256_hex(read_binary($_)) } glob('/etc/yum.repos.d/*.repo')},
     \%host_repos, 'host repository files remain unchanged');
 is(readlink('/proc/self/ns/mnt'), $host_mount, 'host mount namespace remains unchanged');
 is(readlink('/proc/self/ns/net'), $host_net, 'host network namespace remains unchanged');
 done_testing();
-
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $fh, '>:raw', $path) or die "$path: $!";
-    print {$fh} $contents;
-    close($fh) or die "$path: $!";
-}
-
-sub read_file {
-    my ($path) = @_;
-    open(my $fh, '<:raw', $path) or die "$path: $!";
-    local $/;
-    my $contents = <$fh>;
-    close($fh) or die "$path: $!";
-    return $contents // '';
-}
