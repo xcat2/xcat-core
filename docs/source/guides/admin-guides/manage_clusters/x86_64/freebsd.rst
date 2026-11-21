@@ -1427,10 +1427,54 @@ Each DHCP family requires exactly one matching reserved address in ``nicips``.
 The adapter verifies the acquired address against that reservation. DHCPv4 also
 checks the network prefix. A wrong or missing lease prevents completion.
 Configure reservations on the DHCP server before applying the node policy.
-DHCPv6 uses DUID-UUID from the node's hardware UUID, matching the xCAT DHCP
-backends. Keep ``vpd.uuid`` consistent with that UUID and retain it across OS
-replacement. A missing or invalid hardware UUID causes rejection. IPv4
-provisioning remains unchanged.
+DHCPv6 uses DUID-UUID from the node's hardware UUID in firmware byte order:
+the first three UUID fields are byte-swapped. This matches the default
+``mac.duid=firmware`` reservation in xCAT 2.20 on ISC and Kea. Store the UUID
+that FreeBSD reports in ``vpd.uuid`` without swapping it, and retain it across
+OS replacement. A missing or invalid hardware UUID causes rejection.
+
+Leave ``mac.duid`` unset or set it to ``firmware`` for these nodes. A literal
+DUID must match the client's firmware-order DUID. The managed FreeBSD client
+does not follow server overrides such as ``canonical`` or ``ll``; a mismatched
+reservation causes the acquired-address check to fail.
+
+Before updating a node that used the earlier canonical-order client, release
+its old lease. Kea can otherwise retain the reserved address for the old DUID
+and refuse the updated client or give it a pool address. Use an IPv4 or static
+IPv6 management path that does not depend on the lease being released. Keep
+console access available.
+
+On the node, record the UUID that FreeBSD reports::
+
+    kenv -q smbios.system.uuid
+
+Compare it with ``lsdef node01 -i uuid`` on the management node. Older node
+definitions can contain the byte-swapped UUID. Use the FreeBSD value when
+updating the reservation below.
+
+While the old client and reservation are still active, release each managed
+DHCPv6 interface. For example, on the node::
+
+    /usr/local/sbin/dhcpcd -6 -f /var/db/xcat/network/dhcp6.conf -k vtnet1
+
+Wait for ``/var/db/xcat/network/dhcp6/vtnet1.lease`` to disappear and confirm
+that the server released the old lease before continuing. Repeat for each
+managed DHCPv6 interface. Then stop the managed client and remove each
+interface's cached lease so that the new identity requests a fresh lease::
+
+    service xcat_dhcp6 forcestop
+    rm -f /var/db/dhcpcd/vtnet1.lease6
+
+On the management node, set the UUID recorded above, regenerate the
+reservation, and apply the updated client::
+
+    chdef node01 uuid=01234567-89ab-cdef-0123-456789abcdef duid=firmware
+    makedhcp node01
+    updatenode node01 -P confignetwork
+
+Replace the example UUID and interface name with the node's values.
+DHCPv4 IPoIB retains its existing canonical UUID identity. IPv4 provisioning
+remains unchanged.
 
 For both DHCP families on the example data interface, set::
 
@@ -1692,7 +1736,7 @@ reservation.
 IPoIB DHCP uses the client identifier required by :rfc:`4390`. ``makedhcp``
 generates DHCP option 61 reservations for the selected physical IB ports,
 P_Key interfaces and failover LAGGs. The identifier contains ``ff``, a
-four-byte IAID, and DUID-UUID.
+four-byte IAID, and DUID-UUID in canonical UUID byte order.
 The IAID is the POSIX ``cksum`` of the native interface name without a newline.
 Keep that name and the hardware UUID stable across OS replacement.
 
