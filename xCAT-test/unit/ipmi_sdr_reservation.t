@@ -5,11 +5,12 @@ use warnings;
 ## no critic (Modules::RequireFilenameMatchesPackage, TestingAndDebugging::ProhibitNoStrict, TestingAndDebugging::ProhibitNoWarnings)
 no warnings qw(once redefine);
 
-use File::Spec;
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use Storable qw(nstore_fd);
 use Test::More;
+use XCAT::Test::IPMISDR qw(load_ipmi_plugin new_session);
 
 # Get SDR Repository Info can leave the reservation bit clear on a BMC that grants Reserve
 # SDR Repository. The SDR read must still ask for the reservation and use it. The record count
@@ -17,86 +18,20 @@ use Test::More;
 # named with the record count of an earlier release must be read again.
 
 BEGIN {
-    for my $module (qw(
-      xCAT::GlobalDef xCAT_monitoring::monitorctrl xCAT::IPMI
-      xCAT::BMCUtils xCAT::PasswordUtils xCAT::Utils xCAT::TableUtils
-      xCAT::IMMUtils xCAT::ServiceNodeUtils xCAT::NetworkUtils xCAT::Usage
-      xCAT::data::ibmhwtypes xCAT::data::ibmleds
-      xCAT::data::ipmigenericevents xCAT::data::ipmisensorevents
-      IBM::EnergyManager
-    )) {
-        (my $file = $module) =~ s{::}{/}g;
-        $INC{"$file.pm"} = __FILE__;
-        no strict 'refs';
-        *{"${module}::import"} = sub { };
-    }
-
-    package xCAT::SvrUtils;
-    our @messages;
-    sub import { }
-    sub sendmsg { push @messages, { text => $_[0], node => $_[2] }; }
-    $INC{'xCAT/SvrUtils.pm'} = __FILE__;
-
-    package xCAT::SPD;
-    sub import {
-        my $caller = caller;
-        no strict 'refs';
-        *{"${caller}::decode_spd"} = sub { return; };
-    }
-    $INC{'xCAT/SPD.pm'} = __FILE__;
-
-    package File::Path;
-    sub import {
-        my $caller = caller;
-        no strict 'refs';
-        *{"${caller}::mkpath"} = sub { return; };
-    }
-    $INC{'File/Path.pm'} = __FILE__;
-
-    package Thread;
-    sub import {
-        my $caller = caller;
-        no strict 'refs';
-        *{"${caller}::yield"} = sub { return; };
-    }
-    $INC{'Thread.pm'} = __FILE__;
-
-    package LWP;
-    our $VERSION = 5.64;
-    sub import { }
-    $INC{'LWP.pm'} = __FILE__;
-
-    package HTTP::Request::Common;
-    sub import {
-        my $caller = caller;
-        no strict 'refs';
-        *{"${caller}::GET"}  = sub { return; };
-        *{"${caller}::POST"} = sub { return; };
-    }
-    $INC{'HTTP/Request/Common.pm'} = __FILE__;
-
-    package main;
-    *CORE::GLOBAL::chmod = sub (@) { return 1; };
-    # storsdrcache creates the cache directory of the management node.
-    *CORE::GLOBAL::system = sub { return 0; };
+    # Only cache-directory creation is outside this fixture's filesystem.
+    *CORE::GLOBAL::system = sub {
+        die "Unexpected SDR command: @_" unless @_ == 1 && $_[0] eq 'mkdir -p /var/cache/xcat';
+        return 0;
+    };
 }
 
-package FakeSession;
-sub new { return bless { calls => [] }, shift; }
-sub subcmd { my ($self, %args) = @_; push @{ $self->{calls} }, \%args; return; }
-
-package main;
-
-my $repo_root = File::Spec->catdir($FindBin::Bin, '..', '..');
-$ENV{XCATROOT} = File::Spec->catdir($repo_root, 'xCAT-server');
-my $plugin = File::Spec->catfile($repo_root, qw(xCAT-server lib xcat plugins ipmi.pm));
-do $plugin or die $@ || "Unable to load $plugin: $!";
+load_ipmi_plugin();
 
 # A device identity that no SDR cache file holds, so the SDR is read from the BMC.
 sub new_sessdata {
     return {
         node          => 'node01',
-        ipmisession   => FakeSession->new(),
+        ipmisession   => new_session(),
         mfg_id        => 0xfffe,
         prod_id       => 0xfffe,
         device_id     => 0xfe,
