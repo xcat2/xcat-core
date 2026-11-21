@@ -4,7 +4,7 @@ load 'helpers/genesis_sandbox'
 
 setup_doxcat()
 {
-    setup_genesis_sandbox doxcat
+    setup_genesis_sandbox doxcat || return
     ib_address=80:00:00:48:fe:80:00:00:00:00:00:00:00:02:00:bb:cc:dd:ee:ff
     local utility fips library
     fips=$(repo_path xCAT-genesis-scripts/usr/lib/xcat/fips.sh)
@@ -13,13 +13,8 @@ setup_doxcat()
     # chmod is in this list because doxcat runs it: the sandbox has no /usr/bin on PATH, so a
     # command that is missing here is a command that silently does nothing under test. doxcat's
     # chmod of the sshd privilege separation directory was not exercised until it was added.
-    for utility in bash sh cat cp awk grep sed sort tr tail rm wc cut head uname \
-        timeout env ls mkdir touch readlink basename sleep chmod; do
-        cp -L "$(PATH=/usr/bin:/bin type -P "$utility")" "$fixture/bin/$utility"
-    done
-    if [ -x /usr/bin/coreutils ]; then
-        cp -L /usr/bin/coreutils "$fixture/bin/coreutils"
-    fi
+    stage_sandbox_tools bash sh cat cp awk grep sed sort tr tail rm wc cut head uname \
+        timeout env ls mkdir touch readlink basename sleep chmod || return
     mv "$fixture/bin/sleep" "$fixture/real/sleep"
     printf '#!/bin/sh\nexit 0\n' >"$fixture/bin/quiet"
     for utility in sleep rpcbind rpc.statd ssh-keygen lldpad chronyd; do
@@ -96,19 +91,10 @@ SH
     : >"$fixture/modules"
     : >"$fixture/dhcp"
     printf '0\n' >"$fixture/fips_enabled"
-    sandbox+=(--ro-bind "$fixture/bin" /usr/bin
-        --tmpfs /proc/sys
+    restrict_sandbox_tools
+    sandbox+=(--tmpfs /proc/sys
         --ro-bind "$fixture/fips_enabled" /proc/sys/crypto/fips_enabled
         --tmpfs /usr/lib)
-    if [ ! -L /usr/sbin ]; then
-        sandbox+=(--ro-bind "$fixture/bin" /usr/sbin)
-    fi
-    if [ ! -L /bin ]; then
-        sandbox+=(--ro-bind "$fixture/bin" /bin)
-    fi
-    if [ ! -L /sbin ]; then
-        sandbox+=(--ro-bind "$fixture/bin" /sbin)
-    fi
     for library in /usr/lib/*; do
         [ "${library##*/}" = xcat ] && continue
         sandbox+=(--ro-bind "$library" "$library")
