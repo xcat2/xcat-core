@@ -11,6 +11,7 @@ package xCAT_plugin::getpostscript;
 use xCAT::Utils;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
+use xCAT::DiscoveryUtils;
 1;
 
 #-------------------------------------------------------
@@ -59,22 +60,22 @@ sub process_request
     my $client;
     if ($::XCATSITEVALS{nodeauthentication}) { #if requiring node authentication, this request will have a certificate associated with it, use it instead of name resolution
         unless (ref $request->{username}) { return; } #TODO: log an attempt without credentials?
-        $client = $request->{username}->[0];
-    } else {
-        unless ($request->{'_xcat_clienthost'}->[0]) {
-
-            #ERROR? malformed request
-            xCAT::MsgUtils->trace(0, 'E', "Received malformed getpostscript requesting, ignore it.");
+        ($client) = noderange($request->{username}->[0]);
+        unless ($client) {
+            xCAT::MsgUtils->trace(0, "E", "Received getpostscript from $request->{username}->[0], which couldn't be correlated to a node (domain mismatch?)");
             return;
         }
-        $client = $request->{'_xcat_clienthost'}->[0];
-    }
-
-    my $origclient = $client;
-    if ($client) { ($client) = noderange($client) }
-    unless ($client) {    #Not able to do identify the host in question
-        xCAT::MsgUtils->trace(0, "E", "Received getpostscript from $origclient, which couldn't be correlated to a node (domain mismatch?)");
-        return;
+    } else {
+        my @candidates = xCAT::DiscoveryUtils::request_client_names($request);
+        unless (@candidates) {
+            xCAT::MsgUtils->trace(0, 'E', "Received getpostscript from a client this request does not identify: it carries no peer name and no client certificate name. Ignoring it.");
+            return;
+        }
+        $client = xCAT::DiscoveryUtils::request_client_node($request, \&noderange);
+        unless ($client) {    #Not able to do identify the host in question
+            xCAT::MsgUtils->trace(0, "E", "Received getpostscript from " . join(', ', @candidates) . ", none of which could be correlated to a node (domain mismatch?)");
+            return;
+        }
     }
     my $state;
     if ($request->{scripttype}) { $state = $request->{scripttype}->[0]; }

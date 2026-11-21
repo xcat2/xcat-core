@@ -23,6 +23,9 @@ use Sys::Hostname;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
+# IO::Socket::INET6 is optional on an older management node. Without it a
+# callback to an IPv6 node cannot be opened at all.
+our $inet6support = eval { require IO::Socket::INET6; 1; };
 my $core_socket_resolver = defined(&Socket::getaddrinfo)
   && defined(&Socket::getnameinfo)
   && defined(&Socket::inet_pton)
@@ -554,6 +557,34 @@ sub getipaddr
 sub clearcache
 {
     undef %::hostiphash;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  unmap_v4mapped_addr
+    Reduce a packed IPv4-mapped IPv6 address to its 4 IPv4 bytes, so a caller
+    can ask gethostbyaddr for AF_INET.
+    Arguments:
+       a packed address, as IO::Socket peeraddr returns
+    Returns:
+       the 4-byte IPv4 address when the argument is a 16-byte ::ffff:a.b.c.d,
+       otherwise the argument unchanged
+    Globals:
+    Error:
+        none
+    Example:
+        my $addr = xCAT::NetworkUtils::unmap_v4mapped_addr($conn->peeraddr);
+    Comments:
+        A real IPv6 address keeps all 16 bytes. Truncating one would offer
+        gethostbyaddr its last 4 bytes as an IPv4 address.
+=cut
+
+#-------------------------------------------------------------------------------
+sub unmap_v4mapped_addr {
+    my ($addr) = @_;
+    return $addr unless (defined($addr) and length($addr) == 16);
+    return $addr unless (substr($addr, 0, 12) eq ("\0" x 10) . "\xff\xff");
+    return substr($addr, 12, 4);
 }
 
 #-------------------------------------------------------------------------------
@@ -1090,6 +1121,8 @@ sub my_hexnets
     foreach (@nets)
     {
         my @elems = split /\s+/;
+        # A hexnet is a PXELINUX file name built from a hexadecimal IPv4 prefix. DHCPv6
+        # has no such file name, so inet6 is left out rather than given one.
         unless (/^\s*inet\s/)
         {
             next;
@@ -1277,7 +1310,9 @@ sub my_nets
         {
             if ($elems[1] eq 'inet6')
             {
-                next; #Linux IPv6 TODO, do not return IPv6 networks on Linux for now
+                # my_nets stays IPv4-only on Linux. lsslp.pm and PPCdb.pm read its keys
+                # with dotted-quad arithmetic. The IPv6 networks are my_nets6.
+                next;
             }
             ($curnet, $maskbits) = split /\//, $elems[2];
         }
@@ -1322,6 +1357,93 @@ sub my_nets
             #$rethash->{$n} = $if;
             _record_network_address(\$rethash, $n, $master, $returnall);
         }
+    }
+    return $rethash;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   ipv6_network_address
+
+    Description:
+        Masks an IPv6 address down to its network prefix.
+
+    Arguments:
+        An IPv6 address literal and a prefix length (0-128).
+    Returns:
+        The network address, or undef when either argument is malformed.
+
+    Example:
+        xCAT::NetworkUtils->ipv6_network_address('2001:db8:177::1', 64);
+        # 2001:db8:177::
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ipv6_network_address
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    my $prefix = shift;
+
+    return unless defined($address) && defined($prefix);
+    return unless $prefix =~ /^\d+$/ && $prefix >= 0 && $prefix <= 128;
+    $address =~ s/\%.*//;    # a scoped literal, as in fe80::1%eth0
+
+    my $packed = _pack_ip_address($address, 6);
+    return unless defined($packed) && length($packed) == 16;
+
+    my $whole_bytes    = int($prefix / 8);
+    my $remaining_bits = $prefix % 8;
+    my $masked = substr($packed, 0, $whole_bytes);
+    if ($remaining_bits)
+    {
+        my $mask = (0xff << (8 - $remaining_bits)) & 0xff;
+        $masked .= chr(ord(substr($packed, $whole_bytes, 1)) & $mask);
+    }
+    $masked .= "\0" x (16 - length($masked));
+
+    return _unpack_ip_address($masked, 6);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   my_nets6
+
+    Description:
+        The IPv6 networks this host has a global address on.
+
+    Arguments:
+        Optional: 'all' returns every address found for each network in order.
+        The default behavior returns the last address found.
+    Returns:
+        A hash ref keyed <network>/<prefixlen>, as my_nets keys its IPv4
+        entries: { '2001:db8:177::/64' => '2001:db8:177::1' }.
+
+    Comments:
+        my_nets stays IPv4-only on Linux. lsslp.pm and PPCdb.pm read its keys
+        with dotted-quad arithmetic, so an IPv6 key there is a wrong answer
+        rather than a new one. A caller that wants both families asks for both.
+        Link-local addresses are left out: _local_ip_prefixes reads global
+        scope only, and a provisioning network is not link-local.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_nets6
+{
+    my $returnall = @_ && $_[-1] eq 'all';
+    my $rethash;
+
+    foreach my $entry (_local_ip_prefixes(6))
+    {
+        my ($address, $prefix) = @{$entry};
+        my $net = ipv6_network_address($address, $prefix);
+        next unless defined($net);
+        _record_network_address(\$rethash, "$net/$prefix", $address, $returnall);
     }
     return $rethash;
 }
@@ -1624,6 +1746,68 @@ sub getIPv6PrefixLength
 =cut
 
 #-------------------------------------------------------------------------------
+
+#-------------------------------------------------------
+
+=head3    getIPv6ReverseZones
+
+    Description: The reverse zones that cover an IPv6 network.
+
+    Arguments:
+        network: the network, with or without a prefix length
+        mask:    the prefix length, used when the network carries none
+
+    Returns:
+        The nibble-aligned zones that cover the network, as a list. A reverse zone is delegated
+        on a nibble, so a prefix that is not a multiple of 4 is covered by several zones of the
+        next nibble: a /62 by four /64 zones. This is what the IPv4 side does with a /22.
+        An empty list when the network does not parse.
+
+    Example:
+        my @zones = xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/62');
+
+=cut
+
+#-------------------------------------------------------
+sub getIPv6ReverseZones
+{
+    my $network = shift;
+    if (defined($network) && $network eq __PACKAGE__)
+    {
+        $network = shift;
+    }
+    my $mask = shift;
+
+    my $prefix = xCAT::NetworkUtils->getIPv6PrefixLength($network, $mask);
+    return () unless defined($prefix);
+
+    # The address is taken without the prefix, because getIPv6PrefixLength prefers an embedded
+    # one and a rounded value passed beside it would be ignored.
+    my $address = $network;
+    $address =~ s{/.*$}{};
+    my $packed = _pack_ip_address($address, 6);
+    return () unless defined($packed);
+    return ('ip6.arpa.') if $prefix == 0;
+
+    my $remainder = $prefix % 4;
+    my $zonebits  = $remainder ? $prefix + ( 4 - $remainder ) : $prefix;
+    return () if $zonebits > 128;
+
+    my $nibbles = $zonebits / 4;
+    my $hex     = substr( unpack('H*', $packed), 0, $nibbles );
+    my $count   = $remainder ? ( 1 << ( 4 - $remainder ) ) : 1;
+    my $base    = hex( substr( $hex, $nibbles - 1, 1 ) );
+    my $head    = substr( $hex, 0, $nibbles - 1 );
+
+    my @zones;
+    foreach my $step ( 0 .. $count - 1 ) {
+        my $last = $base + $step;
+        last if $last > 0xf;
+        my $zone = $head . sprintf( '%x', $last );
+        push @zones, join( '.', reverse( split( //, $zone ) ) ) . '.ip6.arpa.';
+    }
+    return @zones;
+}
 
 sub getIPv6ReverseZone
 {
@@ -2930,6 +3114,12 @@ sub format_uri_host
     }
 
     return unless defined($host) && length($host);
+
+    # '!myipfn!' is the facing-address placeholder, not a host. pxe.pm, grub2.pm and
+    # petitboot.pm replace it after the command line is built, and
+    # substitute_facing_address brackets it there when the address is IPv6.
+    return $host if $host eq '!myipfn!';
+
     if ($host =~ /^\[([^\]]+)\]$/)
     {
         my $address = $1;
@@ -3844,6 +4034,204 @@ sub get_all_nicips {
 
 #-------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
+
+=head3 dracut_static_ip6
+
+    Descriptions: The dracut ip= parameter that configures an interface statically
+                  for IPv6.
+
+                  DHCPv6 assigns one address, with a prefix length of 128 and no
+                  route, and an xCAT provision network sends no router
+                  advertisement. A node configured with either6 therefore has an
+                  address and cannot reach its server: the dracut hook reports
+                  "Network is unreachable" for the root image. The prefix length is
+                  what gives the node its on-link route.
+
+    Arguments:    $address the IPv6 address of the node
+                  $gateway the IPv6 gateway, which may be empty
+                  $prefix the prefix length
+                  $nicname the interface name, which may be empty
+    Returns:      the ip= parameter, or undef when there is nothing to configure
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub dracut_static_ip6 {
+    my ($address, $gateway, $prefix, $nicname) = @_;
+
+    return unless defined($address) && length($address);
+    return unless defined($prefix) && $prefix =~ /\A\d+\z/ && $prefix <= 128;
+
+    # dracut reads a literal only in brackets, and takes the fields as
+    # client:peer:gateway:prefix:hostname:interface:autoconf.
+    my $gw = (defined($gateway) && length($gateway)) ? "[$gateway]" : '';
+    my $nic = defined($nicname) ? $nicname : '';
+    return "ip=[$address]::$gw:${prefix}::${nic}:none";
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 ipxe_script_server
+
+    Descriptions: The server an iPXE boot script names for a node.
+
+                  An iPXE script normally carries ${next-server}, which iPXE
+                  fills from the DHCP offer. That field belongs to DHCPv4, so an
+                  IPv6 node resolves it to nothing and every URL in the script
+                  loses its host. Such a node carries the address instead,
+                  bracketed, because the script puts it in a URL.
+
+    Arguments:    $family the address family of the node, 4 or 6
+                  $facing the facing address of the server in that family
+    Returns:      the text to put in the script, or undef when an IPv6 node has
+                  no usable facing address
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ipxe_script_server {
+    my ($family, $facing) = @_;
+
+    return '${next-server}' unless defined($family) && $family == 6;
+    return unless defined($facing) && length($facing);
+    return xCAT::NetworkUtils->format_uri_host($facing);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 ipxe_script_server_for_node
+
+    Descriptions: The server that the iPXE boot script of one node names, or nothing and the
+                  reason there is none.
+
+                  xnba.pm kept ${next-server} whenever the IPv6 lookup did not answer. An IPv6
+                  client resolves that DHCPv4 variable to the empty string, so every URL in the
+                  script loses its host and nodeset still reports success. There is no value
+                  that works for such a node, so the caller is given a reason instead.
+
+    Arguments: $node
+    Returns: ($server, undef), or (undef, $reason)
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub ipxe_script_server_for_node {
+    my ($class, $node) = @_;
+
+    my $family = $class->node_address_family($node) || 4;
+    return ('${next-server}', undef) unless $family == 6;
+
+    # my_ip_facing resolves with inet_aton and reports an IPv6-only node unresolvable, so the
+    # lookup has to name the family.
+    my @facing  = $class->my_ip_facing_family($node, 6);
+    my $facing  = ( @facing && !$facing[0] ) ? $facing[1] : undef;
+    my $server  = ipxe_script_server(6, $facing);
+    return ($server, undef) if defined $server;
+
+    return (undef,
+          "$node provisions over IPv6 and no IPv6 address of this server faces it, so every URL"
+        . " in its boot script would carry no host. Give the provisioning interface an address"
+        . " in the IPv6 network of $node.");
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 radvd_config_is_xcat
+
+    Descriptions: Says whether a radvd configuration is one that radvd_config
+                  wrote. makedhcp withdraws only such a configuration, because
+                  radvd can also serve networks that xCAT does not manage.
+    Arguments:    $text the content of the configuration file, or undef
+    Returns:      1 when xCAT wrote it, 0 when it did not
+
+=cut
+
+#-------------------------------------------------------------------------------
+our $RADVD_MARKER = '# Written by xCAT makedhcp. makedhcp replaces or removes this file.';
+
+sub radvd_config_is_xcat {
+    my ($text) = @_;
+
+    return 0 unless defined($text);
+    return index( $text, $RADVD_MARKER . "\n" ) == 0 ? 1 : 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 radvd_config
+
+    Descriptions: The radvd configuration for the IPv6 networks xCAT serves.
+
+                  makedhcp writes the DHCPv6 reservations and nothing announces
+                  the prefix or the route. A client that follows RFC 4861 sends a
+                  router solicitation and uses DHCPv6 only when an advertisement
+                  sets the managed flag, so iPXE reports "No configuration
+                  methods succeeded" and never solicits. A client that does
+                  solicit gets one address with a prefix length of 128 and no
+                  route, because the prefix and the route come from the
+                  advertisement.
+
+                  The advertisement therefore sets the managed flag, and the
+                  prefix is on-link but not autonomous: the address still comes
+                  from DHCPv6, which holds the reservations.
+
+    Arguments:    $nets an array of hashes, each with an interface and a prefix
+    Returns:      the configuration text, or undef when there is no IPv6 network
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub radvd_config {
+    my ($nets) = @_;
+
+    return unless ref($nets) eq 'ARRAY';
+    my %prefixes;
+    my %resolvers;
+    my @order;
+    foreach my $net (@$nets) {
+        next unless ref($net) eq 'HASH';
+        my $interface = $net->{interface};
+        my $prefix    = $net->{prefix};
+        next unless defined($interface) && length($interface);
+        next unless defined($prefix) && $prefix =~ m{\A[0-9a-fA-F:]+/\d+\z};
+        push @order, $interface unless $prefixes{$interface};
+        foreach my $resolver (split /\s*,\s*/, ($net->{rdnss} || '')) {
+            next unless $resolver =~ /:/;
+            next if grep { $_ eq $resolver } @{ $resolvers{$interface} || [] };
+            push @{ $resolvers{$interface} }, $resolver;
+        }
+        next if grep { $_ eq $prefix } @{ $prefixes{$interface} || [] };
+        push @{ $prefixes{$interface} }, $prefix;
+    }
+    return unless @order;
+
+    my $text = $RADVD_MARKER . "\n";
+    foreach my $interface (@order) {
+        $text .= "interface $interface\n{\n";
+        $text .= "    AdvSendAdvert on;\n";
+        $text .= "    AdvManagedFlag on;\n";
+        $text .= "    AdvOtherConfigFlag on;\n";
+        foreach my $prefix (@{ $prefixes{$interface} }) {
+            $text .= "    prefix $prefix\n    {\n";
+            $text .= "        AdvOnLink on;\n";
+            $text .= "        AdvAutonomous off;\n";
+            $text .= "    };\n";
+        }
+
+        # RFC 8106. dracut reads /run/net6-*.conf, which it fills from the advertisement as
+        # well as from DHCPv6, so an initrd that takes its address by router advertisement
+        # has no other source for a resolver. A client discards an RDNSS with no lifetime.
+        if (@{ $resolvers{$interface} || [] }) {
+            $text .= "    RDNSS " . join(' ', @{ $resolvers{$interface} }) . "\n    {\n";
+            $text .= "        AdvRDNSSLifetime 1800;\n";
+            $text .= "    };\n";
+        }
+        $text .= "};\n";
+    }
+    return $text;
+}
+
 sub gen_net_boot_params
 {
     my $class      = shift;
@@ -3882,10 +4270,13 @@ sub gen_net_boot_params
         $net_params->{mac}     = $mac;
     }
 
-    # if nicname is set and mac.mac is NOT set to <mac address>, use nicname in the boot parameters
+    # ip6 is the dracut spelling for an IPv6-only node. dracut configures the interface it
+    # needs with DHCPv4 when the command line carries no ip= at all, so such a node gets no
+    # address. either6 asks for DHCPv6 and falls back to router advertisement.
     if ($nicname && !defined($net_params->{setmac})) {
         $net_params->{ksdevice}  = "ksdevice=$nicname";
         $net_params->{ip}        = "ip=$nicname:dhcp";
+        $net_params->{ip6}       = "ip=$nicname:either6";
         $net_params->{netdev}    = "netdev=$nicname";
         $net_params->{netdevice} = "netdevice=$nicname";
         $net_params->{bootdev}   = "bootdev=$nicname";
@@ -3893,10 +4284,190 @@ sub gen_net_boot_params
         $net_params->{ksdevice}  = "ksdevice=$mac";
         $net_params->{BOOTIF}    = "BOOTIF=$mac";
         $net_params->{ip}        = "ip=dhcp";
+        $net_params->{ip6}       = "ip=either6";
         $net_params->{netdevice} = "netdevice=$mac";
     }
 
     return $net_params;
+}
+
+#-------------------------------------------------------------------------------
+
+# A link-layer address, as both tools print it: ethernet is six bytes, and
+# InfiniBand is twenty.
+our $MAC_ADDRESS_PATTERN = qr/[0-9a-fA-F]{1,2}(?::[0-9a-fA-F]{1,2}){5,19}/;
+
+=head3   mac_from_neighbour_table
+
+    Description:
+        The link-layer address a neighbour table holds for one address.
+
+    Arguments:
+        The text of the table, and the address to look up.
+    Returns:
+        The address in lower case, or undef when the table holds none.
+
+    Comments:
+        Three tools write three formats, and this sub reads all three:
+            arp -n            192.0.2.10 ether 52:54:00:aa:bb:cc C eth0
+            ip neigh show     192.0.2.10 dev eth0 lladdr 52:54:00:aa:bb:cc REACHABLE
+            ip -6 neigh show  2001:db8::2 dev eth0 lladdr 52:54:00:aa:bb:cc router REACHABLE
+        The address is compared after both sides are normalized, because
+        2001:db8::2 and 2001:0db8:0:0:0:0:0:2 are one address written two ways.
+        The callers used to interpolate the address into a regular expression,
+        where every dot matched any character.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub mac_from_neighbour_table
+{
+    my $text = shift;
+    if (defined($text) && $text eq __PACKAGE__)
+    {
+        $text = shift;
+    }
+    my $address = shift;
+
+    return unless defined($text) && defined($address);
+    my $wanted = _canonical_neighbour_address($address);
+    return unless defined($wanted);
+
+    foreach my $line (split(/\n/, $text))
+    {
+        next unless $line =~ /^\s*(\S+)\s+(\S.*)$/;
+        my ($entry, $rest) = ($1, $2);
+        my $found = _canonical_neighbour_address($entry);
+        next unless defined($found) && $found eq $wanted;
+
+        # ip(8) names the column; arp(8) puts it third, and writes
+        # "(incomplete)" in place of the type and the address.
+        return lc($1) if $rest =~ /\blladdr\s+($MAC_ADDRESS_PATTERN)(?:\s|$)/o;
+        return lc($1) if $rest =~ /^\S+\s+($MAC_ADDRESS_PATTERN)(?:\s|$)/o;
+    }
+    return;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   neighbour_table_text
+
+    Description:
+        Reads the neighbour table that holds one address.
+
+    Arguments:
+        The address to look up.
+    Returns:
+        The text of the table, or undef when no tool is available.
+
+    Comments:
+        arp(8) prints the IPv4 table only, so an IPv6 address needs
+        "ip -6 neigh show". This keeps the IPv4 path on arp(8).
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub neighbour_table_text
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    return unless defined($address) && length($address);
+
+    if (xCAT::NetworkUtils->isIpv6addr($address))
+    {
+        my $ipcmd = _neighbour_command('ip');
+        return unless $ipcmd;
+        return scalar(`$ipcmd -6 neigh show`);
+    }
+    my $arpcmd = _neighbour_command('arp');
+    return unless $arpcmd;
+    return scalar(`$arpcmd -n`);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   mac_of_neighbour
+
+    Description:
+        The link-layer address of a neighbour, for either address family.
+
+    Arguments:
+        The address of the neighbour.
+    Returns:
+        The address in lower case, or undef.
+
+=cut
+
+#-------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
+
+=head3  ipxe_script_http_base
+
+      The http base a per-network iPXE boot script uses to reach the management node.
+
+    Arguments:
+      the address of the management node facing the network, its URI host form, the port suffix
+    Returns:
+      the base of every URL in the script, with no trailing slash
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub ipxe_script_http_base
+{
+    my ( $nicip, $uri_host, $portsuffix ) = @_;
+    if ( defined($nicip) && $nicip eq __PACKAGE__ )
+    {
+        ( $nicip, $uri_host, $portsuffix ) = ( $uri_host, $portsuffix, shift );
+    }
+    $portsuffix = '' unless defined($portsuffix);
+
+    # DHCPv6 has no next-server option. iPXE leaves ${next-server} empty on an IPv6 network, so
+    # every URL in the script loses its host and fetches nothing.
+    return 'http://' . '${next-server}' . $portsuffix
+      unless defined($nicip) && xCAT::NetworkUtils->isIpv6addr($nicip);
+    return 'http://' . ( defined($uri_host) ? $uri_host : '' ) . $portsuffix;
+}
+
+sub mac_of_neighbour
+{
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    return mac_from_neighbour_table(neighbour_table_text($address), $address);
+}
+
+sub _neighbour_command
+{
+    my $name = shift;
+    foreach my $dir ('/usr/sbin', '/sbin', '/usr/bin', '/bin')
+    {
+        return "$dir/$name" if -x "$dir/$name";
+    }
+    return;
+}
+
+# One address written two ways is one address. An IPv6 literal is compared
+# after it is packed; an IPv4 one has a single spelling already.
+sub _canonical_neighbour_address
+{
+    my $address = shift;
+    return unless defined($address) && length($address);
+    $address =~ s/\%.*//;    # a scoped literal, as in fe80::1%eth0
+
+    if (index($address, ':') >= 0)
+    {
+        my $packed = _pack_ip_address($address, 6);
+        return unless defined($packed) && length($packed) == 16;
+        return unpack('H*', $packed);
+    }
+    return unless xCAT::NetworkUtils->isIpaddr($address);
+    return $address;
 }
 
 #--------------------------------------------------------------------------------
@@ -3916,12 +4487,7 @@ sub send_tcp_msg {
     my $destport=shift;
     my $msg=shift;
 
-    my $sock = new IO::Socket::INET(
-                PeerAddr => $destip,
-                PeerPort => $destport,
-                Timeout  => '1',
-                Proto    => 'tcp'
-            );
+    my $sock = xCAT::NetworkUtils->open_tcp_socket($destip, $destport, 1);
     if ($sock) {
         print $sock $msg;
         close($sock);
@@ -3930,4 +4496,159 @@ sub send_tcp_msg {
         return 1;
     }
 }
+
+#--------------------------------------------------------------------------------
+=head3  open_tcp_socket
+      Opens a TCP connection to an address of either family.
+      Arguments:
+         $address : the destination address, IPv4 or IPv6
+         $port    : the destination TCP port
+         $timeout : the connect timeout in seconds, optional
+      Returns:
+         the socket, or undef with $! set.
+
+      IO::Socket::INET cannot reach an IPv6 address, so a node discovered over
+      IPv6 never received its restart message and timed out. IO::Socket::INET6
+      is optional on an older management node, so the IPv4 path is the
+      fallback.
+=cut
+#--------------------------------------------------------------------------------
+sub open_tcp_socket {
+    my $address = shift;
+    if (defined($address) && $address eq __PACKAGE__)
+    {
+        $address = shift;
+    }
+    my $port    = shift;
+    my $timeout = shift;
+
+    return unless defined($address) && length($address) && defined($port);
+    my %socket_args = (
+        PeerAddr => $address,
+        PeerPort => $port,
+        Proto    => 'tcp',
+    );
+    $socket_args{Timeout} = $timeout if defined($timeout);
+
+    if ($inet6support)
+    {
+        my $sock = IO::Socket::INET6->new(%socket_args);
+        return $sock if $sock;
+    }
+    return IO::Socket::INET->new(%socket_args);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 uri_authority
+
+    Format an address and port as a URI authority, for a kernel argument or a URL.
+
+    Arguments:
+        $address - an address, IPv4 or IPv6
+        $port    - the port
+    Returns:
+        "<address>:<port>", with the address bracketed when it is IPv6.
+
+    An IPv6 address contains colons, so an unbracketed "<v6>:<port>" cannot be
+    split on the colon. RFC 3986 brackets the host for exactly this reason.
+
+=cut
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+
+=head3 substitute_facing_address
+
+    Replaces every !myipfn! in a kernel command line with the facing address of
+    the management node.
+
+    Arguments:
+        $cmdline - the kernel command line
+        $address - the facing address, IPv4 or IPv6
+    Returns:
+        the command line, with the placeholder replaced.
+
+    A placeholder that a port or an NFS path follows is bracketed when the
+    address is IPv6, because neither "http://2001:db8::1:80/" nor
+    "root=nfs:2001:db8::1:/install" can be split at the right colon. Every other
+    placeholder takes the bare address: xcatd=!myipfn! names a host with no port,
+    and the postscripts read that value as it stands.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub substitute_facing_address {
+    my ($cmdline, $address) = @_;
+
+    return $cmdline unless defined($cmdline) && defined($address) && length($address);
+    if (index($address, ':') >= 0) {
+        # A port follows the placeholder, as in "http://!myipfn!:80/". Without the brackets
+        # the port cannot be told from the last group of the address.
+        $cmdline =~ s/!myipfn!(?=:\d)/[$address]/g;
+        # An NFS path follows it, as in "root=nfs:!myipfn!:/install". dracut reads the
+        # server up to the last colon, so an unbracketed address loses its last group.
+        $cmdline =~ s{!myipfn!(?=:/)}{[$address]}g;
+    }
+    $cmdline =~ s/!myipfn!/$address/g;
+    return $cmdline;
+}
+
+#-----------------------------------------------------------------------------
+
+sub uri_authority {
+    my ($address, $port) = @_;
+
+    return unless defined($address) && length($address);
+    return "[$address]:$port" if index($address, ':') >= 0;
+    return "$address:$port";
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 my_ip_facing_node
+
+    Descriptions:
+        The address of this management node that the node can reach, chosen in the family the
+        node provisions in.
+    Arguments:
+        $node - the node name
+    Returns:
+        ($error, $value) - the same pair my_ip_facing returns. $error is 0 and $value the
+        address on success, or 1 and the reason on failure.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub my_ip_facing_node
+{
+    my $node = shift;
+    if (defined($node) && $node eq __PACKAGE__)
+    {
+        $node = shift;
+    }
+
+    # my_ip_facing resolves the peer with OnlyV4, and an IPv6-only node shares the link, so that
+    # call returns the IPv4 address instead of failing. Genesis was then told to reach xcatd over
+    # a family the node has no address in.
+    return xCAT::NetworkUtils->node_is_ipv6_only($node)
+      ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+      : xCAT::NetworkUtils->my_ip_facing($node);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 xcatd_cmdline_address
+
+    The authority of the xcatd= kernel argument. See uri_authority.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub xcatd_cmdline_address {
+    my ($address, $port) = @_;
+
+    return uri_authority($address, $port);
+}
+
 1;

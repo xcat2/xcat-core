@@ -215,6 +215,8 @@ $xCAT::Table::networks = DDNSNetworksTable->new( \%provision_network );
         return $key_secret ? ( 'HMAC-SHA256', $key_secret ) : ();
     };
     local *xCAT::MsgUtils::message = sub { return; };
+    # makedhcp reconciles radvd on every call. Without this the test reads and can change the host's.
+    local *xCAT_plugin::dhcp::configure_router_advertisements = sub { return; };
     local *xCAT::MsgUtils::trace   = sub { return; };
 
     # process_request is the only way to set the plugin callback.

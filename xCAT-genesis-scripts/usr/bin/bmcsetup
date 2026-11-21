@@ -117,6 +117,103 @@ function snooze() {
     fi
 }
 
+#
+# Function: set_lan6
+#
+# Write one IPv6 LAN parameter of device $1 on $LANCHAN. ipmitool 1.8.19 added lan6.
+#
+function set_lan6() {
+    local dev=$1 tries=0
+    shift
+    while ! ipmitool -d "$dev" lan6 set "$LANCHAN" nolock "$@"; do
+        snooze
+        let tries=tries+1
+        if [ $tries -gt $TIMEOUT ]; then
+            logger -s -t $log_label -p local4.err "ipmitool lan6 set $LANCHAN $* failed"
+            return 1
+        fi
+    done
+}
+
+#
+# Function: configure_ipv6_bmc
+#
+# Give device $1 the static address $2/$3 and, when $4 is set, the router $4 for prefix $5.
+# xCAT does not know the MAC address of the router, so the static router has none.
+#
+function configure_ipv6_bmc() {
+    local dev=$1 addr=$2 prefix=$3 gw=$4 net=$5
+    set_lan6 "$dev" enables both
+    set_lan6 "$dev" static_addr 0 enable "$addr" "$prefix"
+    if [ -n "$gw" ] && [ -n "$net" ]; then
+        set_lan6 "$dev" rtr_cfg both
+        set_lan6 "$dev" static_rtr 1 "$gw" 00:00:00:00:00:00 "$net" "$prefix"
+    fi
+}
+
+#
+# Function: ipv6_expand
+#
+# Print the IPv6 address $1 as eight 4-digit lowercase groups, without a /prefix.
+# Fail when $1 is not an IPv6 address. Genesis carries no IPv6 parser, so
+# this is bash only. RFC 4291 allows the last 32 bits as dotted decimal, and
+# ipmitool accepts that form.
+#
+function ipv6_expand() {
+    local addr=${1%%/*} head tail group out= i
+    local -a groups=() tailgroups=() octets=()
+    addr=${addr,,}
+    if [[ $addr =~ ^(.*:)([0-9]{1,3}(\.[0-9]{1,3}){3})$ ]]; then
+        IFS=. read -r -a octets <<< "${BASH_REMATCH[2]}"
+        for i in "${octets[@]}"; do
+            [ $((10#$i)) -le 255 ] || return 1
+        done
+        addr=${BASH_REMATCH[1]}$(printf '%x:%x' \
+            $(((10#${octets[0]} << 8) + 10#${octets[1]})) \
+            $(((10#${octets[2]} << 8) + 10#${octets[3]})))
+    fi
+    [[ $addr =~ ^[0-9a-f:]+$ ]] || return 1
+    if [[ $addr == *::* ]]; then
+        head=${addr%%::*}
+        tail=${addr#*::}
+        [[ $tail == *::* ]] && return 1
+        IFS=: read -r -a groups <<< "$head"
+        IFS=: read -r -a tailgroups <<< "$tail"
+        for ((i = ${#groups[@]} + ${#tailgroups[@]}; i < 8; i++)); do
+            groups+=(0)
+        done
+        groups+=("${tailgroups[@]}")
+    else
+        IFS=: read -r -a groups <<< "$addr"
+    fi
+    [ ${#groups[@]} -eq 8 ] || return 1
+    for group in "${groups[@]}"; do
+        [[ $group =~ ^[0-9a-f]{1,4}$ ]] || return 1
+        out+=$(printf '%04x' $((16#$group))):
+    done
+    printf '%s\n' "${out%:}"
+}
+
+#
+# Function: bmc_has_address
+#
+# Succeed when the BMC reports the address $1. lan print shows only the IPv4
+# parameters, so an IPv6 address is read with lan6 print on $LANCHAN. One IPv6
+# address has many spellings, so both sides are expanded before the compare.
+#
+function bmc_has_address() {
+    local want key value
+    if [[ "$1" == *:* ]]; then
+        want=$(ipv6_expand "$1") || return 1
+        while read -r key value; do
+            [ "$key" = "Address:" ] || continue
+            [ "$(ipv6_expand "$value")" = "$want" ] && return 0
+        done < <(ipmitool lan6 print "$LANCHAN")
+        return 1
+    fi
+    [ "$(lan_field 0 1 '^IP Address' Source)" = "$1" ]
+}
+
 if ! ipmitool -V 2>/dev/null| grep "version"; then
     echo "No ipmitool find, please install it first";
     exit 1;
@@ -133,7 +230,14 @@ modprobe ipmi_devintf
 for parm in `cat /proc/cmdline`; do
     key=`echo $parm|awk -F= '{print $1}'`
     if [ "$key" = "xcatd" ]; then
-        XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
+        value=${parm#*=}
+        # An IPv6 address holds colons. doxcat reads "[<addr>]:<port>" the same way.
+        if [[ $value == \[*\]:* ]]; then
+            XCATMASTER=${value%%\]:*}
+            XCATMASTER=${XCATMASTER#\[}
+        else
+            XCATMASTER=${value%%:*}
+        fi
     fi
 done
 
@@ -395,7 +499,16 @@ done
 logger -s -t $log_label -p local4.info "Detected LAN channel $LANCHAN"
 
 let idev=NUMBMCS
-if [ $IPCFGMETHOD="static" ]; then
+if [[ "$BMCIP" == *:* ]]; then
+    mapfile -t BMCIPS < <(config_field bmcip)
+    mapfile -t BMCNMS < <(config_field netmask)
+    mapfile -t BMCGWS < <(config_field gateway)
+    mapfile -t BMCNETS < <(config_field routerprefix)
+    for idev in "${!BMCIPS[@]}"; do
+        configure_ipv6_bmc "$idev" "${BMCIPS[$idev]}" "${BMCNMS[$idev]}" \
+            "${BMCGWS[$idev]}" "${BMCNETS[$idev]}"
+    done
+elif [ $IPCFGMETHOD="static" ]; then
     while [ $idev -gt 0 ]; do
         let idev=idev-1
         TRIES=0
@@ -522,7 +635,7 @@ if [ ! -z "$ISOPENBMC" ]; then
     if [ ! -z "$XCATMASTER" ]; then
         # Wait for some time for the new network setting is ready
         snooze
-        if ipmitool lan print 1 | grep $BMCIP >/dev/null; then
+        if bmc_has_address "$BMCIP"; then
             updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
         else
             updateflag.awk $XCATMASTER 3002 "installstatus failed"

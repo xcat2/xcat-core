@@ -29,21 +29,10 @@ sub process_request {
         }
         my $client_ip = $req->{'_xcat_clientip'};
 
-        my $arptable;
-        if (-x "/usr/sbin/arp") {
-            $arptable = `/usr/sbin/arp -n`;
-        }
-        else {
-            $arptable = `/sbin/arp -n`;
-        }
-        my @arpents = split /\n/, $arptable;
+        # arp(8) prints the IPv4 table only, and the address used to be interpolated
+        # into a regular expression, where every dot matched any character.
         my $mac;
-        foreach (@arpents) {
-            if (m/^($client_ip)\s+\S+\s+(\S+)\s/) {
-                $mac = $2;
-                last;
-            }
-        }
+        $mac = xCAT::NetworkUtils->mac_of_neighbour($client_ip);
         unless ($mac) {
             xCAT::MsgUtils->message("S", "xcat.discovery.aaadiscovery: Failed to get MAC address for $client_ip in arp cache.");
             $mac = "$req->{mtm}->[0]*$req->{serial}->[0]";

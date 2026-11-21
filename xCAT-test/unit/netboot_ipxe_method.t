@@ -31,6 +31,14 @@ BEGIN {
     sub checkNodeIPaddress { return { ip => '192.0.2.10' } }
     sub nodeonmynet        { return 1 }
 
+    # setstate asks which family the node has, so the iPXE script names a server the node
+    # can reach. These nodes are IPv4, which keeps ${next-server} in the script.
+    sub node_address_family { return 4 }
+    sub my_ip_facing_family { return (0, '192.0.2.1') }
+    # This file replaces the whole module through %INC, so the decision xnba.pm asks for has to
+    # be here too. These nodes are IPv4, and the real sub answers the iPXE variable for IPv4.
+    sub ipxe_script_server_for_node { return ('${next-server}', undef) }
+
     package xCAT::TableUtils;
     sub getTftpDir         { return $tftp }
     sub get_site_attribute { return $_[1] eq 'dhcpsetup' ? ('n') : () }    # no makedhcp from nodeset here
@@ -108,5 +116,17 @@ is( $rc, 0, 'SvrUtils reads the nodeset state of ipxe and xnba nodes' );
 is_deeply( [ sort @{ $states{install} || [] } ], [qw(cn01 cn02)], 'both nodes report the state their script records' );
 is( xCAT::SvrUtils->get_nodeset_state( 'cn01', global_tab_hash => { noderes => { cn01 => $rows{noderes}{cn01} } } ),
     'install', 'and the state of one ipxe node' );
+
+# A node set to boot from its disk. UEFI firmware that runs a boot option which returns success
+# stops at its boot manager menu (UEFI 2.x, 3.1.1), so an iPXE that exits with 0 leaves the node
+# at "Please select boot device". A non-zero status makes the firmware try the next option.
+$rows{noderes}{cn04}  = { tftpdir => $tftp, netboot => 'ipxe' };
+$rows{chain}{cn04}    = { currstate => 'boot' };
+$rows{nodetype}{cn04} = { provmethod => 'install' };
+xCAT_plugin::ipxe->can('process_request')->(
+    { command => ['nodeset'], node => ['cn04'], arg => ['boot'] }, sub { }, sub { return } );
+like( content('xcat/ipxe/nodes/cn04.uefi'), qr{^exit [1-9]\d*$}m,
+    'the UEFI script of a node booting its disk exits with a failure status' );
+unlike( content('xcat/ipxe/nodes/cn04.uefi'), qr{^exit$}m, '... and never with success' );
 
 done_testing();

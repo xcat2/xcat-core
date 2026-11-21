@@ -63,23 +63,7 @@
         <surname/>
       </user>
     </users>
-    <networking>
-       <dns>
-        <dhcp_hostname config:type="boolean">true</dhcp_hostname>
-        <hostname>linux</hostname>
-      </dns>
-      <interfaces config:type="list">
-        <interface>
-          <bootproto>dhcp</bootproto>
-          <device>eth0</device>
-          <startmode>onboot</startmode>
-        </interface>
-      </interfaces>
-      <keep_install_network config:type="boolean">true</keep_install_network>
-      <routing>
-        <ipv4_forward config:type="boolean">false</ipv4_forward>
-      </routing>
-    </networking>
+    #YAST2NET6#
     <scripts>
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.sle#
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/chroot.sles#

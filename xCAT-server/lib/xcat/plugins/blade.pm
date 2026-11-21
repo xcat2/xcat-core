@@ -4492,21 +4492,9 @@ sub process_request {
         $invreq{command} = ['rinv'];
         my $mac;
         my $ip = $request->{'_xcat_clientip'};
-        my $arptable;
-
-        if (-x "/usr/sbin/arp") {
-            $arptable = `/usr/sbin/arp -n`;
-        }
-        else {
-            $arptable = `/sbin/arp -n`;
-        }
-        my @arpents = split /\n/, $arptable;
-        foreach (@arpents) {
-            if (m/^($ip)\s+\S+\s+(\S+)\s/) {
-                $mac = $2;
-                last;
-            }
-        }
+        # arp(8) prints the IPv4 table only, and the address used to be interpolated
+        # into a regular expression, where every dot matched any character.
+        $mac = xCAT::NetworkUtils->mac_of_neighbour($ip);
 
         #Only refresh the the cache when the request permits and no useful answer
         if ($macmaptimestamp < (time() - 300)) { #after five minutes, invalidate cache

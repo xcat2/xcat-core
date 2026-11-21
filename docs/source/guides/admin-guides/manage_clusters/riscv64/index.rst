@@ -1,10 +1,13 @@
 RISC-V 64-bit (riscv64)
 =======================
 
-xCAT manages RISC-V 64-bit (``riscv64``) compute nodes running EL10 or Ubuntu.
+xCAT manages RISC-V 64-bit (``riscv64``) compute nodes running EL10, Ubuntu or
+openEuler.
 Rocky Linux 10 is the reference EL distribution and the RHEL 10 RISC-V developer
 preview uses the same media layout; on the Ubuntu side, 24.04 and 26.04 are
-supported from the live-server media. The general cluster management documentation under
+supported from the live-server media. openEuler 24.03 LTS SP4 is supported from
+the RVA23 media. See :doc:`/guides/admin-guides/manage_clusters/openeuler/index`.
+The general cluster management documentation under
 :doc:`/guides/admin-guides/manage_clusters/index` applies; this page
 only covers what is specific to the architecture.
 
@@ -27,7 +30,8 @@ What riscv64 nodes need
   BaseOS tree, which the ``grub2-xcat`` package also installs and
   :doc:`/guides/install-guides/yum/grub2` describes copying by hand; ``copycds``
   publishes it when the management node does not have it yet and keeps an image
-  that is already there.
+  that is already there. openEuler media carry the same image as
+  ``EFI/BOOT/grubriscv64.EFI``, and ``copycds`` publishes it the same way.
 
   Ubuntu media are different: the loader they carry boots only from the media,
   because it holds a built-in configuration that searches for the live

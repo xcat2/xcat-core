@@ -83,6 +83,17 @@ BEGIN {
           if $network =~ /^2001:db8:7309::/ && $prefix == 64;
         return;
     }
+    # Records what the plugin passes, so a test can assert the network reaches the helper with
+    # its prefix. The zones themselves are asserted against the REAL helper in
+    # xCAT-test/unit/networkutils_ipv6_helpers.t; this stub would only measure itself.
+    our @REVERSE_ZONE_CALLS;
+    sub getIPv6ReverseZones {
+        my ( $class, $network, $mask ) = @_;
+        ( $network, $mask ) = ( $class, $network ) if $class ne __PACKAGE__;
+        push @REVERSE_ZONE_CALLS, [ $network, $mask ];
+        my $zone = getIPv6ReverseZone( __PACKAGE__, $network, $mask );
+        return defined($zone) ? ($zone) : ();
+    }
     sub format_uri_host {
         my ($host) = @_;
         $host = $_[1] if defined($host) && $host eq __PACKAGE__;
@@ -255,6 +266,27 @@ my %network_entry = (
     is_deeply( [ grep { /^xcat-ipxe-net-/ } @{ $subnet->{additional_client_classes} } ], [],
         'without the upstream loader on this server, the Kea subnet names no network script' );
 
+    # The DHCPv6 subnet answers an unknown client the same way, with option 59 instead of a boot
+    # file name. Without these a node being discovered gets a pool address and nothing to boot,
+    # which is where seq_discovery_ipv6 stops: the DUID cannot be reserved before it is known.
+    my %entry6 = ( net => '2001:db8:188::/64', mgtifname => 'eth1', mask => '64',
+                   dynamicrange => '2001:db8:188::1000-2001:db8:188::1fff' );
+    my $subnet6 = xCAT_plugin::dhcp::kea_subnet6_intent( \%entry6, 'eth1', 0, 10001 );
+    my %classes6 = map { $_->{name} => $_ } @{ $subnet6->{client_classes} || [] };
+    ok( $classes6{'xcat-aarch64-6-10001'},
+        'the Kea DHCPv6 subnet carries boot classes for an unreserved client' )
+        or diag 'classes: ' . join( ' ', sort keys %classes6 );
+    is( $classes6{'xcat-aarch64-6-10001'} && $classes6{'xcat-aarch64-6-10001'}{'option-data'}[0]{name},
+        'bootfile-url', 'and each one supplies bootfile-url, which is option 59' );
+    is( $classes6{'xcat-aarch64-6-10001'} && $classes6{'xcat-aarch64-6-10001'}{'option-data'}[0]{data},
+        'tftp://[2001:db8::1]/boot/grub2/grub2.aarch64',
+        'naming the management node facing this network, bracketed for a URL' );
+    is_deeply(
+        [ grep { /^xcat-aarch64-6/ } @{ $subnet6->{additional_client_classes} || [] } ],
+        ['xcat-aarch64-6-10001'],
+        'and the class is evaluated only for the subnet it was built for',
+    );
+
     local *xCAT_plugin::dhcp::kea_ipxe_loader_flags = sub { return ( ipxe_bios => 1, ipxe_uefi => 1 ); };
     $subnet = xCAT_plugin::dhcp::kea_subnet4_intent( $nettab, '10.0.0.0', '255.255.255.0', 'eth0', 0, 1, 80 );
     %classes = map { $_->{name} => $_ } @{ $subnet->{client_classes} };
@@ -335,6 +367,20 @@ foreach my $case (@sysconfig_policy_cases) {
         [],
         'Kea DDNS rejects an out-of-range IPv6 prefix without looping'
     );
+
+    # The ISC and Kea paths pass the network WITH its prefix, and that is the form that broke:
+    # the plugin rounded the prefix itself and passed it beside an embedded one, which
+    # getIPv6PrefixLength ignores, so no reverse zone reached dhcpd.conf. The plugin must hand
+    # the network to the helper unchanged and round nothing.
+    {
+        local @xCAT::NetworkUtils::REVERSE_ZONE_CALLS = ();
+        xCAT_plugin::dhcp::getzonesfornet('2001:db8:7309::/62');
+        is_deeply(
+            [@xCAT::NetworkUtils::REVERSE_ZONE_CALLS],
+            [ [ '2001:db8:7309::/62', undef ] ],
+            'Kea DDNS hands a /62 to the reverse-zone helper with its prefix intact'
+        );
+    }
 }
 
 {
@@ -635,6 +681,9 @@ foreach my $case (@sysconfig_policy_cases) {
     local *xCAT_plugin::dhcp::kea_build_dhcp6_intent = sub { return { subnets => [] }; };
     local *xCAT_plugin::dhcp::kea_build_ddns_intent = sub { return; };
     local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 0; };
+    # Records the calls instead of writing the radvd configuration of the host.
+    my @advertised;
+    local *xCAT_plugin::dhcp::configure_router_advertisements = sub { push @advertised, $_[1]; return; };
     local *xCAT::MsgUtils::message = sub { return; };
     local *xCAT::MsgUtils::trace = sub { return; };
     local $::XCATSITEVALS{externaldhcpservers};
@@ -673,6 +722,9 @@ foreach my $case (@sysconfig_policy_cases) {
     ok( $backend->{write_options}{backup_existing}, 'makedhcp -n backs up the replaced Kea configuration' );
     ok( $backend->{restart_options}{enable}, 'makedhcp -n enables and restarts Kea after replacement' );
     is_deeply( \@errors, [], 'makedhcp -n replacement completes without errors' );
+    # No IPv6 subnet is left, so the advertisement of the last one has to be withdrawn.
+    is_deeply( \@advertised, [ { eth0 => 1 } ],
+        'makedhcp -n reconciles the router advertisements when no IPv6 subnet remains' );
 }
 
 {
@@ -1034,7 +1086,7 @@ foreach my $case (@sysconfig_policy_cases) {
     package main;
 
     my %res_tables = (
-        noderes  => DHCPKeaResTable->new( { 'svc01' => { netboot => 'xnba', servicenode => '192.168.201.20', tftpserver => '<xcatmaster>' } } ),
+        noderes  => DHCPKeaResTable->new( { 'svc01' => { netboot => 'xnba', servicenode => '192.0.2.20', tftpserver => '<xcatmaster>' } } ),
         chain    => DHCPKeaResTable->new( { 'svc01' => {} } ),
         nodetype => DHCPKeaResTable->new( { 'svc01' => { arch => 'x86_64', provmethod => 'install', os => 'rhels9' } } ),
         iscsi    => DHCPKeaResTable->new( {} ),
@@ -1049,13 +1101,13 @@ foreach my $case (@sysconfig_policy_cases) {
     my $svc_getipaddr = sub {
         my ( $host, %opt ) = @_;
         return if $opt{OnlyV6};
-        return '192.168.201.21';
+        return '192.0.2.21';
     };
     local *xCAT::NetworkUtils::getipaddr = $svc_getipaddr;
     # dhcp.pm imports getipaddr into its own namespace at use-time, so override
     # the imported copy as well.
     local *xCAT_plugin::dhcp::getipaddr = $svc_getipaddr;
-    local *xCAT::NetworkUtils::my_ip_facing = sub { return ( 0, '192.168.201.20' ); };
+    local *xCAT::NetworkUtils::my_ip_facing = sub { return ( 0, '192.0.2.20' ); };
     local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
 
     my @errors;
@@ -1075,7 +1127,7 @@ foreach my $case (@sysconfig_policy_cases) {
     is( scalar(@errors), 0, 'service node reservation builds without errors' );
     is( scalar( @{ $reservations || [] } ), 1, 'service node yields exactly one Kea host reservation' );
     my $r = $reservations->[0] || {};
-    is( $r->{'ip-address'},  '192.168.201.21',    'service node reservation carries the node IP' );
+    is( $r->{'ip-address'},  '192.0.2.21',    'service node reservation carries the node IP' );
     is( $r->{'hw-address'},  '42:d7:c0:a8:c9:15', 'service node reservation carries the node MAC' );
     # S-74. The reservation names the node in two places and both are needed.
     # The "hostname" field is the only name a client cannot displace: with the
@@ -2468,13 +2520,13 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
     );
 
     is( scalar(@errors), 0, 'DHCPv6 reservations build without errors' );
-    is( scalar(@$reservations), 4, 'all known IPv6 nodes receive reservations' );
+    # nodev6 is the only one of the four with a vpd.uuid, so it alone adds the entry of the
+    # Genesis image, which holds no address and sends the DUID-LL of the NIC.
+    is( scalar(@$reservations), 5, 'all known IPv6 nodes receive reservations' );
 
-    my %by_hostname = map { $_->{hostname} => $_ } @$reservations;
+    my %by_hostname = map { $_->{hostname} => $_ } grep { defined $_->{hostname} } @$reservations;
     my $grub2 = $by_hostname{nodev6};
-    # The first three UUID fields are reversed, because that is what a UEFI client sends --
-    # see kea_duid_from_uuid. This expectation held the canonical spelling and so agreed with a
-    # DUID no firmware ever presents.
+    # Without mac.duid the first three UUID fields are reversed, as EDK2 firmware sends them.
     is( $grub2->{duid}, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff', 'DHCPv6 reservation matches the DUID-UUID a UEFI client sends' );
     is( $grub2->{'option-data'}[0]{name}, 'bootfile-url', 'grub2 reservation carries RFC 5970 bootfile-url' );
     is( $grub2->{'option-data'}[0]{data}, 'tftp://[2001:db8::1]/boot/grub2/grub2-nodev6', 'grub2 bootfile URL uses the IPv6-facing xCAT server and bracketed authority' );
@@ -2583,7 +2635,8 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
         );
         delete $res_tables{networks};
 
-        is( scalar(@$owned), 1, 'global dynamic-range DHCP owner retains an unrelated IPv6 reservation like legacy dispatch' );
+        is( scalar( grep { defined $_->{hostname} } @$owned ), 1,
+            'global dynamic-range DHCP owner retains an unrelated IPv6 reservation like legacy dispatch' );
     }
 }
 
@@ -2593,7 +2646,7 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
 # skips an IPv6-only node, so the node still reached the IPv4 resolver. With noderes.xcatmaster
 # naming a host that has only an AAAA record, inet_aton fails, the sub reports "Unable to resolve
 # the tftpserver" with errorcode 1, and makedhcp exits 1 on a node whose DHCPv6 reservation and
-# bootfile-url it had just written correctly -- measured on xcat76-cn, 2026-10-23.
+# bootfile-url it had just written correctly, which a run reproduced.
 #
 # 6f171a22b made the same call lazy in kea_node_reservations and missed this site. The assertion
 # is on the CALL, not on the exit code, because the error is what the exit code is made of.
@@ -2618,35 +2671,53 @@ for my $case (['80', ''], ['080', ':080'], ['8080', ':8080']) {
         'an IPv6-only node never reaches the IPv4 next-server resolver' );
 }
 
-# A DUID-UUID CARRIES THE UUID AS THE FIRMWARE HOLDS IT, NOT AS vpd.uuid SPELLS IT.
-#
-# RFC 6355 puts the sixteen octets of the system UUID in the DUID. SMBIOS 2.6 and later store
-# time_low, time_mid and time_hi_and_version LITTLE-ENDIAN, while vpd.uuid holds the canonical
-# spelling -- which is what Linux reports in product_uuid and what discovery writes. So the two
-# disagree in the first eight octets, Kea never matches the reservation, and the node takes a pool
-# address with no bootfile-url and stops at PXE-E21.
-#
-# Measured on xcat76-cn, 2026-10-23, with vpd.uuid c78c76bf-3286-46f3-b80d-8fe079dd6de7:
-#   xCAT wrote        00:04:c7:8c:76:bf:32:86:46:f3:b8:0d:8f:e0:79:dd:6d:e7
+# UEFI firmware built on EDK2 sends the SMBIOS UUID bytes as its DUID-UUID. SMBIOS 2.6 and later
+# store the first three UUID fields little-endian, so these octets differ from the RFC 4122 order of
+# vpd.uuid. Measured on a UEFI client, 2026-10-23, with vpd.uuid c78c76bf-3286-46f3-b80d-8fe079dd6de7:
+#   RFC 4122 order    00:04:c7:8c:76:bf:32:86:46:f3:b8:0d:8f:e0:79:dd:6d:e7
 #   the firmware sent 00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7
 {
-    is( xCAT_plugin::dhcp::kea_duid_from_uuid('c78c76bf-3286-46f3-b80d-8fe079dd6de7'),
-        '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
-        'the DUID reverses the first three UUID fields, as the firmware sends them' );
+    no warnings 'redefine';
+    my $uefi_duid = '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7';
+    my %nodes = (
+        uefi      => { mac => '02:00:00:00:00:71', ip => '2001:db8:71::50', uuid => 'c78c76bf-3286-46f3-b80d-8fe079dd6de7' },
+        plain     => { mac => '02:00:00:00:00:72', ip => '2001:db8:71::51', uuid => '1234567812344bcd98761234567890ab' },
+        malformed => { mac => '02:00:00:00:00:73', ip => '2001:db8:71::52', uuid => 'not-a-uuid' },
+        absent    => { mac => '02:00:00:00:00:74', ip => '2001:db8:71::53' },
+    );
+    my %tables = (
+        noderes => DHCPKeaResTable->new( {} ),
+        mac     => DHCPKeaResTable->new( { map { $_ => { mac => $nodes{$_}{mac} } } keys %nodes } ),
+        vpd     => DHCPKeaResTable->new(
+            { map { $_ => { defined( $nodes{$_}{uuid} ) ? ( uuid => $nodes{$_}{uuid} ) : () } } keys %nodes } ),
+    );
+    local *xCAT::Table::new = sub { return $tables{ $_[1] }; };
+    my $getipaddr = sub {
+        my ( $host, %opt ) = @_;
+        return $opt{OnlyV6} && $nodes{$host} ? $nodes{$host}{ip} : undef;
+    };
+    local *xCAT::NetworkUtils::getipaddr  = $getipaddr;
+    local *xCAT_plugin::dhcp::getipaddr   = $getipaddr;
+    local *xCAT_plugin::dhcp::ipIsDynamic = sub { return 0; };
+    my @errors;
+    local $xCAT_plugin::dhcp::callback = sub { push @errors, @{ $_[0]{error} || [] }; };
 
-    # The last eight octets are byte order independent and must NOT move.
-    my $duid = xCAT_plugin::dhcp::kea_duid_from_uuid('00112233-4455-6677-8899-aabbccddeeff');
-    is( $duid, '00:04:33:22:11:00:55:44:77:66:88:99:aa:bb:cc:dd:ee:ff',
-        'the clock-seq and node fields keep their order' );
+    my $reservations = xCAT_plugin::dhcp::kea_build_node_reservations6(
+        bless( {}, 'DHCPKeaRes6Backend' ), {}, [ sort keys %nodes ] );
+    my %by_hostname = map { $_->{hostname} => $_ } grep { defined $_->{hostname} } @$reservations;
+    is_deeply( \@errors, [], 'the DHCPv6 reservations of the UUID cases build without errors' );
+    is( $by_hostname{uefi}{duid}, $uefi_duid, 'the reservation carries the DUID-UUID that the UEFI client sends' );
+    is( $by_hostname{plain}{duid}, '00:04:78:56:34:12:34:12:cd:4b:98:76:12:34:56:78:90:ab', 'a vpd.uuid without separators gives the same DUID' );
+    foreach my $node (qw(malformed absent)) {
+        ok( !exists( $by_hostname{$node}{duid} ), "a $node vpd.uuid gives no DUID" );
+        is( $by_hostname{$node}{'hw-address'}, $nodes{$node}{mac},
+            "the reservation of a node with a $node vpd.uuid falls back to its MAC" );
+    }
 
-    # A UUID with no separators is the same value.
-    is( xCAT_plugin::dhcp::kea_duid_from_uuid('c78c76bf328646f3b80d8fe079dd6de7'),
-        '00:04:bf:76:8c:c7:86:32:f3:46:b8:0d:8f:e0:79:dd:6d:e7',
-        'separators in vpd.uuid do not change the DUID' );
-
-    # Anything that is not sixteen octets has no DUID rather than a truncated one.
-    is( xCAT_plugin::dhcp::kea_duid_from_uuid('not-a-uuid'), undef, 'a malformed uuid gives no DUID' );
-    is( xCAT_plugin::dhcp::kea_duid_from_uuid(undef),        undef, 'an absent uuid gives no DUID' );
+    my @duids = map { $_->{duid} } grep { $_->{duid} }
+      @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['uefi'] ) };
+    is_deeply( \@duids, [ $uefi_duid, '00:03:00:01:' . $nodes{uefi}{mac} ],
+        'query and delete match the DUIDs that the reservations carry' );
 }
 
 done_testing();

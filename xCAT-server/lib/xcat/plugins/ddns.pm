@@ -144,17 +144,11 @@ sub getzonesfornet {
     if ($netent->{ddnsdomain}) {
         push @zones, $netent->{ddnsdomain};
     }
-    if ($net =~ /:/) { #ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
-        my $maskbits = xCAT::NetworkUtils->getIPv6PrefixLength($net, $mask);
-        $net =~ s{/.*$}{};
-        return @zones unless defined($maskbits);
-        if ($maskbits % 4) {
-            die "Not supporting an IPv6 prefix length that is not divisible by 4 on network $net";
-        }
-        my $zone = xCAT::NetworkUtils->getIPv6ReverseZone($net, $maskbits);
-        return @zones unless defined($zone);
-        push @zones, $zone;
-        return @zones;
+    if ($net =~ /:/) {
+        # A reverse zone is delegated on a nibble, so a network whose prefix is not a multiple of
+        # 4 is covered by several zones of the next nibble. The IPv4 arm below splits a /22 into
+        # its /24 zones the same way.
+        return ( @zones, xCAT::NetworkUtils->getIPv6ReverseZones( $net, $mask ) );
     }
 
     #return all in-addr reverse zones for a given mask and net
@@ -258,15 +252,40 @@ sub get_reverse_zones_for_entity {
                 } elsif ($net =~ /:/) {    #v6/ip6.arpa case
                     $net =~ /\/(.*)/;
                     my $maskbits = $1;
-                    unless (defined($maskbits) && (($maskbits % 4) == 0)) {
-                        die "Never expected this, $net should have had CIDR / notation... and the mask should be a factor of 4, if not, need work..."
+                    unless (defined($maskbits)) {
+                        die "Never expected this, $net should have had CIDR / notation"
                     }
-                    push @revs, xCAT::NetworkUtils->getIPv6ReverseZone($net);
+                    push @revs, _ipv6_reverse_zone_of_number($tvar, $maskbits);
                 }
             }
         }
     }
     return @revs;
+}
+
+#-------------------------------------------------------
+
+=head3 _ipv6_reverse_zone_of_number
+
+    Descriptions: The ip6.arpa zone that holds one IPv6 address of a network.
+                  A reverse zone is delegated on a nibble, so for a prefix that is not a
+                  multiple of 4 the zone is the one of the next nibble. getzonesfornet
+                  creates the same zones for that network.
+    Arguments: the address as a number (getipaddr GetNumber), the prefix length
+    Returns: the zone name
+
+=cut
+
+#-------------------------------------------------------
+sub _ipv6_reverse_zone_of_number {
+    my ($number, $prefix) = @_;
+
+    my $nibbles = int(($prefix + 3) / 4);
+    return 'ip6.arpa.' unless $nibbles;
+    my $hex = Math::BigInt->new($number)->as_hex;
+    $hex =~ s/^0x//;
+    $hex = substr(('0' x 32) . $hex, -32, $nibbles);
+    return join('.', reverse(split(//, $hex))) . '.ip6.arpa.';
 }
 
 sub process_request {
@@ -1107,6 +1126,29 @@ sub isvalidip {
     return xCAT::NetworkUtils->isValidIp($candidate);
 }
 
+#-------------------------------------------------------
+#  _server_ip_addresses
+#   Descriptions: The addresses of the name server, for its own records in a new zone file.
+#                 A dual-stack server needs an A record and an AAAA record. An IPv6-only node
+#                 resolves this name to reach the server, and an A record on its own leaves that
+#                 node with no address it can use.
+#   Arguments: the addresses the lookup returned
+#   Returns: the valid ones, IPv4 first
+#-------------------------------------------------------
+sub _server_ip_addresses {
+    my @addresses = @_;
+
+    my @ordered;
+    foreach my $address (@addresses) {
+        push @ordered, $address if isvalidip($address) && $address !~ /:/;
+    }
+    foreach my $address (@addresses) {
+        push @ordered, $address if isvalidip($address) && $address =~ /:/;
+    }
+
+    return @ordered;
+}
+
 sub _preferred_ip_address {
     my @addresses = @_;
 
@@ -1163,14 +1205,17 @@ sub update_zones {
         $name .= '.';
     }
     my $ip;
+    my @serverips;
     if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
         $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
         unless (isvalidip($ip)) {
             xCAT::SvrUtils::sendmsg([ 1, "The hosts table entry for $node indicates $ip as an ip address, which is not a valid address" ], $callback);
             return;
         }
+        @serverips = ($ip);
     } else {
         my @addresses = getipaddr($node, GetAllAddresses => 1);
+        @serverips = _server_ip_addresses(@addresses);
         $ip = _preferred_ip_address(@addresses);
         unless ($ip) {
             xCAT::SvrUtils::sendmsg([ 1, "Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts)" ], $callback);
@@ -1205,8 +1250,9 @@ sub update_zones {
             print $zonehdl "  IN NS  $name\n";
 
             if ($name =~ /$currzone/) { #Must guarantee an address record for the DNS server
-                my $record_type = _dns_record_type($ip);
-                print $zonehdl "$name  IN $record_type  $ip\n";
+                foreach my $serverip (@serverips) {
+                    print $zonehdl "$name  IN " . _dns_record_type($serverip) . "  $serverip\n";
+                }
             }
             flock($zonehdl, LOCK_UN);
             close($zonehdl);
@@ -1275,16 +1321,17 @@ sub update_namedconf {
                             push @newnamed, "\t\t" . $_ . ";\n";
                         }
                         push @newnamed, "\t};\n";
-                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4}) and $line =~ /listen-on \{/) {
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4}) and $line =~ /listen-on\s[^{]*\{/) {
+                        # The distribution file writes "listen-on port 53 { ... };" on one line.
                         push @newnamed, "\tlisten-on \{\n";
-                        $skip = 1;
+                        $skip = ($line !~ /\};/);
                         foreach (@{ $ctx->{dnslistenonifs}->{ipv4} }) {
                             push @newnamed, "\t\t" . $_ . ";\n";
                         }
                         push @newnamed, "\t};\n";
-                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6}) and $line =~ /listen-on-v6 \{/) {
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6}) and $line =~ /listen-on-v6\s[^{]*\{/) {
                         push @newnamed, "\tlisten-on-v6 \{\n";
-                        $skip = 1;
+                        $skip = ($line !~ /\};/);
                         foreach (@{ $ctx->{dnslistenonifs}->{ipv6} }) {
                             push @newnamed, "\t\t" . $_ . ";\n";
                         }
@@ -1515,10 +1562,11 @@ sub update_namedconf {
             push @newnamed, "\ttype slave;\n";
             push @newnamed, "\tmasters { $output[0]; };\n";
         } else {
-            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapi_key_name;\n", "\t};\n";
+            push @newnamed, "\ttype master;\n", "\tallow-update {\n", "\t\tkey $omapi_key_name;\n";
             foreach (@{ $ctx->{dnsupdaters} }) {
                 push @newnamed, "\t\t$_;\n";
             }
+            push @newnamed, "\t};\n";
         }
         if ($zone =~ /IN-ADDR\.ARPA/) {
             my $net = $zone;
@@ -1688,7 +1736,11 @@ sub add_or_delete_records {
         unless ($name =~ /\.$domain\z/) { $name .= "." . $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
 
         if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
-            @ips = ($ctx->{hoststab}->{$node}->[0]->{ip});
+            my $hostip = $ctx->{hoststab}->{$node}->[0]->{ip};
+
+            # hosts.ip holds one address. The other family of a dual-stack node comes from the
+            # makehosts content, and it needs its PTR too.
+            @ips = ($hostip, grep { $_ ne $hostip } sort keys %{ $ctx->{nodeips}->{$node} || {} });
         } else {
             @ips = getipaddr($node, GetAllAddresses => 1);
             if (not @ips and keys %{ $ctx->{nodeips}->{$node} }) {
@@ -1798,7 +1850,7 @@ sub find_nameserver_for_dns {
     }
     while ($zone) {
         unless (defined $ctx->{nsmap}->{$zone}) { #ok, we already thought about this zone and made a decision
-            if ($zone =~ /^\.*192.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*172.IN-ADDR.ARPA\.*/ or $zone =~ /127.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*IN-ADDR.ARPA\.*/ or $zone =~ /^\.*ARPA\.*/) {
+            if ($zone =~ /^\.*(?:ip6\.)?arpa\.*$/i or $zone =~ /^\.*192.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*172.IN-ADDR.ARPA\.*/ or $zone =~ /127.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*IN-ADDR.ARPA\.*/ or $zone =~ /^\.*ARPA\.*/) {
                 $ctx->{nsmap}->{$zone} = 0; #ignore zones that are likely to appear, but probably not ours
             } elsif ($::XCATSITEVALS{ddnsserver}) {
                 $ctx->{nsmap}->{$zone} = $::XCATSITEVALS{ddnsserver};

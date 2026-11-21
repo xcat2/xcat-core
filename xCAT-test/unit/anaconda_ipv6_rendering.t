@@ -59,6 +59,22 @@ ok(xCAT::SvrUtils->is_el10_os('rhels10.0'), 'RHEL 10 is recognized as EL10');
 ok(xCAT::SvrUtils->is_el10_os('rocky10'), 'Rocky 10 is recognized as EL10');
 ok(!xCAT::SvrUtils->is_el10_os('rhels9.6'), 'EL9 is outside the EL10 IPv6 rendering path');
 
+# The gates read uses_static_ipv6_boot, not is_el10_os: openEuler reaches the same kickstart and
+# dracut code through #KICKSTARTNET# but is not EL10, so is_el10_os left it asking DHCPv6 with
+# an identifier no reservation holds. The predicate is the capability, so a later EL keeps it.
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels10.0'), 'EL10 takes the static IPv6 address');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels11.0'), 'and so does a later EL, which an equality test missed');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('openeuler24.03sp4'), 'openEuler takes it as well');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('openeuler20.03sp4'), 'every openEuler release, not just the newest');
+# EL 8 and EL 9 take the static address too, by operator decision of 2026-11-05. Their
+# installer reads the same kickstart network options and their dracut the same "ip=".
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('rhels9.6'), 'EL9 takes it as well');
+ok(xCAT::SvrUtils->uses_static_ipv6_boot('alma8.10'), 'and EL8, whatever the EL brand name');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot('rhels7.9'), 'EL7 does not, so the floor still holds');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot('sles12'), 'SUSE does not');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot('ubuntu24.04'), 'Ubuntu does not');
+ok(!xCAT::SvrUtils->uses_static_ipv6_boot(undef), 'and an undefined osver is not a capability');
+
 ok(xCAT::NetworkUtils->node_is_ipv6_only('nodev6'), 'AAAA-only node is detected as IPv6-only');
 ok(!xCAT::NetworkUtils->node_is_ipv6_only('nodev4'), 'IPv4-only node stays on the IPv4 path');
 ok(!xCAT::NetworkUtils->node_is_ipv6_only('nodedual'), 'dual-stack node retains IPv4 preference');
@@ -166,27 +182,36 @@ is(
     xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
         'nodev6', { nicname => 'eno1', mac => '02:00:00:00:00:61' }
     ),
-    'rd.neednet=1 ip=[2001:db8:1::50]::[2001:db8:1::fe]:64:nodev6:eno1:none',
+    'rd.neednet=1 rd.net.timeout.carrier=120 ip=[2001:db8:1::50]::[2001:db8:1::fe]:64:nodev6:eno1:none',
     'named install interface receives the configured static IPv6 boot address'
 );
 is(
     xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
         'nodev6nogw', { mac => '02-00-00-00-00-63' }
     ),
-    'ifname=xcatboot0:02:00:00:00:00:63 rd.neednet=1 ip=[2001:db8:3::50]:::64:nodev6nogw:xcatboot0:none',
+    'ifname=xcatboot0:02:00:00:00:00:63 rd.neednet=1 rd.net.timeout.carrier=120 ip=[2001:db8:3::50]:::64:nodev6nogw:xcatboot0:none',
     'unspecified install interface is deterministically named and bound to its MAC'
 );
 is(
     xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
         'nodev6mastergw', { nicname => 'ens3' }
     ),
-    'rd.neednet=1 ip=[2001:db8:2::50]::[2001:db8::1]:64:nodev6mastergw:ens3:none',
+    'rd.neednet=1 rd.net.timeout.carrier=120 ip=[2001:db8:2::50]::[2001:db8::1]:64:nodev6mastergw:ens3:none',
     'xcatmaster gateway resolves to the IPv6-facing address and is bracketed'
 );
 is_deeply(
     $facing_calls[-1],
     ['nodev6mastergw', 6],
     'static IPv6 xcatmaster gateway lookup is constrained to IPv6'
+);
+# dracut does not retry a static ip= that found no carrier, and a slow link drops the
+# installer into the emergency shell.
+like(
+    xCAT_plugin::anaconda::_el10_static_ipv6_boot_args(
+        'nodev6nogw', { mac => '02:00:00:00:00:63' }
+    ),
+    qr/(?:\A| )rd\.net\.timeout\.carrier=120(?: |\z)/,
+    'static IPv6 boot waits up to 120 s for carrier on the boot interface'
 );
 ok(
     !defined(xCAT_plugin::anaconda::_el10_static_ipv6_boot_args('nodev6nogw', {})),

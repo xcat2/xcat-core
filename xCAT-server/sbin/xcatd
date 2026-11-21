@@ -50,6 +50,7 @@ use xCAT::TLSPolicy qw(resolve_xcatd_tls_settings);
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
+use xCAT::DiscoveryUtils;
 use xCAT::RespawnUtils;
 use xCAT::xcatd;
 use xCAT::CmdLog;
@@ -537,7 +538,11 @@ sub do_installm_service {
                 if ($inet6support) {
                     ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET6);
                     unless ($client_name) {
-                        ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
+
+                        # A dual-stack listener reports an IPv4 peer as the 16-byte
+                        # ::ffff:a.b.c.d. AF_INET needs the 4 bytes; not every glibc unmaps it.
+                        ($client_name, $client_aliases) =
+                          gethostbyaddr(xCAT::NetworkUtils::unmap_v4mapped_addr($conn->peeraddr), AF_INET);
                     }
                 } else {
                     ($client_name, $client_aliases) = gethostbyaddr($conn->peeraddr, AF_INET);
@@ -1825,7 +1830,7 @@ until ($quit) {
             $peerhost = gethostbyaddr($connection->peeraddr, AF_INET);
         }
 
-        unless ($peerhost) { $peerhost = gethostbyaddr($connection->peeraddr, AF_INET); }
+        unless ($peerhost) { $peerhost = gethostbyaddr(xCAT::NetworkUtils::unmap_v4mapped_addr($connection->peeraddr), AF_INET); }
         $peerfqdn = $peerhost;
         my $peerhostorg = $peerhost;  # save original with domain for validation
 
@@ -3035,6 +3040,8 @@ sub service_connection {
     my $peerhostorg = shift;
     my $peerip      = shift;
     my $peerport    = $sock->peerport;
+    # becomeuser and tokens replace $peername. Keep the certificate CN to tell the two apart.
+    my $cert_cn     = $peername;
 
     # some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
     # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
@@ -3197,6 +3204,9 @@ sub service_connection {
                 $request = "";
                 if (xCAT::xcatd->validate($peername, $peerhost, $req, $peerhostorg, \@deferredmsgargs)) {
                     $req->{'_xcat_authname'}   = [$peername];
+                    delete $req->{'_xcat_certname'};
+                    my $certname = xCAT::DiscoveryUtils::client_certificate_name($cert_cn, $peername);
+                    $req->{'_xcat_certname'} = [$certname] if defined $certname;
                     $req->{'_xcat_clienthost'} = [$peerhost];
                     $req->{'_xcat_clientfqdn'} = [$peerfqdn];
                     if ($req->{command}->[0] eq 'signx509cert') {

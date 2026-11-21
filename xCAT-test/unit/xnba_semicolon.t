@@ -106,7 +106,7 @@ for my $case (
                 'elilo retains the command line');
         }
         nodeset($node, 'boot', {});
-        is(script("$node.uefi"), "#!gpxe\n#boot\nexit\n", 'local boot replaces stale UEFI install content');
+        is(script("$node.uefi"), "#!gpxe\n#boot\nexit 1\n", 'local boot replaces stale UEFI install content');
         nodeset($node, 'offline', {});
         ok(!-e "$root/tftp/xcat/xnba/nodes/$node", 'offline removes BIOS script');
         ok(!-e "$root/tftp/xcat/xnba/nodes/$node.uefi", 'offline removes UEFI script');

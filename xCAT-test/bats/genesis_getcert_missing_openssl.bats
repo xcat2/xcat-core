@@ -24,7 +24,9 @@ write_stub()
 # A PATH directory holding the commands getcert runs. openssl is absent unless it is asked for.
 stub_dir()
 {
-    local with_openssl="${1:-0}" count=""
+    # count defaults to a no-op: an empty value leaves "{ ; exit 1; }", which is a syntax
+    # error, so the stub would fail for the wrong reason and report bash's message.
+    local with_openssl="${1:-0}" count=":"
     local dir="${BATS_TEST_TMPDIR}/bin"
 
     rm -rf "$dir"
@@ -35,7 +37,7 @@ stub_dir()
     write_stub "$dir" sleep 'exec /bin/sleep "$@"'
     if [ "$with_openssl" = 1 ]; then
         [ -n "${COUNT_REQUESTS:-}" ] && count="echo req >> '$COUNTER'"
-        write_stub "$dir" openssl "[ \"\$1\" = req ] && { $count ; exit 1; }
+        write_stub "$dir" openssl "[ \"\$1\" = req ] && { $count ; echo \"\${OPENSSL_REQ_ERROR:-}\" >&2 ; exit 1; }
 exit 0"
     fi
     printf '%s\n' "$dir"
@@ -69,4 +71,14 @@ run_getcert()
     tries=0
     [ -f "$COUNTER" ] && tries="$(grep -c req "$COUNTER")"
     [ "$tries" -gt 1 ]
+}
+
+@test "the give up message repeats what openssl printed" {
+    # OPENSSLDIR/openssl.cnf is absent more often than the key is broken, and the key is
+    # usually intact. A message that names only certkey.pem sends the reader to the wrong file.
+    export OPENSSL_REQ_ERROR="Can't open \"/usr/lib/ssl/openssl.cnf\" for reading, No such file or directory"
+    run run_getcert "$(stub_dir 1)" 30 5
+    [ "$status" -ne 124 ]
+    [ "$status" -ne 0 ]
+    [[ "$output" == *openssl.cnf* ]]
 }

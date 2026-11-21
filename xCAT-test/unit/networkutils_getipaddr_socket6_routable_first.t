@@ -63,12 +63,12 @@ sub resolve {
     return xCAT::NetworkUtils->getipaddr( 'mn.example.com', @extra );
 }
 
-is( resolve( [ 'fe80::4054:ff:fec9:9ad2', '2001:db8::50' ] ),
+is( resolve( [ 'fe80::5054:ff:fe12:3456', '2001:db8::50' ] ),
     '2001:db8::50',
     'getipaddr answers the routable address when the resolver lists link-local first'
 );
 
-is( resolve( [ 'fe80::4054:ff:fec9:9ad2', '192.0.2.154' ] ),
+is( resolve( [ 'fe80::5054:ff:fe12:3456', '192.0.2.154' ] ),
     '192.0.2.154',
     'getipaddr answers the IPv4 address when the resolver lists link-local first'
 );
@@ -94,7 +94,7 @@ is_deeply(
     'GetAllAddresses lists every routable address before the link-local one'
 );
 
-is( resolve( [ 'fe80::4054:ff:fec9:9ad2', '2001:db8::50' ], OnlyV6 => 1 ),
+is( resolve( [ 'fe80::5054:ff:fe12:3456', '2001:db8::50' ], OnlyV6 => 1 ),
     '2001:db8::50',
     'an OnlyV6 lookup answers the routable IPv6 address, not the link-local one'
 );

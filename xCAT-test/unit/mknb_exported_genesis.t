@@ -23,12 +23,16 @@ BEGIN {
     }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 
+    # The real module is loaded so mknb's address formatting is the real one.
+    # Only the probes that read the running host's interfaces are replaced.
+    require xCAT::NetworkUtils;
     package xCAT::NetworkUtils;
     our ($normnet_addresses, $hexnet_addresses, @master_addresses);
-    sub my_nets    { return $normnet_addresses; }
-    sub my_hexnets { return $hexnet_addresses; }
-    sub getipaddr  { return @master_addresses; }
-    $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
+    no warnings 'redefine';    ## no critic (TestingAndDebugging::ProhibitNoWarnings)
+    *my_nets    = sub { return $normnet_addresses; };
+    *my_nets6   = sub { return {}; };
+    *my_hexnets = sub { return $hexnet_addresses; };
+    *getipaddr  = sub { return @master_addresses; };
 
     package xCAT::NodeRange;
     sub import {

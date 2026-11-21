@@ -66,6 +66,31 @@ SSH_RECORD='type=AVC msg=audit(1759000002.333:444): avc:  denied  { siginh } for
     [[ "$output" == *'comm="genimage"'* ]]
 }
 
+# The hook cluster-test.pl registers with regnotif, executed by an xcatd worker. The
+# harness wrote this file, not xCAT, and /var/lib/xcat-cluster-test is not /var/lib/xcat.
+# Captured on build 2 of xcat-test-el10-x86_64-selinux, where it was the one denial the
+# run attributed to xCAT and selinux_cn_diskful_enforcing failed on it.
+HARNESS_RECORD='type=AVC msg=audit(1792858690.329:3003): avc:  denied  { execute_no_trans } for  pid=51342 comm=78636174643A204442204163636573 path="/var/lib/xcat-cluster-test/event-notify.pl" dev="vda4" ino=75521321 scontext=system_u:system_r:xcat_t:s0 tcontext=unconfined_u:object_r:var_lib_t:s0 tclass=file permissive=1'
+
+@test "a path that merely starts with the name of an xCAT directory is not kept" {
+    run classify "$HARNESS_RECORD"
+    [ -z "$output" ]
+}
+
+@test "an xCAT directory is kept when the path names the directory itself" {
+    local record='type=AVC msg=audit(1759000005.666:777): avc:  denied  { search } for  pid=6789 comm="httpd" path="/install" dev="vda2" ino=56 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:default_t:s0 tclass=dir permissive=0'
+    run classify "$record"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'path="/install"'* ]]
+}
+
+@test "a file under an xCAT directory is kept" {
+    local record='type=AVC msg=audit(1759000006.777:888): avc:  denied  { read } for  pid=7890 comm="httpd" path="/var/lib/xcat/cert/server-cert.pem" dev="vda2" ino=57 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:var_lib_t:s0 tclass=file permissive=0'
+    run classify "$record"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'/var/lib/xcat/cert/server-cert.pem'* ]]
+}
+
 @test "a program whose name merely contains a kept word is not matched by accident" {
     local record='type=AVC msg=audit(1759000004.555:666): avc:  denied  { execute } for  pid=5678 comm="systemd-udevd" scontext=system_u:system_r:udev_t:s0 tcontext=system_u:object_r:bin_t:s0 tclass=file permissive=0'
     run classify "$record"

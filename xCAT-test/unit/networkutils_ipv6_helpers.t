@@ -662,4 +662,79 @@ SKIP: {
     );
 }
 
+
+# getIPv6ReverseZones covers a network with several zones when its prefix is not a nibble. Both
+# getzonesfornet copies call it, so one test covers the ISC path and the DDNS path.
+{
+    is_deeply(
+        [ xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/64') ],
+        ['0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.'],
+        'a nibble-aligned prefix gives one zone'
+    );
+    # The embedded prefix is what getIPv6PrefixLength reads, so a value passed beside it is
+    # ignored. The zones must still come from the /62.
+    my @sixtytwo = xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/62');
+    is( scalar(@sixtytwo), 4, 'a /62 is covered by four /64 zones, as a /22 is by four /24 zones' );
+    is_deeply(
+        [@sixtytwo],
+        [
+            '0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+            '1.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+            '2.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+            '3.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.',
+        ],
+        'and they are the four zones of the networks it owns, not the enclosing /60'
+    );
+    is( scalar( xCAT::NetworkUtils->getIPv6ReverseZones('2001:db8::/126') ), 4,
+        'a /126 is covered by four /128 zones' );
+    is_deeply( [ xCAT::NetworkUtils->getIPv6ReverseZones('::/0') ], ['ip6.arpa.'],
+        'a /0 gives the root zone' );
+    is_deeply( [ xCAT::NetworkUtils->getIPv6ReverseZones('not-an-address/64') ], [],
+        'a value that is not an address gives no zone' );
+}
+
+# '!myipfn!' is the facing-address placeholder. pxe.pm, grub2.pm and petitboot.pm replace it
+# after the command line is built. format_host_port validated it as a host name and returned
+# undef, so the imgurl of a diskless node lost both its server and its port and read
+# "imgurl=http:////install/...". That reached every Ubuntu diskless node, not only an IPv6 one.
+{
+    is( xCAT::NetworkUtils->format_host_port('!myipfn!', 80), '!myipfn!:80',
+        'the facing-address placeholder survives being formatted with a port' );
+    is( xCAT::NetworkUtils->format_uri_host('!myipfn!'), '!myipfn!',
+        'and survives being formatted as a URI host' );
+
+    my $cmdline = 'imgurl=http://'
+      . ( xCAT::NetworkUtils->format_host_port('!myipfn!', 80) // '' )
+      . '/install/netboot/rootimg.cpio.gz';
+    is( xCAT::NetworkUtils::substitute_facing_address($cmdline, '2001:db8:147::1'),
+        'imgurl=http://[2001:db8:147::1]:80/install/netboot/rootimg.cpio.gz',
+        'an IPv6 facing address reaches the imgurl bracketed' );
+    is( xCAT::NetworkUtils::substitute_facing_address($cmdline, '192.0.2.1'),
+        'imgurl=http://192.0.2.1:80/install/netboot/rootimg.cpio.gz',
+        'and an IPv4 facing address reaches the imgurl bare' );
+
+    # The placeholder is an exception, not the removal of the check.
+    ok( !defined( xCAT::NetworkUtils->format_host_port('not a host', 80) ),
+        'a value that is neither a host nor the placeholder is still refused' );
+}
+
+# An NFS root carries the server between two colons: "root=nfs:<server>:/install". dracut
+# reads the server up to the last colon, so an unbracketed IPv6 address lost its last group
+# and a statelite node could not mount its root.
+is( xCAT::NetworkUtils::substitute_facing_address('root=nfs:!myipfn!:/install/netboot', '2001:db8::1'),
+    'root=nfs:[2001:db8::1]:/install/netboot',
+    'an NFS server is bracketed before its path' );
+is( xCAT::NetworkUtils::substitute_facing_address('root=nfs:!myipfn!:/install/netboot', '192.0.2.1'),
+    'root=nfs:192.0.2.1:/install/netboot',
+    'an IPv4 NFS server is left alone' );
+is( xCAT::NetworkUtils::substitute_facing_address('imgurl=http://!myipfn!:80/x root=nfs:!myipfn!:/y', '2001:db8::1'),
+    'imgurl=http://[2001:db8::1]:80/x root=nfs:[2001:db8::1]:/y',
+    'a port and an NFS path are both bracketed in one command line' );
+is( xCAT::NetworkUtils::substitute_facing_address('xcatd=!myipfn!', '2001:db8::1'),
+    'xcatd=2001:db8::1',
+    'a placeholder with nothing after it still takes the bare address' );
+is( xCAT::NetworkUtils::substitute_facing_address('path=!myipfn!/install', '2001:db8::1'),
+    'path=2001:db8::1/install',
+    'a slash that no colon precedes does not bracket' );
+
 done_testing();

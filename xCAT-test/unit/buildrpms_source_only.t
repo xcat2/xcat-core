@@ -153,7 +153,8 @@ ok( !grep( { $_ eq 'buildpkgs' } @{ stages_for(1) } ),
 # build-utils/lib on @INC relative to its own directory.
 my $sandbox = tempdir(CLEANUP => 1);
 for my $needed (qw(buildrpms.pl Version
-                   build-utils/lib/XCAT/BuildUtils.pm)) {
+                   build-utils/lib/XCAT/BuildUtils.pm
+                   build-utils/lib/XCAT/NFSLock.pm)) {
     my $from = repo_path($needed);
     die("$needed is missing from the repository\n") unless -r $from;
     my $to = File::Spec->catfile($sandbox, split(m{/}, $needed));

@@ -94,4 +94,15 @@ is( scalar xCAT_plugin::anaconda::_install_media_grub2_loader( $bare_media, 'ris
 is( messages( \@responses ), '', 'media without a grub2 image report nothing' );
 ok( !-d File::Spec->catdir( $tftpdir, 'boot' ), 'media without a grub2 image create no directories' );
 
+# openEuler spells the image grubriscv64.EFI; UEFI names are case-insensitive
+$tftpdir = File::Spec->catdir( $root, 'tftpboot-openeuler' );
+make_path($tftpdir);
+my $oe_media = media( $root, 'openeuler24.03sp3-riscv64', 'grubriscv64.EFI' );
+@responses = ();
+$loader = File::Spec->catfile( $tftpdir, 'boot', 'grub2', 'grub2.riscv64' );
+is( scalar xCAT_plugin::anaconda::_install_media_grub2_loader( $oe_media, 'riscv64', sub { push @responses, @_; } ),
+    $loader, 'an upper-case image name is published as the riscv64 boot loader' );
+is( -f $loader ? read_text($loader) : undef, "boot loader from the media\n",
+    'the published image is the one from the openEuler media' );
+
 done_testing();

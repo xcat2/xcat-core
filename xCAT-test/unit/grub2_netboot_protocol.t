@@ -54,7 +54,11 @@ for my $arch (qw(x86_64 ppc64le aarch64 riscv64)) {
             my $bootdir = "$tftpdir/boot/grub2";
             make_path($bootdir);
             my $loader_arch = $arch eq 'ppc64le' ? 'ppc' : $arch;
-            write_text("$bootdir/grub2.$loader_arch", "fixture loader\n");
+            # The kernel command follows the image, not the architecture, so the fixture
+            # has to say which commands it carries. grub records the name of each command
+            # its modules register. This one stands for a downstream image.
+            write_text("$bootdir/grub2.$loader_arch",
+                "fixture loader\0linux\0linuxefi\0initrd\0initrdefi\0\n");
             local $::XCATSITEVALS{httpport} = $port;
             delete $::XCATSITEVALS{httpport} unless defined $port;
             my %noderes = (tftpserver => 'server');
@@ -89,6 +93,8 @@ for my $arch (qw(x86_64 ppc64le aarch64 riscv64)) {
             my @roots = $entry =~ /^\s*set root=(.*)$/mg;
             is_deeply(\@roots, [$expected_root], 'transfer protocol and port are correct');
             my $prefix = $http_paths ? $tftpdir : '';
+            # x86_64 is the architecture whose loader is an EFI binary, and the fixture
+            # above carries linuxefi, so that is what the configuration must use.
             my $efi = $arch eq 'x86_64' ? 'efi' : '';
             my @kernels = $entry =~ /^\s*(linux\S* .*)$/mg;
             is_deeply(\@kernels,

@@ -15,8 +15,12 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 Requires: xCAT-server
-# Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
-%if !0%{?suse_version}
+# The pod converters are in perl-Pod-Html on EL and in the core perl package on
+# SUSE, which has no perl-Pod-Html. A SUSE chroot holds perl-base only, and that
+# ships neither Pod::Man nor pod2man.
+%if 0%{?suse_version}
+BuildRequires: perl
+%else
 BuildRequires: perl-Pod-Html
 %endif
 

@@ -159,6 +159,33 @@ for my $owner ([anaconda => 'rhels8'], [debian => 'ubuntu24.04'], [sles => 'sles
     }
 }
 
+# root=nfs: separates the server, the directory and the options with colons, so an IPv6 server
+# has to be bracketed. All three netboot plugins build the parameter here, so one test covers EL,
+# Ubuntu and SUSE.
+{
+    my ($nfsroot, $error) = xCAT::SvrUtils->build_statelite_nfsroot_parameter(
+        '2001:db8::1', '/install/netboot/rhels10.0/x86_64/compute/rootimg', undef);
+    is($error, undef, 'an IPv6 NFS root server is accepted');
+    is($nfsroot, 'root=nfs:[2001:db8::1]:/install/netboot/rhels10.0/x86_64/compute/rootimg:ro',
+        'and is bracketed, so the directory can be told from the address');
+
+    ($nfsroot, $error) = xCAT::SvrUtils->build_statelite_nfsroot_parameter(
+        '192.0.2.1', '/install/netboot/rhels10.0/x86_64/compute/rootimg', undef);
+    is($nfsroot, 'root=nfs:192.0.2.1:/install/netboot/rhels10.0/x86_64/compute/rootimg:ro',
+        'an IPv4 server is left as it was');
+
+    ($nfsroot, $error) = xCAT::SvrUtils->build_statelite_nfsroot_parameter(
+        'mn.cluster', '/install/netboot/rhels10.0/x86_64/compute/rootimg', undef);
+    is($nfsroot, 'root=nfs:mn.cluster:/install/netboot/rhels10.0/x86_64/compute/rootimg:ro',
+        'and so is a name, which the resolver in the image handles');
+
+    # The options still follow the directory, which is what the colons have to keep apart.
+    ($nfsroot, $error) = xCAT::SvrUtils->build_statelite_nfsroot_parameter(
+        '2001:db8::1', '/rootimg', 'nolock,vers=3');
+    is($nfsroot, 'root=nfs:[2001:db8::1]:/rootimg:ro,nolock,vers=3',
+        'the mount options are still readable after a bracketed address');
+}
+
 done_testing();
 
 sub set_row {

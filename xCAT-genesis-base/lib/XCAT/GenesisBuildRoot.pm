@@ -14,7 +14,7 @@ my @BASE_PACKAGES = qw(
   openssh-server openssh-client rsyslog chrony
   nfs-common rpcbind pciutils usbutils parted
   dosfstools e2fsprogs lvm2 mdadm net-tools
-  bc psmisc rsync wget cpio
+  bc psmisc rsync wget cpio gawk
   isc-dhcp-client ifenslave
   systemd-sysv hwdata btrfs-progs netcat-openbsd iputils-ping fdisk ncurses-term
   dpkg-dev debhelper fakeroot devscripts vim-tiny

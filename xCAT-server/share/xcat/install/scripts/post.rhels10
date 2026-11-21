@@ -16,5 +16,3 @@ do
     sed -i -e 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1/enabled=0/' /etc/yum.repos.d/$repo_file
   fi
 done
-
-exit 0

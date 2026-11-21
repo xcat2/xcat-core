@@ -38,6 +38,9 @@ If this does not work or the management node is not the same distro level, copy 
 /opt/xcat/share/xcat/netboot/<os> to a system that is the proper architecture, and mount /install from
 the management node to that system. Then change directory to /opt/xcat/share/xcat/netboot/<os> and run ./genimage.
 
+When copying Debian scripts from a source checkout, use B<cp -RL> to include
+the shared profile helper. Installed packages include the helper in the Debian directory.
+
 
 =head1 Parameters
 

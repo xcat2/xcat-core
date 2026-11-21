@@ -40,10 +40,25 @@ _dracut_install_opt() {
     fi
 }
 
+# openssl req reads the config file at OPENSSLDIR/openssl.cnf and exits 1 without it, so the
+# node makes no certificate request. dracut_install copies the program and its libraries only.
+# OPENSSLDIR is /usr/lib/ssl on Ubuntu and /etc/pki/tls on EL, so ask openssl where it looks.
+_dracut_install_openssl_config() {
+    local dir cnf
+    dir=$(openssl version -d 2>/dev/null | sed -e 's/^OPENSSLDIR: *"*//' -e 's/"*$//')
+    cnf="${dir:-/etc/ssl}/openssl.cnf"
+    if [ ! -e "$cnf" ]; then
+        dfatal "xcat: no openssl config at $cnf; Genesis cannot request a certificate"
+        exit 1
+    fi
+    dracut_install "$cnf"
+}
+
 install() {
     local genesis_openeuler=0 timezone timezone_files locale_file locale_files
     [[ -f /etc/openEuler-release ]] && genesis_openeuler=1
     dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc bash
+    _dracut_install_openssl_config
     dracut_install netstat # broadcom update requires
     dracut_install uniq # mellanox update requires
     dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr

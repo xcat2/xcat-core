@@ -219,14 +219,14 @@ sub _copy_bundle {
 sub copycd {
     my ($request, $callback, $doreq) = @_;
     my @args = @{ $request->{arg} || [] };
-    my ($mount, $source, $inspect, $noosimage, $nonoverwrite, $name, $arch, $path, $specific);
+    my ($mount, $source, $iso, $inspect, $noosimage, $nonoverwrite, $name, $arch, $path, $specific);
     my @parse_errors;
     my $parser = Getopt::Long::Parser->new(config => [qw(no_auto_abbrev no_ignore_case)]);
     my $parsed;
     {
         local $SIG{__WARN__} = sub { push @parse_errors, @_ };
         $parsed = $parser->getoptionsfromarray(\@args,
-            'm=s' => \$mount, 'f=s' => \$source, 'i' => \$inspect,
+            'm=s' => \$mount, 'f=s' => \$source, 'I=s' => \$iso, 'i' => \$inspect,
             'o' => \$noosimage, 'w' => \$nonoverwrite, 'n=s' => \$name,
             'a=s' => \$arch, 'p=s' => \$path, 's' => \$specific);
     }

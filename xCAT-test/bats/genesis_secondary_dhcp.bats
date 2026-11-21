@@ -6,6 +6,9 @@ setup()
 {
     setup_doxcat
     add_doxcat_link boot0 BROADCAST,MULTICAST,UP ether aa:bb:cc:dd:ee:ff
+    # These cases measure which nics are selected. A secondary nic is served DHCPv6 only after
+    # the boot nic holds an address, so give the boot nic one.
+    printf '2: boot0 inet6 2001:db8:188::20/64 scope global\n' >"$fixture/addrs6/boot0"
 }
 
 physical_nic()

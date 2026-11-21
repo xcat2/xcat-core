@@ -6,6 +6,8 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::PasswordUtils;
 use xCAT::IMMUtils;
+use xCAT::BMCUtils;
+use xCAT::NetworkUtils;
 use xCAT::TableUtils;
 use IO::Select;
 use Socket;
@@ -29,36 +31,25 @@ sub genpassword {
 }
 
 sub net_parms {
-    my $ip = shift;
-    if (inet_aton($ip)) {
-        $ip = inet_ntoa(inet_aton($ip));
-    } else {
-        xCAT::MsgUtils->message("S", "Unable to resolve $ip");
-        return undef;
-    }
+    my $bmc    = shift;
     my $nettab = xCAT::Table->new('networks');
     unless ($nettab) { return undef }
     my @nets = $nettab->getAllAttribs('net', 'mask', 'gateway');
-    foreach (@nets) {
-        my $net  = $_->{'net'};
-        my $mask = $_->{'mask'};
-        my $gw   = $_->{'gateway'};
-        $ip =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-        my $ipnum = ($1 << 24) + ($2 << 16) + ($3 << 8) + $4;
-        $mask =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-        my $masknum = ($1 << 24) + ($2 << 16) + ($3 << 8) + $4;
-        $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/ or next; #next if ipv6, TODO: IPv6 support
-        my $netnum = ($1 << 24) + ($2 << 16) + ($3 << 8) + $4;
-
-        if ($gw eq '<xcatmaster>') {
-            my @gwd = xCAT::NetworkUtils->my_ip_facing($ip);
-            unless ($gwd[0]) { $gw = $gwd[1]; }
-        }
-        if (($ipnum & $masknum) == $netnum) {
-            return ($ip, $mask, $gw);
-        }
-    }
-    xCAT::MsgUtils->message("S", "xCAT BMC configuration error, no appropriate network for $ip found in networks, unable to determine netmask");
+    my @parms = xCAT::BMCUtils::bmc_net_params(
+        $bmc, \@nets,
+        resolve6 => sub {
+            return xCAT::NetworkUtils->getipaddr($_[0], OnlyV6 => 1);
+        },
+        facing => sub {
+            my ($ip, $family) = @_;
+            my @facing = $family == 6
+              ? xCAT::NetworkUtils->my_ip_facing_family($ip, 6)
+              : xCAT::NetworkUtils->my_ip_facing($ip);
+            return $facing[0] ? undef : $facing[1];
+        });
+    return @parms if defined $parms[0];
+    xCAT::MsgUtils->message("S", $parms[1]);
+    return;
 }
 
 
@@ -74,9 +65,7 @@ sub ok_with_node {
     my $select = new IO::Select;
 
     #sleep 0.5; # gawk script race condition might exist, try to lose just in case
-    my $sock = new IO::Socket::INET(PeerAddr => $node,
-        Proto    => "tcp",
-        PeerPort => shift);
+    my $sock = xCAT::NetworkUtils->open_tcp_socket($node, shift);
     my $rsp;
     unless ($sock) { return 0 }
     $select->add($sock);
@@ -147,7 +136,7 @@ sub process_request {
     }
     my $bmcport_counter = 0;
     foreach my $sbmc (split /,/, $bmc) {
-        (my $ip, my $mask, my $gw) = net_parms($sbmc);
+        my ($ip, $mask, $gw, $routerprefix) = net_parms($sbmc);
         unless ($ip and $mask and $username and $password) {
             my $passtate = defined($password) && length($password) ? "set" : "missing";
             xCAT::MsgUtils->message('S', "Unable to determine IP, Netmask, Username, or Password for $sbmc. Ensure that hostname resolution is working. [IP=$ip Netmask=$mask User=$username Pass=$passtate]",);
@@ -159,6 +148,7 @@ sub process_request {
             return;
         }
         my $response = { bmcip => $ip, netmask => $mask, gateway => $gw, username => $username, password => $password };
+        $response->{routerprefix} = $routerprefix if defined $routerprefix;
         if (defined $bmcport) {
             if ($bmcport =~ /,/) {
                 my @sbmcport = (split /,/, $bmcport);

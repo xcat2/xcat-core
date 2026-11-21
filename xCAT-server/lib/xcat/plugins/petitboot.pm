@@ -4,6 +4,7 @@ package xCAT_plugin::petitboot;
 use File::Path;
 use Getopt::Long;
 use xCAT::Table;
+use xCAT::NetworkUtils;
 use Sys::Syslog;
 use xCAT::Scope;
 use xCAT::Usage;
@@ -15,6 +16,90 @@ my %usage = (
 
 my $httpmethod = "http";
 my $httpport   = "80";
+
+#-----------------------------------------------------------------------------
+
+=head3 petitboot_boot_url
+
+    Builds the URL that petitboot fetches a kernel or an initrd from.
+
+    Arguments:
+        $method  - the URL scheme, from site.httpmethod
+        $server  - the install server, or the '!myipfn!' placeholder
+        $port    - the port, from site.httpport
+        $tftpdir - the tftp directory
+        $file    - the path of the file under $tftpdir
+    Returns:
+        the URL.
+
+    An IPv6 server is bracketed, because "http://2001:db8::1:80/" cannot be
+    split into a host and a port. The placeholder carries no colon and stays
+    bare, and substitute_facing_address brackets it when it is replaced.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub petitboot_boot_url {
+    my ($method, $server, $port, $tftpdir, $file) = @_;
+
+    my $authority = xCAT::NetworkUtils::uri_authority($server, $port);
+    return "$method://$authority$tftpdir/" . $file;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 petitboot_facing_address
+
+    Finds the address of the management node that faces one node.
+
+    Arguments:
+        $node - the node name
+    Returns:
+        the (code, value) pair that my_ip_facing returns.
+
+    my_ip_facing resolves with inet_aton, so it reports an IPv6-only node
+    unresolvable and the node gets no configuration at all. The family of the
+    node decides which helper answers.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub petitboot_facing_address {
+    my ($node) = @_;
+
+    return ((xCAT::NetworkUtils->node_address_family($node) || 4) == 6)
+      ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+      : xCAT::NetworkUtils->my_ip_facing($node);
+}
+
+#-----------------------------------------------------------------------------
+
+=head3 petitboot_config_name
+
+    Builds the name of the configuration file that petitboot asks for.
+
+    Arguments:
+        $ip - the address of the node
+    Returns:
+        the name, or undef when the address is not IPv4.
+
+    The name is the four octets of the IPv4 address in hexadecimal. An IPv6
+    address has no four octets, and sprintf then reads the first field as a
+    number and fills the rest with zeroes, so the node gets a name that no
+    firmware asks for and no error.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub petitboot_config_name {
+    my ($ip) = @_;
+
+    return unless defined($ip);
+    my @octets = split(/\./, $ip);
+    return unless scalar(@octets) == 4;
+    return unless grep({ /\A\d+\z/ && $_ <= 255 } @octets) == 4;
+    return uc(sprintf("%02x%02x%02x%02x", @octets));
+}
 
 sub handled_commands {
     return {
@@ -101,12 +186,14 @@ sub setstate {
         } else {
             $installsrv = '!myipfn!';
         }
-        $kern->{kernel} = "$httpmethod://$installsrv:$httpport$tftpdir/" . $kern->{kernel};
-        $kern->{initrd} = "$httpmethod://$installsrv:$httpport$tftpdir/" . $kern->{initrd};
+        $kern->{kernel} =
+          petitboot_boot_url($httpmethod, $installsrv, $httpport, $tftpdir, $kern->{kernel});
+        $kern->{initrd} =
+          petitboot_boot_url($httpmethod, $installsrv, $httpport, $tftpdir, $kern->{initrd});
     }
     if ($kern->{kcmdline} =~ /!myipfn!/ or $kern->{kernel} =~ /!myipfn!/) {
         my $ipfn;
-        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        my @ipfnd = petitboot_facing_address($node);
 
         if ($ipfnd[0] == 1) {
             return (1, $ipfnd[1]);
@@ -127,9 +214,10 @@ sub setstate {
             }
         } else {
             $ipfn = $ipfnd[1];
-            $kern->{kernel} =~ s/!myipfn!/$ipfn/g;
-            $kern->{initrd} =~ s/!myipfn!/$ipfn/g;
-            $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
+            foreach my $field (qw(kernel initrd kcmdline)) {
+                $kern->{$field} =
+                  xCAT::NetworkUtils::substitute_facing_address($kern->{$field}, $ipfn);
+            }
         }
     }
 
@@ -192,9 +280,10 @@ sub setstate {
         return (1, "xCAT unable to resolve IP for $node in petitboot plugin.");
     }
 
-    my @ipa = split(/\./, $ip);
-    my $pname = sprintf("%02x%02x%02x%02x", @ipa);
-    $pname = uc($pname);
+    my $pname = petitboot_config_name($ip);
+    unless (defined $pname) {
+        return (1, "petitboot names its configuration file after the IPv4 address of $node, so an IPv6-only node has no name to use. Give the node an IPv4 address, or use netboot=grub2.");
+    }
 
     # remove the old boot configuration file and copy (link) a new one, but only if not offline directive
     unlink("$tftpdir/" . $pname);

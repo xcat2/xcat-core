@@ -696,6 +696,29 @@ function configipv4(){
     fi
 }
 
+# Write the IPv6 default route of a SUSE node, once. A gateway that is the default token or
+# names xcatmaster is the management node and is not written as a route.
+#
+# Two faults here stopped the route being written at all and would then have duplicated it. The
+# test read "[ a ] -a [ b ]", which is not a shell operator: bash reported "too many arguments"
+# and took the else path every time. The duplicate check spelled the class "[:space:]", which
+# matches one of those six characters, so it never found a route already present.
+add_suse_ipv6_default_route()
+{
+    local gateway="$1"
+    local default_token="$2"
+    local routes_file="$3"
+
+    [ -n "$gateway" ] || return 0
+    [ "$gateway" != "$default_token" ] || return 0
+    echo "$gateway" | grep -q 'xcatmaster' && return 0
+
+    if ! grep -E "default[[:space:]]+${gateway}[[:space:]]" "$routes_file" >/dev/null 2>&1; then
+        echo "default $gateway - -" >> "$routes_file"
+    fi
+    return 0
+}
+
 configipv6(){
     str_if_name=$1
     str_v6ip=$2
@@ -728,12 +751,8 @@ configipv6(){
         echo "LABEL_ipv6${num_v6num}=ipv6$num_v6num" >> $str_conf_file
         echo "IPADDR_ipv6${num_v6num}=${str_v6ip}" >> $str_conf_file
         echo "PREFIXLEN_ipv6${num_v6num}=${str_v6prefix}" >> $str_conf_file
-        if [ "$str_v6gateway" != "$str_default_token" ] -a [ `echo $str_v6gateway | grep -v 'xcatmaster'` ];then
-            grep -E "default[:space:]+${str_v6gateway}[:space:]+" /etc/sysconfig/network/routes 2>&1 1>/dev/null
-            if [ $? -ne 0 ];then
-                echo "default $str_v6gateway - -" >> /etc/sysconfig/network/routes
-            fi
-        fi
+        add_suse_ipv6_default_route "$str_v6gateway" "$str_default_token" \
+            "${XCAT_SUSE_ROUTES_FILE:-/etc/sysconfig/network/routes}"
 
         #add extra params
 	i=0

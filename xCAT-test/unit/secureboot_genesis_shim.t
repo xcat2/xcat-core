@@ -11,6 +11,7 @@ use File::Path qw(make_path);
 use File::Slurper qw(read_text write_binary);
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
 
 BEGIN {
@@ -23,12 +24,16 @@ BEGIN {
     sub get_site_attribute { return $_[-1] eq 'master' ? ('master.example.com') : () }
     $INC{'xCAT/TableUtils.pm'} = __FILE__;
 
+    # The real module is loaded so mknb's address formatting is the real one.
+    # Only the probes that read the running host's interfaces are replaced.
+    require xCAT::NetworkUtils;
     package xCAT::NetworkUtils;
-    sub my_nets    { return { '192.168.144.0/20' => ['192.168.148.10'] } }
-    sub my_hexnets { return { c0a89 => ['192.168.148.10'] } }
-    sub getipaddr  { return ('203.0.113.10') }
-    sub get_nic_ip { return {} }
-    $INC{'xCAT/NetworkUtils.pm'} = __FILE__;
+    no warnings 'redefine';    ## no critic (TestingAndDebugging::ProhibitNoWarnings)
+    *my_nets    = sub { return { '192.168.144.0/20' => ['192.168.148.10'] } };
+    *my_nets6   = sub { return {} };
+    *my_hexnets = sub { return { c0a89 => ['192.168.148.10'] } };
+    *getipaddr  = sub { return ('203.0.113.10') };
+    *get_nic_ip = sub { return {} };
 
     package xCAT::MsgUtils;
     sub trace { return }

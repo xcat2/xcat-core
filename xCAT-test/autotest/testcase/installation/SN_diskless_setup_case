@@ -74,13 +74,13 @@ check:rc==0
 cmd:osimage="__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service";otherpkglist=$(lsdef -t osimage $osimage -i otherpkglist -c|awk -F"=" '{print $2}'); cat $otherpkglist
 
 cmd:if [ ! -d /tmp/mountoutput ]; then mkdir -p /tmp/mountoutput; fi
-cmd:mount |sort > /tmp/mountoutput/file.org
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/mount_snapshot.sh > /tmp/mountoutput/file.org
 
 cmd:genimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-netboot-service
 check:rc==0
 
-cmd:mount |sort > /tmp/mountoutput/file.new
-cmd:diff -y /tmp/mountoutput/file.org /tmp/mountoutput/file.new --ignore-matching-lines="fusectl"
+cmd:/opt/xcat/share/xcat/tools/autotest/testcase/commoncmd/mount_snapshot.sh > /tmp/mountoutput/file.new
+cmd:diff -y /tmp/mountoutput/file.org /tmp/mountoutput/file.new
 check:rc==0
 cmd:rm -rf /tmp/mountoutput
 

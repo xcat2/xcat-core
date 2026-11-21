@@ -135,9 +135,21 @@ sub _push_host_line
     _index_host_line($#hosts);
 }
 
+# True when the address on line $idx is of the same family as $ip. An unparsable first field
+# is treated as the same family, so a legacy entry keeps the behaviour it had.
+sub _host_line_same_family
+{
+    my ($idx, $ip) = @_;
+
+    return 1 unless defined($ip);
+    my ($line_ip) = defined($hosts[$idx]) ? $hosts[$idx] =~ /^(\S+)\s/ : ();
+    return 1 unless defined($line_ip);
+    return ( ( index($line_ip, ':') >= 0 ) == ( index($ip, ':') >= 0 ) ) ? 1 : 0;
+}
+
 sub _matching_host_indexes
 {
-    my ($node, $ip) = @_;
+    my ($node, $ip, %opts) = @_;
     my %matches;
 
     my $canonical = xCAT::NetworkUtils->canonical_ip_address($ip);
@@ -146,9 +158,19 @@ sub _matching_host_indexes
     {
         $matches{$_} = 1 foreach keys %{ $host_indexes_by_ip{$key} };
     }
+    # A dual-stack node has an A line and an AAAA line under one name, so a node name matches
+    # only lines of the family being written. A delete passes all_families. family_change
+    # also matches the other family when the node has no line of this one: then hosts.ip
+    # moved to the other family, and the old line is stale.
     if (exists($host_indexes_by_node{$node}))
     {
-        $matches{$_} = 1 foreach keys %{ $host_indexes_by_node{$node} };
+        my @same  = grep { _host_line_same_family($_, $ip) } keys %{ $host_indexes_by_node{$node} };
+        my @other = grep { !_host_line_same_family($_, $ip) } keys %{ $host_indexes_by_node{$node} };
+        $matches{$_} = 1 foreach @same;
+        if ($opts{all_families} || ($opts{family_change} && !@same))
+        {
+            $matches{$_} = 1 foreach @other;
+        }
     }
 
     my @indexes = sort { $a <=> $b } keys %matches;
@@ -168,7 +190,10 @@ sub delnode
     my $othernames = shift;
     my $domain     = shift;
 
-    foreach my $idx (_matching_host_indexes($node, $ip))
+    # A delete removes the node, so it takes every family. The family filter exists to keep the
+    # other record of a dual-stack node during an update; applied here it left the old record
+    # behind when the address of a node changed family.
+    foreach my $idx (_matching_host_indexes($node, $ip, all_families => 1))
     {
         _set_host_line($idx, "");
     }
@@ -188,9 +213,10 @@ sub addnode
     my $othernames = shift;
     my $domain     = shift;
     my $nics       = shift;
+    my %opts       = @_;
 
     # if this ip was already added then just update the entry
-    my @matches = _matching_host_indexes($node, $ip);
+    my @matches = _matching_host_indexes($node, $ip, family_change => $opts{family_change});
     if (@matches)
     {
         my $idx = shift @matches;
@@ -308,7 +334,8 @@ sub addotherinterfaces
         if ($_ =~ /!/) {
             ($itf, $ip) = split(/!/, $_);
         } else {
-            ($itf, $ip) = split(/:/, $_);
+            # An IPv6 address carries colons. Split at the first one only.
+            ($itf, $ip) = split(/:/, $_, 2);
         }
         if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
@@ -341,7 +368,8 @@ sub delotherinterfaces
         if ($_ =~ /!/) {
             ($itf, $ip) = split(/!/, $_);
         } else {
-            ($itf, $ip) = split(/:/, $_);
+            # An IPv6 address carries colons. Split at the first one only.
+            ($itf, $ip) = split(/:/, $_, 2);
         }
         if ($ip && xCAT::NetworkUtils->isValidIp($ip))
         {
@@ -408,7 +436,8 @@ sub add_hosts_content {
         {
             if (xCAT::NetworkUtils->isValidIp($ip))
             {
-                addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
+                addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain, undef,
+                  family_change => 1;
             }
             else
             {
@@ -478,7 +507,7 @@ sub add_all_hosts_content
         if (xCAT::NetworkUtils->isValidIp($hostent->{ip}))
         {
             addnode $callback, $hostent->{node}, $hostent->{ip},
-              $hostent->{hostnames}, $domain;
+              $hostent->{hostnames}, $domain, undef, family_change => 1;
         }
         else
         {
@@ -797,7 +826,8 @@ sub donics
             if ($_ =~ /!/) {
                 ($nicname, $nicip) = split('!', $_);
             } else {
-                ($nicname, $nicip) = split(':', $_);
+                # An IPv6 address carries colons. Split at the first one only.
+                ($nicname, $nicip) = split(':', $_, 2);
             }
 
             $nicindex{$nicname} = 0;

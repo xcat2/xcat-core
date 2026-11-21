@@ -11,6 +11,7 @@ use xCAT::MsgUtils;
 use Getopt::Long;
 use xCAT::Utils;
 use xCAT::HTTPUtils qw(httpport_suffix);
+use xCAT::NetworkUtils;
 require xCAT::BootUtils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
@@ -262,29 +263,12 @@ sub setstate {
             $kcmdlinehack = xCAT::BootUtils::volatile_addkcmdline($kcmdlinehack);
 
 
-            while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
-                my $natab = xCAT::Table->new($1);
-                my $naent = $natab->getNodeAttribs($node, [$2]);
-                my $naval = $naent->{$2};
-                $kcmdlinehack =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
-            }
-            while ($kcmdlinehack =~ /#TABLE:([^:#]+):([^:#]+):([^:#]+)#/) {
-                my $tabname = $1;
-                my $keyname = $2;
-                my $colname = $3;
-                if ($2 =~ /THISNODE/ or $2 =~ /\$NODE/) {
-                    my $natab = xCAT::Table->new($tabname);
-                    my $naent = $natab->getNodeAttribs($node, [$colname]);
-                    my $naval = $naent->{$colname};
-                    $kcmdlinehack =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
-                } else {
-                    my $msg = "Table key of $2 not yet supported by boottarget mini-template";
-                    $::XNBA_callback->({
-                            error     => ["$msg"],
-                            errorcode => [1]
-                    });
-                }
-            }
+            my $template_error;
+            $kcmdlinehack = xCAT::BootUtils::expand_node_template(
+                $node, $kcmdlinehack,
+                sub { $template_error = shift; }
+            );
+            return (1, $template_error) if defined($template_error);
 
             #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
             $kern->{kcmdline} .= " " . $kcmdlinehack;
@@ -306,8 +290,15 @@ sub setstate {
 
     my $elilokcmdline = $kern->{kcmdline}; #track it separate, since vars differ
     my $pxelinuxkcmdline = $kern->{kcmdline}; #track it separate, since vars differ
+    # next-server is a DHCPv4 field. An IPv6 node resolves it to nothing, so every URL in
+    # the script loses its host. There is no value that serves such a node when no IPv6
+    # address faces it, which is why this stops instead of keeping the variable.
+    my ($script_server, $script_server_error) =
+      xCAT::NetworkUtils->ipxe_script_server_for_node($node);
+    return (1, $script_server_error) if defined $script_server_error;
+
     if ($kern->{kcmdline} =~ /!myipfn!/) {
-        my $ipfn = '${next-server}';          #xCAT::Utils->my_ip_facing($node);
+        my $ipfn = $script_server;
         $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
         $elilokcmdline =~ s/!myipfn!/%N/g;
         my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
@@ -359,8 +350,8 @@ sub setstate {
             my $kernel;
             ($kernel, $hypervisor) = split /!/, $kern->{kernel};
             print $pcfg " set 209:string $SCRIPTS/nodes/$node.pxelinux\n";
-            print $pcfg " set 210:string http://" . '${next-server}' . $portsuffix . "/tftpboot/\n";
-            print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
+            print $pcfg " set 210:string http://" . $script_server . $portsuffix . "/tftpboot/\n";
+            print $pcfg " imgfetch -n pxelinux.0 http://" . $script_server . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
             print $pcfg " imgload pxelinux.0\n";
             print $pcfg " imgexec pxelinux.0\n";
             close($pcfg);
@@ -370,8 +361,8 @@ sub setstate {
         } else {
             if ($kern->{kernel} =~ /\.c32\z/ or $kern->{kernel} =~ /memdisk\z/) { #gPXE comboot support seems insufficient, chain pxelinux instead
                 print $pcfg " set 209:string $SCRIPTS/nodes/$node.pxelinux\n";
-                print $pcfg " set 210:string http://" . '${next-server}' . $portsuffix . "/tftpboot/\n";
-                print $pcfg " imgfetch -n pxelinux.0 http://" . '${next-server}' . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
+                print $pcfg " set 210:string http://" . $script_server . $portsuffix . "/tftpboot/\n";
+                print $pcfg " imgfetch -n pxelinux.0 http://" . $script_server . $portsuffix . "/tftpboot/xcat/pxelinux.0\n";
                 print $pcfg " imgload pxelinux.0\n";
                 print $pcfg " imgexec pxelinux.0\n";
                 close($pcfg);
@@ -399,11 +390,11 @@ sub setstate {
                         $kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
                     }
                     print $ucfg "#!gpxe\n";
-                    print $ucfg 'chain http://${next-server}'.$portsuffix.'/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
+                    print $ucfg "chain http://$script_server".$portsuffix.'/tftpboot/xcat/esxboot-x64.efi ' . $kern->{kcmdline} . "\n";
                     close($ucfg);
                 }
             } else { #other than comboot/multiboot, we won't have need of pxelinux
-                print $pcfg "imgfetch -n kernel http://" . '${next-server}' . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
+                print $pcfg "imgfetch -n kernel http://" . $script_server . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
                 print $pcfg "imgload kernel\n";
                 if ($kern->{kcmdline}) {
                     print $pcfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/mac:hexhyp}' . "\n";
@@ -411,7 +402,7 @@ sub setstate {
                     print $pcfg "imgargs kernel BOOTIF=" . '${netX/mac}' . "\n";
                 }
                 if ($kern->{initrd}) {
-                    print $pcfg "imgfetch -n initrd http://" . '${next-server}' . "$portsuffix/tftpboot/" . $kern->{initrd} . "\n";
+                    print $pcfg "imgfetch -n initrd http://" . $script_server . "$portsuffix/tftpboot/" . $kern->{initrd} . "\n";
                 }
                 print $pcfg "imgexec kernel\n";
                 if ($kern->{kcmdline} and $kern->{initrd}) { #only a linux kernel/initrd pair should land here, write elilo config and uefi variant of xnba config file
@@ -419,7 +410,7 @@ sub setstate {
                     open($ucfg, '>', "$bootloader_root/$node.uefi");
                     if (_use_efistub_for_uefi($kern)) {
                         print $ucfg "#!gpxe\n";
-                        print $ucfg "imgfetch -n kernel http://" . '${next-server}' . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
+                        print $ucfg "imgfetch -n kernel http://" . $script_server . $portsuffix.'/tftpboot/' . $kern->{kernel} . "\n";
                         print $ucfg "imgload kernel\n";
                         # The shim command reads the selected image, so it comes after imgload.
                         my $shim = ($METHOD eq 'ipxe') ? xCAT::SecureBoot->shim_url_path(
@@ -428,18 +419,18 @@ sub setstate {
                             kernel      => $kern->{kernel},
                             installroot => xCAT::TableUtils->getInstallDir(),
                             tftpdir     => $tftpdir) : undef;
-                        print $ucfg "shim http://" . '${next-server}' . $portsuffix . $shim . "\n" if ($shim);
+                        print $ucfg "shim http://" . $script_server . $portsuffix . $shim . "\n" if ($shim);
                         if ($kern->{kcmdline}) {
                              print $ucfg "imgargs kernel " . $kern->{kcmdline} . ' BOOTIF=01-${netX/mac:hexhyp} initrd=initrd' . "\n";
                         } else {
                              print $ucfg "imgargs kernel BOOTIF=" . '${netX/mac} initrd=initrd' . "\n";
                         }
-                        print $ucfg "imgfetch -n initrd http://" . '${next-server}' . "$portsuffix/tftpboot/" . $kern->{initrd} . "\n";
+                        print $ucfg "imgfetch -n initrd http://" . $script_server . "$portsuffix/tftpboot/" . $kern->{initrd} . "\n";
                         print $ucfg "imgexec kernel\n";
                         close($ucfg);
                    } else {
                        print $ucfg "#!gpxe\n";
-                       print $ucfg 'chain http://${next-server}'.$portsuffix.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/' . "$SCRIPTS/nodes/$node.elilo\n";
+                       print $ucfg "chain http://$script_server".$portsuffix.'/tftpboot/xcat/elilo-x64.efi -C /tftpboot/' . "$SCRIPTS/nodes/$node.elilo\n";
                        close($ucfg);
                        open($ucfg, '>', "$bootloader_root/$node.elilo");
                        print $ucfg 'default="xCAT"' . "\n";
@@ -467,7 +458,9 @@ sub _write_uefi_exit_script {
     open(my $ucfg, '>', "$bootloader_root/$node.uefi");
     print $ucfg "#!gpxe\n";
     print $ucfg "#$state\n" if $state;
-    print $ucfg "exit\n";
+    # UEFI firmware stops at its boot manager menu when a boot option returns success. A
+    # failure status makes it try the next boot option, which is the disk.
+    print $ucfg "exit 1\n";
     close($ucfg);
 }
 

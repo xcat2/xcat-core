@@ -18,3 +18,5 @@ gzip
 xz-utils
 cpio
 chrony
+dracut
+dracut-network

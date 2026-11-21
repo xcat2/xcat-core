@@ -140,6 +140,24 @@ SKIP: {
         'ip6.arpa.',
         'IPv6 /0 produces the root reverse zone without looping'
     );
+
+    # A prefix that is not a multiple of 4 has no reverse zone of its own, because a zone is
+    # delegated on a nibble. getzonesfornet used to die here and take makedns with it.
+    # A network whose prefix is not a nibble is covered by several zones of the next nibble.
+    # getzonesfornet used to die here and take makedns with it; the zones come from
+    # NetworkUtils::getIPv6ReverseZones, which both copies of the routine call.
+    foreach my $case (
+        [ '2001:db8:7309::/62',   '/62',  4 ],
+        [ '2001:db8:7309::1/126', '/126', 4 ],
+        [ '2001:db8:7309::/64',   '/64',  1 ],
+      )
+    {
+        my ( $network, $prefix, $expected ) = @$case;
+        my @zones = eval { xCAT_plugin::ddns::getzonesfornet({ net => $network }) };
+        ok( !$@, "an IPv6 $prefix does not abort makedns" );
+        is( scalar(@zones), $expected,
+            "an IPv6 $prefix is covered by $expected reverse zone(s)" );
+    }
     my $default_route_ctx = {
         hoststab => {
             default01 => [ { ip => '2001:db8::1' } ],

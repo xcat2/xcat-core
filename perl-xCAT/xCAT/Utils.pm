@@ -1332,6 +1332,7 @@ sub runxcmd
     }
 
     $::xcmd_outref      = [];
+    $::xcmd_errorcode   = 0;
     %::xcmd_outref_hash = ();
     my $req;
     if (ref($cmd) eq "HASH")
@@ -1374,6 +1375,12 @@ sub runxcmd
 
     $::CALLBACK = $save_CALLBACK;    # in case the subreq call changed it
     $::callback = $save_callback;    # To keep $::callback also since some module use this global variable
+
+    # The result of the subrequest is the errorcode of its responses. Every plugin it reaches
+    # runs commands of its own, and runcmd and the service helpers assign the exit status of
+    # each one to $::RUNCMD_RC, so the global holds the last command of the subrequest and not
+    # its result.
+    $::RUNCMD_RC = $::xcmd_errorcode;
     if ($::RUNCMD_RC)
     {
         my $displayerror = 1;
@@ -1519,7 +1526,7 @@ sub runxcmd_output
         {
             if (ref(\($node->{errorcode}->[0])) eq 'SCALAR')
             {
-                $::RUNCMD_RC |= $node->{errorcode}->[0];
+                $::xcmd_errorcode |= $node->{errorcode}->[0];
             }
         }
         push @$::xcmd_outref, $desc;
@@ -1539,14 +1546,14 @@ sub runxcmd_output
         {
             foreach my $ecode (@{ $resp->{errorcode} })
             {
-                $::RUNCMD_RC |= $ecode;
+                $::xcmd_errorcode |= $ecode;
             }
         }
         else
         {
 
             # assume it is a non-reference scalar
-            $::RUNCMD_RC |= $resp->{errorcode};
+            $::xcmd_errorcode |= $resp->{errorcode};
         }
     }
 
@@ -1596,14 +1603,14 @@ sub runxcmd_output2
             push @{ $::xcmd_outref_hash->{errorcode} }, @{ $resp->{errorcode} };
             foreach my $ecode (@{ $resp->{errorcode} })
             {
-                $::RUNCMD_RC |= $ecode;
+                $::xcmd_errorcode |= $ecode;
             }
         }
         else
         {
 
             # assume it is a non-reference scalar
-            $::RUNCMD_RC |= $resp->{errorcode};
+            $::xcmd_errorcode |= $resp->{errorcode};
         }
     }
     return 0;
@@ -4264,6 +4271,9 @@ sub servicemap {
     #
     my %svchash = (
         "dhcp"           => [ "dhcp3-server", "dhcpd", "isc-dhcp-server" ],
+        # The second ISC daemon, which serves DHCPv6. Debian serves both families from
+        # isc-dhcp-server and has no v6-only unit, so the name does not resolve there.
+        "dhcp6"          => [ "dhcpd6" ],
         "kea-dhcp4"      => [ "kea-dhcp4", "kea-dhcp4-server", "isc-kea-dhcp4-server" ],
         "kea-dhcp6"      => [ "kea-dhcp6", "kea-dhcp6-server", "isc-kea-dhcp6-server" ],
         "kea-ctrl-agent" => [ "kea-ctrl-agent", "kea-ctrl-agent-server", "isc-kea-ctrl-agent" ],

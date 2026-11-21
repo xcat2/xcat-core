@@ -11,8 +11,12 @@ Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
-# Pod::Html ships inside the core perl package on SUSE; there is no perl-Pod-Html
-%if !0%{?suse_version}
+# The pod converters are in perl-Pod-Html on EL and in the core perl package on
+# SUSE, which has no perl-Pod-Html. A SUSE chroot holds perl-base only, and that
+# ships neither Pod::Man nor pod2man.
+%if 0%{?suse_version}
+BuildRequires: perl
+%else
 BuildRequires: perl-Pod-Html
 %endif
 
@@ -63,7 +67,9 @@ cp xcattest $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 
 cp lib/xCAT/Test/OS.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
+cp lib/xCAT/Test/Conf.pm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test/OS.pm
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/Test/Conf.pm
 
 cp restapitest $RPM_BUILD_ROOT/%{prefix}/sbin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*

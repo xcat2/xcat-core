@@ -48,6 +48,21 @@ my ($status, $output) = run_command($^X,
     repo_path('xCAT-test/unit/profile_customization.t'), "$root/opt/xcat");
 is($status, 0, 'packaged profiles resolve and remain independently customizable') or diag($output);
 
+my $netboot = "$root/opt/xcat/share/xcat/netboot";
+for my $directory (qw(debian imgutils)) {
+    my $helper = "$netboot/$directory/xCAT/ProfileUtils.pm";
+    ok(-f $helper && !-l $helper, "$directory ships a regular profile helper") or next;
+    is(sprintf('%04o', S_IMODE((stat($helper))[2])), '0644', "$directory helper is readable without write access for others");
+}
+for my $case (
+    ['unit/imgutils_standalone.t', 'imgutils'],
+    ['native/debian_genimage_profile_assets.t', 'debian'],
+) {
+    my ($test, $directory) = @$case;
+    my ($rc, $result) = run_command($^X, repo_path("xCAT-test/$test"), "$netboot/$directory");
+    is($rc, 0, "packaged $directory works when copied without sibling directories") or diag($result);
+}
+
 if (!-f '/etc/debian_version') {
     local $ENV{fsm} = 1;
     my $reduced = tempdir(CLEANUP => 1);
@@ -65,7 +80,7 @@ if (!-f '/etc/debian_version') {
     my $data = 'install/rh/compute.rhels10.riscv64.pkglist';
     my $postinstall = 'netboot/rocky/compute.rocky10.riscv64.postinstall';
     chmod(oct('0666'), "$profiles/$data") == 1 or die "chmod: $!";
-    for my $mask ('0022', '0002') {
+    for my $mask ('0022', '0002', '0077') {
         subtest "Debian writable sources with umask $mask" => sub {
             my $previous = umask oct($mask);
             my $deb = XCAT::Test::Lifecycle::build_deb('xCAT-server', $fixture);
@@ -80,6 +95,12 @@ if (!-f '/etc/debian_version') {
             my $payload = tempdir(CLEANUP => 1);
             XCAT::Test::Lifecycle::checked('dpkg-deb', '-x', $deb, $payload);
             check_assets($payload, '', @assets);
+            for my $directory (qw(debian imgutils)) {
+                my $helper = "$payload/opt/xcat/share/xcat/netboot/$directory/xCAT/ProfileUtils.pm";
+                ok(-f $helper && !-l $helper, "$directory ships a regular helper with umask $mask");
+                is(sprintf('%04o', S_IMODE((stat($helper))[2])), '0644',
+                    "$directory helper retains readable permissions with umask $mask");
+            }
             for my $path (qw(install install/rh netboot netboot/rocky netboot/ubuntu/genimage)) {
                 is(sprintf('%04o', S_IMODE((stat("$payload/opt/xcat/share/xcat/$path"))[2])),
                     '0755', "$path remains executable without group or other write access");

@@ -498,7 +498,7 @@ SCRIPT
 # ----------------------------------------------------------------- main ------
 # A cancelled build must not keep the checkout. The lock releases in DESTROY, which perl does
 # not run when a signal ends the process, so a killed build left its directory behind and the
-# next build of that checkout died on "another build already holds" naming a pid that had
+# next build of that checkout died on "another build still holds" naming a pid that had
 # already exited. buildrpms.pl has released its lock on cancellation for some time; this is the
 # Debian builder catching up.
 #

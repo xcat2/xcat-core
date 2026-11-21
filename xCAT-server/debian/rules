@@ -44,6 +44,9 @@ binary-arch:
 	dh_installdocs
 #	dh_installexamples
 	dh_install -X".svn"
+	# Debian scripts must remain self-contained when copied from an installed package.
+	rm -f $(rootdir)/share/xcat/netboot/debian/xCAT/ProfileUtils.pm
+	install -m 0644 share/xcat/netboot/imgutils/xCAT/ProfileUtils.pm $(rootdir)/share/xcat/netboot/debian/xCAT/ProfileUtils.pm
 	chmod 755 $(rootdir)/bin/*
 	chmod 755 $(rootdir)/sbin/*
 	chmod 644 $(rootdir)/share/xcat/ca/*

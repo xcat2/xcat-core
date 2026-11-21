@@ -28,6 +28,9 @@ exec chroot "$root" /bin/bash -c '
     printf "PAYLOAD="; cat /sysroot/native-marker
     if [ -f /sysroot/localdisk-ran ]; then echo LOCALDISK_RAN; fi
     if [ -f /hooks/initqueue/xcat.sh ]; then echo INITQUEUE_READY; fi
+    for lease in /sysroot/var/lib/NetworkManager/*.lease; do
+        [ -f "$lease" ] && printf "NMLEASE=%s:%s\n" "${lease##*/}" "$(cat "$lease")"
+    done
     exit "$rc"
 '
 SH
@@ -40,7 +43,7 @@ for my $variant (qw(dracut_047 dracut_105/stateless dracut_105/statelite)) {
             my $case = tempdir(DIR => $dir, CLEANUP => 1);
             my $root = "$case/root";
             my $payload = "$case/payload";
-            make_path(map { "$root/$_" } qw(usr lib etc tmp sysroot hooks/initqueue));
+            make_path(map { "$root/$_" } qw(usr lib etc tmp sysroot hooks/initqueue var/lib/NetworkManager));
             symlink('usr/bin', "$root/bin") or die $!;
             symlink('usr/sbin', "$root/sbin") or die $!;
             symlink('usr/lib64', "$root/lib64") or die $!;
@@ -53,6 +56,7 @@ for my $variant (qw(dracut_047 dracut_105/stateless dracut_105/statelite)) {
             }
             write_file("$root/etc/resolv.conf", "nameserver 192.0.2.1\n");
             write_file("$root/tmp/dhclient.eth0.lease", "fixture lease\n");
+            write_file("$root/var/lib/NetworkManager/$_-0f3e5a12-eth0.lease", "$_ lease\n") for qw(dhclient internal);
             write_file("$root/lib/dracut-lib.sh", <<'SH');
 hookdir=/hooks
 logger() { :; }
@@ -93,6 +97,10 @@ SH
             like($output, qr/^PAYLOAD=native payload$/m, "$label extracts the actual image payload");
             like($output, qr/^INITQUEUE_READY$/m, "$label reaches the initqueue handoff");
             unlike($output, qr{localdisk: (?:No such file|Permission denied)}, "$label avoids an invalid optional script invocation");
+            if ($variant eq 'dracut_047') {
+                like($output, qr/^NMLEASE=$_-0f3e5a12-eth0\.lease:$_ lease$/m,
+                    "$label hands the $_ lease of NetworkManager to the root") for qw(dhclient internal);
+            }
             if ($localdisk eq 'executable') {
                 like($output, qr/^LOCALDISK_RAN$/m, "$label retains the legacy executable hook");
             } else {

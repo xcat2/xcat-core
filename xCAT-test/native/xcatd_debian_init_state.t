@@ -2,17 +2,19 @@
 use strict;
 use warnings;
 
-use File::Basename qw(basename);
+use File::Basename qw(basename dirname);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Slurper qw(read_binary write_binary);
 use File::Spec;
-use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
+
+plan skip_all => 'init helper execution requires Linux namespaces' unless $^O eq 'linux';
 
 my $state_helper = repo_path('xCAT-server/debian/xcatd-init-state');
 my $compat_helper = repo_path('xCAT-server/share/xcat/scripts/xcatd-init-compat');
@@ -30,7 +32,8 @@ sub path_mode {
 }
 
 sub stage_root {
-    my $root = tempdir( CLEANUP => 1 );
+    # The compatibility root stays apart from the /etc of the sandbox.
+    my $root = File::Spec->catdir( sandbox_root(), 'compat' );
     my $scripts = File::Spec->catdir(
         $root, 'opt', 'xcat', 'share', 'xcat', 'scripts'
     );
@@ -188,11 +191,18 @@ SH
 
 sub run_script {
     my ( $root, $script, @arguments ) = @_;
-    local $ENV{XCAT_COMPAT_ROOT} = $root;
-    local $ENV{XCATROOT}         = '/opt/xcat';
-    local $ENV{PATH} = File::Spec->catdir( $root, 'test-bin' ) . ':/usr/bin:/bin';
-    system( '/bin/sh', $script, @arguments );
-    return $? >> 8;
+    my $source = repo_path('.');
+    $script =~ s{^\Q$root\E/}{/fixture/compat/};
+    my ( $status, $output ) = sandbox_run( dirname($root), {
+        read_only => { $source => $source },
+        env       => {
+            XCAT_COMPAT_ROOT => '/fixture/compat',
+            XCATROOT         => '/opt/xcat',
+            PATH             => '/fixture/compat/test-bin:/usr/bin:/bin',
+        },
+    }, '/bin/sh', $script, @arguments );
+    note($output) if length $output;
+    return $status;
 }
 
 sub run_state {

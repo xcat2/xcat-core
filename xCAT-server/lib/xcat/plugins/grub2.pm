@@ -8,6 +8,7 @@ use xCAT::TableUtils;
 use xCAT::DHCP::BootPolicy;
 use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
+use xCAT::BootUtils;
 use xCAT::MsgUtils;
 use File::Path;
 use Socket;
@@ -198,7 +199,13 @@ sub setstate {
     my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
     if ($kern->{kcmdline} =~ /!myipfn!/) {
         my $ipfn;
-        my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+        # The facing address has to be looked up in the family the node has. my_ip_facing
+        # resolves with inet_aton, so an IPv6-only node is reported unresolvable and the
+        # node gets no configuration at all.
+        my @ipfnd =
+          ( ( xCAT::NetworkUtils->node_address_family($node) || 4 ) == 6 )
+          ? xCAT::NetworkUtils->my_ip_facing_family($node, 6)
+          : xCAT::NetworkUtils->my_ip_facing($node);
 
         if ($ipfnd[0] ==  1) {
             return (1, $ipfnd[1]);
@@ -219,7 +226,8 @@ sub setstate {
             }
         } else {
             $ipfn = $ipfnd[1];
-            $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
+            $kern->{kcmdline} =
+              xCAT::NetworkUtils::substitute_facing_address($kern->{kcmdline}, $ipfn);
         }
     }
 
@@ -347,20 +355,20 @@ sub setstate {
                 $protocolrootdir = $tftpdir;
             }
 
-            my $efi = "";
-            if ($nodearch =~ /x86/i) {
-                $efi = "efi";
-            }
+            # The commands come from the image served to this node, not from its
+            # architecture: an image built from upstream grub has no linuxefi.
+            my ($kernelcmd, $initrdcmd) =
+              xCAT::BootUtils::grub2_kernel_commands($grub2bin, $nodearch);
 
             if ($kern and $kern->{kcmdline}) {
                 my $kcmdline = quote_kcmdline($kern->{kcmdline});
-                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} $kcmdline BOOTIF=\$net_default_mac\n";
+                print $pcfg "    $kernelcmd $protocolrootdir/$kern->{kernel} $kcmdline BOOTIF=\$net_default_mac\n";
             } else {
-                print $pcfg "    linux$efi $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
+                print $pcfg "    $kernelcmd $protocolrootdir/$kern->{kernel} BOOTIF=\$net_default_mac\n";
             }
             print $pcfg "    echo Loading initial ramdisk ...\n";
             if ($kern and $kern->{initrd}) {
-                print $pcfg "    initrd$efi $protocolrootdir/$kern->{initrd}\n";
+                print $pcfg "    $initrdcmd $protocolrootdir/$kern->{initrd}\n";
             }
 
             print $pcfg "}";

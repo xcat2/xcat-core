@@ -40,9 +40,13 @@
 XCAT_AVC_COMM='xcatd|genimage|packimage|nodeset|mknb|makedhcp|makedns|makehosts|makeknownhosts|copycds|liteimg|xdsh|xdcp|xcatprobe|xcatconfig'
 XCAT_AVC_PATH='/opt/xcat|/xcatpost|/tftpboot|/install|/var/log/xcat|/etc/xcat|/var/lib/xcat'
 
+# The path must be one of those directories, or a file under one. A directory name is
+# not a string prefix: /var/lib/xcat-cluster-test holds the CI's own notification hook,
+# and matching it as /var/lib/xcat put an xcatd denial on a harness file into the count.
+# So the name starts at the quote and ends at a / or at the closing quote.
 selinux_avc_classify()
 {
-    grep -E "(comm|exe)=\"[^\"]*(${XCAT_AVC_COMM})[^\"]*\"|(path|name)=\"[^\"]*(${XCAT_AVC_PATH})"
+    grep -E "(comm|exe)=\"[^\"]*(${XCAT_AVC_COMM})[^\"]*\"|(path|name)=\"(${XCAT_AVC_PATH})(/|\")"
 }
 
 # Report the denials ausearch answered with. An error message is not a clean window:

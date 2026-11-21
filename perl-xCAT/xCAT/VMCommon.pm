@@ -281,4 +281,85 @@ sub genMac { #Generates a mac address for a node, does NOT assure uniqueness, ca
     return $mac;
 
 }
+
+#-------------------------------------------------------
+
+=head3 esx_guest_uuid
+
+    Descriptions:
+        Converts between config.uuid of a VMware VM and the UUID that its guest reports.
+        vpd.uuid holds the UUID that the guest reports.
+
+        VMware writes uuid.bios into the SMBIOS type 1 structure unencoded. Only the version
+        of the SMBIOS entry point changes, and the guest decodes the bytes according to it. A
+        guest behind a 2.7 entry point reads the first three fields little-endian and reports
+        them swapped. A guest behind a 2.4 entry point reports the same bytes unswapped.
+
+        Measured on ESXi 7.0.3, 8.0.3 and 9.1.0: EFI firmware gives SMBIOS 2.7 at every
+        hardware version, and BIOS firmware gives 2.4 up to hardware version 11 and 2.7 from
+        hardware version 12. The host default firmware and hardware version are both newer
+        than that, so an unknown value reads 2.7. The swap is its own inverse, so one sub
+        converts both ways.
+
+        VMware documents acpi.smbiosVersion2.7 = FALSE, which puts a 2.7 guest back on 2.4.
+        That override is not measured and this sub does not read it.
+    Arguments:
+        $uuid - config.uuid, or the UUID that the guest reports, or undef
+        $firmware - config.firmware, bios or efi, or undef for the host default
+        $hwversion - config.version, such as vmx-13, or undef for the host default
+    Returns:
+        the UUID on the other side
+
+=cut
+
+#-------------------------------------------------------
+sub esx_guest_uuid {
+    my ($uuid, $firmware, $hwversion) = @_;
+    return $uuid unless defined($uuid);
+    my ($number) = (defined($hwversion) ? $hwversion : '') =~ /(\d+)/;
+    return $uuid if defined($firmware) and lc($firmware) eq 'bios' and defined($number) and $number < 12;
+    $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+    return $uuid;
+}
+
+#-------------------------------------------------------
+
+=head3 esx_vmx_settings
+
+    Descriptions:
+        Splits vm.othersettings of a VMware guest into the fields of a
+        VirtualMachineConfigSpec and the extraConfig options.
+
+        firmware and virtualHW.version are vmx keys that the VirtualMachineConfigSpec carries
+        as the firmware and version fields. extraConfig does not apply them, so mkvm passes
+        them as fields, and esx_guest_uuid needs both to convert the UUID of a guest that
+        mkvm creates.
+    Arguments:
+        $othersettings - vm.othersettings, a list of key=value separated by ;, or undef
+    Returns:
+        a hash reference with the firmware and version keys that are present, and an array
+        reference of [key, value] pairs for extraConfig
+
+=cut
+
+#-------------------------------------------------------
+sub esx_vmx_settings {
+    my ($othersettings) = @_;
+    my %spec;
+    my @extraconfig;
+    foreach my $setting (split /;/, (defined($othersettings) ? $othersettings : '')) {
+        my ($key, $value) = split /=/, $setting, 2;
+        next unless defined($key) and length($key);
+        my $name = lc($key);
+        if ($name eq 'firmware' and defined($value) and length($value)) {
+            $spec{firmware} = lc($value);
+        } elsif ($name eq 'virtualhw.version' and defined($value) and $value =~ /(\d+)/) {
+            $spec{version} = "vmx-$1";
+        } else {
+            push @extraconfig, [ $key, $value ];
+        }
+    }
+    return (\%spec, \@extraconfig);
+}
+
 1;

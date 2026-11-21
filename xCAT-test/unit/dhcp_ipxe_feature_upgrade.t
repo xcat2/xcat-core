@@ -328,6 +328,8 @@ my @responses;
     local *xCAT_plugin::dhcp::kea_sync_xnba_client_classes = sub { return 0; };
     local *xCAT_plugin::dhcp::kea_control_agent_enabled = sub { return 1; };
     local *xCAT_plugin::dhcp::kea_control_agent_live_enabled = sub { return 1; };
+    # makedhcp reconciles radvd on every call. Without this the test reads and can change the host's.
+    local *xCAT_plugin::dhcp::configure_router_advertisements = sub { return; };
     local $::XCATSITEVALS{externaldhcpservers};
 
     my $dir = tempdir( CLEANUP => 1 );

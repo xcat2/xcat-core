@@ -12,12 +12,15 @@ use Test::More;
 use xCAT::FreeBSDInstall;
 
 BEGIN {
-    for my $module (qw(Scope MsgUtils Utils BootUtils TableUtils ServiceNodeUtils Usage Table NetworkUtils)) {
+    for my $module (qw(Scope MsgUtils Utils BootUtils TableUtils ServiceNodeUtils Usage Table)) {
         $INC{"xCAT/$module.pm"} = 1;
     }
 }
 
+use xCAT::NetworkUtils;
+
 {
+    no warnings 'redefine';
     package xCAT::TableUtils;
     our $tftpdir;
     sub getTftpDir { return $tftpdir; }
@@ -28,6 +31,7 @@ BEGIN {
     package xCAT::BootUtils;
     sub volatile_addkcmdline { return $_[0]; }
     package xCAT::NetworkUtils;
+    sub getipaddr { return '192.0.2.10'; }
     sub determinehostname { return 'manager'; }
     sub checkNodeIPaddress { return { ip => '192.0.2.10' }; }
     package xCAT::Table;
@@ -248,7 +252,7 @@ subtest 'boot never reads or cancels installation ownership' => sub {
     is($cancel_calls, 0, 'boot never invokes cancellation');
     is(xCAT::FreeBSDInstall::state('node1', directory => $state_directory)->{phase}, 'installed', 'completion persists installed ownership');
     is(read_file("$tftp/xcat/xnba/nodes/node1"), "#!gpxe\n#boot\nexit\n", 'BIOS boot returns to firmware');
-    is(read_file("$tftp/xcat/xnba/nodes/node1.uefi"), "#!gpxe\n#boot\nexit\n", 'UEFI boot replaces the installer with exit');
+    is(read_file("$tftp/xcat/xnba/nodes/node1.uefi"), "#!gpxe\n#boot\nexit 1\n", 'UEFI boot returns failure so firmware tries the disk');
     render($tftp, {}, 'boot', {os => 'rhels9'}, {}, {server => '192.0.2.20', target => 'iqn.example'});
     like(read_file("$tftp/xcat/xnba/nodes/node1"), qr/hdboot\n/, 'existing iSCSI BIOS local-boot behavior is preserved');
 };

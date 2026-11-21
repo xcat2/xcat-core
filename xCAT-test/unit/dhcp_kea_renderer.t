@@ -503,6 +503,20 @@ ok( $dhcp6_config->{Dhcp6}, 'renderer creates a Dhcp6 document' );
 is( $dhcp6_config->{Dhcp6}{subnet6}[0]{subnet}, '2001:db8:1::/64', 'DHCPv6 subnet is rendered' );
 is( $dhcp6_config->{Dhcp6}{'valid-lifetime'}, 700, 'DHCPv6 valid lifetime is numeric' );
 is( $dhcp6_config->{Dhcp6}{'preferred-lifetime'}, 500, 'DHCPv6 preferred lifetime is numeric' );
+
+# A boot chain presents one DUID in several stages, and each stage asks for a different IA.
+# Kea holds a reclaimed lease for an hour by default, so the reserved address the firmware
+# released is still bound to the IAID of the firmware when the Genesis image asks for it, and
+# the image is given a pool address instead. xcatd names a node by the address it speaks from.
+my $expired6 = $dhcp6_config->{Dhcp6}{'expired-leases-processing'};
+is( $expired6->{'hold-reclaimed-time'},            0, 'a released reserved address is not held for the next boot stage' );
+is( $expired6->{'flush-reclaimed-timer-wait-time'}, 5, 'reclaimed leases are flushed inside one boot' );
+is( $expired6->{'reclaim-timer-wait-time'},         5, 'a released lease is reclaimed inside one boot' );
+
+my $expired6_override = decode_json(
+    $backend->render_dhcp6_config( { 'expired-leases-processing' => { 'hold-reclaimed-time' => 900 } } )
+)->{Dhcp6}{'expired-leases-processing'};
+is( $expired6_override->{'hold-reclaimed-time'}, 900, 'the caller can still choose how long a reclaimed lease is held' );
 is( $dhcp6_config->{Dhcp6}{subnet6}[0]{id}, 11, 'DHCPv6 subnet id is numeric' );
 is( $dhcp6_config->{Dhcp6}{subnet6}[0]{reservations}[0]{duid}, '00:04:52:54:00:12:34:56', 'DHCPv6 DUID reservation is rendered' );
 my $dhcp6_bootfile = $dhcp6_config->{Dhcp6}{subnet6}[0]{reservations}[0]{'option-data'}[0];

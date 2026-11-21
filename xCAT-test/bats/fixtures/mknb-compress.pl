@@ -26,6 +26,8 @@ local *xCAT::TableUtils::getTftpDir = sub { return '/tmp/fixture/tftp'; };
 local *xCAT::TableUtils::get_site_attribute = sub { return; };
 local *xCAT::NetworkUtils::my_nets = sub { return {}; };
 local *xCAT::NetworkUtils::my_hexnets = sub { return {}; };
+# my_nets6 reads the running host's interfaces, so the fixture answers for it too.
+local *xCAT::NetworkUtils::my_nets6 = sub { return {}; };
 
 my @responses;
 umask oct($ARGV[0]);

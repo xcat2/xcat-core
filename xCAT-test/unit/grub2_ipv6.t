@@ -40,6 +40,18 @@ BEGIN {
     $INC{'xCAT/ServiceNodeUtils.pm'} = __FILE__;
 
     package xCAT::NetworkUtils;
+
+    # The real helper brackets a placeholder that a port follows, so the port after an
+    # IPv6 address can still be read, and leaves every other placeholder bare.
+    sub substitute_facing_address {
+        my ($cmdline, $address) = @_;
+        return $cmdline unless defined($cmdline) && defined($address) && length($address);
+        if (index($address, ':') >= 0) {
+            $cmdline =~ s/!myipfn!(?=:\d)/[$address]/g;
+        }
+        $cmdline =~ s/!myipfn!/$address/g;
+        return $cmdline;
+    }
     our %addresses = (
         nodev4              => { 4 => '192.0.2.50' },
         nodev6              => { 6 => '2001:db8:1::50' },
@@ -220,7 +232,8 @@ is_deeply(
 );
 
 sub exercise_setstate {
-    my ($node, $mac) = @_;
+    my ($node, $mac, $kcmdline) = @_;
+    $kcmdline //= 'inst.ks=http://example.test/autoinst/node';
     my $tftpdir = tempdir(CLEANUP => 1);
     my $bootloader_root = "$tftpdir/boot/grub2";
     make_path($bootloader_root);
@@ -235,7 +248,7 @@ sub exercise_setstate {
             {
                 kernel   => '/install/rhels10/x86_64/vmlinuz',
                 initrd   => '/install/rhels10/x86_64/initrd.img',
-                kcmdline => 'inst.ks=http://example.test/autoinst/node',
+                kcmdline => $kcmdline,
             },
         ],
     );
@@ -290,6 +303,27 @@ ok(
     -e "$v6_root/grub.cfg-01-02-00-00-00-00-61",
     'IPv6-only node retains its MAC-specific GRUB config alias'
 );
+# The !myipfn! placeholder stands where a URI authority expects a host. sles.pm and
+# anaconda.pm put it in front of ":$httpport", so an unbracketed IPv6 address gives
+# "install=http://2001:db8::1:80/..." and the installer cannot reach the repository.
+# facing_address_for_cmdline itself is asserted against the real module in
+# sles_install_url_ipv6.t; here the subject is whether setstate routes the substitution
+# through it.
+my ($ph_dir, $ph_root, $ph_config, $ph_rc, $ph_message) =
+  exercise_setstate('nodev6', '02:00:00:00:00:62',
+    'autoyast=http://!myipfn!:80/install/autoinst/nodev6 install=http://!myipfn!:80/install/leap15.6/x86_64/1');
+is($ph_rc, 0, "a kcmdline carrying !myipfn! generates a config: $ph_message");
+like(
+    $ph_config,
+    qr{\Qautoyast=http://[2001:db8::1]:80/install/autoinst/nodev6\E},
+    'the substituted IPv6 facing address is bracketed in the install URL'
+);
+unlike(
+    $ph_config,
+    qr{http://2001:db8::1:80},
+    'no unbracketed IPv6 authority reaches the generated config'
+);
+
 my @v6_ip_aliases = grep { $_ !~ /grub\.cfg-01-02-00-00-00-00-61$/ } glob("$v6_root/grub.cfg-*");
 is_deeply(
     \@v6_ip_aliases,
@@ -315,5 +349,36 @@ ok(
     -e "$v4_root/grub.cfg-01-02-00-00-00-00-41",
     'IPv4 node retains its MAC-specific GRUB config alias'
 );
+
+# ---- the !myipfn! placeholder on an IPv6-only node ------------------------------------------
+# debian.pm puts !myipfn! in the command line of a Subiquity install and grub2.pm replaces it
+# with the address of the management node that faces the node. That lookup was IPv4 only, so an
+# IPv6-only node was reported unresolvable and nodeset wrote no configuration for it:
+#   Error: The <node> can not be resolved
+#   Error: Failed to generate grub2 configurations for some node(s)
+{
+    @xCAT::NetworkUtils::legacy_facing_calls = ();
+    @xCAT::NetworkUtils::family_facing_calls = ();
+    my ( $dir, $root, $config, $rc, $message ) =
+      exercise_setstate( 'nodev6', '02:00:00:00:00:61', 'xcatd=!myipfn! quiet' );
+    is( $rc, 0, "an IPv6-only node with !myipfn! gets a configuration: $message" );
+    like( $config, qr/xcatd=2001:db8::1\b/,
+        '... and the placeholder becomes the IPv6 address of the facing management node' );
+    unlike( $config, qr/!myipfn!/, '... with no placeholder left behind' );
+    is_deeply( \@xCAT::NetworkUtils::legacy_facing_calls, [],
+        '... without using the IPv4-only lookup, which reports the node unresolvable' );
+}
+
+# An IPv4 node must keep the lookup it had: the IPv6 one would find nothing for it.
+{
+    @xCAT::NetworkUtils::legacy_facing_calls = ();
+    @xCAT::NetworkUtils::family_facing_calls = ();
+    my ( $dir, $root, $config, $rc, $message ) =
+      exercise_setstate( 'nodev4', '02:00:00:00:00:41', 'xcatd=!myipfn! quiet' );
+    is( $rc, 0, "an IPv4 node with !myipfn! still gets a configuration: $message" );
+    like( $config, qr/xcatd=192\.0\.2\.1\b/, '... and the placeholder becomes its IPv4 address' );
+    is_deeply( \@xCAT::NetworkUtils::family_facing_calls, [],
+        '... without asking for an IPv6 facing address' );
+}
 
 done_testing();

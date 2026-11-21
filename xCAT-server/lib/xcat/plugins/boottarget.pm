@@ -12,6 +12,7 @@ use Thread qw(yield);
 use POSIX qw(WNOHANG nice);
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::BootUtils;
 use xCAT::TableUtils;
 use xCAT::MsgUtils;
 use xCAT::Template;
@@ -158,29 +159,14 @@ sub mknetboot
         $kcmdline = $tent->{kcmdline};
 
         #TODO: big todo, cheap and rapid, but should be more like esx.pm implementation, i.e. more scalable
-        while ($kcmdline =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
-            my $natab = xCAT::Table->new($1);
-            my $naent = $natab->getNodeAttribs($node, [$2]);
-            my $naval = $naent->{$2};
-            $kcmdline =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
-        }
-        while ($kcmdline =~ /#TABLE:([^:#]+):([^:#]+):([^:#]+)#/) {
-            my $tabname = $1;
-            my $keyname = $2;
-            my $colname = $3;
-            if ($2 =~ /THISNODE/ or $2 =~ /\$NODE/) {
-                my $natab = xCAT::Table->new($tabname);
-                my $naent = $natab->getNodeAttribs($node, [$colname]);
-                my $naval = $naent->{$colname};
-                $kcmdline =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
-            } else {
-                my $msg = "Table key of $2 not yet supported by boottarget mini-template";
-                $callback->({
-                        error     => ["$msg"],
-                        errorcode => [1]
-                });
-
-            }
+        my $template_error;
+        $kcmdline = xCAT::BootUtils::expand_node_template(
+            $node, $kcmdline,
+            sub { $template_error = shift; }
+        );
+        if (defined($template_error)) {
+            xCAT::MsgUtils->report_node_error($callback, $node, $template_error);
+            next;
         }
 
         if ($initrd eq '') {
