@@ -8,20 +8,23 @@ use warnings;
 no warnings 'once';
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib";
 use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 use lib "$FindBin::Bin/../../perl-xCAT";
 
 use B ();
 use File::Temp qw(tempdir);
+use File::Slurper qw(read_binary write_binary);
 use JSON ();
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
 use xCAT::DHCP::Backend::Kea;
 use xCAT::DHCP::BootPolicy;
 
 $ENV{XCATCFG} ||= 'SQLite:/tmp';
-my $source_dhcp_plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
+my $source_dhcp_plugin = repo_path('xCAT-server/lib/xcat/plugins/dhcp.pm');
 if ( -f $source_dhcp_plugin ) {
     require $source_dhcp_plugin;
 } else {
@@ -123,7 +126,8 @@ my @old_header = (
     my @conf = @old_header;
     my $path = "$dir/dhcpd.conf";
     is( xCAT_plugin::dhcp::_isc_declare_ipxe_features( \@conf, $path ), undef, 'ISC: makedhcp adds the options without error' );
-    my $written = do { local ( @ARGV, $/ ) = ($path); <> };
+    my $written = eval { read_binary($path) };
+    warn $@ if $@;
     is( $written, join( '', @conf ), 'ISC: makedhcp writes the configuration with the options' );
     like( $written, qr/^option gpxe\.http code 19 = unsigned integer 8;$/m, 'ISC: which declares the HTTP feature' );
     is_deeply( \@restarts, ['dhcp'], 'ISC: makedhcp restarts dhcpd once' );
@@ -156,9 +160,7 @@ my @old_header = (
             qr/^Unable to restart the DHCP server after adding the iPXE feature options/, 'ISC: makedhcp reports a restart that fails' );
     }
     ok( -e "$failed.ipxe-restart", 'ISC: and keeps the restart marker' );
-    open( my $fh, '<', $failed ) or die "Cannot read $failed: $!";
-    my @retry = <$fh>;
-    close($fh);
+    my @retry = split /(?<=\n)/, read_binary($failed);
     @restarts = ();
     is( xCAT_plugin::dhcp::_isc_declare_ipxe_features( \@retry, $failed ), undef,
         'ISC: the next run, with the options already in the file, gives no error' );
@@ -225,9 +227,7 @@ my @responses;
         @lines = @old_header unless @lines;
         my $conf = $xCAT_plugin::dhcp::dhcpconffile;
         chmod 0600, $conf;
-        open( my $fh, '>', $conf ) or die "Cannot create $conf: $!";
-        print {$fh} @lines;
-        close($fh) or die "Cannot close $conf: $!";
+        write_binary($conf, join('', @lines));
         chmod 0400, $conf if $read_only;
     };
 
@@ -267,9 +267,7 @@ my @responses;
             [qw(newconfig writeout omshell addnode writeout)],
             'ISC: and writes a new configuration before OMAPI changes a host' ) or diag("reached: @reached");
         is( $loaded, 'dhcp', 'ISC: and restarts dhcpd with it first' );
-        open( my $fh, '<', $conf ) or die "Cannot read $conf: $!";
-        my $final = do { local $/; <$fh> };
-        close($fh);
+        my $final = read_binary($conf);
         ok( ( grep { index( $final, $_ ) >= 0 } @features ) == @features && $final =~ /^omapi-port 7911;$/m,
             'ISC: and the configuration it writes last keeps the iPXE options and the OMAPI port' );
         ok( !-e "$conf.ipxe-restart", 'ISC: and leaves no restart marker' );
@@ -337,9 +335,7 @@ my @responses;
         my (@defs) = @_;
         my $backend = DHCPUpgradeKeaBackend->new();
         $backend->{path} = "$dir/kea-dhcp4.conf";
-        open( my $fh, '>', $backend->{path} ) or die "Cannot create $backend->{path}: $!";
-        print {$fh} JSON::encode_json( { Dhcp4 => { subnet4 => [ { id => 1, subnet => '192.0.2.0/24' } ], 'option-def' => \@defs } } );
-        close($fh) or die "Cannot close $backend->{path}: $!";
+        write_binary($backend->{path}, JSON::encode_json( { Dhcp4 => { subnet4 => [ { id => 1, subnet => '192.0.2.0/24' } ], 'option-def' => \@defs } } ));
         xCAT_plugin::dhcp::kea_process_request( $backend, { node => ['cn1'] }, {}, {}, 0 );
         return $backend;
     };

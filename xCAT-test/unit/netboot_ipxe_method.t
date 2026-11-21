@@ -7,11 +7,13 @@ use strict;
 use warnings;
 
 use File::Temp qw(tempdir);
+use File::Slurper qw(read_binary);
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../../perl-xCAT";
 use Test::More;
+use XCAT::Test::File qw(repo_path);
 
-my $repo = "$FindBin::Bin/../..";
 my $tftp = tempdir( CLEANUP => 1 );
 our %rows;
 
@@ -56,8 +58,8 @@ BEGIN {
 # xcatd loads the plugins from their files. SvrUtils loads them by module name, so xCAT_plugin names
 # the plugin directory of this checkout.
 my $inc = tempdir( CLEANUP => 1 );
-symlink( "$repo/xCAT-server/lib/xcat/plugins", "$inc/xCAT_plugin" ) or die "symlink: $!";
-unshift @INC, $inc, "$repo/xCAT-server/lib/perl", "$repo/perl-xCAT";
+symlink( repo_path('xCAT-server/lib/xcat/plugins'), "$inc/xCAT_plugin" ) or die "symlink: $!";
+unshift @INC, $inc, repo_path('xCAT-server/lib/perl'), repo_path('perl-xCAT');
 require xCAT_plugin::ipxe;
 require xCAT::SvrUtils;
 
@@ -81,9 +83,9 @@ sub nodeset {
 
 sub content {
     my ($path) = @_;
-    open( my $fh, '<', "$tftp/$path" ) or return;
-    local $/;
-    return <$fh>;
+    my $contents = eval { read_binary("$tftp/$path") };
+    return if $@;
+    return $contents;
 }
 
 my %linux = ( kernel => 'xcat/osimage/vmlinuz', initrd => 'xcat/osimage/initrd.img', kcmdline => 'quiet' );
