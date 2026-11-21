@@ -58,15 +58,84 @@ install_module()
     ' install "$hook"
 }
 
+receiver()
+{
+    printf '#!/bin/sh\n# %s receiver\nexit 0\n' "$1" >"$fixture/$1/uftpd"
+    chmod 755 "$fixture/$1/uftpd"
+}
+
+add_fetch_helper()
+{
+    cp "$(repo_path xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-fetch.sh)" "$fixture/module/"
+}
+
 @test 'all stateless hooks deliver the checksum helper without UFTP' {
+    receiver bin
+    receiver sbin
     for variant in $VARIANTS; do
         stage_module "$variant"
         install_module
         [ "$status" -eq 0 ] || { echo "$variant: $output"; return 1; }
         cmp "$fixture/module/xcat-rootimg-checksum.sh" "$fixture/out/lib/xcat-rootimg-checksum.sh"
         [ ! -e "$fixture/out/lib/xcat-rootimg-fetch.sh" ]
+        [ ! -e "$fixture/out/lib/xcat-rootimg-install.sh" ]
         [ ! -e "$fixture/out/usr/sbin/uftpd" ]
         [ ! -e "$fixture/out/usr/bin/uftpd" ]
+    done
+}
+
+@test 'all stateless hooks prefer the sbin receiver when both locations are executable' {
+    receiver bin
+    receiver sbin
+    for variant in $VARIANTS; do
+        stage_module "$variant"
+        add_fetch_helper
+        install_module
+        [ "$status" -eq 0 ] || { echo "$variant: $output"; return 1; }
+        cmp "$fixture/module/xcat-rootimg-fetch.sh" "$fixture/out/lib/xcat-rootimg-fetch.sh"
+        cmp "$fixture/sbin/uftpd" "$fixture/out/usr/sbin/uftpd"
+        [ ! -e "$fixture/out/usr/bin/uftpd" ]
+    done
+}
+
+@test 'all stateless hooks install the bin receiver when the sbin receiver is absent or not executable' {
+    receiver bin
+    for variant in $VARIANTS; do
+        for sbin in absent nonexecutable; do
+            rm -f "$fixture/sbin/uftpd"
+            if [ "$sbin" = nonexecutable ]; then
+                receiver sbin
+                chmod 644 "$fixture/sbin/uftpd"
+            fi
+            stage_module "$variant"
+            add_fetch_helper
+            install_module
+            [ "$status" -eq 0 ] || { echo "$variant: $output"; return 1; }
+            cmp "$fixture/bin/uftpd" "$fixture/out/usr/bin/uftpd"
+            [ ! -e "$fixture/out/usr/sbin/uftpd" ]
+        done
+    done
+}
+
+@test 'all stateless hooks retain the fetch helper when neither receiver location is executable' {
+    for variant in $VARIANTS; do
+        stage_module "$variant"
+        add_fetch_helper
+        install_module
+        [ "$status" -eq 0 ] || { echo "$variant: $output"; return 1; }
+        cmp "$fixture/module/xcat-rootimg-fetch.sh" "$fixture/out/lib/xcat-rootimg-fetch.sh"
+        [ ! -e "$fixture/out/usr/sbin/uftpd" ]
+        [ ! -e "$fixture/out/usr/bin/uftpd" ]
+    done
+}
+
+@test 'all stateless hooks stop when the installation policy helper is missing' {
+    for variant in $VARIANTS; do
+        stage_module "$variant"
+        rm "$fixture/module/xcat-rootimg-install.sh"
+        install_module
+        [ "$status" -ne 0 ] || { echo "$variant accepted a missing installation helper"; return 1; }
+        [[ "$output" == *xcat-rootimg-install.sh* ]]
     done
 }
 

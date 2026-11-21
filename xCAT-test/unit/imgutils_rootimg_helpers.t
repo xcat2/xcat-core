@@ -21,6 +21,11 @@ my $copy = "$module/$name";
 imgutils::stage_rootimg_helpers($module, 1);
 is(scalar(read_binary($copy)), scalar(read_binary($source)), 'checksum-only images receive the helper');
 is((stat($copy))[2] & oct('7777'), oct('644'), 'the sourced helper is readable but not executable');
+my $installer = "$module/xcat-rootimg-install.sh";
+is(scalar(read_binary($installer)),
+    scalar(read_binary("$FindBin::Bin/../../xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-install.sh")),
+    'the build helper is staged independently of UFTP eligibility');
+is((stat($installer))[2] & oct('7777'), oct('644'), 'the build helper is readable but not executable');
 write_binary($copy, 'old helper');
 chmod(oct('777'), $copy) or die $!;
 imgutils::stage_rootimg_helpers($module, 1);
@@ -29,6 +34,7 @@ is((stat($copy))[2] & oct('7777'), oct('644'), 'a repeated build restores the he
 
 imgutils::stage_rootimg_helpers($module, 0);
 ok(!-e $copy, 'disabled staging removes the previous checksum helper');
+ok(!-e $installer, 'a disabled build removes the previous installation helper');
 symlink("$tmp/missing", $copy) or die $!;
 imgutils::stage_rootimg_helpers($module, 0);
 ok(!-l $copy, 'a disabled build removes a dangling helper link');

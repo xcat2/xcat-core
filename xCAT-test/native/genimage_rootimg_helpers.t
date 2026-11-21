@@ -71,7 +71,7 @@ SH
         for my $index (1, 2) {
             my $path = "$box->{root}/work/staged-$index/$module";
             ok(-d $path, 'dracut receives the generated module');
-            for my $name (qw(xcat-rootimg-checksum.sh)) {
+            for my $name (qw(xcat-rootimg-checksum.sh xcat-rootimg-install.sh)) {
                 if ($index == $stateless || $family eq 'sles') {
                     ok(-f "$path/$name", "dracut module retains $name without a UFTP receiver");
                     is(scalar(read_binary("$path/$name")),
