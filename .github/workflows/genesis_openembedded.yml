@@ -7,6 +7,7 @@ on:
       - 'xCAT-test/native/genesis_metadata.py'
       - 'xCAT-test/native/genesis_console.py'
       - 'xCAT-test/native/genesis_console_dialogs.py'
+      - 'xCAT-test/native/genesis_console_fixture.py'
       - '.github/workflows/genesis_openembedded.yml'
   workflow_dispatch:
 jobs:

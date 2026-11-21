@@ -18,6 +18,7 @@ import unittest
 import uuid
 
 import pyte
+from genesis_console_fixture import console_paths
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -44,9 +45,7 @@ class ConsoleTerminal(unittest.TestCase):
         environment = {"PATH": os.environ["PATH"], "LC_ALL": "C.UTF-8", "TERM": "xterm",
                        "NEWT_COLORS": "listbox=black,white\nactlistbox=black,white\n"
                                       "sellistbox=white,red\nactsellistbox=white,red"}
-        for name in ("CMDLINE_FILE", "UPTIME_FILE", "OS_RELEASE", "STATUS_DIR", "STATE_FILE",
-                     "DESTINY_FILE", "RESPONSE_FILE", "SYS_ROOT", "PROC_ROOT", "EXTENSION_DIR", "PROVIDER_DIR"):
-            environment["XCAT_" + name] = str(root / name.lower())
+        environment.update(console_paths(root))
         Path(environment["XCAT_RESPONSE_FILE"]).write_text("XCAT_NODE_NAME=dialog-test-node\n")
         self.master, slave = pty.openpty()
         self.addCleanup(os.close, self.master)
