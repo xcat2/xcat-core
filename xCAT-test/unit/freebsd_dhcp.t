@@ -27,6 +27,15 @@ BEGIN {
         }
         return \%result;
     }
+    sub getAllAttribs {
+        my ($self, @attributes) = @_;
+        my @result;
+        for my $row (values %{$rows{$self->{name}} || {}}) {
+            push @result, { map { $_ => $row->{$_} } @attributes };
+        }
+        return @result;
+    }
+    sub close { return; }
     $INC{'xCAT/Table.pm'} = __FILE__;
 
     package xCAT::TableUtils;
@@ -319,6 +328,7 @@ subtest 'Kea preserves rejected native nodes during mixed updates' => sub {
     local *xCAT::MsgUtils::message = sub { return; };
     local *xCAT::MsgUtils::trace = sub { return; };
     local $::XCATSITEVALS{externaldhcpservers};
+    local $xCAT_plugin::dhcp::radvdconffile = "$temporary/radvd.conf";
 
     my $node_classes = sub {
         my ($class_config, $class_node) = @_;
