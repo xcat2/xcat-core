@@ -105,6 +105,38 @@ for my $name (sort keys %adapters) {
     };
 }
 
+copy("$sources/configdhcpv6duid", "$root/scripts/configdhcpv6duid") or croak $!;
+chmod(oct('0555'), "$root/scripts/configdhcpv6duid") == 1 or croak $!;
+subtest 'the default DUID postscript leaves FreeBSD DHCPv6 to its network adapter' => sub {
+    my $result = invoke('configdhcpv6duid', 'FreeBSD');
+    is($result->{signal}, 0, 'the native default exits normally');
+    is($result->{exitcode}, 0, 'FreeBSD accepts the default without Linux network renderers');
+    ok(!-e "$root/fixture/bash.argv", 'the FreeBSD default does not require Bash');
+};
+subtest 'the DUID postscript retains its Linux and AIX Bash entry' => sub {
+    for my $platform (qw(Linux AIX)) {
+        my $result = invoke('configdhcpv6duid', $platform, 'two words', '');
+        is($result->{exitcode}, 17, "$platform preserves the Bash result");
+        is(read_file("$root/fixture/bash.argv"), "/scripts/configdhcpv6duid\0two words\0\0",
+            "$platform preserves the script path and argument boundaries");
+    }
+};
+
+subtest 'management-node default postscripts have native entry points' => sub {
+    my $config = read_file("$FindBin::Bin/../../xCAT-server/sbin/xcatconfig");
+    my @lists = $config =~ /node=xcatdefaults postscripts[.](?:postscripts|postbootscripts)='([^']+)'/g;
+    ok(@lists, 'default postscript command artifacts were found');
+    my %scripts = map { $_ => 1 } map { split(/,/, $_) } @lists;
+    for my $name (sort keys %scripts) {
+        write_file("$root/scripts/$adapters{$name}", $adapter, oct('0555')) if exists($adapters{$name});
+        my $result = invoke($name, 'FreeBSD');
+        is($result->{signal}, 0, "$name reaches its native entry normally");
+        is($result->{exitcode}, exists($adapters{$name}) ? 23 : 0,
+            "$name can enter the native postscript run");
+        ok(!-e "$root/fixture/bash.argv", "$name does not need Bash on FreeBSD");
+    }
+};
+
 sub bash_startup_tests {
     make_path("$root/etc", "$root/dev");
     write_file("$root/dev/null", '', oct('0666'));

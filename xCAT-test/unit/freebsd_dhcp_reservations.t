@@ -125,6 +125,19 @@ is(scalar @{ xCAT_plugin::dhcp::_isc_ipoib_hosts('compute-01', \@config) }, 1,
 like(join('', @config), qr/\Q@{[join('', @ethernet)]}\E/, 'ISC update and deletion preserve the Ethernet boot host');
 
 my $backend = xCAT::DHCP::Backend::Kea->new(kea_version => '2.4.1');
+subtest 'Kea client identifiers remain distinct within one node' => sub {
+    my $config = { Dhcp4 => { subnet4 => [{ id => 1, reservations => [{
+        'client-id' => '01:02', 'user-context' => { 'xcat-node' => 'compute', 'xcat-purpose' => 'freebsd-ipoib' },
+    }] }] } };
+    my $query = { 'client-id' => '01:03', 'user-context' => { 'xcat-node' => 'compute' } };
+    is_deeply($backend->query_reservations($config, $query), [],
+        'a different client identifier is not an owner-only match');
+    is_deeply($backend->delete_reservations($config, $query), [],
+        'a delete query cannot match a different client identifier through its owner');
+    $query->{'client-id'} = '01:02';
+    is(scalar(@{$backend->query_reservations($config, $query)}), 1,
+        'the exact client identifier still finds its reservation');
+};
 subtest 'Kea matching retains numeric JSON subnet identifiers' => sub {
     plan skip_all => 'JSON::XS is not installed' unless eval { require JSON::XS; 1; };
     my $json = JSON::XS->new->canonical;
