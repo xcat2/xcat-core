@@ -182,7 +182,7 @@ run_xcatroot()
     done
     local checksum_helper
     checksum_helper=$(repo_path xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-checksum.sh)
-    [ ! -f "$checksum_helper" ] || sandbox+=(--ro-bind "$checksum_helper" /lib/xcat-rootimg-checksum.sh)
+    [ ! -f "$checksum_helper" ] || [ -n "$NO_CHECKSUM_HELPER" ] || sandbox+=(--ro-bind "$checksum_helper" /lib/xcat-rootimg-checksum.sh)
     # genimage puts the helper in every initial ramdisk that can receive the root image over UFTP.
     [ -n "$NO_UFTP_HELPER" ] || sandbox+=(--ro-bind "$(repo_path xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-fetch.sh)" /lib/xcat-rootimg-fetch.sh)
     echo "imgurl=$URL XCAT=192.0.2.1:3001 nonodestatus $CMDLINE $UFTP $KERNEL_ARGS" >"$FX/cmdline"
@@ -193,6 +193,7 @@ run_xcatroot()
     timeout 60 "${sandbox[@]}" /bin/bash -c "
         [ ! -e /fx/stale ] || cp /fx/stale /rootimg.cpio.gz
         $shell /xcatroot eth0 xcat /sysroot </dev/null >/fx/console 2>&1
+        echo \$? >/fx/xcatroot.status
         cat /sysroot/etc/marker >/fx/extracted 2>/dev/null
         cp -P /sysroot/etc/resolv.conf /fx/newroot-resolv.conf 2>/dev/null
         cp -P /sysroot/etc/hostname /fx/newroot-hostname 2>/dev/null
@@ -216,6 +217,40 @@ check_each_script()
 
 @test 'an image that matches its published checksum is extracted' {
     check_each_script 'packed image' "$URL.sha256 $URL $URL.sha256 " 0 ''
+}
+
+@test 'a missing checksum helper stops xcatroot before an image is downloaded or extracted' {
+    NO_CHECKSUM_HELPER=1
+    while read -r script shell; do
+        run_xcatroot "$script" "$shell"
+        [ "$(cat "$FX/xcatroot.status")" -ne 0 ]
+        [ ! -e "$FX/downloads" ]
+        [ ! -s "$FX/extracted" ]
+        grep -q 'xcat-rootimg-checksum.sh' "$FX/console"
+    done <<<"$ALL_SCRIPTS"
+}
+
+@test 'checksum-only boots do not require the UFTP helper' {
+    NO_UFTP_HELPER=1
+    check_each_script 'packed image' "$URL.sha256 $URL $URL.sha256 " 0 ''
+}
+
+@test 'curl checksum failures retain the HTTP status in the diagnostic' {
+    SCRIPTS='xCAT-server/share/xcat/netboot/rh/dracut_047/xcatroot bash
+xCAT-server/share/xcat/netboot/rh/dracut_105/stateless/xcatroot bash'
+    CHECKSUM_PLAN='503 503' MAXWAITS=1
+    check_each_script '' "$URL.sha256 $URL $URL.sha256 " 1 'cannot download .*sha256 (HTTP 503)'
+}
+
+@test 'wget checksum failures retain the diagnostic without an HTTP status suffix' {
+    CHECKSUM_PLAN='503 503' MAXWAITS=1
+    while read -r script shell; do
+        case "$script" in */dracut_047/*|*/dracut_105/*) continue ;; esac
+        run_xcatroot "$script" "$shell"
+        case "$script" in */ubuntu/*) log="$FX/console" ;; *) log="$FX/logger" ;; esac
+        grep -Fq "cannot download $URL.sha256, retrying..." "$log"
+        [ ! -s "$FX/extracted" ]
+    done <<<"$ALL_SCRIPTS"
 }
 
 @test 'an image that matches a later line of the checksum file is extracted, as while packimage replaces it' {
