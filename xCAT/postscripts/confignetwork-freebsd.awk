@@ -1011,7 +1011,16 @@ BEGIN {
             length(uuid_parts[4]) != 4 || length(uuid_parts[5]) != 12 ||
             uuid == "00000000-0000-0000-0000-000000000000" || uuid == "ffffffff-ffff-ffff-ffff-ffffffffffff")
             fail("DHCP requires a valid hardware UUID")
-        gsub(/-/, "", uuid)
+        # DHCPv6 matches firmware reservations; DHCPv4 IPoIB keeps its canonical UUID.
+        if (mode == "dhcp6-duid") {
+            uuid = ""
+            for (i = 1; i <= 3; i++)
+                for (j = length(uuid_parts[i]) - 1; j > 0; j -= 2)
+                    uuid = uuid substr(uuid_parts[i], j, 2)
+            uuid = uuid uuid_parts[4] uuid_parts[5]
+        } else {
+            gsub(/-/, "", uuid)
+        }
         duid = "00:04"
         for (i = 1; i <= 32; i += 2) duid = duid ":" substr(uuid, i, 2)
         print duid
