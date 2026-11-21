@@ -787,10 +787,15 @@ dhcp_configuration_tests();
 sub dhcp6_configuration_tests {
     subtest 'DHCPv6 uses the xCAT hardware UUID reservation identity' => sub {
         my ($status, $duid, $error) = invoke({}, '-v', 'mode=dhcp6-duid', '-v',
-            'uuid=12343412-3434-ABAB-9876-1234567890AB');
+            'uuid=12345678-1234-ABCD-9876-1234567890AB');
         is($status, 0, 'a canonical hardware UUID is accepted') or diag($error);
-        is($duid, "00:04:12:34:34:12:34:34:ab:ab:98:76:12:34:56:78:90:ab\n",
-            'the formatter encodes the hardware UUID as DUID-UUID');
+        is($duid, "00:04:78:56:34:12:34:12:cd:ab:98:76:12:34:56:78:90:ab\n",
+            'DHCPv6 uses firmware order in the first three UUID fields');
+        ($status, $duid, $error) = invoke({}, '-v', 'mode=dhcp4-duid', '-v',
+            'uuid=12345678-1234-ABCD-9876-1234567890AB');
+        is($status, 0, 'DHCPv4 accepts the same hardware UUID') or diag($error);
+        is($duid, "00:04:12:34:56:78:12:34:ab:cd:98:76:12:34:56:78:90:ab\n",
+            'DHCPv4 IPoIB retains its canonical identity');
         for my $bad ('', '00000000-0000-0000-0000-000000000000',
             'ffffffff-ffff-ffff-ffff-ffffffffffff', '1234', '$(command)') {
             my ($rejected, $output) = invoke({}, '-v', 'mode=dhcp6-duid', '-v', "uuid=$bad");

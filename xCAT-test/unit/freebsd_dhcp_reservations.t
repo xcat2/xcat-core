@@ -49,6 +49,29 @@ sub compare_native_plan {
 }
 
 my $physical = reservation_plan($nics, $uuid);
+subtest 'FreeBSD DHCPv6 matches the server default without changing DHCPv4 IPoIB' => sub {
+    for my $hardware_uuid ($uuid, 'A0B1C2D3-E4F5-4A6B-8C7D-102030405060') {
+        my %native;
+        for my $family (4, 6) {
+            my $result = xCAT::FreeBSDPkg::run_command(
+                ['/usr/bin/awk', '-v', "mode=dhcp$family-duid", '-v', "uuid=$hardware_uuid", '-f', $planner],
+                environment => { LC_ALL => 'C' }, timeout => 10);
+            is($result->{exitcode}, 0, "DHCPv$family formats the hardware UUID") or diag($result->{stderr});
+            $native{$family} = $result->{stdout};
+            chomp($native{$family});
+        }
+        for my $setting (undef, '', 'firmware', $native{6}) {
+            my ($server, $error) = xCAT_plugin::dhcp::dhcp6_client_duid($setting, $hardware_uuid, undef, 'x86_64');
+            ok(!defined($error), 'the server accepts the matching policy');
+            is($native{6}, $server, 'the real client formatter matches the real server reservation');
+        }
+        my ($canonical) = xCAT_plugin::dhcp::dhcp6_client_duid('canonical', $hardware_uuid);
+        is($native{4}, $canonical, 'DHCPv4 IPoIB remains canonical');
+        isnt($native{6}, $canonical, 'canonical is an incompatible DHCPv6 server override');
+        my ($foreign) = xCAT_plugin::dhcp::dhcp6_client_duid('00:03:00:01:52:54:00:00:00:01', $hardware_uuid);
+        isnt($native{6}, $foreign, 'an unrelated literal cannot match the native client');
+    }
+};
 is_deeply($physical, [{ interface => 'ib0', address => '192.0.2.10',
     client_id => "ff:92:bc:48:24:$duid" }], 'physical IPoIB uses the native client option 61 identity');
 compare_native_plan($nics, $physical, 'physical port');
