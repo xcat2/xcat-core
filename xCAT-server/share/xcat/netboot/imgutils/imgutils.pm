@@ -210,6 +210,21 @@ sub add_uftp_receiver {
     return $receiver;
 }
 
+sub stage_rootimg_helpers {
+    my ($moduledir, $wanted) = @_;
+    foreach my $name (qw(xcat-rootimg-checksum.sh)) {
+        my $copy = "$moduledir/$name";
+        if (-e $copy || -l $copy) {
+            unlink($copy) or die("Error: cannot remove $copy: $!\n");
+        }
+        next unless $wanted;
+        my $helper = dirname(__FILE__) . "/$name";
+        File::Copy::copy($helper, $copy) && chmod(oct('644'), $copy)
+          or die("Error: cannot copy $helper to $copy: $!\n");
+    }
+    return;
+}
+
 # Returns the lsinitrd lines of the initial ramdisk $initrd, a path inside the image, or undef when the image cannot list it.
 sub initrd_listing {
     my ($rootimg_dir, $initrd) = @_;

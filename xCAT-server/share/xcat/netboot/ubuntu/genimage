@@ -991,7 +991,11 @@ sub mkinitrd_dracut {
     mkpath($dracutmpath);
 
     # Only a stateless initial ramdisk that checks the root image receives it over UFTP.
-    my $uftp_receiver = eval { imgutils::add_uftp_receiver($rootimg_dir, $arch, $dracutmpath, $mode eq 'stateless') };
+    my $uftp_receiver = eval {
+        my $wanted = $mode eq 'stateless';
+        imgutils::stage_rootimg_helpers($dracutmpath, $wanted);
+        imgutils::add_uftp_receiver($rootimg_dir, $arch, $dracutmpath, $wanted);
+    };
     xdie($@) if $@;
 
     imgutils::stage_dracut_module("$fullpath/$dracutdir", $dracutmpath, $mode);
