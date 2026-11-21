@@ -28,19 +28,11 @@ install() {
     # cmdline hook
     inst_hook cmdline 10 "$moddir/xcat-cmdline.sh"
 
-    # genimage adds the UFTP helper only when the image has a UFTP 5 receiver.
     [ -r "$moddir/xcat-rootimg-checksum.sh" ] || { echo "Cannot read $moddir/xcat-rootimg-checksum.sh" >&2; exit 1; }
     inst_simple "$moddir/xcat-rootimg-checksum.sh" "/lib/xcat-rootimg-checksum.sh" || exit 1
 
-    if [ -r "$moddir/xcat-rootimg-fetch.sh" ]; then
-        inst_simple "$moddir/xcat-rootimg-fetch.sh" "/lib/xcat-rootimg-fetch.sh"
-        for uftpd in /usr/sbin/uftpd /usr/bin/uftpd; do
-            if [ -x "$uftpd" ]; then
-                dracut_install "$uftpd"
-                break
-            fi
-        done
-    fi
+    . "$moddir/xcat-rootimg-install.sh" || exit 1
+    xcat_install_uftp_receiver inst_simple
 
     # udev rules with "xcat"
     for file in /etc/udev/rules.d/*; do

@@ -212,7 +212,7 @@ sub add_uftp_receiver {
 
 sub stage_rootimg_helpers {
     my ($moduledir, $wanted) = @_;
-    foreach my $name (qw(xcat-rootimg-checksum.sh)) {
+    foreach my $name (qw(xcat-rootimg-checksum.sh xcat-rootimg-install.sh)) {
         my $copy = "$moduledir/$name";
         if (-e $copy || -l $copy) {
             unlink($copy) or die("Error: cannot remove $copy: $!\n");
