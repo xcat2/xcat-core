@@ -74,6 +74,9 @@ getarg()
 }
 SH
             copy($source, "$root/xcatroot") or die $!;
+            my $checksum_helper = "$netboot/../imgutils/xcat-rootimg-checksum.sh";
+            copy($checksum_helper, "$root/lib/xcat-rootimg-checksum.sh") or die $!
+              if -f $checksum_helper;
             my $archive = "$root/rootimg.$method.gz";
             my @pack = $method eq 'cpio'
               ? ('/bin/bash', '-o', 'pipefail', '-c', 'cd "$1" && find . -print0 | cpio -0 -o -H newc | gzip > "$2"', 'pack', $payload, $archive)

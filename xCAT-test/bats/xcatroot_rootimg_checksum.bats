@@ -162,16 +162,27 @@ run_xcatroot()
     local script="$1" shell="$2"
     shift 2
     local sandbox=("$bwrap" --unshare-all --die-with-parent --new-session
-        --ro-bind /usr /usr --ro-bind /etc /etc --symlink usr/bin /bin --symlink usr/sbin /sbin
+        --ro-bind /usr /usr --ro-bind /etc /etc
         --dir /lib --proc /proc --dev /dev --tmpfs /tmp --dir /sysroot
         --bind "$FX" /fx --ro-bind "$FX/lib/dracut-lib.sh" /lib/dracut-lib.sh
         --ro-bind "$(repo_path "$script")" /xcatroot --chdir /
         --setenv PATH /fx/bin:/usr/bin:/bin --setenv imgurl "$URL" --setenv XCAT 192.0.2.1:3001
         --setenv rootimgchecksum "${CMDLINE#rootimgchecksum=}" --setenv XCAT_UFTP_POLL 60 "$@")
-    [ ! -e /usr/lib64 ] || sandbox+=(--symlink usr/lib64 /lib64)
+    local directory
+    for directory in bin sbin; do
+        if [ -L "/$directory" ]; then
+            sandbox+=(--symlink "usr/$directory" "/$directory")
+        else
+            sandbox+=(--ro-bind "/$directory" "/$directory")
+        fi
+    done
+    [ ! -e /lib64 ] || sandbox+=(--ro-bind /lib64 /lib64)
     for multiarch in /usr/lib/*-linux-gnu; do
         [ ! -d "$multiarch" ] || sandbox+=(--ro-bind "$multiarch" "/lib/${multiarch##*/}")
     done
+    local checksum_helper
+    checksum_helper=$(repo_path xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-checksum.sh)
+    [ ! -f "$checksum_helper" ] || sandbox+=(--ro-bind "$checksum_helper" /lib/xcat-rootimg-checksum.sh)
     # genimage puts the helper in every initial ramdisk that can receive the root image over UFTP.
     [ -n "$NO_UFTP_HELPER" ] || sandbox+=(--ro-bind "$(repo_path xCAT-server/share/xcat/netboot/imgutils/xcat-rootimg-fetch.sh)" /lib/xcat-rootimg-fetch.sh)
     echo "imgurl=$URL XCAT=192.0.2.1:3001 nonodestatus $CMDLINE $UFTP $KERNEL_ARGS" >"$FX/cmdline"
