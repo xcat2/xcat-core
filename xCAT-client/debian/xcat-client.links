@@ -3,6 +3,7 @@ opt/xcat/bin/xcatclient opt/xcat/bin/rscan
 opt/xcat/bin/xcatclient opt/xcat/sbin/makedhcp
 opt/xcat/bin/xcatclient opt/xcat/sbin/makehosts
 opt/xcat/bin/xcatclient opt/xcat/sbin/makeknownhosts
+opt/xcat/bin/xcatclient opt/xcat/sbin/mkhostbased-auth
 opt/xcat/bin/xcatclient opt/xcat/sbin/nodeset
 opt/xcat/bin/xcatclient opt/xcat/sbin/setupiscsidev
 opt/xcat/bin/xcatclient opt/xcat/sbin/makeconservercf

@@ -28,7 +28,13 @@ $cmdref->{cwd}->[0] = cwd();
 my $data;
 
 # allows our plugins to get the stdin of the cmd that invoked the plugin
-if ((($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/)) || !defined($ENV{'TERM'}))
+if ($cmdref->{command}->[0] eq 'mkhostbased-auth' && -f STDIN)
+{
+    local $/;
+    $data = <STDIN>;
+    $cmdref->{stdin}->[0] = $data if defined $data;
+}
+elsif ((($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/)) || !defined($ENV{'TERM'}))
 {
     my $rin = "";
     my $rout;
