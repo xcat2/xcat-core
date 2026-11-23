@@ -237,6 +237,68 @@ cmp_ok(
     'the outlet sensor loop is skipped instead of walking every outlet'
 );
 
+subtest 'PX3 inlet poles and overcurrent protectors' => sub {
+    my $mib = '.1.3.6.1.4.1.13742.6';
+    my $pole_config = "$mib.3.3.6.1";
+    my $pole_measure = "$mib.5.2.4.1";
+    my $protector_config = "$mib.3.4.4.1";
+    my $protector_measure = "$mib.5.3.3.1";
+    my %resp = (
+        "$UNITCONF.2.1"          => 1,
+        "$UNITCONF.3.1"          => 2,
+        "$mib.3.3.3.1.5.1.1"    => 4,
+        "$mib.3.3.5.1.1.1.1.1"  => 1,
+        "$mib.3.3.5.1.1.1.1.2"  => 'lineL2(2)',
+        "$mib.3.3.5.1.1.1.1.4"  => 'lineNeutral',
+        "$pole_measure.3.1.1.1.27" => 4,
+        "$pole_measure.3.1.1.2.27" => 'warning',
+        "$pole_measure.3.1.1.3.27" => 'unavailable(-1)',
+        "$pole_measure.3.1.1.3.1"  => -1,
+        "$pole_measure.4.1.1.3.1"  => 0,
+    );
+
+    my @sensors = (
+        [$pole_config, $pole_measure, '1.1.1.25', 230, 1, 0],
+        [$pole_config, $pole_measure, '1.1.1.1',  1420, 2, 3],
+        [$pole_config, $pole_measure, '1.1.1.5',   318, 3, 0],
+        [$pole_config, $pole_measure, '1.1.1.6',   326, 4, 0],
+        [$pole_config, $pole_measure, '1.1.1.26',    0, 2, 4],
+        [$pole_config, $pole_measure, '1.1.1.36',   12, 2, 4],
+        [$pole_config, $pole_measure, '1.1.1.55',   15, 2, 4],
+        [$pole_config, $pole_measure, '1.1.2.1',    24, 2, 1],
+        [$pole_config, $pole_measure, '1.1.4.1',   854, 2, 3],
+        [$protector_config, $protector_measure, '1.1.1', 0, 2, 3],
+        [$protector_config, $protector_measure, '1.2.1', 80, 2, 2],
+    );
+    for my $sensor (@sensors) {
+        my ($conf, $meas, $idx, $raw, $units, $digits) = @$sensor;
+        $resp{"$conf.27.$idx"} = 0;
+        $resp{"$conf.6.$idx"}   = $units;
+        $resp{"$conf.7.$idx"}   = $digits;
+        $resp{"$meas.3.$idx"}   = 4;
+        $resp{"$meas.4.$idx"}   = $raw;
+    }
+
+    my ($messages, $request) = vitals_messages(\%resp, 48);
+    is_deeply($messages, [
+        'pdu1|inlet 1 L1 RMS Line-to-Neutral Voltage: 230 V',
+        'pdu1|inlet 1 L1 RMS Current: 1.420 A',
+        'pdu1|inlet 1 L1 Active Power: 318 W',
+        'pdu1|inlet 1 L1 Apparent Power: 326 VA',
+        'pdu1|inlet 1 L1 Residual Current: 0.0000 A',
+        'pdu1|inlet 1 L1 Residual DC Current: 0.0012 A',
+        'pdu1|inlet 1 L1 Residual AC Current: 0.0015 A',
+        'pdu1|inlet 1 L1 RCM State: normal',
+        'pdu1|inlet 1 L2 RMS Current: 2.4 A',
+        'pdu1|inlet 1 L2 RCM State: warning',
+        'pdu1|inlet 1 N RMS Current: 0.854 A',
+        'pdu1|overcurrent protector 1 RMS Current: 0.000 A',
+        'pdu1|overcurrent protector 2 RMS Current: 0.80 A',
+    ], 'reports only available readings, with the scale for each sensor');
+    ok(!(grep { $_ eq "$pole_measure.4.1.1.3.1" } @{ $request->{gets} }),
+        'an unavailable sensor is skipped before reading its value');
+};
+
 #-- rvitals: sensor metadata cache -------------------------------------------
 
 my %two_inlets = ("$UNITCONF.2.1" => 2);

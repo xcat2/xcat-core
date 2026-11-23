@@ -87,6 +87,8 @@ my $PDU2_OUTLETSIGNEDVAL = ".1.3.6.1.4.1.13742.6.5.4.3.1.6";  #measurementsOutle
 my $PDU2_OUTLETSIGNEDMIN = ".1.3.6.1.4.1.13742.6.3.5.4.1.27"; #outletSensorSignedMinimum
 my $PDU2_OUTLETUNITS     = ".1.3.6.1.4.1.13742.6.3.5.4.1.6";  #outletSensorUnits
 my $PDU2_OUTLETDEC       = ".1.3.6.1.4.1.13742.6.3.5.4.1.7";  #outletSensorDecimalDigits
+my $PDU2_POLE_COUNT      = ".1.3.6.1.4.1.13742.6.3.3.3.1.5";  #inletPoleCount
+my $PDU2_POLE_LINE       = ".1.3.6.1.4.1.13742.6.3.3.5.1.1";  #inletPoleLine
 
 #The five columns pdu2_sensor_fmt reads, grouped per entity type.
 my $PDU2_INLET_SENSOR = {
@@ -104,12 +106,30 @@ my $PDU2_OUTLET_SENSOR = {
     dec    => $PDU2_OUTLETDEC,
 };
 
+#Inlet poles and overcurrent protectors each have their own sensor tables.
+my $PDU2_POLE_SENSOR = {
+    state  => ".1.3.6.1.4.1.13742.6.5.2.4.1.3",
+    val    => ".1.3.6.1.4.1.13742.6.5.2.4.1.4",
+    signed => ".1.3.6.1.4.1.13742.6.5.2.4.1.6",
+    min    => ".1.3.6.1.4.1.13742.6.3.3.6.1.27",
+    units  => ".1.3.6.1.4.1.13742.6.3.3.6.1.6",
+    dec    => ".1.3.6.1.4.1.13742.6.3.3.6.1.7",
+};
+my $PDU2_PROTECTOR_SENSOR = {
+    state  => ".1.3.6.1.4.1.13742.6.5.3.3.1.3",
+    val    => ".1.3.6.1.4.1.13742.6.5.3.3.1.4",
+    signed => ".1.3.6.1.4.1.13742.6.5.3.3.1.6",
+    min    => ".1.3.6.1.4.1.13742.6.3.4.4.1.27",
+    units  => ".1.3.6.1.4.1.13742.6.3.4.4.1.6",
+    dec    => ".1.3.6.1.4.1.13742.6.3.4.4.1.7",
+};
+
 #PDU2-MIB has no pollable PDU-level firmware version (boardFirmwareVersion is
 #per-controller under unit 3, imageVersion is trap payload only), so the
 #firmware string is taken from sysDescr in SNMPv2-MIB.
 my $SYSDESCR         = ".1.3.6.1.2.1.1.1.0";
 
-#SensorTypeEnumeration subset reported for inlets and outlets, and the
+#SensorTypeEnumeration subset reported by rvitals, and the
 #SensorUnitsEnumeration values those sensors use. Readings are scaled by the
 #matching ...SensorDecimalDigits and labelled from ...SensorUnits, so this
 #works unchanged on any PDU2 model regardless of which sensors it populates.
@@ -119,7 +139,9 @@ my %PDU2_SENSOR_NAME = (
     5  => "Active Power",      6  => "Apparent Power",
     7  => "Power Factor",      8  => "Active Energy",
     9  => "Apparent Energy",   10 => "Temperature",
-    23 => "Frequency",         29 => "Reactive Power",
+    23 => "Frequency",         25 => "RMS Line-to-Neutral Voltage",
+    26 => "Residual Current",  29 => "Reactive Power",
+    36 => "Residual DC Current", 55 => "Residual AC Current",
 );
 my %PDU2_SENSOR_UNIT = (
     -1 => "",   0 => "",    1 => "V",  2 => "A",   3 => "W",
@@ -136,8 +158,16 @@ my %PDU2_UNIT_CODE = (
     hertz   => 8,  percent     => 9, degrees => 20, var     => 23,
 );
 my %PDU2_STATE_CODE = (on => 7, off => 8);
+my %PDU2_LINE_CODE = (
+    linel1 => 1, linel2 => 2, linel3 => 3, lineneutral => 4,
+    linedcpositive => 5, linedcnegative => 6,
+);
+my %PDU2_LINE_NAME = (1 => "L1", 2 => "L2", 3 => "L3", 4 => "N", 5 => "DC+", 6 => "DC-");
+my %PDU2_RCM_STATE = (4 => "normal", 14 => "fail", 27 => "warning", 28 => "critical", 29 => "selfTest");
+my %PDU2_RCM_CODE = map { lc($PDU2_RCM_STATE{$_}) => $_ } keys %PDU2_RCM_STATE;
 #Ordered for readability rather than by enum value.
 my @PDU2_INLET_SENSORS  = (4, 1, 5, 6, 7, 23, 3, 29, 8, 9, 10);
+my @PDU2_POLE_SENSORS   = (25, 1, 5, 6, 26, 36, 55);
 my @PDU2_OUTLET_SENSORS = (1, 5, 8);
 
 
@@ -965,6 +995,14 @@ sub pdu2_session_probe {
 #-------------------------------------------------------
 sub pdu2_sensor_fmt {
     my ($session, $oids, $idx, $cache) = @_;
+    $cache //= {};
+
+    if (defined $oids->{state}) {
+        my ($sensor_state, $status) = pdu2_get($session, "$oids->{state}.$idx");
+        return undef if ($status eq 'failed');
+        my $code = pdu2_enum($sensor_state, { unavailable => -1 });
+        return undef if (defined $code and $code == -1);
+    }
 
     #Use the signed column when the minimum is below zero. An absent minimum
     #means firmware without the column, so keep the unsigned reading; a failed
@@ -1043,12 +1081,55 @@ sub rinv_for_genpdu {
     }
 }
 
+#Read the pole count and line labels from the MIB to handle different wiring.
+sub pdu2_report_inlet_poles {
+    my ($pdu, $inlet, $session, $callback) = @_;
+    my $inlet_idx = "$PDU2_PDUID.$inlet";
+    my ($count) = pdu2_get($session, "$PDU2_POLE_COUNT.$inlet_idx");
+    return unless (defined $count and $count =~ /^[2-5]$/);
+
+    for my $pole (1 .. $count) {
+        my $idx = "$inlet_idx.$pole";
+        my ($line) = pdu2_get($session, "$PDU2_POLE_LINE.$idx");
+        my $code = pdu2_enum($line, \%PDU2_LINE_CODE);
+        my $label = defined($code) ? $PDU2_LINE_NAME{$code} : undef;
+        $label //= "pole $pole";
+
+        #Do not share scaling metadata between poles or protectors.
+        for my $sensor (@PDU2_POLE_SENSORS) {
+            my $fmt = pdu2_sensor_fmt($session, $PDU2_POLE_SENSOR, "$idx.$sensor");
+            next unless (defined $fmt);
+            my $name = $PDU2_SENSOR_NAME{$sensor};
+            xCAT::SvrUtils::sendmsg("inlet $inlet $label $name: $fmt", $callback, $pdu);
+        }
+
+        #rcmState is an enumeration, so it has no numerical reading or unit.
+        my ($state) = pdu2_get($session, "$PDU2_POLE_SENSOR->{state}.$idx.27");
+        my $rcm = pdu2_enum($state, \%PDU2_RCM_CODE);
+        if (defined $rcm and exists $PDU2_RCM_STATE{$rcm}) {
+            xCAT::SvrUtils::sendmsg("inlet $inlet $label RCM State: $PDU2_RCM_STATE{$rcm}", $callback, $pdu);
+        }
+    }
+}
+
+sub pdu2_report_protectors {
+    my ($pdu, $session, $callback) = @_;
+    my ($count) = pdu2_get($session, "$PDU2_UNITCONF.3.$PDU2_PDUID");
+    return unless (defined $count and $count =~ /^\d+$/ and $count <= 255);
+
+    for my $protector (1 .. $count) {
+        my $fmt = pdu2_sensor_fmt($session, $PDU2_PROTECTOR_SENSOR, "$PDU2_PDUID.$protector.1");
+        next unless (defined $fmt);
+        xCAT::SvrUtils::sendmsg("overcurrent protector $protector RMS Current: $fmt", $callback, $pdu);
+    }
+}
+
 #-------------------------------------------------------
 
 =head3  rvitals_for_genpdu
 
-   Sensor readings for a generic SNMP PDU: every supported inlet sensor the
-   device reports, then current, active power and active energy per outlet.
+   Sensor readings for a generic SNMP PDU: inlet, pole and overcurrent
+   protector readings, then current, active power and active energy per outlet.
 
 =cut
 
@@ -1071,7 +1152,10 @@ sub rvitals_for_genpdu {
             my $name = $PDU2_SENSOR_NAME{$st} || "sensor $st";
             xCAT::SvrUtils::sendmsg("inlet $inlet $name: $fmt", $callback, $pdu);
         }
+        pdu2_report_inlet_poles($pdu, $inlet, $session, $callback);
     }
+
+    pdu2_report_protectors($pdu, $session, $callback);
 
     my %outlet_cache;
 

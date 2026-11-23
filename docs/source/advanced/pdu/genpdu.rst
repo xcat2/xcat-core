@@ -143,6 +143,14 @@ The following commands are supported against a PDU:
      sensor, including wide-range ones such as active energy, where the signed
      column does not apply.
 
+     When the device exposes inlet poles, ``rvitals`` also reports current,
+     line-to-neutral voltage, active power and apparent power per line,
+     including neutral current where measured. Residual current, AC and DC
+     residual current, and the residual current monitoring (RCM) state appear
+     on lines with those sensors. Current is also reported for overcurrent
+     protectors that have current sensors. The PDU supplies the line labels
+     and counts, and unavailable readings are omitted.
+
      Sensors that the device does not report are omitted, so the exact set of
      lines varies by model. Per-outlet sensors are skipped entirely on models
      that do not meter individual outlets. The reported sensor types are a
