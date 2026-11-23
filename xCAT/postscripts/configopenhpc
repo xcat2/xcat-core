@@ -1,0 +1,110 @@
+#!/bin/bash
+
+set -euo pipefail
+
+fail()
+{
+    echo "configopenhpc: $*" >&2
+    exit 1
+}
+
+method=${1:-install}
+[[ $# -le 1 && ( $method == install || $method == netboot ) ]] ||
+    fail 'expected the install or netboot provisioning method'
+
+if [[ -r /etc/os-release ]]; then
+    source /etc/os-release
+fi
+version=${VERSION_ID:-}
+arch=$(uname -m)
+distro=${ID:-}
+[[ $EUID == 0 ]] || fail 'run as root on a compute node'
+if [[ ( $distro == almalinux || $distro == rocky ) && ${version%%.*} == 10 &&
+      ( $arch == x86_64 || $arch == aarch64 ) ]]; then
+    :
+elif [[ ${distro,,} == openeuler && $arch == x86_64 && $version == 24.03 &&
+        ${VERSION:-} =~ ^24\.03[[:space:]]+\(LTS-SP[24]\)$ ]]; then
+    :
+else
+    fail 'requires AlmaLinux 10 or Rocky Linux 10 (x86_64/aarch64) or openEuler 24.03 SP2/SP4 (experimental x86_64)'
+fi
+
+state_dir=/var/lib/xcat/openhpc
+staged_key=$state_dir/munge.key
+[[ -d $state_dir && ! -L $state_dir ]] || fail 'OpenHPC configuration has not been synced'
+chmod 0700 -- "$state_dir"
+exec 9>"$state_dir/.lock"
+flock -x 9
+[[ -f $staged_key && ! -L $staged_key && -s $staged_key ]] || fail 'the controller MUNGE key has not been synced'
+case $(stat -c '%a' -- "$staged_key") in
+    400|600) ;;
+    *) fail 'the synced MUNGE key must have permissions 0400 or 0600' ;;
+esac
+[[ -f $state_dir/controller && ! -L $state_dir/controller ]] || fail 'the Slurm controller has not been synced'
+read -r controller < "$state_dir/controller" || fail 'the Slurm controller has not been synced'
+[[ $controller =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$ ]] ||
+    fail 'the synced Slurm controller is invalid'
+
+package_list=$(dirname -- "${BASH_SOURCE[0]}")/openhpc.pkglist
+[[ -s $package_list && -r $package_list ]] ||
+    fail "could not read the OpenHPC package list at $package_list"
+mapfile -t packages < "$package_list"
+if [[ $method == netboot ]]; then
+    rpm -q --quiet "${packages[@]}" ||
+        fail 'the diskless image is missing OpenHPC packages; run genimage and packimage before boot'
+else
+    # Use the node's configured DNF repositories and their GPG policy.
+    dnf -y install "${packages[@]}"
+fi
+
+munge_key=/etc/munge/munge.key
+options=/etc/sysconfig/slurmd.xcat-openhpc
+dropin_dir=/etc/systemd/system/slurmd.service.d
+dropin=$dropin_dir/50-xcat-openhpc.conf
+umask 077
+
+install_file()
+{
+    local destination=$1
+    shift
+    temp_file=$(mktemp "${destination}.XXXXXXXX")
+    install -T "$@" "$temp_file"
+    if [[ ! -L $destination ]] &&
+       cmp -s -- "$temp_file" "$destination" &&
+       [[ $(stat -c '%a:%u:%g' -- "$temp_file") == "$(stat -c '%a:%u:%g' -- "$destination")" ]]; then
+        rm -- "$temp_file"
+    else
+        mv -fT -- "$temp_file" "$destination"
+        files_changed=1
+    fi
+    temp_file=
+}
+
+temp_dir=$(mktemp -d "$state_dir/.configopenhpc.XXXXXXXX")
+temp_file=
+files_changed=
+trap 'rm -rf -- "$temp_dir"; if [[ $temp_file ]]; then rm -f -- "$temp_file"; fi' EXIT
+cp -- "$staged_key" "$temp_dir/munge.key"
+printf 'SLURMD_OPTIONS="--conf-server %s"\n' "$controller" > "$temp_dir/slurmd.env"
+printf '[Service]\nEnvironmentFile=%s\n' "$options" > "$temp_dir/slurmd.conf"
+sha256sum < "$temp_dir/munge.key" > "$temp_dir/applied"
+printf '%s\n' "$controller" >> "$temp_dir/applied"
+
+if [[ ! -d $dropin_dir ]]; then
+    install -d -m 0755 -- "$dropin_dir"
+fi
+install_file "$munge_key" -m 0400 -o munge -g munge -- "$temp_dir/munge.key"
+install_file "$options" -m 0644 -- "$temp_dir/slurmd.env"
+install_file "$dropin" -m 0644 -- "$temp_dir/slurmd.conf"
+if command -v restorecon >/dev/null; then
+    restorecon -- "$munge_key" "$options" "$dropin"
+fi
+
+if [[ $files_changed ]] || ! cmp -s -- "$temp_dir/applied" "$state_dir/applied"; then
+    systemctl daemon-reload
+    systemctl try-restart munge.service
+    systemctl try-restart slurmd.service
+fi
+systemctl enable --now munge.service
+systemctl enable --now slurmd.service
+install_file "$state_dir/applied" -m 0600 -- "$temp_dir/applied"

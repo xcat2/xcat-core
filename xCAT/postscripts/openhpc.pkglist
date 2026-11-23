@@ -1,0 +1,4 @@
+ohpc-base-compute
+ohpc-slurm-client
+lmod-ohpc
+diffutils

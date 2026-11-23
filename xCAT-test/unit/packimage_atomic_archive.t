@@ -83,6 +83,7 @@ my $linuximage = xCAT::Table->new('linuximage', -create => 1);
 }
 
 our @LITEFILES;
+our $SYNCFILES;
 (my $host = hostname()) =~ s/[^A-Za-z0-9.-]/_/g;
 my ($unsquashfs, $mksquashfs) = (tool('unsquashfs'), tool('mksquashfs'));
 my $sequence = 0;
@@ -129,6 +130,7 @@ SCRIPT
 
 sub packimage {
     my ($dest, @args) = @_;
+    unshift @args, '--nosyncfiles' unless $SYNCFILES;
     my ($cwd, $mask) = (getcwd(), umask());
     my @responses;
     my $output = '';
@@ -138,7 +140,7 @@ sub packimage {
         local $ENV{PATH} = "$dest/bin:$ENV{PATH}";
         local *STDOUT = $stdout;
         $result = eval {
-            xCAT_plugin::packimage::process_request({ arg => [ '--nosyncfiles', @args ] }, sub { push @responses, @_ });
+            xCAT_plugin::packimage::process_request({ arg => \@args }, sub { push @responses, @_ });
         };
         push @responses, { error => ["packimage died: $@"] } if $@;
     }
@@ -251,6 +253,45 @@ sub statelite_tree {
     write_text("$root/usr/lib/dracut/modules.d/97xcat/install", "StateLite dracut install\n");
     return ("$name link /etc/hosts.lite", "$name link /etc/hosts.link");
 }
+
+{
+    my ($name, $dest, $archive) = image('cpio', 'gzip', 'gzip', 'pass');
+    my $root = "$dest/rootimg";
+    local @LITEFILES = statelite_tree($name, $root);
+    local $SYNCFILES = 1;
+    my $before = statelite_state($root);
+    my $synclist = "$dest/site.synclist";
+    my $exlist = "$dest/site.exlist";
+    write_text($synclist, "/site/munge.key -> /etc/munge/munge.key\n");
+    write_text($exlist, "./var/tmp\n");
+    $osimage->setAttribs({ imagename => $name }, { synclists => "/var/lib/xcat/openhpc/$name.synclist" });
+    $linuximage->setAttribs({ imagename => $name }, { exlist => $exlist });
+    make_path("$root/etc/munge");
+
+    no warnings qw(redefine once);
+    my $runcmd = \&xCAT::Utils::runcmd;
+    my $converted_during_sync;
+    local *xCAT::SvrUtils::getsynclistfile = sub { return $synclist; };
+    local *xCAT::Utils::runcmd = sub {
+        my (undef, $command) = @_;
+        if ($command =~ m{\Q/bin/xdcp -i $root -F $synclist\E$}) {
+            $converted_during_sync = -d "$root/.statebackup";
+            write_text("$root/etc/munge/munge.key", "synced test key\n");
+            $::RUNCMD_RC = 0;
+            return ([]);
+        }
+        return $runcmd->(@_);
+    };
+    my ($result, $errors) = packimage($dest, '-m', 'cpio', '-c', 'gzip', $name);
+    ok($converted_during_sync, 'StateLite is temporarily converted when image synchronization runs');
+    is($result, 1, 'packimage fails when a synclist copies a MUNGE key into an OpenHPC image');
+    like($errors, qr/A synclist copied etc\/munge\/munge\.key into the OpenHPC staging root/,
+        'the pack failure identifies the unsafe sync destination');
+    is_deeply(statelite_state($root), $before, 'the failed pack restores the StateLite files');
+    ok(!-e "/tmp/xcat_packimg.$$", 'the failed pack removes the temporary file list');
+    is(content($archive), "previous archive\n", 'the failed pack preserves the published archive');
+}
+
 for my $case ([ 'find', 'fail-listing', qr/Cannot enumerate/ ], [ 'gzip', 'fail', qr/packimage failed while running/ ]) {
     my ($wrapped, $mode, $error) = @$case;
     my ($name, $dest, $archive) = image('cpio', 'gzip', $wrapped, $mode);
