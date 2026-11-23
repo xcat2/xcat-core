@@ -63,6 +63,24 @@ sub handled_commands {
       }
 }
 
+=head3  openhpc_image_key
+
+    Find a MUNGE key in a staging root configured by mkopenhpc. The
+    key must be synced to the running compute node after boot.
+
+=cut
+
+sub openhpc_image_key {
+    my ($imagename, $synclists, $rootimg) = @_;
+    my $managed_synclist = "/var/lib/xcat/openhpc/$imagename.synclist";
+    return unless grep { $_ eq $managed_synclist } split(/,/, $synclists // '');
+
+    for my $key (qw(etc/munge/munge.key var/lib/xcat/openhpc/munge.key)) {
+        return $key if -e "$rootimg/$key" || -l "$rootimg/$key";
+    }
+    return;
+}
+
 #-------------------------------------------------------
 
 =head3  Process the command
@@ -219,6 +237,11 @@ sub process_request {
     ($retcode,$lock)=xCAT::Utils->acquire_lock_imageop($rootimg_dir);
     if($retcode){
         $callback->({ error => ["$lock"], errorcode => [1]});
+        return 1;
+    }
+    my $configured_synclists = $syncfile;
+    if (my $key = openhpc_image_key($imagename, $configured_synclists, $rootimg_dir)) {
+        $callback->({ error => ["Remove $key from the OpenHPC staging root before packing $imagename."], errorcode => [1] });
         return 1;
     }
 
@@ -551,6 +574,9 @@ sub process_request {
         $restore_statelite->();
         return 1;
     };
+    if (my $key = openhpc_image_key($imagename, $configured_synclists, $rootimg_dir)) {
+        return $native_failure->("A synclist copied $key into the OpenHPC staging root. Remove it and fix the synclist before packing.");
+    }
     unless (-d $rootimg_dir) {
         return $native_failure->("$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture");
     }

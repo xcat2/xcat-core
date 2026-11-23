@@ -1,0 +1,178 @@
+#!/bin/bash
+
+set -euo pipefail
+
+usage()
+{
+    cat <<'EOF'
+Usage: mkopenhpc --image NAME --controller HOST[:PORT] [--nodes NODERANGE] [--check]
+Configure an AlmaLinux 10 or Rocky Linux 10 osimage for OpenHPC Slurm.
+openEuler 24.03 LTS SP2/SP4 x86_64 is experimental.
+Specify --nodes for netboot images to limit credential sync to booted nodes.
+EOF
+}
+
+fail()
+{
+    echo "mkopenhpc: $*" >&2
+    exit 1
+}
+
+image=
+controller=
+nodes=
+check_only=
+while (( $# )); do
+    case $1 in
+        --image)
+            (( $# >= 2 )) || fail '--image requires an osimage name'
+            image=$2
+            shift 2
+            ;;
+        --controller)
+            (( $# >= 2 )) || fail '--controller requires a host name or IPv4 address'
+            controller=$2
+            shift 2
+            ;;
+        --nodes)
+            (( $# >= 2 )) || fail '--nodes requires a node or group range'
+            nodes=$2
+            case $nodes in
+                (*[!a-zA-Z0-9_.,:+\[\]-]*|'') fail 'invalid node or group range' ;;
+            esac
+            shift 2
+            ;;
+        --check)
+            check_only=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            fail "unknown option '$1'"
+            ;;
+    esac
+done
+
+[[ $image =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || fail 'specify an osimage with --image'
+[[ $controller =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:([0-9]{1,5}))?$ ]] ||
+    fail 'specify a host name or IPv4 address, optionally followed by :PORT'
+port=${BASH_REMATCH[3]}
+if [[ -n $port ]] && (( 10#$port < 1 || 10#$port > 65535 )); then
+    fail 'the controller port must be between 1 and 65535'
+fi
+
+[[ $EUID == 0 && -e /etc/xCATMN ]] || fail 'run as root on the xCAT management node'
+xcatroot=${XCATROOT:-/opt/xcat}
+image_definition=$("$xcatroot/bin/lsdef" -t osimage -o "$image" -i osvers,osarch,provmethod,otherpkgdir,gpgcheck -c) ||
+    fail "could not read osimage '$image'"
+osvers=
+osarch=
+provmethod=
+otherpkgdir=
+gpgcheck=
+while IFS= read -r line; do
+    case $line in
+        "$image: osvers="*) osvers=${line#*=} ;;
+        "$image: osarch="*) osarch=${line#*=} ;;
+        "$image: provmethod="*) provmethod=${line#*=} ;;
+        "$image: otherpkgdir="*) otherpkgdir=${line#*=} ;;
+        "$image: gpgcheck="*) gpgcheck=${line#*=} ;;
+    esac
+done <<<"$image_definition"
+if [[ $osvers =~ ^(alma|rocky)10(\.[0-9]+)*$ && ( $osarch == x86_64 || $osarch == aarch64 ) ]]; then
+    :
+elif [[ $osvers =~ ^openeuler24\.03sp[24]$ && $osarch == x86_64 ]]; then
+    printf "mkopenhpc: experimental OpenHPC integration for openEuler image '%s'\n" "$image" >&2
+else
+    fail "osimage '$image' must use AlmaLinux 10 or Rocky Linux 10 (x86_64/aarch64) or openEuler 24.03 SP2/SP4 (experimental x86_64)"
+fi
+[[ $provmethod == install || $provmethod == netboot ]] ||
+    fail "osimage '$image' must use provmethod install or netboot"
+
+state_dir=/var/lib/xcat/openhpc
+controller_file=$state_dir/$image.controller
+synclist=$state_dir/$image.synclist
+pkglist=$state_dir/$image.pkglist
+updates=("synclists=$synclist")
+postscript=configopenhpc
+if [[ $provmethod == netboot ]]; then
+    [[ $nodes ]] || fail 'specify the allowed compute node range with --nodes for a netboot image'
+    [[ $otherpkgdir == [![:blank:]]* ]] ||
+        fail "configure trusted OpenHPC 4 and OS dependency repositories in otherpkgdir for '$image'"
+    postinstall=$xcatroot/share/xcat/scripts/openhpc-netboot-postinstall
+    [[ -x $postinstall ]] || fail "could not execute the OpenHPC netboot postinstall hook at $postinstall"
+    site_definition=$("$xcatroot/bin/lsdef" -t site -i installdir -c) ||
+        fail 'could not read the xCAT site install directory'
+    installdir=/install
+    if [[ $site_definition == 'clustersite: installdir='?* ]]; then
+        installdir=${site_definition#*=}
+    fi
+    package_list=$installdir/postscripts/openhpc.pkglist
+    [[ -s $package_list && -r $package_list ]] ||
+        fail "could not read the OpenHPC package list at $package_list"
+    postscript='configopenhpc netboot'
+    updates+=("otherpkglist=$pkglist" "postinstall=$postinstall")
+    if [[ $gpgcheck ]]; then
+        [[ $gpgcheck == 1 || ${gpgcheck,,} == yes ]] ||
+            fail "set gpgcheck=yes for '$image' to verify packages during genimage"
+    else
+        updates+=('gpgcheck=yes')
+    fi
+fi
+updates+=("postbootscripts=$postscript")
+
+munge_key=/etc/munge/munge.key
+[[ -f $munge_key && ! -L $munge_key && -s $munge_key ]] ||
+    fail "place the Slurm controller's MUNGE key in $munge_key"
+case $(stat -c '%a' -- "$munge_key") in
+    400|600) ;;
+    *) fail "$munge_key must have permissions 0400 or 0600" ;;
+esac
+
+if [[ $check_only ]]; then
+    printf 'osimage %s is eligible for OpenHPC Slurm with controller %s\n' "$image" "$controller"
+    exit 0
+fi
+
+umask 077
+[[ ! -L $state_dir ]] || fail "$state_dir must not be a symbolic link"
+install -d -m 0700 -- "$state_dir"
+exec 9>"$state_dir/.lock"
+flock -x 9
+
+temp_dir=$(mktemp -d "$state_dir/.mkopenhpc.XXXXXXXX")
+trap 'rm -rf -- "$temp_dir"' EXIT
+printf '%s\n' "$controller" > "$temp_dir/controller"
+dest_prefix=
+if [[ $nodes ]]; then
+    # The rootimg sync path ignores node-qualified entries, and the runtime
+    # sync path only selects nodes in this range.
+    dest_prefix="($nodes) "
+fi
+printf '%s -> %s\n' "$controller_file" "$dest_prefix$state_dir/controller" \
+    "$munge_key" "$dest_prefix$state_dir/munge.key" > "$temp_dir/synclist"
+files=(controller synclist)
+if [[ $provmethod == netboot ]]; then
+    cp -- "$package_list" "$temp_dir/pkglist"
+    files+=(pkglist)
+fi
+# Make the files available before attaching a new profile. If the profile
+# already exists, leave its controller in place until xCAT accepts the update.
+for filename in "${files[@]}"; do
+    destination=$state_dir/$image.$filename
+    if [[ ! -e $destination ]]; then
+        cp -- "$temp_dir/$filename" "$destination"
+    fi
+done
+
+"$xcatroot/bin/chdef" -p -t osimage -o "$image" "${updates[@]}"
+for filename in "${files[@]}"; do
+    destination=$state_dir/$image.$filename
+    if [[ $(<"$temp_dir/$filename") != "$(<"$destination")" ]]; then
+        mv -fT -- "$temp_dir/$filename" "$destination"
+    fi
+done
+printf 'OpenHPC Slurm configured for osimage %s with controller %s\n' "$image" "$controller"

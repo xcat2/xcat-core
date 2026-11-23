@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Remove the key that the MUNGE RPM may create in the staging root. The
+# compute node receives the controller's key over SSH when it boots.
+rootimg=${1:-}
+if [[ $rootimg != /*/rootimg || ! -d $rootimg || -L $rootimg || -L $rootimg/etc || -L $rootimg/etc/munge ]]; then
+    echo 'openhpc-netboot-postinstall: expected a netboot staging root' >&2
+    exit 1
+fi
+rm -f -- "$rootimg/etc/munge/munge.key"
