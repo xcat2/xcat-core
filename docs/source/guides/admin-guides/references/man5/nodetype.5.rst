@@ -1,4 +1,3 @@
-
 ##########
 nodetype.5
 ##########
@@ -44,13 +43,13 @@ nodetype Attributes:
 
 \ **os**\ 
  
- The operating system deployed on this node.  Valid values: AIX, rhels\*,rhelc\*, rhas\*,centos\*, alma\*, rocky\*,SL\*, fedora\*, sles\* (where \* is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.
+ The operating system deployed on this node.  Valid values: AIX, freebsd\*, rhels\*,rhelc\*, rhas\*,centos\*, alma\*, rocky\*,SL\*, fedora\*, sles\* (where \* is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.
  
 
 
 \ **arch**\ 
  
- The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64, aarch64, riscv64.
+ The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64, aarch64, riscv64, s390x.
  
 
 
@@ -97,4 +96,3 @@ SEE ALSO
 
 
 \ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
-

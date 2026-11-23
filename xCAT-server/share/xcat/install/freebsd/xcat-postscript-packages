@@ -1,0 +1,796 @@
+# Package operations share the worker's validated run and inherited node lock.
+# This file is sourced by xcat-postscript, never by administrator scripts.
+
+package_request()
+{
+    printf 'format\txcat-freebsd-local-request-1\nplan\t%s\n' "$2"
+    awk -F '\t' '$1 == "package" { print }' "$1"
+}
+
+package_manifest_request()
+{
+    printf 'format\txcat-freebsd-local-manifests-1\nplan\t%s\n' "$plan"
+    awk -F '\t' '$1 == "package" { print }' "$bundle/package.plan" | while IFS= read -r row; do
+        id=$(printf '%s\n' "$row" | cut -f 2) || fail 'Cannot read manifest package identity'
+        case "$id" in p*) ;; *) fail 'Invalid manifest package identity' ;; esac
+        number "${id#p}" 0 8191 || fail 'Invalid manifest package identity'
+        private_file "$bundle/archives/$id.manifest" 134217728
+        size=$(stat -f '%z' "$bundle/archives/$id.manifest") || fail 'Cannot read package manifest size'
+        digest=$(digest_file "$bundle/archives/$id.manifest") || fail 'Cannot read package manifest digest'
+        printf '%s\t%s\t%s\n' "$row" "$size" "$digest"
+    done
+}
+
+package_inputs()
+(
+    if [ "$bundle" = "$state/bundle" ] && { [ -e "$state/packages.retired" ] || [ -L "$state/packages.retired" ]; }; then
+        package_retirement || fail 'Invalid package retirement'
+        exit 0
+    fi
+    current_packages=no
+    if [ -n "${bundle_boot-}" ] && [ "$kind" = repeat ]; then
+        current_packages=yes
+    fi
+    [ -d "$bundle/archives" ] && [ ! -L "$bundle/archives" ] \
+        && [ "$(stat -f '%u:%g:%Lp' "$bundle/archives")" = 0:0:500 ] || fail 'Invalid package payload directory'
+    metadata=no
+    case "$(field "$bundle/request" format)" in
+    xcat-freebsd-local-request-1) ;;
+    xcat-freebsd-local-manifests-1)
+        [ "$package_mode:$current_packages" = verify:no ] || fail 'Manifest inputs require full verification'
+        metadata=yes
+        ;;
+    *) fail 'Invalid package request format' ;;
+    esac
+    if [ "$current_packages" = yes ]; then
+        printf 'format\txcat-freebsd-local-request-1\nplan\t%s\n' "$plan"
+    elif [ "$metadata" = yes ]; then
+        package_manifest_request
+    else
+        package_request "$bundle/package.plan" "$plan"
+    fi | cmp -s - "$bundle/request" \
+        || fail 'Package request differs from its plan'
+    awk -F '\t' -v metadata="$metadata" 'NR > 2 {
+        if (NF != (metadata == "yes" ? 14 : 12) || $2 != ("p" (NR-3)) || $10 !~ /^[1-9][0-9]*$/ ||
+            length($10) > 11 || $10 > 17179869184 || $11 !~ /^[0-9a-f]{64}$/) bad=1
+        if (metadata == "yes") {
+            if ($13 !~ /^[1-9][0-9]*$/ || length($13) > 9 || $13 > 134217728 || $14 !~ /^[0-9a-f]{64}$/) bad=1
+            manifests += $13
+        }
+        bytes += $10
+    } END { if (bad || NR < 2 || NR > 8194 || bytes > 68719476736 || manifests > 536870912) exit 1 }' \
+        "$bundle/request" || fail 'Invalid package payload roster'
+    expected=0
+    while IFS="$tab" read -r record id repository name version origin abi repopath path bytes digest native_sum manifest_bytes manifest_digest; do
+        [ "$record" = package ] || continue
+        member=$bundle/archives/$id.pkg
+        limit=17179869184
+        if [ "$metadata" = yes ]; then
+            member=$bundle/archives/$id.manifest
+            bytes=$manifest_bytes
+            digest=$manifest_digest
+            limit=134217728
+        fi
+        private_file "$member" "$limit"
+        [ "$(stat -f '%Lp:%z' "$member")" = "400:$bytes" ] \
+            && [ "$(digest_file "$member")" = "$digest" ] || fail 'Package payload differs'
+        expected=$((expected+1))
+    done < "$bundle/request"
+    if [ "$expected" -eq 0 ] && [ "$current_packages" = no ]; then
+        [ "$(field "$bundle/package.plan" format)" = xcat-freebsd-package-plan-2 ] \
+            && [ "$(field "$bundle/package.plan" scope)" = applications ] || fail 'Invalid empty package scope'
+    fi
+    found=0
+    for path in "$bundle/archives"/* "$bundle/archives"/.[!.]* "$bundle/archives"/..?*; do
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        found=$((found+1))
+    done
+    [ "$found" -eq "$expected" ] || fail 'Unexpected package payload'
+)
+
+package_initial()
+(
+    initial=/var/db/xcat/pkgbase-install
+    directory "$initial"
+    for specification in result:4096 install-config:32768 plan:8388608 runtime:65536 request:8388608 \
+        prepare.result:4096 local-check.result:1024 local-install.result:1024 local-finalize.result:1024; do
+        private_file "$initial/${specification%:*}" "${specification#*:}"
+    done
+    shape "$initial/result" 'format scope node generation attempt config-sha256 plan-sha256 runtime-sha256 prepare-sha256 request-sha256 install-result-sha256 finalize-result-sha256 target-device target-inode packages complete'
+    [ "$(field "$initial/result" format)" = xcat-freebsd-pkgbase-result-1 ] \
+        && [ "$(field "$initial/result" scope)" = install-finalize ] \
+        && [ "$(field "$initial/result" complete)" = yes ] || fail 'Initial package installation is incomplete'
+    [ "$(field "$initial/result" node)" = "$node" ] \
+        && [ "$(field "$initial/result" generation)" = "$generation" ] \
+        && [ "$(field "$initial/result" attempt)" = "$attempt" ] || fail 'Initial package deployment differs'
+    for binding in config:install-config plan:plan runtime:runtime prepare:prepare.result request:request \
+        install-result:local-install.result finalize-result:local-finalize.result; do
+        [ "$(field "$initial/result" "${binding%:*}-sha256")" = "$(digest_file "$initial/${binding#*:}")" ] \
+            || fail 'Initial package evidence differs'
+    done
+    initial_plan=$(field "$initial/result" plan-sha256) || fail 'Missing initial plan'
+    initial_request=$(field "$initial/result" request-sha256) || fail 'Missing initial request'
+    initial_count=$(field "$initial/result" packages) || fail 'Missing initial package count'
+    number "$initial_count" 1 8192 || fail 'Invalid initial package count'
+    package_request "$initial/plan" "$initial_plan" | cmp -s - "$initial/request" \
+        || fail 'Initial package request differs'
+    [ "$(awk 'END { print NR-2 }' "$initial/request")" = "$initial_count" ] || fail 'Initial package count differs'
+    shape "$initial/prepare.result" 'format scope node generation attempt config-sha256 plan-sha256 runtime-sha256 request-sha256 check-sha256 packages archive-bytes complete'
+    [ "$(field "$initial/prepare.result" format)" = xcat-freebsd-prepare-1 ] \
+        && [ "$(field "$initial/prepare.result" scope)" = prebegin-only ] \
+        && [ "$(field "$initial/prepare.result" complete)" = yes ] || fail 'Initial package preparation is incomplete'
+    for key in node generation attempt config-sha256 plan-sha256 runtime-sha256 request-sha256 packages; do
+        [ "$(field "$initial/prepare.result" "$key")" = "$(field "$initial/result" "$key")" ] \
+            || fail 'Initial preparation binding differs'
+    done
+    [ "$(field "$initial/prepare.result" check-sha256)" = "$(digest_file "$initial/local-check.result")" ] \
+        || fail 'Initial package validation differs'
+    printf 'format\txcat-freebsd-local-check-1\nscope\tlocal-check-only\nplan-reference\t%s\nrequest-sha256\t%s\npkg\t2.6.2\npackages\t%s\ncomplete\tyes\n' \
+        "$initial_plan" "$initial_request" "$initial_count" | cmp -s - "$initial/local-check.result" \
+        || fail 'Invalid initial package validation'
+    for scope in local-install local-finalize; do
+        shape "$initial/$scope.result" 'format scope plan-reference request-sha256 pkg packages target-device target-inode complete'
+        [ "$(field "$initial/$scope.result" format)" = xcat-freebsd-local-apply-1 ] \
+            && [ "$(field "$initial/$scope.result" scope)" = "$scope" ] \
+            && [ "$(field "$initial/$scope.result" plan-reference)" = "$initial_plan" ] \
+            && [ "$(field "$initial/$scope.result" request-sha256)" = "$initial_request" ] \
+            && [ "$(field "$initial/$scope.result" pkg)" = 2.6.2 ] \
+            && [ "$(field "$initial/$scope.result" complete)" = yes ] || fail 'Invalid initial apply receipt'
+        for key in packages target-device target-inode; do
+            [ "$(field "$initial/$scope.result" "$key")" = "$(field "$initial/result" "$key")" ] \
+                || fail 'Initial apply binding differs'
+        done
+    done
+)
+
+package_receipt()
+(
+    package_initial || fail 'Initial package evidence is invalid'
+    private_file "$state/packages.result" 4096
+    shape "$state/packages.result" 'format run snapshot plan mode initial-sha256 previous-sha256 native-sha256 managed-sha256 actions-sha256 stdout-sha256 stderr-sha256 complete'
+    [ "$(field "$state/packages.result" format)" = xcat-freebsd-postscript-packages-1 ] \
+        && [ "$(field "$state/packages.result" run)" = "$run" ] \
+        && [ "$(field "$state/packages.result" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$state/packages.result" plan)" = "$plan" ] \
+        && [ "$(field "$state/packages.result" mode)" = "$package_mode" ] \
+        && [ "$(field "$state/packages.result" complete)" = yes ] || fail 'Package result binding differs'
+    [ "$(field "$state/packages.result" initial-sha256)" = "$(digest_file /var/db/xcat/pkgbase-install/result)" ] \
+        || fail 'Package installation anchor differs'
+    private_file "$state/packages.previous" 1024
+    [ "$(field "$state/packages.result" previous-sha256)" = "$(digest_file "$state/packages.previous")" ] \
+        || fail 'Previous package provenance differs'
+    package_work=$state/packages
+    directory "$package_work"
+    native_result=$package_work/local-$package_mode.result
+    private_file "$native_result" 1024
+    shape "$native_result" 'format scope plan-reference request-sha256 prior-request-sha256 before-sha256 after-sha256 managed-request-sha256 pkg packages changes actions outcome complete'
+    [ "$(field "$native_result" format)" = "xcat-freebsd-local-$package_mode-1" ] \
+        && [ "$(field "$native_result" scope)" = "local-$package_mode" ] \
+        && [ "$(field "$native_result" plan-reference)" = "$plan" ] \
+        && [ "$(field "$native_result" request-sha256)" = "$(field "$bundle/manifest" request)" ] \
+        && [ "$(field "$native_result" pkg)" = 2.6.2 ] \
+        && [ "$(field "$native_result" complete)" = yes ] || fail 'Native package result binding differs'
+    [ "$(field "$state/packages.result" native-sha256)" = "$(digest_file "$native_result")" ] \
+        || fail 'Native package result differs'
+    for binding in request:request prior-request:prior-request before:before after:after managed-request:managed.request; do
+        case "${binding%:*}" in before|after) evidence_limit=134217728 ;; *) evidence_limit=8388608 ;; esac
+        private_file "$package_work/${binding#*:}" "$evidence_limit"
+        [ "$(field "$native_result" "${binding%:*}-sha256")" = "$(digest_file "$package_work/${binding#*:}")" ] \
+            || fail 'Native package evidence differs'
+    done
+    for binding in managed:managed.request actions:actions stdout:stdout stderr:stderr; do
+        private_file "$package_work/${binding#*:}" 8388608
+        [ "$(field "$state/packages.result" "${binding%:*}-sha256")" = "$(digest_file "$package_work/${binding#*:}")" ] \
+            || fail 'Package evidence differs'
+    done
+    packages=$(field "$native_result" packages) || fail 'Missing installed package count'
+    changes=$(field "$native_result" changes) || fail 'Missing package change count'
+    actions=$(field "$native_result" actions) || fail 'Missing package action count'
+    number "$packages" 1 8192 && number "$changes" 0 8192 && number "$actions" 0 16384 \
+        || fail 'Invalid package operation counts'
+    # The native count covers the complete installed roster, including packages
+    # outside this operation's selection.
+    [ "$packages" -eq "$(awk -F '\t' '$1 == "package" { n++ } END { print n+0 }' "$package_work/after")" ] \
+        && [ "$changes" -le "$packages" ] || fail 'Package operation count differs from installed state'
+    if [ "$changes" -eq 0 ]; then
+        [ "$actions" -eq 0 ] && [ "$(field "$native_result" outcome)" = no-change ] \
+            && cmp -s "$package_work/before" "$package_work/after" || fail 'No-change package result differs'
+    else
+        [ "$package_mode" = update ] && [ "$actions" -ge "$changes" ] \
+            && [ "$(field "$native_result" outcome)" = changed ] || fail 'Unexpected package changes'
+    fi
+)
+
+package_status()
+(
+    package_receipt || fail 'Package receipt is invalid'
+    native_result=$state/packages/local-$package_mode.result
+    printf 'Package operation %s: %s (%s packages, %s changes, %s actions).\nReceipt: %s\n' \
+        "$package_mode" "$(field "$native_result" outcome)" "$(field "$native_result" packages)" \
+        "$(field "$native_result" changes)" "$(field "$native_result" actions)" \
+        "$(digest_file "$state/packages.result")"
+)
+
+package_retirement_record()
+(
+    [ "$bundle" = "$state/bundle" ] || fail 'Package retirement requires an admitted run'
+    terminal
+    case "$(field "$state/result" format)" in
+    xcat-freebsd-postscript-result-1) ;;
+    xcat-freebsd-postscript-result-3)
+        package_receipt || fail 'Failed framework has no completed package receipt'
+        [ "$(digest_file "$state/packages.result")" = "$(field "$state/result" packages-sha256)" ] \
+            || fail 'Failed framework package binding differs'
+        ;;
+    *) fail 'Rejected package inputs must be retained' ;;
+    esac
+    private_file "$state/package-head" 1024
+    printf 'format\txcat-freebsd-package-head-1\nrun\t%s\nsnapshot\t%s\nresult-sha256\t%s\n' \
+        "$run" "$snapshot" "$(digest_file "$state/packages.result")" | cmp -s - "$state/package-head" \
+        || fail 'Retired package head differs'
+    printf 'format\txcat-freebsd-package-retirement-1\nrun\t%s\nsnapshot\t%s\nrequest-sha256\t%s\nhead-sha256\t%s\nresult-sha256\t%s\ncomplete\tyes\n' \
+        "$run" "$snapshot" "$(digest_file "$bundle/request")" \
+        "$(digest_file "$state/package-head")" "$(digest_file "$state/result")"
+)
+
+package_retirement()
+(
+    private_file "$state/packages.retired" 1024
+    package_retirement_record | cmp -s - "$state/packages.retired" \
+        || fail 'Package retirement binding differs'
+)
+
+package_payload_retire()
+(
+    payload=$1
+    [ -d "$payload" ] && [ ! -L "$payload" ] \
+        && [ "$(stat -f '%u:%g:%Lp' "$payload")" = 0:0:500 ] || fail 'Invalid retired payload directory'
+    metadata=no
+    [ "$(field "$bundle/request" format)" != xcat-freebsd-local-manifests-1 ] || metadata=yes
+    expected=0
+    while IFS="$tab" read -r record id repository name version origin abi repopath path bytes digest native_sum manifest_bytes manifest_digest; do
+        [ "$record" = package ] || continue
+        member=$payload/$id.pkg
+        limit=17179869184
+        if [ "$metadata" = yes ]; then
+            member=$payload/$id.manifest
+            bytes=$manifest_bytes
+            limit=134217728
+        fi
+        [ -e "$member" ] || [ -L "$member" ] || continue
+        private_file "$member" "$limit"
+        [ "$(stat -f '%Lp:%z' "$member")" = "400:$bytes" ] || fail 'Retired package payload differs'
+        expected=$((expected+1))
+    done < "$bundle/request"
+    found=0
+    for path in "$payload"/* "$payload"/.[!.]* "$payload"/..?*; do
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        found=$((found+1))
+    done
+    [ "$found" -eq "$expected" ] || fail 'Unexpected retired package payload'
+    for path in "$payload"/*; do
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        rm "$path" || fail 'Cannot retire package payload'
+    done
+    fsync "$payload" || fail 'Cannot sync retired payload'
+)
+
+package_retire()
+(
+    if [ -e "$base/active" ] || [ -L "$base/active" ]; then
+        private_file "$base/active" 33
+        [ "$(cat "$base/active")" != "$run" ] || fail 'Active package inputs must be retained'
+    fi
+    retirement=$(package_retirement_record) || fail 'Package retirement requires a committed terminal result'
+    if [ ! -e "$state/packages.retired" ] && [ ! -L "$state/packages.retired" ]; then
+        package_inputs || fail 'Cannot retire invalid package inputs'
+        if [ ! -e "$state/packages.retired.next" ] && [ ! -L "$state/packages.retired.next" ]; then
+            (set -C; printf '%s\n' "$retirement" > "$state/packages.retired.next") \
+                || fail 'Cannot stage package retirement'
+        fi
+        private_file "$state/packages.retired.next" 1024
+        printf '%s\n' "$retirement" | cmp -s - "$state/packages.retired.next" \
+            || fail 'Staged package retirement differs'
+        fsync "$state/packages.retired.next" || fail 'Cannot sync staged package retirement'
+        mv "$state/packages.retired.next" "$state/packages.retired" || fail 'Cannot publish package retirement'
+    fi
+    package_retirement || fail 'Invalid package retirement'
+    # The durable record permits retries after any subset of payloads is removed.
+    fsync "$state/packages.retired" "$state" || fail 'Cannot sync package retirement'
+    package_payload_retire "$bundle/archives" || fail 'Cannot retire delivered package payload'
+    package_payload_retire "$state/packages/archives" || fail 'Cannot retire staged package payload'
+)
+
+package_prior()
+(
+    package_initial || fail 'Initial package evidence is invalid'
+    if [ ! -e "$base/package-head" ]; then
+        absent "$base/package-head"
+        printf '%s\n' /var/db/xcat/pkgbase-install/request
+        exit 0
+    fi
+    private_file "$base/package-head" 1024
+    shape "$base/package-head" 'format run snapshot result-sha256'
+    head_format=$(field "$base/package-head" format) || fail 'Missing package head format'
+    case "$head_format" in xcat-freebsd-package-head-1|xcat-freebsd-package-head-2) ;; *) fail 'Invalid package head' ;; esac
+    run=$(field "$base/package-head" run) || fail 'Missing package head identity'
+    hex "$run" 32 || fail 'Invalid package head identity'
+    state=$base/runs/$run
+    load_run
+    [ "$(field "$base/package-head" snapshot)" = "$snapshot" ] || fail 'Package head snapshot differs'
+    if [ "$head_format" = xcat-freebsd-package-head-2 ]; then
+        package_recovery_receipt || fail 'Previous package recovery is invalid'
+        [ "$(field "$base/package-head" result-sha256)" = "$(digest_file "$state/packages.recovered")" ] \
+            || fail 'Recovered package head binding differs'
+        printf '%s/packages/%s/managed.request\n' "$state" "$(field "$state/packages.recovered" attempt)"
+    else
+        [ "$(field "$base/package-head" result-sha256)" = "$(digest_file "$state/packages.result")" ] \
+            || fail 'Package head binding differs'
+        package_receipt || fail 'Previous package receipt is invalid'
+        printf '%s\n' "$state/packages/managed.request"
+    fi
+)
+
+package_previous_head()
+{
+    private_file "$state/packages.previous" 1024
+    if [ -e "$base/package-head" ]; then
+        private_file "$base/package-head" 1024
+        cmp -s "$base/package-head" "$state/packages.previous" || fail 'Package head has advanced'
+    else
+        absent "$base/package-head"
+        printf 'initial\t%s\n' "$(digest_file /var/db/xcat/pkgbase-install/result)" \
+            | cmp -s - "$state/packages.previous" || fail 'Previous package head is missing'
+    fi
+}
+
+package_recovery_receipt()
+(
+    recovery_record=${1:-$state/packages.recovered}
+    package_initial || fail 'Initial package evidence is invalid'
+    private_file "$recovery_record" 4096
+    shape "$recovery_record" 'format run snapshot plan mode initial-sha256 previous-sha256 request-sha256 config-sha256 attempt native-sha256 managed-sha256 capture-sha256 stdout-sha256 stderr-sha256 execution complete'
+    [ "$(field "$recovery_record" format)" = xcat-freebsd-postscript-package-recovery-1 ] \
+        && [ "$(field "$recovery_record" run)" = "$run" ] \
+        && [ "$(field "$recovery_record" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$recovery_record" plan)" = "$plan" ] \
+        && [ "$(field "$recovery_record" mode)" = "$package_mode" ] \
+        && [ "$(field "$recovery_record" execution)" = uncertain ] \
+        && [ "$(field "$recovery_record" complete)" = yes ] || fail 'Package recovery binding differs'
+    [ "$(field "$recovery_record" initial-sha256)" = "$(digest_file /var/db/xcat/pkgbase-install/result)" ] \
+        || fail 'Package recovery installation anchor differs'
+    private_file "$state/packages.previous" 1024
+    [ "$(field "$recovery_record" previous-sha256)" = "$(digest_file "$state/packages.previous")" ] \
+        || fail 'Package recovery previous head differs'
+    recovery_name=$(field "$recovery_record" attempt) || fail 'Missing package recovery attempt'
+    recovery_suffix=${recovery_name#recovery.}
+    [ "$recovery_name" = "recovery.$recovery_suffix" ] && [ "${#recovery_suffix}" -eq 8 ] \
+        || fail 'Invalid package recovery attempt'
+    case "$recovery_suffix" in *[!A-Za-z0-9]*) fail 'Invalid package recovery attempt' ;; esac
+    package_work=$state/packages
+    recovery=$package_work/$recovery_name
+    directory "$package_work"
+    directory "$recovery"
+    for member in request prior-request config; do private_file "$package_work/$member" 8388608; done
+    cmp -s "$bundle/request" "$package_work/request" || fail 'Package recovery request differs'
+    package_config | cmp -s - "$package_work/config" || fail 'Package recovery configuration differs'
+    for member in request config; do
+        [ "$(field "$recovery_record" "$member-sha256")" = "$(digest_file "$package_work/$member")" ] \
+            || fail 'Package recovery input binding differs'
+    done
+    native_result=$recovery/local-recover.result
+    private_file "$native_result" 1536
+    shape "$native_result" 'format scope plan-reference request-sha256 prior-request-sha256 started-sha256 before-sha256 observed-sha256 managed-request-sha256 operation-scope actions-sha256 rejected-sha256 pkg packages execution complete'
+    [ "$(field "$native_result" format)" = xcat-freebsd-local-recover-1 ] \
+        && [ "$(field "$native_result" scope)" = provenance-only ] \
+        && [ "$(field "$native_result" plan-reference)" = "$plan" ] \
+        && [ "$(field "$native_result" request-sha256)" = "$(field "$bundle/manifest" request)" ] \
+        && [ "$(field "$native_result" operation-scope)" = "local-$package_mode" ] \
+        && [ "$(field "$native_result" pkg)" = 2.6.2 ] \
+        && [ "$(field "$native_result" execution)" = uncertain ] \
+        && [ "$(field "$native_result" complete)" = yes ] || fail 'Native package recovery binding differs'
+    for binding in request:request prior-request:prior-request started:local-$package_mode.started before:before \
+        observed:observed managed-request:managed.request; do
+        source=$package_work
+        case "$binding" in observed:*|managed-request:*) source=$recovery ;; esac
+        case "${binding%:*}" in before|observed) evidence_limit=134217728 ;; *) evidence_limit=8388608 ;; esac
+        private_file "$source/${binding#*:}" "$evidence_limit"
+        [ "$(field "$native_result" "${binding%:*}-sha256")" = "$(digest_file "$source/${binding#*:}")" ] \
+            || fail 'Native package recovery inputs differ'
+    done
+    for binding in actions:actions rejected:local-$package_mode.rejected; do
+        if [ "$(field "$native_result" "${binding%:*}-sha256")" = - ]; then
+            absent "$package_work/${binding#*:}"
+        else
+            private_file "$package_work/${binding#*:}" 8388608
+            [ "$(field "$native_result" "${binding%:*}-sha256")" = "$(digest_file "$package_work/${binding#*:}")" ] \
+                || fail 'Native package recovery authorization differs'
+        fi
+    done
+    for binding in native:local-recover.result managed:managed.request capture:capture stdout:stdout stderr:stderr; do
+        private_file "$recovery/${binding#*:}" 8388608
+        [ "$(field "$recovery_record" "${binding%:*}-sha256")" = "$(digest_file "$recovery/${binding#*:}")" ] \
+            || fail 'Package recovery evidence differs'
+    done
+    shape "$recovery/capture" 'format status stdout-bytes stderr-bytes stdout-truncated stderr-truncated stdout-open stderr-open'
+    [ "$(field "$recovery/capture" format)" = xcat-freebsd-postscript-capture-1 ] \
+        && [ "$(field "$recovery/capture" status)" = 0 ] || fail 'Package recovery was not observed successful'
+    for stream in stdout stderr; do
+        private_file "$recovery/$stream" "$log_limit"
+        [ "$(field "$recovery/capture" "$stream-bytes")" = "$(stat -f %z "$recovery/$stream")" ] \
+            && [ "$(field "$recovery/capture" "$stream-open")" = no ] || fail 'Package recovery capture differs'
+        case "$(field "$recovery/capture" "$stream-truncated")" in
+        no) ;;
+        yes) [ "$(stat -f %z "$recovery/$stream")" -eq "$log_limit" ] || fail 'Package recovery log bound differs' ;;
+        *) fail 'Invalid package recovery capture' ;;
+        esac
+    done
+    packages=$(field "$native_result" packages) || fail 'Missing recovered package count'
+    number "$packages" 1 8192 \
+        && [ "$packages" -eq "$(awk -F '\t' '$1=="package" {n++} END {print n+0}' "$recovery/observed")" ] \
+        || fail 'Recovered package count differs'
+)
+
+package_recovery_commit()
+(
+    package_recovery_receipt || fail 'Package recovery receipt is invalid'
+    stage=$(mktemp -d "$state/.package-head.XXXXXXXX") || fail 'Cannot create package head stage'
+    directory "$stage"
+    printf 'format\txcat-freebsd-package-head-2\nrun\t%s\nsnapshot\t%s\nresult-sha256\t%s\n' \
+        "$run" "$snapshot" "$(digest_file "$state/packages.recovered")" | write_record "$stage/head" \
+        || fail 'Cannot stage recovered package head'
+    if [ -e "$state/package-head" ]; then
+        private_file "$state/package-head" 1024
+        cmp -s "$stage/head" "$state/package-head" || fail 'Recorded recovered package head differs'
+    else
+        absent "$state/package-head"
+        mv "$stage/head" "$state/package-head" && fsync "$stage" "$state" || fail 'Cannot retain recovered package head'
+    fi
+    if [ -e "$base/package-head" ] && cmp -s "$base/package-head" "$state/package-head"; then
+        private_file "$base/package-head" 1024
+    else
+        package_previous_head
+        write_record "$stage/global" < "$state/package-head" || fail 'Cannot stage global recovered package head'
+        mv "$stage/global" "$base/package-head" || fail 'Cannot publish recovered package head'
+    fi
+    fsync "$stage" "$state" "$base" || fail 'Cannot sync recovered package head'
+)
+
+package_preservation_receipt()
+(
+    preservation_record=${1:-$state/packages.preserved}
+    package_initial || fail 'Initial package evidence is invalid'
+    private_file "$preservation_record" 1024
+    shape "$preservation_record" 'format run snapshot plan mode initial-sha256 previous-sha256 reason native-sha256 execution complete'
+    [ "$(field "$preservation_record" format)" = xcat-freebsd-postscript-package-preserved-1 ] \
+        && [ "$(field "$preservation_record" run)" = "$run" ] \
+        && [ "$(field "$preservation_record" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$preservation_record" plan)" = "$plan" ] \
+        && [ "$(field "$preservation_record" mode)" = "$package_mode" ] \
+        && [ "$(field "$preservation_record" execution)" = uncertain ] \
+        && [ "$(field "$preservation_record" complete)" = yes ] || fail 'Preserved package provenance binding differs'
+    private_file "$state/packages.previous" 1024
+    [ "$(field "$preservation_record" initial-sha256)" = "$(digest_file /var/db/xcat/pkgbase-install/result)" ] \
+        && [ "$(field "$preservation_record" previous-sha256)" = "$(digest_file "$state/packages.previous")" ] \
+        || fail 'Preserved package provenance anchor differs'
+    for member in packages.result packages.recovered package-head; do absent "$state/$member"; done
+    package_work=$state/packages
+    directory "$package_work"
+    case "$(field "$preservation_record" reason)" in
+    no-actions)
+        [ "$(field "$preservation_record" native-sha256)" = - ] || fail 'Unexpected preservation rejection'
+        # Native apply starts only after actions and its directory are synced.
+        # Missing actions therefore permits release even if earlier records tore.
+        for member in actions local-update.result local-verify.result after managed.request; do
+            absent "$package_work/$member"
+        done
+        ;;
+    native-rejected)
+        package_native_rejection || fail 'Invalid preserved native rejection'
+        [ "$(field "$preservation_record" native-sha256)" = "$(digest_file "$package_work/local-$package_mode.rejected")" ] \
+            || fail 'Preserved native rejection differs'
+        ;;
+    *) fail 'Invalid package preservation reason' ;;
+    esac
+)
+
+package_preserve()
+(
+    preserve_reason=$1
+    preserve_native=$2
+    package_previous_head
+    absent "$base/package-head.next"
+    package_prior > /dev/null || fail 'Previous package provenance is unavailable'
+    stage=$(mktemp -d "$state/.package-preserve.XXXXXXXX") || fail 'Cannot create package preservation stage'
+    printf 'format\txcat-freebsd-postscript-package-preserved-1\nrun\t%s\nsnapshot\t%s\nplan\t%s\nmode\t%s\ninitial-sha256\t%s\nprevious-sha256\t%s\nreason\t%s\nnative-sha256\t%s\nexecution\tuncertain\ncomplete\tyes\n' \
+        "$run" "$snapshot" "$plan" "$package_mode" "$(digest_file /var/db/xcat/pkgbase-install/result)" \
+        "$(digest_file "$state/packages.previous")" "$preserve_reason" "$preserve_native" \
+        | write_record "$stage/preserved" || fail 'Cannot record preserved package provenance'
+    package_preservation_receipt "$stage/preserved" || fail 'Invalid package preservation'
+    package_previous_head
+    absent "$state/packages.preserved"
+    mv "$stage/preserved" "$state/packages.preserved" && fsync "$stage" "$state" \
+        || fail 'Cannot publish preserved package provenance'
+)
+
+package_recover()
+(
+    if [ -e "$state/packages.recovered" ] || [ -L "$state/packages.recovered" ]; then
+        absent "$state/packages.preserved"
+        package_recovery_commit || fail 'Cannot resume recovered package head publication'
+        exit 0
+    fi
+    if [ -e "$state/packages.preserved" ] || [ -L "$state/packages.preserved" ]; then
+        package_preservation_receipt || fail 'Invalid retained package preservation'
+        package_previous_head
+        absent "$base/package-head.next"
+        exit 0
+    fi
+    if [ ! -e "$state/packages" ]; then absent "$state/packages"; exit 0; fi
+    package_work=$state/packages
+    directory "$package_work"
+    if [ ! -e "$package_work/actions" ] && [ ! -L "$package_work/actions" ]; then
+        package_preserve no-actions - || fail 'Cannot preserve package provenance before apply'
+        exit 0
+    fi
+    if [ -e "$package_work/local-$package_mode.rejected" ] || [ -L "$package_work/local-$package_mode.rejected" ]; then
+        package_native_rejection || fail 'Invalid retained native rejection'
+        package_preserve native-rejected "$(digest_file "$package_work/local-$package_mode.rejected")" \
+            || fail 'Cannot preserve rejected package provenance'
+        exit 0
+    fi
+    package_initial || fail 'Initial package evidence is invalid'
+    package_inputs || fail 'Original package inputs are invalid'
+    package_previous_head
+    absent "$base/package-head.next"
+    prior_request=$(package_prior) || fail 'Previous package provenance is unavailable'
+    private_file "$package_work/prior-request" 8388608
+    cmp -s "$prior_request" "$package_work/prior-request" || fail 'Recovery prior request differs from previous head'
+    private_file "$package_work/request" 8388608
+    private_file "$package_work/config" 8192
+    cmp -s "$bundle/request" "$package_work/request" || fail 'Recovery request differs from admitted run'
+    package_config | cmp -s - "$package_work/config" || fail 'Recovery configuration differs from admitted run'
+    package_helper
+    recovery=$(mktemp -d "$package_work/recovery.XXXXXXXX") || fail 'Cannot create package recovery attempt'
+    directory "$recovery"
+    fsync "$recovery" "$package_work" || fail 'Cannot sync package recovery attempt'
+    capture_logs "$recovery.stdout" "$recovery.stderr" "$run_timeout" guard "$log_limit" \
+        env -i PATH=/sbin:/bin:/usr/sbin:/usr/bin LC_ALL=C \
+        "$resolver" -C "$package_work/config" local-recover "$package_work/request" "$recovery"
+    mv "$recovery.stdout" "$recovery/stdout" && mv "$recovery.stderr" "$recovery/stderr" \
+        && fsync "$recovery" "$package_work" || fail 'Cannot retain package recovery logs'
+    printf '%s\n' "$capture_report" | write_record "$recovery/capture" || fail 'Cannot retain package recovery capture'
+    if [ "$capture_status" -ne 0 ] || [ "$capture_stdout_open:$capture_stderr_open" != no:no ]; then
+        cat "$recovery/stderr" >&2 || fail 'Cannot return package recovery diagnostic'
+        fail 'Package recovery did not complete; retained attempt requires inspection'
+    fi
+    printf 'format\txcat-freebsd-postscript-package-recovery-1\nrun\t%s\nsnapshot\t%s\nplan\t%s\nmode\t%s\ninitial-sha256\t%s\nprevious-sha256\t%s\nrequest-sha256\t%s\nconfig-sha256\t%s\nattempt\t%s\nnative-sha256\t%s\nmanaged-sha256\t%s\ncapture-sha256\t%s\nstdout-sha256\t%s\nstderr-sha256\t%s\nexecution\tuncertain\ncomplete\tyes\n' \
+        "$run" "$snapshot" "$plan" "$package_mode" "$(digest_file /var/db/xcat/pkgbase-install/result)" \
+        "$(digest_file "$state/packages.previous")" "$(digest_file "$package_work/request")" \
+        "$(digest_file "$package_work/config")" "${recovery##*/}" "$(digest_file "$recovery/local-recover.result")" \
+        "$(digest_file "$recovery/managed.request")" "$(digest_file "$recovery/capture")" \
+        "$(digest_file "$recovery/stdout")" "$(digest_file "$recovery/stderr")" \
+        | write_record "$recovery/publication" || fail 'Cannot record recovered package provenance'
+    package_recovery_receipt "$recovery/publication" || fail 'Package recovery publication is invalid'
+    absent "$state/packages.recovered"
+    mv "$recovery/publication" "$state/packages.recovered" && fsync "$recovery" "$state" \
+        || fail 'Cannot publish recovered package provenance'
+    package_recovery_commit
+)
+
+package_commit()
+(
+    package_receipt || fail 'Package receipt is invalid'
+    stage=$(mktemp -d "$state/.package-head.XXXXXXXX") || fail 'Cannot create package head stage'
+    directory "$stage"
+    if [ ! -e "$state/package-head" ]; then
+        printf 'format\txcat-freebsd-package-head-1\nrun\t%s\nsnapshot\t%s\nresult-sha256\t%s\n' \
+            "$run" "$snapshot" "$(digest_file "$state/packages.result")" | write_record "$stage/head" \
+            || fail 'Cannot stage package head'
+        absent "$state/package-head"
+        mv "$stage/head" "$state/package-head" && fsync "$stage" "$state" || fail 'Cannot record package head'
+    fi
+    private_file "$state/package-head" 1024
+    printf 'format\txcat-freebsd-package-head-1\nrun\t%s\nsnapshot\t%s\nresult-sha256\t%s\n' \
+        "$run" "$snapshot" "$(digest_file "$state/packages.result")" | cmp -s - "$state/package-head" \
+        || fail 'Recorded package head differs'
+    if [ -e "$base/package-head" ] && cmp -s "$base/package-head" "$state/package-head"; then
+        private_file "$base/package-head" 1024
+    else
+        if [ -e "$base/package-head" ]; then
+            private_file "$base/package-head" 1024
+            cmp -s "$base/package-head" "$state/packages.previous" || fail 'Package head has advanced'
+        else
+            absent "$base/package-head"
+            printf 'initial\t%s\n' "$(digest_file /var/db/xcat/pkgbase-install/result)" \
+                | cmp -s - "$state/packages.previous" || fail 'Previous package head is missing'
+        fi
+        # Keep a failed publication for readback. A retry may only publish the
+        # same completed operation; it cannot run native package work again.
+        if [ ! -e "$base/package-head.next" ]; then
+            absent "$base/package-head.next"
+            write_record "$stage/global" < "$state/package-head" || fail 'Cannot stage package head'
+            mv "$stage/global" "$base/package-head.next" && fsync "$stage" "$base" \
+                || fail 'Cannot stage package head publication'
+        fi
+        private_file "$base/package-head.next" 1024
+        cmp -s "$base/package-head.next" "$state/package-head" || fail 'Staged package head differs'
+        fsync "$base/package-head.next" || fail 'Cannot sync package head'
+        mv "$base/package-head.next" "$base/package-head" || fail 'Cannot publish package head'
+    fi
+    fsync "$stage" "$state" "$base" || fail 'Cannot sync package head publication'
+)
+
+package_head_digest()
+(
+    if [ -e "$base/package-head" ] || [ -L "$base/package-head" ]; then
+        private_file "$base/package-head" 1024
+        digest_file "$base/package-head"
+    else
+        printf '%s\n' -
+    fi
+)
+
+package_native_rejection()
+(
+    package_work=$state/packages
+    directory "$package_work"
+    native_rejection=$package_work/local-$package_mode.rejected
+    private_file "$native_rejection" 1024
+    shape "$native_rejection" 'format scope plan-reference request-sha256 prior-request-sha256 config-sha256 pkg apply outcome complete'
+    [ "$(field "$native_rejection" format)" = xcat-freebsd-local-rejection-1 ] \
+        && [ "$(field "$native_rejection" scope)" = "local-$package_mode" ] \
+        && [ "$(field "$native_rejection" plan-reference)" = "$plan" ] \
+        && [ "$(field "$native_rejection" request-sha256)" = "$(field "$bundle/manifest" request)" ] \
+        && [ "$(field "$native_rejection" pkg)" = 2.6.2 ] \
+        && [ "$(field "$native_rejection" apply)" = not-started ] \
+        && [ "$(field "$native_rejection" outcome)" = rejected ] \
+        && [ "$(field "$native_rejection" complete)" = yes ] || fail 'Native rejection binding differs'
+    for member in request prior-request config; do
+        private_file "$package_work/$member" 8388608
+        [ "$(field "$native_rejection" "$member-sha256")" = "$(digest_file "$package_work/$member")" ] \
+            || fail 'Native rejection inputs differ'
+    done
+    absent "$package_work/local-update.result"
+    absent "$package_work/local-verify.result"
+)
+
+package_rejection()
+(
+    private_file "$state/packages.rejected" 1024
+    shape "$state/packages.rejected" 'format run snapshot plan mode phase previous-head-sha256 native-sha256 complete'
+    [ "$(field "$state/packages.rejected" format)" = xcat-freebsd-postscript-package-rejection-1 ] \
+        && [ "$(field "$state/packages.rejected" run)" = "$run" ] \
+        && [ "$(field "$state/packages.rejected" snapshot)" = "$snapshot" ] \
+        && [ "$(field "$state/packages.rejected" plan)" = "$plan" ] \
+        && [ "$(field "$state/packages.rejected" mode)" = "$package_mode" ] \
+        && [ "$(field "$state/packages.rejected" complete)" = yes ] || fail 'Package rejection binding differs'
+    previous_head=$(field "$state/packages.rejected" previous-head-sha256) || fail 'Missing rejected package head'
+    [ "$previous_head" = - ] || hex "$previous_head" 64 || fail 'Invalid rejected package head'
+    absent "$state/packages.result"
+    absent "$state/package-head"
+    case "$(field "$state/packages.rejected" phase)" in
+    preparation)
+        [ "$(field "$state/packages.rejected" native-sha256)" = - ] || fail 'Unexpected native rejection'
+        for scope in local-update local-verify; do
+            for record in started result rejected; do absent "$state/packages/$scope.$record"; done
+        done
+        ;;
+    native)
+        package_native_rejection || fail 'Invalid native rejection'
+        [ "$(field "$state/packages.rejected" native-sha256)" = "$(digest_file "$state/packages/local-$package_mode.rejected")" ] \
+            || fail 'Native rejection evidence differs'
+        ;;
+    *) fail 'Invalid package rejection phase' ;;
+    esac
+)
+
+package_rejection_head()
+{
+    absent "$base/package-head.next"
+    [ "$(package_head_digest)" = "$1" ] || fail 'Package head changed during rejection'
+}
+
+package_record_rejection()
+{
+    package_rejection_head "$3"
+    printf 'format\txcat-freebsd-postscript-package-rejection-1\nrun\t%s\nsnapshot\t%s\nplan\t%s\nmode\t%s\nphase\t%s\nprevious-head-sha256\t%s\nnative-sha256\t%s\ncomplete\tyes\n' \
+        "$run" "$snapshot" "$plan" "$package_mode" "$1" "$3" "$2" \
+        | write_record "$state/packages.rejected" || fail 'Cannot record package rejection'
+    package_rejection || fail 'Invalid package rejection'
+}
+
+package_config()
+{
+    cat <<EOF
+ABI = "FreeBSD:15:amd64";
+OSVERSION = 1501000;
+PKG_DBDIR = "/var/db/pkg";
+PKG_CACHEDIR = "$package_work/cache";
+REPOS_DIR = [];
+REPOSITORIES = {};
+REPO_AUTOUPDATE = false;
+PKG_ENABLE_PLUGINS = false;
+PKG_TRIGGERS_ENABLE = true;
+RUN_SCRIPTS = true;
+HANDLE_RC_SCRIPTS = false;
+SYSLOG = false;
+IGNORE_OSVERSION = false;
+PERMISSIVE = false;
+CASE_SENSITIVE_MATCH = true;
+PKG_ENV = {};
+EOF
+}
+
+package_helper()
+{
+    resolver=/usr/local/libexec/freebsd-pkg-resolve
+    [ -f "$resolver" ] && [ ! -L "$resolver" ] \
+        && [ "$(stat -f '%u:%g:%l:%Lp' "$resolver")" = 0:0:1:555 ] \
+        && [ "$(digest_file "$resolver")" = ad1be19a9491ac9b34c5a203c6c90d70907949c6ddb548a168034b64f8e87be9 ] \
+        || fail 'Native package helper differs'
+}
+
+package_prepare()
+{
+    package_inputs || fail 'Package inputs are invalid'
+    prior_request=$(package_prior) || fail 'Package provenance is unavailable'
+    absent "$state/packages"
+    absent "$state/packages.result"
+    if [ -e "$base/package-head" ]; then
+        write_record "$state/packages.previous" < "$base/package-head" || fail 'Cannot retain previous package head'
+    else
+        printf 'initial\t%s\n' "$(digest_file /var/db/xcat/pkgbase-install/result)" \
+            | write_record "$state/packages.previous" || fail 'Cannot retain initial package anchor'
+    fi
+    package_work=$state/packages
+    mkdir -m 0700 "$package_work" "$package_work/cache" "$package_work/repos" || fail 'Cannot create package workspace'
+    cp -Rp "$bundle/archives" "$package_work/archives" \
+        && cp "$bundle/request" "$package_work/request" \
+        && cp "$prior_request" "$package_work/prior-request" || fail 'Cannot stage package operation'
+    chmod 0400 "$package_work/request" "$package_work/prior-request" || fail 'Cannot protect package requests'
+    # A deferred UFS unlink can change the sealed configuration's ctime.
+    (set -C; package_config > "$package_work/config") || fail 'Cannot write package configuration'
+    chmod 0400 "$package_work/config" || fail 'Cannot protect package configuration'
+    find "$package_work" -exec fsync {} + || fail 'Cannot sync package inputs'
+    fsync "$state" || fail 'Cannot sync package workspace'
+    package_helper
+    [ -d /var/db/pkg ] && [ ! -L /var/db/pkg ] \
+        && [ "$(stat -f '%u:%g:%Mp%Lp' /var/db/pkg)" = 0:0:0755 ] || fail 'Native package database is not protected'
+}
+
+package_execute()
+{
+    for member in packages packages.result packages.previous packages.rejected package-head; do absent "$state/$member"; done
+    absent "$base/package-head.next"
+    previous_head=$(package_head_digest) || fail 'Cannot observe package head'
+    if ! (package_prepare); then
+        package_record_rejection preparation - "$previous_head"
+        return 1
+    fi
+    package_work=$state/packages
+    resolver=/usr/local/libexec/freebsd-pkg-resolve
+    capture_logs "$package_work/stdout" "$package_work/stderr" "$run_timeout" guard "$log_limit" \
+        env -i PATH=/sbin:/bin:/usr/sbin:/usr/bin LC_ALL=C \
+        "$resolver" -C "$package_work/config" "local-$package_mode" "$package_work/request" /
+    if [ "$capture_status" -ne 0 ] || [ ! -f "$package_work/local-$package_mode.result" ]; then
+        cat "$package_work/stderr" >&2 || fail 'Cannot return package diagnostic'
+        if [ -e "$package_work/local-$package_mode.rejected" ]; then
+            package_native_rejection || fail 'Invalid native rejection'
+            package_record_rejection native "$(digest_file "$package_work/local-$package_mode.rejected")" "$previous_head"
+        fi
+        fail 'Native package operation did not complete'
+    fi
+    stage=$(mktemp -d "$state/.packages.XXXXXXXX") || fail 'Cannot create package receipt stage'
+    directory "$stage"
+    printf 'format\txcat-freebsd-postscript-packages-1\nrun\t%s\nsnapshot\t%s\nplan\t%s\nmode\t%s\ninitial-sha256\t%s\nprevious-sha256\t%s\nnative-sha256\t%s\nmanaged-sha256\t%s\nactions-sha256\t%s\nstdout-sha256\t%s\nstderr-sha256\t%s\ncomplete\tyes\n' \
+        "$run" "$snapshot" "$plan" "$package_mode" "$(digest_file /var/db/xcat/pkgbase-install/result)" \
+        "$(digest_file "$state/packages.previous")" "$(digest_file "$package_work/local-$package_mode.result")" \
+        "$(digest_file "$package_work/managed.request")" "$(digest_file "$package_work/actions")" \
+        "$(digest_file "$package_work/stdout")" "$(digest_file "$package_work/stderr")" \
+        | write_record "$stage/result" || fail 'Cannot record package completion'
+    absent "$state/packages.result"
+    mv "$stage/result" "$state/packages.result" && fsync "$stage" "$state" \
+        || fail 'Cannot publish package completion'
+    package_receipt || fail 'Package receipt is invalid'
+}

@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+BEGIN {
+    $::XCATROOT = $ENV{XCATROOT} || '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Table;
+use xCAT::FreeBSDKey;
+
+umask(0077);
+die "Usage: xcat-zfs-key save|restore node pool /private/directory/pool.key\n" unless @ARGV == 4;
+die "xcat-zfs-key requires root\n" unless $> == 0;
+my $table = xCAT::Table->new('passwd', -create => 1, -autocommit => 1)
+    or die "Cannot open passwd table\n";
+xCAT::FreeBSDKey::manage($table, @ARGV);
+print "FreeBSD data key $ARGV[0] completed for $ARGV[1]/$ARGV[2]\n";

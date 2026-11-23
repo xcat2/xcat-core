@@ -50,6 +50,7 @@ opt/xcat/bin/xcatclientnnr opt/xcat/sbin/nodeadd
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/xcatsetup
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/makenetworks
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/copycds
+opt/xcat/bin/xcatclientnnr opt/xcat/sbin/freebsdrepo
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/regnotif
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/unregnotif
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/monstart

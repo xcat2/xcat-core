@@ -182,6 +182,12 @@ sub process_request
 #------------------------------------------------------------------------------
 sub preprocess_updatenode
 {
+    require xCAT::FreeBSDUpdate;
+    return xCAT::FreeBSDUpdate::preprocess(@_, \&_preprocess_updatenode_legacy);
+}
+
+sub _preprocess_updatenode_legacy
+{
     my $request  = shift;
     my $callback = shift;
     my $subreq   = shift;
@@ -1093,6 +1099,12 @@ sub security_update_sshkeys
 
 #-----------------------------------------------------------------------------
 sub updatenode
+{
+    require xCAT::FreeBSDUpdate;
+    return xCAT::FreeBSDUpdate::process(@_, \&_updatenode_legacy);
+}
+
+sub _updatenode_legacy
 {
     my $request  = shift;
     my $callback = shift;

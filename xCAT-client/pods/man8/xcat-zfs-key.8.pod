@@ -1,0 +1,53 @@
+=head1 NAME
+
+B<xcat-zfs-key> - save or recover a FreeBSD data-pool encryption key
+
+=head1 SYNOPSIS
+
+B<xcat-zfs-key save> I<node> I<pool> I</private/directory/pool.key>
+
+B<xcat-zfs-key restore> I<node> I<pool> I</private/directory/pool.key>
+
+=head1 DESCRIPTION
+
+Run this command as root on the xCAT management node. B<save> reads an existing
+32-byte raw key and stores its recoverable hexadecimal representation in the
+B<passwd> table, under key B<freebsd-zfs> and username I<node/pool>. It does not
+generate a key, rotate encryption or send a key to a node.
+The combined I<node/pool> identity must fit the table's 128-character key limit.
+
+An ordinary B<dumpxCATdb> backup includes the saved key unless the B<passwd>
+table is excluded. Protect this backup as a credential backup. The key is
+encoded, not encrypted. After B<restorexCATdb>, B<restore> recreates the raw key
+file for SSH file synchronization to the installed FreeBSD node.
+
+The key file must be a regular file owned by root, with group root, mode 0600
+and one link. Its containing directory must be owned by root with mode 0700.
+Parent directories must not be symlinks or writable by group or others.
+
+Saving the same key or recovering an identical file succeeds without replacing
+it. A different saved key or a different destination file causes failure.
+Existing encrypted data requires its original key. This command never creates
+a replacement key when recovery fails.
+
+=head1 EXAMPLES
+
+Save an existing key before creating an encrypted data pool:
+
+ xcat-zfs-key save node01 tank /root/freebsd-keys/node01/tank.key
+ dumpxCATdb -p /root/xcat-backup
+
+After restoring the xCAT database, recreate the private directory and recover
+the key:
+
+ install -d -m 0700 /root/freebsd-keys/node01
+ xcat-zfs-key restore node01 tank /root/freebsd-keys/node01/tank.key
+
+Deliver that directory through the image's protected B<synclists>. Import the
+preserved pool using its recorded GUID and original storage policy.
+
+=head1 SEE ALSO
+
+L<dumpxCATdb(1)>, L<restorexCATdb(1)>, L<passwd(5)>
+
+=cut

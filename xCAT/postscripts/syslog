@@ -1,5 +1,12 @@
-#!/bin/bash 
+#!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+if [ "$(uname -s)" = FreeBSD ]; then
+    exec "$(dirname "$0")/syslog.freebsd" "$@"
+fi
+if [ -z "${BASH_VERSION:-}" ] || { [ "${BASH##*/}" = sh ] && shopt -oq posix; }; then
+    exec /bin/bash "$0" "$@"
+fi
 
 #-------------------------------------------------------------------------------
 #=head1  syslog

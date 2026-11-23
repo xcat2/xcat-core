@@ -1,0 +1,87 @@
+#!/bin/sh
+
+set -eu
+[ "$#" -eq 1 ] || {
+    printf 'Usage: %s native-bsdinstall-zfsboot\n' "$0" >&2
+    exit 2
+}
+[ "$(sha256 -q "$1")" = 0ffa0dc4ed3346e5e732fa96e460291f74a47f8d0bd8b349738a8acfb2d57e98 ] || {
+    printf 'Unsupported FreeBSD 15.1 bsdinstall zfsboot checksum.\n' >&2
+    exit 1
+}
+XCAT_STORAGE_HOOKS=$(cat "$(dirname "$0")/xcat-storage-hooks.sh")
+export XCAT_STORAGE_HOOKS
+awk '
+    /^\tlocal setsize align_small align_big$/ {alignment=1}
+    alignment && /^\tif \[ "\$ZFSBOOT_FORCE_4K_SECTORS" \]; then$/ {
+        # Guarded layouts keep partition alignment independent of pool ashift.
+        $0="\tif [ \"$ZFSBOOT_FORCE_4K_SECTORS\" ] || [ -n \"${XCAT_STORAGE_WORK:-}\" ]; then"
+        alignment=0
+        aligned++
+    }
+    /^############################################################ MAIN$/ {
+        main++
+        print ENVIRON["XCAT_STORAGE_HOOKS"]
+        print "if [ -n \"${XCAT_STORAGE_WORK:-}\" ]; then"
+        print "    XCAT_STORAGE_FORCE="
+        print "    XCAT_STORAGE_AUX=${XCAT_ZFS_AUXILIARY:-}"
+        print "    ZFSBOOT_POOL_CREATE_OPTIONS=\"$ZFSBOOT_POOL_CREATE_OPTIONS -o cachefile=none\""
+        print "    XCAT_STORAGE_EFI_PREFIX=$(xcat_storage_call efi-prefix) || exit 1"
+        print "    XCAT_STORAGE_ZFS_PREFIX=$(xcat_storage_call zfs-prefix) || exit 1"
+        print "    xcat_storage_call start \"$ZFSBOOT_DISKS\" \"$ZFSBOOT_VDEV_TYPE\" \"$ZFSBOOT_POOL_NAME\" \"$ZFSBOOT_SWAP_SIZE\" \"$ZFSBOOT_GELI_ENCRYPTION\" \"$ZFSBOOT_BOOT_POOL\" || exit 1"
+        print "else"
+        print "    XCAT_STORAGE_FORCE=-f"
+        print "    XCAT_STORAGE_AUX="
+        print "    XCAT_STORAGE_EFI_PREFIX=efiboot"
+        print "    XCAT_STORAGE_ZFS_PREFIX=zfs"
+        print "fi"
+    }
+    /Exporting ZFS pools\.\.\./ {
+        cleanup++
+        print "\tif [ -z \"${XCAT_STORAGE_WORK:-}\" ]; then"
+    }
+    /ZFSBOOT_POOL_NAME=\$\(dialog_pool_name/ {
+        collision++
+        print "\t\t[ -z \"${XCAT_STORAGE_WORK:-}\" ] || exit 1"
+    }
+    /^exit \$SUCCESS$/ {
+        finish++
+        print "if [ -n \"${XCAT_STORAGE_WORK:-}\" ]; then"
+        print "    xcat_storage_call configured || exit 1"
+        print "fi"
+    }
+    /^\t\tzroot_vdevs="\$zroot_vdevs \$disk\$targetpart"$/ {
+        stable++
+        print "\t\tif [ \"$XCAT_STORAGE_ZFS_PREFIX\" != zfs ]; then"
+        print "\t\t\tzroot_vdevs=\"$zroot_vdevs /dev/gpt/${XCAT_STORAGE_ZFS_PREFIX}$n\""
+        print "\t\telse"
+        print $0
+        print "\t\tfi"
+        next
+    }
+    {
+        close_cleanup=0
+        if (cleanup && /\$GPART_DESTROY_F/ && ++destroy == 2) close_cleanup=1
+        labels+=gsub(/efiboot\$index/, "${XCAT_STORAGE_EFI_PREFIX}$index")
+        zfslabels+=gsub(/zfs\$index/, "${XCAT_STORAGE_ZFS_PREFIX}$index")
+        force+=gsub(/-m none -f/, "-m none ${XCAT_STORAGE_FORCE}")
+        auxiliary+=gsub(/"\$raid10_vdevs" \|\| return/, "\"$raid10_vdevs $XCAT_STORAGE_AUX\" || return")
+        auxiliary+=gsub(/"\$zroot_vdevtype" "\$zroot_vdevs" \|\|/, "\"$zroot_vdevtype\" \"$zroot_vdevs $XCAT_STORAGE_AUX\" ||")
+        gsub(/f_eval_catch/, "xcat_storage_eval")
+        print
+        if (close_cleanup) print "\tfi"
+    }
+    /zfs_create_diskpart \$disk \$n \|\| return \$FAILURE/ {
+        partitioned++
+        print "\t\tif [ -n \"${XCAT_STORAGE_WORK:-}\" ]; then"
+        print "\t\t\txcat_storage_call partitioned \"$disk\" \"$targetpart\" || exit 1"
+        print "\t\tfi"
+    }
+    /^while :; do$/ {
+        retry++
+        print "\tif [ -n \"${XCAT_STORAGE_WORK:-}\" ]; then"
+        print "\t\txcat_storage_call attempt || exit 1"
+        print "\tfi"
+    }
+    END {if (main != 1 || cleanup != 1 || destroy != 2 || labels != 2 || zfslabels != 2 || stable != 1 || force != 2 || auxiliary != 2 || partitioned != 1 || retry != 1 || finish != 1 || collision != 1 || aligned != 1) exit 1}
+' "$1"

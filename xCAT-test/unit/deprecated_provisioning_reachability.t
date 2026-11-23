@@ -51,20 +51,6 @@ BEGIN {
     sub close { return; }
     $INC{'xCAT/Table.pm'} = __FILE__;
 
-    package xCAT::Utils;
-    sub isMN { return 0; }
-    sub Version { return 'fixture-version'; }
-    sub acquire_lock_imageop {
-        my ( $class, $directory ) = @_;
-        push @locks, $directory;
-        return ( 1, 'fixture image lock busy' );
-    }
-    sub runcmd {
-        push @effects, 'external command';
-        die "Unexpected external command";
-    }
-    $INC{'xCAT/Utils.pm'} = __FILE__;
-
     package xCAT::TableUtils;
     sub getInstallDir { return "$root/install"; }
     sub get_site_attribute {
@@ -94,6 +80,22 @@ BEGIN {
 
 $root = tempdir( CLEANUP => 1 );
 local $ENV{XCATROOT} = $root;
+require xCAT::Utils;
+{
+    no warnings qw(redefine once);
+    *xCAT::Utils::isMN = sub { return 0; };
+    *xCAT::Utils::Version = sub { return 'fixture-version'; };
+    *xCAT::Utils::acquire_lock_imageop = sub {
+        my ( $class, $directory ) = @_;
+        push @locks, $directory;
+        return ( 1, 'fixture image lock busy' );
+    };
+    *xCAT::Utils::runcmd = sub {
+        push @effects, 'external command';
+        die "Unexpected external command";
+    };
+}
+
 # Inherited POSIX parsing rules must not change the request-order fixtures.
 local $ENV{POSIXLY_CORRECT};
 delete $ENV{POSIXLY_CORRECT};

@@ -1,0 +1,31 @@
+  pool: tank
+ state: ONLINE
+config:
+
+	NAME                 STATE     READ WRITE CKSUM
+	tank                 ONLINE       0     0     0
+	  draid2:4d:8c:2s-0  ONLINE       0     0     0
+	    /dev/vtbd2       ONLINE       0     0     0
+	    /dev/vtbd3       ONLINE       0     0     0
+	    /dev/vtbd4       ONLINE       0     0     0
+	    /dev/vtbd5       ONLINE       0     0     0
+	    /dev/vtbd6       ONLINE       0     0     0
+	    /dev/vtbd7       ONLINE       0     0     0
+	    /dev/vtbd8       ONLINE       0     0     0
+	    /dev/vtbd9       ONLINE       0     0     0
+	special
+	  mirror-1           ONLINE       0     0     0
+	    /dev/vtbd10      ONLINE       0     0     0
+	    /dev/vtbd11      ONLINE       0     0     0
+	    /dev/vtbd12      ONLINE       0     0     0
+	logs
+	  mirror-2           ONLINE       0     0     0
+	    /dev/vtbd13      ONLINE       0     0     0
+	    /dev/vtbd14      ONLINE       0     0     0
+	cache
+	  /dev/vtbd15        ONLINE       0     0     0
+	spares
+	  draid2-0-0         AVAIL
+	  draid2-0-1         AVAIL
+
+errors: No known data errors

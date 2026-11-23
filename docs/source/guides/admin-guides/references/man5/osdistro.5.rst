@@ -1,4 +1,3 @@
-
 ##########
 osdistro.5
 ##########
@@ -68,7 +67,7 @@ osdistro Attributes:
 
 \ **type**\ 
  
- Linux or AIX
+ Operating system family, such as Linux, FreeBSD, Windows, or AIX.
  
 
 
@@ -97,4 +96,3 @@ SEE ALSO
 
 
 \ **nodels(1)**\ , \ **chtab(8)**\ , \ **tabdump(8)**\ , \ **tabedit(8)**\ 
-

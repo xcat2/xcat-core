@@ -23,13 +23,16 @@ use warnings;
 
 use File::Temp qw(tempdir);
 use FindBin;
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl", "$FindBin::Bin/../../perl-xCAT";
+use xCAT::FreeBSDInstall;
+use xCAT::Utils;
 use IO::Socket::INET;
 use POSIX ();
 use Socket;
 use Test::More;
 use Time::HiRes qw(gettimeofday sleep time);
 
-my $XCATD = "$FindBin::Bin/../../xCAT-server/sbin/xcatd";
+my $XCATD = $ENV{XCAT_INSTALL_MONITOR_SOURCE} || "$FindBin::Bin/../../xCAT-server/sbin/xcatd";
 die "xcatd not found at $XCATD\n" unless -r $XCATD;
 
 my $SLOW   = 3;                                  # seconds one node's request spends in its plugin
@@ -189,7 +192,7 @@ sub wait_for_event {
 {
     # Stand-ins for the xCAT modules the lifted routine calls through. None of them can reach a
     # database from here.
-    no warnings 'once';
+    no warnings qw(once redefine prototype);
     *xCAT::MsgUtils::trace              = sub { };
     *xCAT::MsgUtils::message            = sub { };
     *xCAT::NetworkUtils::clearcache     = sub { };
@@ -582,5 +585,42 @@ sub stop_monitor {
 
 ok(-e $SCRATCH_PIDFILE, 'the monitor claimed the scratch pid file instead')
   or diag('the redirection is not reached, so the assertion above proves nothing');
+
+subtest 'FreeBSD status shares the monitor ownership queue' => sub {
+    $EVENTS = "$SCRATCH/events-freebsd";
+    no warnings qw(once redefine);
+    local *xCAT::FreeBSDInstall::handle_status = sub {
+        my ($node, $peer, $message) = @_;
+        my ($operation) = $message =~ / (slow|last)/;
+        note_event("start $node $operation");
+        sleep $SLOW if $operation eq 'slow';
+        note_event("end $node $operation");
+        return "freebsd-install-test $operation ok\n";
+    };
+    pipe($t::installm::rescanreadpipe, $t::installm::rescanwritepipe) or die $!;
+    my $port = free_port();
+    my $mon = open_monitor($port, qw(portprobe freebsdnode freebsdnode linuxnode));
+    my $first = talk_to($port, 'freebsd-install-test slow');
+    ok(wait_for_event('start freebsdnode slow', 10), 'the native worker starts the first operation');
+    my $second = talk_to($port, 'freebsd-install-test last');
+    my $linux = talk_to($port, 'installstatus booted');
+    is(scalar(<$linux>), "ready\n", 'another node can connect during the FreeBSD operation');
+    is(scalar(<$linux>), "done\n", 'the Linux acknowledgement remains unchanged');
+    close($linux);
+    ok(wait_for_event('end freebsdnode last', 10), 'the queued native operation finishes');
+    my $first_end = event_index('end freebsdnode slow');
+    my $second_start = event_index('start freebsdnode last');
+    cmp_ok($first_end, '>=', 0, 'the first native operation completed');
+    cmp_ok($second_start, '>', $first_end, 'one node retains request order across the native worker');
+    is(do { local $/; <$first> }, "ready\nfreebsd-install-test slow ok\n",
+        'the native response contains no legacy acknowledgement');
+    is(do { local $/; <$second> }, "ready\nfreebsd-install-test last ok\n",
+        'the queued native response follows its completed operation');
+    close($first);
+    close($second);
+    stop_monitor($mon);
+    close($t::installm::rescanreadpipe);
+    close($t::installm::rescanwritepipe);
+};
 
 done_testing();

@@ -38,13 +38,13 @@ passwd Attributes:
 
 \ **key**\ 
  
- The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, cec, frame, switch.
+ The type of component this user/pw is for. Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, cec, frame, switch, freebsd-zfs (FreeBSD data-pool keys).
  
 
 
 \ **username**\ 
  
- The default userid for this type of component
+ The default userid for this type of component. For freebsd-zfs, this is the node/pool identity managed by xcat-zfs-key.
  
 
 

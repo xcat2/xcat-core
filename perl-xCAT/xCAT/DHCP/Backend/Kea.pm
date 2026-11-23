@@ -691,7 +691,7 @@ sub upsert_reservations {
         next unless $subnet;
         $subnet->{reservations} ||= [];
         $subnet->{reservations} = [
-            grep { !_reservation_matches( $_, $reservation ) } @{ $subnet->{reservations} }
+            grep { !_reservation_matches( $_, $reservation, 1 ) } @{ $subnet->{reservations} }
         ];
 
         my %stored = %$reservation;
@@ -709,7 +709,7 @@ sub delete_reservations {
     foreach my $subnet ( _subnets_for_config($config) ) {
         my @kept;
         foreach my $reservation ( @{ $subnet->{reservations} || [] } ) {
-            if ( _reservation_matches( $reservation, $match ) ) {
+            if ( _reservation_matches( $reservation, $match, 1 ) ) {
                 push @deleted, { %$reservation, 'subnet-id' => $subnet->{id} };
             } else {
                 push @kept, $reservation;
@@ -873,6 +873,9 @@ sub _live_delete_reservation {
     if ( $reservation->{'hw-address'} ) {
         $arguments{'identifier-type'} = 'hw-address';
         $arguments{identifier} = $reservation->{'hw-address'};
+    } elsif ( $reservation->{'client-id'} ) {
+        $arguments{'identifier-type'} = 'client-id';
+        $arguments{identifier} = $reservation->{'client-id'};
     } elsif ( $reservation->{duid} ) {
         $arguments{'identifier-type'} = 'duid';
         $arguments{identifier} = $reservation->{duid};
@@ -1056,9 +1059,16 @@ sub _subnets_for_config {
 }
 
 sub _reservation_matches {
-    my ( $reservation, $match ) = @_;
+    my ( $reservation, $match, $deleting ) = @_;
 
-    foreach my $field ( 'hostname', 'hw-address', 'duid', 'ip-address' ) {
+    if (exists $match->{'xcat-node'}) {
+        my $context = $reservation->{'user-context'} || {};
+        return ($context->{'xcat-node'} || '') eq $match->{'xcat-node'} &&
+          ($context->{'xcat-purpose'} || '') eq ($match->{'xcat-purpose'} || '');
+    }
+    my $context = $reservation->{'user-context'} || {};
+    return 0 if $deleting && ($context->{'xcat-purpose'} || '') eq 'freebsd-ipoib' && !$match->{'client-id'};
+    foreach my $field ( 'hostname', 'hw-address', 'client-id', 'duid', 'ip-address' ) {
         next unless defined $match->{$field} && $match->{$field} ne '';
         next unless defined $reservation->{$field};
         my ( $have, $want ) = ( lc( $reservation->{$field} ), lc( $match->{$field} ) );
@@ -1077,7 +1087,7 @@ sub _reservation_matches {
     # that names the owner alone uses it: one node has several entries, and a reservation that
     # is compared with the entries of its own node must not match all of them.
     my $owner = _owner_of($match);
-    if ( defined($owner) && !grep { defined $match->{$_} } 'hostname', 'hw-address', 'duid', 'ip-address' ) {
+    if ( defined($owner) && !grep { defined $match->{$_} } 'hostname', 'hw-address', 'client-id', 'duid', 'ip-address' ) {
         my $have = _owner_of($reservation);
         return 1 if defined($have) && $have eq $owner;
     }

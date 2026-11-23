@@ -1906,6 +1906,19 @@ sub defmk
             next;
         }
 
+        if ($type eq 'osimage')
+        {
+            my $definition_error = xCAT::Utils->freebsd_image_definition_error($::FINALATTRS{$obj});
+            if (defined($definition_error) && length($definition_error))
+            {
+                my $rsp = { data => ["$obj: $definition_error"] };
+                xCAT::MsgUtils->message('E', $rsp, $::callback);
+                $error = 1;
+                delete $::FINALATTRS{$obj};
+                next;
+            }
+        }
+
         if ($object_exists && $::opt_f)
         {
             # remove the old object after the replacement definition is known valid

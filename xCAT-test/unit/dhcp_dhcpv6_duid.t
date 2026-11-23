@@ -523,10 +523,6 @@ sub isc_hosts {
 # what another node held under it, for a DUID as for a MAC. cn03 is given the DUID of cn01, and two
 # IPv4 nodes share a MAC in the same way.
 {
-    package DUIDParityV4Backend;
-    sub subnet_id_for_ip { return 1; }
-}
-{
     # The reservation that holds the address is the one with a hostname, and it is the one a
     # shared identifier moves from node to node.
     my $hostnames = sub { [ grep { defined } map { $_->{hostname} } map { @{ $_->{reservations} || [] } } @{ $_[0]{ $_[1] }{ $_[2] } } ] };
@@ -549,11 +545,11 @@ sub isc_hosts {
         mac     => { v4a => { mac => $mac }, v4b => { mac => '02:00:00:00:06:02' } },
     );
     my $v4 = JSON::decode_json( $backend->render_dhcp4_config( { interfaces => ['eth0'], subnets => [ { id => 1, subnet => '192.0.2.0/24' } ] } ) );
-    $backend->upsert_reservations( $v4, xCAT_plugin::dhcp::kea_build_node_reservations( bless( {}, 'DUIDParityV4Backend' ), $v4, ['v4a'] ), [] );
+    $backend->upsert_reservations( $v4, xCAT_plugin::dhcp::kea_build_node_reservations( $backend, $v4, ['v4a'] ), [] );
     $DUIDTable::rows{mac}{v4b}{mac} = $mac;
     my $v4_deleted = JSON::decode_json( JSON::encode_json($v4) );
     $backend->delete_reservations( $v4_deleted, $_ ) for @{ xCAT_plugin::dhcp::kea_reservation_matches_for_nodes( ['v4b'] ) };
-    $backend->upsert_reservations( $v4, xCAT_plugin::dhcp::kea_build_node_reservations( bless( {}, 'DUIDParityV4Backend' ), $v4, ['v4b'] ), [] );
+    $backend->upsert_reservations( $v4, xCAT_plugin::dhcp::kea_build_node_reservations( $backend, $v4, ['v4b'] ), [] );
     my $v4_session = isc_commands('v4b')->[0] // '';
 
     is_deeply( $hostnames->( $v6, 'Dhcp6', 'subnet6' ), ['cn03'], 'Kea: the node given a shared DUID takes the reservation' );

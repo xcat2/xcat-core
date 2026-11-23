@@ -1,0 +1,72 @@
+--- a/src/bpf.c
++++ b/src/bpf.c
+@@ -85,6 +85,10 @@
+ bpf_frame_header_len(const struct interface *ifp)
+ {
+ 	switch (ifp->hwtype) {
++#ifdef __FreeBSD__
++	/* FreeBSD presents IPoIB packets to BPF with Ethernet headers. */
++	case ARPHRD_INFINIBAND:
++#endif
+ 	case ARPHRD_ETHER:
+ 		return sizeof(struct ether_header);
+ 	default:
+@@ -146,10 +150,16 @@
+ 	struct ether_header eh;
+ 
+ 	switch (bpf->bpf_ifp->hwtype) {
++#ifdef __FreeBSD__
++	case ARPHRD_INFINIBAND:
++#endif
+ 	case ARPHRD_ETHER:
+ 		memset(&eh.ether_dhost, 0xff, sizeof(eh.ether_dhost));
+-		memcpy(&eh.ether_shost, bpf->bpf_ifp->hwaddr,
+-		    sizeof(eh.ether_shost));
++		if (bpf->bpf_ifp->hwtype == ARPHRD_ETHER)
++			memcpy(&eh.ether_shost, bpf->bpf_ifp->hwaddr,
++			    sizeof(eh.ether_shost));
++		else
++			memset(&eh.ether_shost, 0, sizeof(eh.ether_shost));
+ 		eh.ether_type = htons(protocol);
+ 		iov[0].iov_base = &eh;
+ 		iov[0].iov_len = sizeof(eh);
+@@ -466,6 +476,9 @@
+ 		bp += BPF_BOOTP_NONE_LEN;
+ 		break;
+ #endif
++#ifdef __FreeBSD__
++	case ARPHRD_INFINIBAND:
++#endif
+ 	case ARPHRD_ETHER:
+ 		memcpy(bp, bpf_bootp_ether, sizeof(bpf_bootp_ether));
+ 		bp += BPF_BOOTP_ETHER_LEN;
+--- a/src/if.c
++++ b/src/if.c
+@@ -619,7 +619,15 @@
+ 				__fallthrough; /* appease gcc */
+ 					       /* FALLTHROUGH */
+ #ifdef IFT_L2VLAN
+-			case IFT_L2VLAN: /* FALLTHROUGH */
++			case IFT_L2VLAN:
++#if defined(__FreeBSD__) && defined(IFT_INFINIBAND)
++				/* IPoIB partitions retain the VLAN type and their parent's address length. */
++				if (sdl->sdl_alen == 20) {
++					ifp->hwtype = ARPHRD_INFINIBAND;
++					break;
++				}
++#endif
++				/* FALLTHROUGH */
+ #endif
+ #ifdef IFT_L3IPVLAN
+ 			case IFT_L3IPVLAN: /* FALLTHROUGH */
+--- a/src/defs.h
++++ b/src/defs.h
+@@ -29,7 +29,7 @@
+ #define DEFS_H
+ 
+ #define PACKAGE "dhcpcd"
+-#define VERSION "10.5.2"
++#define VERSION "10.5.2-xcat1"
+ 
+ #ifndef PRIVSEP_USER
+ #define PRIVSEP_USER "_" PACKAGE

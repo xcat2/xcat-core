@@ -1,5 +1,12 @@
-#!/bin/bash
+#!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if [ "$(uname -s)" = FreeBSD ]; then
+    exec "$(dirname "$0")/remoteshell.freebsd" "$@"
+fi
+if [ -z "${BASH_VERSION:-}" ] || { [ "${BASH##*/}" = sh ] && shopt -oq posix; }; then
+    exec /bin/bash "$0" "$@"
+fi
+
 #(C)IBM Corp
 #  This script adds xCAT specific setup to the /etc/ssh/sshd_config and ssh_config file
 #  It calls getcredentials.awk to get from the xcatmaster  ssh host keys from the

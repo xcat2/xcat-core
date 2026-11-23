@@ -1,4 +1,3 @@
-
 ######
 xdcp.1
 ######
@@ -132,6 +131,9 @@ standard output or standard error is displayed.
  The format of the input file is described here: <https://xcat-docs.readthedocs.io/en/stable/guides/admin-guides/manage_clusters/common/deployment/syncfile/syncfile_synclist_file.html>
  
  On Linux \ **rsync**\  always uses ssh remoteshell. On AIX, \ **ssh**\  or \ **rsh**\  is used depending on the \ **site.useSSHonAIX**\  table attribute.
+
+ File synchronization reports failure if any directory creation or copy fails,
+ even when a later copy succeeds. This applies to Linux, AIX and FreeBSD nodes.
  
 
 
@@ -627,4 +629,3 @@ during an install from the service node.
 
 
 xdsh(1)|xdsh.1, noderange(3)|noderange.3
-

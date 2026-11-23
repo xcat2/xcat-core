@@ -161,16 +161,17 @@ sub remote_copy_command
         } else {
             print RSCYCCMDFILE "#!/bin/sh\n";
         }
+        print RSCYCCMDFILE "copy_status=0\n";
         if ($localhost == 1) {    # running to the MN from the MN
             print RSCYCCMDFILE
-              "/bin/mkdir -p $dest_dir_list\n";
+              "/bin/mkdir -p $dest_dir_list || copy_status=\$?\n";
         } else {                  #  running to another node
             if ($usersh == 0) {    # using ssh
                 print RSCYCCMDFILE
-"/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+"/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list' || copy_status=\$?\n";
             } else {
                 print RSCYCCMDFILE
-"/usr/bin/rsh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+"/usr/bin/rsh  $dest_user_host '/bin/mkdir -p $dest_dir_list' || copy_status=\$?\n";
             }
         }
         foreach my $dest_dir (keys %{ $$config{'destDir_srcFile'} })
@@ -183,10 +184,10 @@ sub remote_copy_command
             {
                 if ($localhost == 1) {    # running local ( on MN)
                     print RSCYCCMDFILE
-                      "$exec_path $sync_opt $src_file_list $dest_dir\n";
+                      "$exec_path $sync_opt $src_file_list $dest_dir || copy_status=\$?\n";
                 } else {                  # running to another node
                     print RSCYCCMDFILE
-"$exec_path $sync_opt $src_file_list $dest_user_host:$dest_dir\n";
+"$exec_path $sync_opt $src_file_list $dest_user_host:$dest_dir || copy_status=\$?\n";
                 }
             }
             my %diff_dest_hash =
@@ -199,16 +200,16 @@ sub remote_copy_command
                 # if  localhost do not put in hostname:
                 if ($localhost == 1) {   # running to the MN from the MN (local)
                     print RSCYCCMDFILE
-"$exec_path $sync_opt $src_file_diff_dest $dest_dir/$diff_basename\n";
+"$exec_path $sync_opt $src_file_diff_dest $dest_dir/$diff_basename || copy_status=\$?\n";
                 } else {                 # running remote
                     print RSCYCCMDFILE
-"$exec_path $sync_opt $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename\n";
+"$exec_path $sync_opt $src_file_diff_dest $dest_user_host:$dest_dir/$diff_basename || copy_status=\$?\n";
                 }
             }
 
         }
 
-        #print RSCYCCMDFILE "/bin/rm -f $rsyncfile\n";
+        print RSCYCCMDFILE "exit \"\$copy_status\"\n";
         close RSCYCCMDFILE;
         chmod 0755, $rsyncfile;
         @command = ('/bin/sh', '-c', $rsyncfile);

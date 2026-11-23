@@ -83,6 +83,7 @@ push(@{ $cmdref->{arg} }, @ARGV);
 
 # check the syntax
 my ($ALLSW, $CMDLINE, $ALTSRC, $HELP, $VERSION, $VERBOSE, $FILESYNC, $GENMYPOST, $USER, $SNFILESYNC, $SWMAINTENANCE, $SETSERVER, $RERUNPS, $SECURITY, $OS, $fanout, $timeout, $NOVERIFY,$RCP);
+my ($freebsd_run, $freebsd_release);
 if (
     !GetOptions(
         'A|updateallsw' => \$ALLSW,
@@ -98,10 +99,12 @@ if (
         'S|sw'          => \$SWMAINTENANCE,
         's|sn'          => \$SETSERVER,
         'P|scripts:s'   => \$RERUNPS,
+        'freebsd-run=s' => \$freebsd_run,
+        'freebsd-release' => \$freebsd_release,
         'k|security'    => \$SECURITY,
         'o|os=s'        => \$OS,
         'fanout=i'      => \$fanout,
-        't|timetout=i'  => \$timeout,
+        't|timetout|timeout=i' => \$timeout,
         'n|noverify'    => \$NOVERIFY,
         'r|node-rcp'    => \$RCP,
     )

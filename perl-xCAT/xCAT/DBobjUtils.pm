@@ -1013,6 +1013,8 @@ sub setobjdefs
         my %checkedattrs;
         my $invalidattr;
         my $conditionlist;
+        my %effective_image;
+        %effective_image = %{ $DBattrvals{$objname} || {} } if $type eq 'osimage';
 
         foreach my $this_attr (@{ $datatype->{'attrs'} }) {
             my %keyhash;
@@ -1235,6 +1237,7 @@ sub setobjdefs
             # Set the values into %allupdates
             # the key is 'tabattrs'
             $allupdates{$lookup_table}{$objname}{$attr_name}{'tabattrs'}{$::tabattr} = $val;
+            $effective_image{$attr_name} = $val if $type eq 'osimage';
             $setattrs = 1;
             $obj_need_update = 1;
             push(@setattrlist, $attr_name);
@@ -1248,6 +1251,15 @@ sub setobjdefs
         # _only_if_value_matches; only report attributes still unresolved here.
         my $rsp;
         my $object_failed_validation = 0;
+        if ($type eq 'osimage') {
+            my $definition_error = xCAT::Utils->freebsd_image_definition_error(
+                \%effective_image, $DBattrvals{$objname});
+            if (defined($definition_error) && length($definition_error)) {
+                my $validation_response = { data => ["$objname: $definition_error"] };
+                xCAT::MsgUtils->message('E', $validation_response, $::callback);
+                $object_failed_validation = 1;
+            }
+        }
         foreach my $att (keys %$invalidattr) {
             if ($invalidattr->{$att}->{valid} != 1) {
                 my $conditionkey=$invalidattr->{$att}->{condition};

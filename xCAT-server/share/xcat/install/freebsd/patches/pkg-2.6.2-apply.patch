@@ -1,0 +1,58 @@
+--- a/libpkg/triggers.c
++++ b/libpkg/triggers.c
+@@ -421,7 +421,6 @@
+ 		return;
+ 
+ 	int trigfd = openat(db, "triggers", O_DIRECTORY);
+-	close(db);
+ 	if (trigfd == -1) {
+ 		pkg_errno("Failed to open '%s' as a directory", "triggers");
+ 		return;
+--- a/libpkg/scripts.c
++++ b/libpkg/scripts.c
+@@ -333,8 +333,8 @@
+ 		} while (readsize > 0);
+ 	} while (wait_for_child);
+ 
+-	if (WEXITSTATUS(*pstat) != 0) {
+-		if (WEXITSTATUS(*pstat) == 3)
++	if (!WIFEXITED(*pstat) || WEXITSTATUS(*pstat) != 0) {
++		if (WIFEXITED(*pstat) && WEXITSTATUS(*pstat) == 3)
+ 			exit(0);
+ 
+ 		pkg_emit_error("%s script failed", script_name);
+--- a/libpkg/triggers.c
++++ b/libpkg/triggers.c
+@@ -528,7 +528,7 @@
+ 			return (EPKG_FATAL );
+ 		}
+ 	}
+-	if (WEXITSTATUS(pstat) != 0) {
++	if (!WIFEXITED(pstat) || WEXITSTATUS(pstat) != 0) {
+ 		pkg_emit_error("lua script failed");
+ 		return (EPKG_FATAL);
+ 	}
+--- a/libpkg/pkgdb_iterator.c
++++ b/libpkg/pkgdb_iterator.c
+@@ -1315,6 +1315,10 @@
+ 	if (pkg->type == PKG_INSTALLED)
+ 		return (pkgdb_ensure_loaded_sqlite(db->sqlite, pkg, flags));
+ 
++	/* File operands already contain the full manifest. */
++	if (pkg->type == PKG_FILE)
++		return (EPKG_OK);
++
+ 	vec_foreach(db->repos, i) {
+ 		if (db->repos.d[i] == pkg->repo) {
+ 			if (db->repos.d[i]->ops->ensure_loaded) {
+--- a/libpkg/pkg.c
++++ b/libpkg/pkg.c
+@@ -1449,7 +1449,7 @@
+ 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest,
+ 			strlen(pkg->digest))) {
+ 		/* Calculate new digest */
+-		if (pkgdb_ensure_loaded(db, pkg, flags)) {
++		if (pkgdb_ensure_loaded(db, pkg, flags) == EPKG_OK) {
+ 			return (pkg_checksum_calculate(pkg, db, false, true, false));
+ 		}
+ 		return (EPKG_FATAL);
