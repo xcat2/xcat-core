@@ -27,7 +27,7 @@ description: get all attribute matching networks table entries with REST API, in
 label:others,restapi
 cmd:restapitest -m GET -r /tables/networks/rows/abc=255.0.0.0 -u $$username -p $$password
 check:rc==147
-check:output=~No table rows
+check:output=~No such column in table networks: abc
 end
 
 start:get_network_table_with_attr_selection_error_rest2
