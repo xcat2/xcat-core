@@ -25,6 +25,45 @@ die('xCAT_plugin::dhcp::isc_ddns_zone_statements is missing')
 
 sub isc_zones { return xCAT_plugin::dhcp::isc_ddns_zone_statements(@_) }
 
+for my $server_case (
+    [ '2001:db8::53', 'primary6' ],
+    [ '2001:0DB8:0000:0000:0000:0000:0000:0053', 'primary6' ],
+    [ '::ffff:192.0.2.53', 'primary6' ],
+    [ '192.0.2.53', 'primary' ],
+    [ 'dns.example.test', 'primary' ],
+) {
+    my ($server, $keyword) = @{$server_case};
+    for my $reverse ('2.0.192.in-addr.arpa.', '8.b.d.0.1.0.0.2.ip6.arpa.') {
+        my $text = join '', isc_zones(
+            enabled    => 1,
+            domain     => 'example.test.',
+            ddnsdomain => 'nodes.example.test',
+            server     => $server,
+            key_name   => 'custom_key',
+            zones      => [$reverse],
+        );
+        my @zones = $text =~ /zone\s+(\S+)\s*\{\s*(primary6?)\s+(\S+);\s*key\s+(\S+);\s*\}/g;
+        is_deeply(\@zones,
+            [ 'nodes.example.test.', $keyword, $server, 'custom_key',
+              $reverse, $keyword, $server, 'custom_key' ],
+            "$server uses $keyword for forward and $reverse zones");
+    }
+}
+
+{
+    my %args = (
+        enabled  => 1,
+        domain   => 'example.test.',
+        server   => '2001:db8::53',
+        key_name => 'custom_key',
+        zones    => ['8.b.d.0.1.0.0.2.ip6.arpa.'],
+    );
+    is_deeply([isc_zones(%args, enabled => 0)], [],
+        'an IPv6 DNS target emits nothing when DDNS is disabled');
+    unlike(join('', isc_zones(%args, key_name => undef)), qr/primary6?|key /,
+        'an IPv6 DNS target without a key emits no server or key statement');
+}
+
 # ---------------------------------------------------------------------------
 # S-77 -- ISC: the forward zone and every reverse zone, each with the key.
 

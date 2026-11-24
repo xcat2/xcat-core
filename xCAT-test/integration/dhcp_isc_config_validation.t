@@ -4,6 +4,8 @@ use warnings;
 
 use FindBin;
 use lib "$FindBin::Bin/../../perl-xCAT";
+use lib "$FindBin::Bin/../../xCAT-server/lib";
+use lib "$FindBin::Bin/../../xCAT-server/lib/perl";
 
 use File::Spec;
 use File::Temp qw(tempdir);
@@ -14,6 +16,10 @@ my ($dhcpd) = grep { -x $_ } qw(/usr/sbin/dhcpd /usr/local/sbin/dhcpd);
 plan skip_all => 'dhcpd is required for ISC configuration validation' unless $dhcpd;
 plan skip_all => 'root is required to validate from the ISC configuration directory'
   unless $> == 0;
+
+$ENV{XCATCFG} ||= 'SQLite:/tmp';
+my $plugin = "$FindBin::Bin/../../xCAT-server/lib/xcat/plugins/dhcp.pm";
+if (-f $plugin) { require $plugin } else { require xCAT_plugin::dhcp }
 
 my @header = (
     "#xCAT generated dhcp configuration\n",
@@ -65,6 +71,47 @@ for my $case ( [ 'a new configuration', \@header ], [ 'an upgraded configuration
 
     my $status = system($dhcpd, '-t', '-cf', $path);
     is($status, 0, "ISC accepts the boot policy and the PXE lease class in $label");
+}
+
+my $path = File::Spec->catfile($directory, 'ddns.conf');
+
+for my $subnet_case (
+    [ '4', 'subnet 192.0.2.0 netmask 255.255.255.0', '2.0.192.in-addr.arpa.' ],
+    [ '6', 'subnet6 2001:db8::/64', '8.b.d.0.1.0.0.2.ip6.arpa.' ],
+) {
+    my ($family, $subnet, $reverse) = @{$subnet_case};
+    for my $server_case (
+        [ '2001:db8::53', 'primary6' ],
+        [ '192.0.2.53', 'primary' ],
+    ) {
+        my ($server, $keyword) = @{$server_case};
+        for my $enabled (0, 1) {
+            my $zones = join '', xCAT_plugin::dhcp::isc_ddns_zone_statements(
+                enabled    => $enabled,
+                domain     => 'example.test.',
+                ddnsdomain => 'nodes.example.test',
+                server     => $server,
+                key_name   => 'custom_key',
+                zones      => [$reverse],
+            );
+            my $label = "DHCPv$family, DNS $server, DDNS $enabled";
+            if ($enabled) {
+                for my $zone ('nodes.example.test.', $reverse) {
+                    like($zones, qr/zone \Q$zone\E \{\s*\Q$keyword $server; key custom_key;\E\s*\}/,
+                        "$label: $zone uses the DNS server family and selected key");
+                }
+            } else {
+                is($zones, '', "$label: no DDNS statements");
+            }
+            open(my $fh, '>', $path) or die "Cannot create $path: $!";
+            print {$fh} "ddns-update-style interim;\n",
+                "key custom_key { algorithm hmac-sha256; secret \"dGVzdA==\"; };\n",
+                "$subnet {\n", $zones, "}\n";
+            close($fh) or die "Cannot close $path: $!";
+            is(system($dhcpd, "-$family", '-t', '-cf', $path), 0,
+                "$label: ISC accepts the rendered configuration");
+        }
+    }
 }
 
 done_testing();
