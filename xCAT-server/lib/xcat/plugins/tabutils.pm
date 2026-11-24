@@ -3008,7 +3008,11 @@ sub delEntries
     my $tables = $request->{table};
     foreach my $table (@$tables) {
         my $tablename = $table->{name}->[0];
-        my $tab       = xCAT::Table->new($tablename);
+        my $schema    = xCAT::Table->getTableSchema($tablename);
+        unless ($schema) {
+            $cb->({ errorcode => 1, error => "No such table: $tablename" });
+            return;
+        }
         my %keyhash;
         my $attrs = $table->{attr};
         foreach my $attrhash (@$attrs) {
@@ -3016,10 +3020,19 @@ sub delEntries
                 $keyhash{$key} = $attrhash->{$key}->[0];
             }
         }
+        if (my ($column) = unknownTableColumns($schema, sort keys %keyhash)) {
+            $cb->({ errorcode => 1, error => "No such column in table $tablename: $column" });
+            return;
+        }
+        my $tab = xCAT::Table->new($tablename);
+        unless ($tab) {
+            $cb->({ errorcode => 1, error => "Unable to open table: $tablename" });
+            return;
+        }
         if (%keyhash) {    # delete based on requested attributes
-            $tab->delEntries(\%keyhash);    #Yes, delete *all* entries
+            $tab->delEntries(\%keyhash);
         } else {                            # delete all entries
-            $tab->delEntries();             #delete *all* entries
+            $tab->delEntries();
         }
         $tab->commit;                       #  commit
     }
@@ -3027,8 +3040,13 @@ sub delEntries
 }
 
 # getAttribs
-# Read and returns array of  attributes for the key  from the input table.
-#  and attributes input.  Use "ALL" in the <attr>ALL</attr> for all attributes
+# Read the requested attributes for rows matching the supplied filters.
+# Use <attr>ALL</attr> to select all attributes.
+#
+# Requests with <rowformat>rows</rowformat> return all matching rows in the
+# table/row envelope used by getTablesAllRowAttribs. XML requests that omit
+# rowformat return a flat single-row response, as in the example below.
+#
 #<xcatrequest>
 #<clienttype>PCM</clienttype>
 #<command>getAttribs</command>
@@ -3049,39 +3067,67 @@ sub getAttribs
 {
     my $request   = shift;
     my $cb        = shift;
-    my $command   = $request->{command}->[0];
     my $tablename = $request->{table}->[0];
-    my $attr      = $request->{attr};
-    my @attrs     = @$attr;
-    my $tab       = xCAT::Table->new($tablename);
-    my %rsp;
-    my %keyhash;
+    my @attrs     = @{ $request->{attr} };
+    my $schema    = xCAT::Table->getTableSchema($tablename);
+    my $as_rows   = $request->{rowformat} && $request->{rowformat}->[0] eq 'rows';
 
-    # if request for ALL attributes
-    if (grep (/ALL/, @attrs)) {  # read the  schema and build array of all attrs
-        @attrs = ();
-        my $schema = xCAT::Table->getTableSchema($tablename);
-        my $desc   = $schema->{descriptions};
-        foreach my $c (@{ $schema->{cols} }) {
+    unless ($schema) {
+        $cb->({ errorcode => 1, error => "No such table: $tablename" });
+        return;
+    }
+    if (grep { $_ eq 'ALL' } @attrs) {
+        @attrs = @{ $schema->{cols} };
+    }
+    my $filters = $request->{keys}->[0];
+    my %keyhash = map { $_ => $filters->{$_}->[0] } keys %$filters;
 
-            # my $space = (length($c)<7 ? "\t\t" : "\t");
-            push @attrs, $c;
+    if ($as_rows) {
+        unless (%keyhash) {
+            $cb->({ errorcode => 1, error => 'No table filter specified' });
+            return;
+        }
+        if (my ($column) = unknownTableColumns($schema, sort(keys %keyhash), @attrs)) {
+            $cb->({ errorcode => 1, error => "No such column in table $tablename: $column" });
+            return;
         }
     }
-    foreach my $k (keys %{ $request->{keys}->[0] }) {
-        $keyhash{$k} = $request->{keys}->[0]->{$k}->[0];
+    my $tab = xCAT::Table->new($tablename);
+    unless ($tab) {
+        $cb->({ errorcode => 1, error => "Unable to open table: $tablename" });
+        return;
     }
-    my $recs = $tab->getAttribs(\%keyhash, \@attrs);
 
-    if ($recs) {
-        my %attrhash = %$recs;
-        foreach my $k (keys %attrhash) {
-
-            push @{ $rsp{$k} }, $recs->{$k};
+    # REST requests use the same table/row envelope as getTablesAllRowAttribs.
+    # Keep the flat, single-row response for existing XML clients.
+    if ($as_rows) {
+        my @rows = grep { defined($_) } $tab->getAttribs(\%keyhash, \@attrs);
+        if (@rows) {
+            $cb->({ table => [{ tablename => [$tablename], row => \@rows }] });
+        } else {
+            $cb->({ errorcode => 1, error => 'No table rows matched specified keys or attributes' });
         }
+        return;
     }
+
+    my $row = $tab->getAttribs(\%keyhash, \@attrs);
+    my %rsp = $row ? map { $_ => [$row->{$_}] } keys %$row : ();
     $cb->(\%rsp);
     return;
+}
+
+=head3 unknownTableColumns
+
+Take a table schema hash reference followed by a list of column names.
+Return the names absent from the schema in input order.
+
+=cut
+
+sub unknownTableColumns
+{
+    my ($schema, @columns) = @_;
+    my %known = map { $_ => 1 } @{ $schema->{cols} };
+    return grep { !$known{$_} } @columns;
 }
 
 # setAttribs

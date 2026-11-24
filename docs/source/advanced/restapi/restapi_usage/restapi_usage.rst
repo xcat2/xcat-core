@@ -94,6 +94,15 @@ xCAT REST API supports several common parameters in the resource URI to enable s
        }
      }
 
+  With curl, use ``--globoff`` when the node range contains brackets so xCAT
+  receives the whole range in one request. Quoting the URL alone still lets curl
+  expand the range into separate requests. Each request is grouped independently. ::
+
+    curl --globoff -H "X-Auth-Token: $TOKEN" \
+        'https://<xCAT MN>/xcatws/nodes/node[1-3]/power?xcoll=1'
+
+  You can also send the brackets as ``%5B`` and ``%5D``.
+
 ``Note:`` All the above parameters can be used together like following: ::
 
     https://<xCAT MN>/xcatws/nodes?pretty=1&debug=1

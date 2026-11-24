@@ -1208,7 +1208,7 @@ my %URIdef = (
         table_rows => {
             desc => "[URI:/tables/{tablelist}/rows/{keys}] - The non-node table rows resource",
             desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.",
-            desc2 => "{keys} should be the name=value pairs which are used to search table. e.g. {keys} should be [net=192.168.1.0,mask=255.255.255.0] for networks table query since the net and mask are the keys of networks table.",
+            desc2 => "Use comma-separated column=value pairs to filter a table, for example /tables/networks/rows/mask=255.255.255.0. GET returns every row matching the filters.",
             matcher => '^/tables/[^/]+/rows/[^/]+$',
             GET     => {
                 desc => "Get attributes for rows from non-node tables.",
@@ -2776,6 +2776,27 @@ sub bmclisthdl {
 
 }
 
+=head3 tableRowFilters
+
+Parse a non-node table filter from a URI segment containing comma-separated
+C<column=value> pairs. Return a hash reference mapping each unique column
+to its filter value. Send an HTTP 400 response for a malformed filter.
+
+=cut
+
+sub tableRowFilters {
+    my ($path) = @_;
+    my %filters;
+    foreach my $pair (split(/,/, $path, -1)) {
+        my ($key, $value) = split(/\s*=\s*/, $pair, 2);
+        if (!defined($value) || $key !~ /\A[A-Za-z_][A-Za-z0-9_]*\z/ || exists($filters{$key})) {
+            error('Table filters must be comma-separated column=value pairs with unique column names.', $STATUS_BAD_REQUEST);
+        }
+        $filters{$key} = $value;
+    }
+    return \%filters;
+}
+
 # get attrs of tables for keys
 sub tablerowhdl {
     my $params = shift;
@@ -2838,31 +2859,28 @@ sub tablerowhdl {
         }
     }
 
-    # for 1 table, get just one row based on the keys given
+    # For one table, get every row matching the filters.
     else {
         if (scalar(@tables) > 1) { error('currently you can only specify keys for a single table.', $STATUS_BAD_REQUEST); }
-        $request->{command} = 'getAttribs';
+        $request->{command}   = 'getAttribs';
+        $request->{rowformat} = 'rows';
 
-        # For getAttribs, the rest of the request strucutre needs to look like this:
+        # The REST getAttribs request uses this payload.
+        # With no rowformat, getAttribs returns a flat single-row response for XML clients.
         #   {
-        #       table => networks,
+        #       table => 'networks',
+        #       rowformat => 'rows',
         #       keys => {
-        #           net => 11.35.0.0,
-        #           mask => 255.255.0.0
-        #       }
+        #           net  => '11.35.0.0',
+        #           mask => '255.255.0.0'
+        #       },
         #       attr => [
-        #           netname,
-        #           dhcpserver
+        #           'netname',
+        #           'dhcpserver'
         #       ]
-        #   },
+        #   }
         $request->{table} = $tables[0];
-        if (defined($urilayers[3])) {
-            my @keyvals = split(/,/, $urilayers[3]);
-            foreach my $kv (@keyvals) {
-                my ($key, $value) = split(/\s*=\s*/, $kv, 2);
-                $request->{keys}->{$key} = $value;
-            }
-        }
+        $request->{keys} = tableRowFilters($urilayers[3]);
         foreach my $a (@attrs) { push @{ $request->{attr} }, $a; }
     }
 
@@ -2872,15 +2890,15 @@ sub tablerowhdl {
     # out of the node hash and make it the key
     my $responses = sendRequest($req, { SuppressEmpty => undef, ForceArray => 0, KeyAttr => [] });
 
-    if (@$responses[0]->{error}) {
+    if ($request->{command} eq 'getTablesAllRowAttribs' && $responses->[0]->{error}) {
         # Error returned, most likely invalid table, substitute a better error msg
-        @$responses[0]->{error} = "No such table: @tables";
+        $responses->[0]->{error} = "No such table: @tables";
     }
     # Check if there is any real data in response
     # One key ('xcatdsource' => '<node>') is always returned.
     # If no other keys in response - no matches on key or attribute were returned from xcatd
-    if (keys (%{@$responses[0]}) <= 1) {
-        @$responses[0]->{error} = "No table rows matched specified keys or attributes";
+    if (!$responses->[0]->{error} && keys(%{ $responses->[0] }) <= 1) {
+        $responses->[0]->{error} = "No table rows matched specified keys or attributes";
     }
     return $responses;
 }
@@ -2899,7 +2917,7 @@ sub tableout {
     # We are producing json that is a hash of table name keys that each have an array of node objects.
     foreach my $d (@$data) {
         my $table = $d->{table};
-        if (!defined($table)) {    # special case for the getAttribs cmd
+        if (!defined($table)) {    # flat getAttribs response from an older daemon
             $json->{ $request->{table} }->[0] = $d;
             last;
         }
@@ -2916,7 +2934,12 @@ sub tableout {
 
             #debug(Dumper($d)); debug (Dumper($jsonnode));
             if (ref($node) eq 'HASH') { $node = [$node]; } # if a single node, make it a 1 element array of nodes
-            foreach my $n (@$node) { push @$jsonnodes, $n; }
+            foreach my $n (@$node) {
+                if ($request->{command} eq 'getAttribs' && defined($d->{xcatdsource})) {
+                    $n->{xcatdsource} = $d->{xcatdsource};
+                }
+                push @$jsonnodes, $n;
+            }
         }
     }
     addPageContent($JSON->encode($json));
@@ -3074,11 +3097,7 @@ sub tablerowdelhdl {
     my $table = {};    # will hold the name and attr/vals
     $request->{table}->[0] = $table; #todo: the xcat delEntries cmd supports multiple tables in 1 request. We could support this if the attr names were table.attr
     $table->{name} = $urilayers[1];
-    my @attrvals = split(/,/, $urilayers[3]);
-    foreach my $av (@attrvals) {
-        my ($attr, $value) = split(/\s*=\s*/, $av, 2);
-        $table->{attr}->{$attr} = $value;
-    }
+    $table->{attr} = tableRowFilters($urilayers[3]);
 
     my $req = genRequest();
 

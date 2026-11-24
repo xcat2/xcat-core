@@ -2162,7 +2162,7 @@ Get all rows from networks table. ::
 
 Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, policy, etc.
 
-{keys} should be the name=value pairs which are used to search table. e.g. {keys} should be [net=192.168.1.0,mask=255.255.255.0] for networks table query since the net and mask are the keys of networks table.
+Use comma-separated column=value pairs to filter a table, for example /tables/networks/rows/mask=255.255.255.0. GET returns every row matching the filters.
 
 GET - Get attributes for rows from non-node tables.
 ```````````````````````````````````````````````````
