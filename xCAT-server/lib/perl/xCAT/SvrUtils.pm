@@ -2933,14 +2933,13 @@ sub _read_published_file {
 # A rename publishes the file, so no reader sees it partial.
 sub _write_published_file {
     my ($path, $content) = @_;
-    my $temp = "$path.$$";
-    my $written;
-    if (open(my $file, '>', $temp)) {
-        $written = print($file $content) && close($file);
-    }
+    my $file = eval { File::Temp->new(
+        TEMPLATE => '.' . basename($path) . '.XXXXXXXX', DIR => dirname($path)) };
+    return "Cannot write $path: $!" unless $file;
+    my $temp = $file->filename;
+    my $written = print($file $content) && close($file);
     unless ($written && chmod(0644, $temp) && rename($temp, $path)) {
         my $error = $!;
-        unlink($temp);
         return "Cannot write $path: $error";
     }
     return;
