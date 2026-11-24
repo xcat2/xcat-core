@@ -5,12 +5,12 @@
 # On 26.04 the initramfs then fetches no root: measured on xcat32-cn, zero DHCP from the initrd,
 # zero httpd requests for rootimg.cpio.gz, and dracut in emergency mode 3.3 seconds in.
 
-load 'helpers/shell_source'
+load 'helpers/dracut_module'
 
 setup()
 {
-    INSTALL="$(require_repo_file 'xCAT-server/share/xcat/netboot/ubuntu/dracut/install.netboot')"
-    MOD="$(dirname "$INSTALL")"
+    MOD="${BATS_TEST_TMPDIR}/module"
+    stage_dracut_module ubuntu/dracut "$MOD"
     LOG="${BATS_TEST_TMPDIR}/installed"
     : >"$LOG"
 }

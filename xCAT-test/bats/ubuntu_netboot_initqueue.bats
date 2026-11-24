@@ -5,12 +5,12 @@
 #   - the boot NIC gets a DHCPv4 lease, and
 #   - the initqueue has a finished condition, or it ends before it runs the settled hooks.
 
-load 'helpers/shell_source'
+load 'helpers/dracut_module'
 
 setup()
 {
-    INSTALL="$(require_repo_file 'xCAT-server/share/xcat/netboot/ubuntu/dracut/install.netboot')"
-    MOD="$(dirname "$INSTALL")"
+    MOD="${BATS_TEST_TMPDIR}/module"
+    stage_dracut_module ubuntu/dracut "$MOD"
     LOG="${BATS_TEST_TMPDIR}/installed"
     : >"$LOG"
     HOOKS="${BATS_TEST_TMPDIR}/hooks"
