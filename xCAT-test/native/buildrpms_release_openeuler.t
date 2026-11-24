@@ -1,8 +1,12 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use Cwd qw(abs_path);
+use Archive::Tar ();
+use Errno qw(EISDIR);
 use File::Copy qw(copy);
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use FindBin;
 use lib "$FindBin::Bin/../lib";
@@ -15,6 +19,8 @@ plan skip_all => 'requires unprivileged Linux RPM tooling'
 
 plan skip_all => 'requires user and mount namespaces'
     if system('unshare', '--user', '--map-root-user', '--mount', '/bin/true');
+my $python = abs_path('/usr/bin/python3');
+BAIL_OUT('release package tests require an executable Python 3') unless defined($python) && -x $python;
 my $wrapper = "$FindBin::Bin/fixtures/buildrpms-namespace.sh";
 
 my $root = tempdir(CLEANUP => !$ENV{XCAT_RELEASE_TEST_KEEP});
@@ -34,17 +40,28 @@ my @cases = (
     ['rocky+epel-9-ppc64le', undef],
 );
 
+my $first_archive;
 for my $case (@cases) {
     my ($target, $subdir, $default) = @$case;
     my $result = run_builder($target, $subdir, $default);
     is($result->{status}, 0, "$target full builder completes") or diag($result->{output});
     next if $result->{status};
     my $fixture = $result->{fixture};
-    my $archive = "$fixture/home/rpmbuild/SOURCES/xCAT-release-2.19.0.tar.gz";
+    my $archive = "$fixture/consumed-source.tar.gz";
     my $rpm = "$fixture/dist/$target/rpms/xCAT-release-2.19.0-releasecontract.noarch.rpm";
     ok(-f $archive, "$target stages a source archive");
     ok(-f $rpm, "$target emits a real binary RPM");
     next unless -f $archive && -f $rpm;
+    $first_archive //= read_binary($archive);
+    if (defined $subdir) {
+        my $tar = Archive::Tar->new($archive);
+        my @names = $tar->list_files;
+        is_deeply(\@names, [sort @names], "$target source archive has sorted members");
+        is(scalar(grep { $_->uid != 0 || $_->gid != 0 || length($_->uname) || length($_->gname)
+            || $_->mtime != 1756000000 } $tar->get_files),
+            0, "$target source metadata is normalized");
+        is(read_file("$fixture/consumed-source.mode"), "0644\n", "$target source archive is readable");
+    }
     make_path("$fixture/staged", "$fixture/payload");
     my ($tar_rc, $tar_output) = run($fixture, 'tar', '-xzf', $archive, '-C', "$fixture/staged");
     is($tar_rc, 0, "$target source archive extracts") or diag($tar_output);
@@ -84,19 +101,28 @@ for my $case (@cases) {
     is(read_file("$fixture/xCAT-release/$_"), $original{$_}, "$target leaves input $_ unchanged") for @files;
 }
 
-for my $failure (qw(missing-core duplicate-dep copy tar)) {
+my $repeated = run_builder('openeuler-20.03sp4-x86_64', 'openeuler20.03sp4/x86_64');
+is($repeated->{status}, 0, 'repeated release build completes') or diag($repeated->{output});
+is(read_file("$repeated->{fixture}/consumed-source.tar.gz"), $first_archive,
+    'repeated release builds consume identical archive bytes');
+
+for my $failure (qw(missing-core duplicate-dep copy tar rename)) {
     my $result = run_builder('openeuler-24.03sp3-x86_64', 'openeuler24.03sp3/x86_64', undef, $failure);
     isnt($result->{status}, 0, "$failure stops the native builder");
     like($result->{output}, qr/Error staging xCAT-release sources/,
         'the copy fault reaches production source staging') if $failure eq 'copy';
+    if ($failure eq 'rename') {
+        my $reason = do { local $! = EISDIR; "$!" };
+        like($result->{output}, qr/xCAT-release-2\.19\.0\.tar\.gz.*\Q$reason\E/s,
+            'the release caller reports the failed destination and reason');
+    }
     my $fixture = $result->{fixture};
-    is(read_file("$fixture/home/rpmbuild/SOURCES/xCAT-release-2.19.0.tar.gz"), 'prior archive',
-        "$failure preserves the preceding source archive");
+    ok(!-e "$fixture/consumed-source.tar.gz", "$failure does not pass an incomplete archive to the RPM builder");
     is(read_file("$fixture/mock.commands"), '', "$failure stops before mock initialization or SRPM creation");
     ok(!-e "$fixture/dist/openeuler-24.03sp3-x86_64/rpms/xCAT-release-latest.noarch.rpm",
         "$failure does not publish a bootstrap alias");
-    is_deeply([glob("$fixture/home/rpmbuild/SOURCES/.xCAT-release-*")], [],
-        "$failure removes an incomplete temporary archive");
+    is_deeply([glob("$fixture/dist/sources/SOURCES.*")], [],
+        "$failure removes the private package sources directory");
     is_deeply([glob("$fixture/tmp/xcat-release-source.*")], [], "$failure cleans the staged source copy");
 }
 my $invalid = run_builder('openeuler-24.03-ppc64', 'invalid');
@@ -115,24 +141,25 @@ done_testing();
 sub run_builder {
     my ($target, $subdir, $default, $failure) = @_;
     my $fixture = tempdir(DIR => $root, CLEANUP => !$ENV{XCAT_RELEASE_TEST_KEEP});
-    make_path(map {"$fixture/$_"} qw(build-utils/lib/XCAT bin mock locks tmp xCAT-release home/rpmbuild/SOURCES));
+    make_path(map {"$fixture/$_"} qw(build-utils/lib/XCAT bin mock locks tmp xCAT-release home));
     copy($builder, "$fixture/buildrpms.pl") or die $!;
     copy(repo_path('build-utils/lib/XCAT/BuildUtils.pm'), "$fixture/build-utils/lib/XCAT/BuildUtils.pm") or die $!;
     copy(repo_path('build-utils/lib/XCAT/NFSLock.pm'), "$fixture/build-utils/lib/XCAT/NFSLock.pm") or die $!;
     copy($spec, "$fixture/xCAT-release/xCAT-release.spec") or die $!;
-    write_file("$fixture/xCAT-release/$_", $original{$_}) for @files;
-    write_file("$fixture/Version", "2.19.0\n");
-    write_file("$fixture/Gitepoch", "1756000000\n");
-    write_file("$fixture/Gitinfo", ('a' x 40) . "\n");
-    write_file("$fixture/os-release", $default
+    symlink($python, "$fixture/bin/python3") or die $!;
+    write_binary("$fixture/xCAT-release/$_", $original{$_}) for @files;
+    write_binary("$fixture/Version", "2.19.0\n");
+    write_binary("$fixture/Gitepoch", "1756000000\n");
+    write_binary("$fixture/Gitinfo", ('a' x 40) . "\n");
+    write_binary("$fixture/os-release", $default
         ? "ID=openEuler\nVERSION=\"24.03 (LTS-SP3)\"\nVERSION_ID=24.03\n"
         : "ID=rocky\nVERSION=9.6\nVERSION_ID=9.6\n");
-    write_file("$fixture/mock/$target.cfg", "config_opts['root'] = '$target'\n");
-    write_file("$fixture/bin/createrepo_c", "#!/bin/sh\nexit 0\n");
-    write_file("$fixture/bin/rpmsign", "#!/bin/sh\nexit 0\n");
-    write_file("$fixture/bin/gpg", "#!/bin/sh\nexit 0\n");
-    write_file("$fixture/bin/cp", "#!/bin/sh\n[ \"\$XCAT_RELEASE_TEST_FAILURE\" != cp ] || exit 41\nexec /usr/bin/cp \"\$@\"\n");
-    write_file("$fixture/bin/tar", <<'SH');
+    write_binary("$fixture/mock/$target.cfg", "config_opts['root'] = '$target'\n");
+    write_binary("$fixture/bin/createrepo_c", "#!/bin/sh\nexit 0\n");
+    write_binary("$fixture/bin/rpmsign", "#!/bin/sh\nexit 0\n");
+    write_binary("$fixture/bin/gpg", "#!/bin/sh\nexit 0\n");
+    write_binary("$fixture/bin/cp", "#!/bin/sh\n[ \"\$XCAT_RELEASE_TEST_FAILURE\" != cp ] || exit 41\nexec /usr/bin/cp \"\$@\"\n");
+    write_binary("$fixture/bin/tar", <<'SH');
 #!/bin/sh
 if [ "$XCAT_RELEASE_TEST_FAILURE" = tar ]; then
     while [ "$#" -gt 0 ]; do
@@ -143,15 +170,26 @@ if [ "$XCAT_RELEASE_TEST_FAILURE" = tar ]; then
     done
     exit 42
 fi
+if [ "$XCAT_RELEASE_TEST_FAILURE" = rename ]; then
+    /usr/bin/tar "$@" || exit
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = -cf ]; then
+            shift
+            mkdir "${1%/*}/xCAT-release-2.19.0.tar.gz"
+            exit
+        fi
+        shift
+    done
+    exit 42
+fi
 exec /usr/bin/tar "$@"
 SH
-    write_file("$fixture/bin/mock", mock_command());
+    write_binary("$fixture/bin/mock", mock_command());
     chmod 0755, map {"$fixture/bin/$_"} qw(mock createrepo_c rpmsign gpg cp tar);
     if ($failure) {
-        write_file("$fixture/home/rpmbuild/SOURCES/xCAT-release-2.19.0.tar.gz", 'prior archive');
         unlink "$fixture/xCAT-release/xcat-core.repo" if $failure eq 'missing-core';
         unlink "$fixture/xCAT-release/xcat-dep-common.repo" if $failure eq 'missing-common';
-        write_file("$fixture/xCAT-release/xcat-dep.repo", $original{'xcat-dep.repo'} .
+        write_binary("$fixture/xCAT-release/xcat-dep.repo", $original{'xcat-dep.repo'} .
             "baseurl=https://xcat.org/files/xcat/repos/yum/latest/xcat-dep/rh\$releasever/\$basearch\n")
             if $failure eq 'duplicate-dep';
     }
@@ -162,7 +200,7 @@ SH
     my ($status, $output) = run($fixture, 'unshare', '--user', '--map-root-user', '--mount', 'bash', $wrapper, $^X, 'buildrpms.pl', '--package', 'xCAT-release', @target,
         (defined($subdir) ? '--gpg-sign' : ()),
         '--release', 'releasecontract', '--mock-uniqueext', 'release-contract', '--nproc', '1');
-    write_file("$fixture/builder-output", $output);
+    write_binary("$fixture/builder-output", $output);
     return {fixture => $fixture, status => $status, output => $output};
 }
 
@@ -173,6 +211,7 @@ use strict;
 use warnings;
 use File::Copy qw(copy);
 use File::Path qw(make_path);
+use File::Slurper qw(write_text);
 my $fixture = $ENV{XCAT_RELEASE_TEST_FIXTURE};
 open(my $log, '>>', "$fixture/mock.commands") or die $!;
 print {$log} join(' ', @ARGV), "\n";
@@ -193,6 +232,9 @@ push @command, ($args{'-r'} // '') =~ m{(?:^|[-/])openeuler-}
     ? ('--define', 'openEuler 2') : ('--undefine', 'openEuler');
 my @built;
 if ($args{'--buildsrpm'}) {
+    my $archive = "$args{'--sources'}/xCAT-release-2.19.0.tar.gz";
+    write_text("$fixture/consumed-source.mode", sprintf("%04o\n", (stat($archive))[2] & 07777));
+    copy($archive, "$fixture/consumed-source.tar.gz") or die $!;
     push @command, '--define', "_sourcedir $args{'--sources'}", '-bs', $args{'--spec'};
     @built = ("$top/SRPMS/*.src.rpm");
 } elsif ($args{'--rebuild'}) {
@@ -220,15 +262,8 @@ sub run {
     my $status = ($? & 127) ? 128 + ($? & 127) : $? >> 8;
     return ($status, read_file($log));
 }
-sub write_file {
-    my ($path, $contents) = @_;
-    open(my $fh, '>', $path) or die "$path: $!";
-    print {$fh} $contents or die $!;
-    close($fh) or die $!;
-}
 sub read_file {
     my ($path) = @_;
     return '' unless -f $path;
-    open(my $fh, '<', $path) or die "$path: $!";
-    return do {local $/; scalar <$fh>} || '';
+    return read_binary($path) || '';
 }

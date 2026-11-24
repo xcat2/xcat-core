@@ -23,6 +23,7 @@ use Errno qw(ENOENT);
 use Fcntl qw(:mode O_RDONLY O_NOFOLLOW);
 use File::Basename ();
 use File::Path ();
+use File::Temp ();
 use IO::Handle ();
 use Socket ();
 
@@ -132,14 +133,14 @@ sub _read_text {
 
 sub _write_atomic {
     my ($path, $content, $mode) = @_;
-    my $temp = File::Basename::dirname($path) . '/.' . File::Basename::basename($path) . ".tmp$$";
-    unlink($temp);
-    sysopen(my $fh, $temp, Fcntl::O_WRONLY() | Fcntl::O_CREAT() | Fcntl::O_EXCL(), 0600)
-      or return "Cannot create $temp: $!";
+    my $fh = eval { File::Temp->new(
+        TEMPLATE => '.' . File::Basename::basename($path) . '.tmpXXXXXXXX',
+        DIR => File::Basename::dirname($path)) };
+    return "Cannot create $path: $!" unless $fh;
+    my $temp = $fh->filename;
     my $fail = sub {
         my ($message) = @_;
         close($fh);
-        unlink($temp);
         return $message;
     };
     my $written = syswrite($fh, $content);
@@ -147,12 +148,10 @@ sub _write_atomic {
     return $fail->("Cannot flush $temp: $!") unless $fh->sync;
     unless (close($fh)) {
         my $message = "Cannot close $temp: $!";
-        unlink($temp);
         return $message;
     }
     unless (chmod($mode, $temp) && rename($temp, $path)) {
         my $message = "Cannot publish $path: $!";
-        unlink($temp);
         return $message;
     }
     return undef;
@@ -501,12 +500,10 @@ sub check_listener_runtime {
     }
 
     # The file test operators ignore read-only mounts, such as those of the service sandbox.
-    my $probe = "$config->{log_dir}/.write-check.$$";
-    unlink($probe);
-    sysopen(my $fh, $probe, Fcntl::O_WRONLY() | Fcntl::O_CREAT() | Fcntl::O_EXCL(), 0600)
-      or return (undef, "Cannot write to $config->{log_dir}: $!");
+    my $fh = eval { File::Temp->new(
+        TEMPLATE => '.write-check.XXXXXXXX', DIR => $config->{log_dir}) };
+    return (undef, "Cannot write to $config->{log_dir}: $!") unless $fh;
     close($fh);
-    unlink($probe);
     return ($fingerprint, undef);
 }
 

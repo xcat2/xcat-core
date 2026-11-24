@@ -29,7 +29,7 @@ use feature 'say';
 our @EXPORT_OK = qw(
     source_date_epoch snap_release deb_version
     stage_probe_helpers XCAT_PROBE_HELPERS stage_genesis_base_sources
-    stage_xcat_probe_sources stage_xcatsn_templates
+    stage_xcat_probe_sources stage_xcatsn_templates create_source_archive
     deb_package_arches dist_arches default_dists
     orig_tarball_name upstream_version resolve_dest
     pin_control_version rewrite_changelog_header
@@ -445,6 +445,14 @@ sub stage_genesis_base_sources {
     return $tarball;
 }
 
+sub create_source_archive {
+    my ($staging_parent, $member, $archive_path, $epoch, $tarball) = @_;
+    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$epoch" )
+            . qq(--use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" $member),
+        "Error creating $tarball");
+    return;
+}
+
 # Stage the xCAT-probe package sources, with the xCAT helper modules xcatprobe loads at
 # runtime copied in beside them. The archive is built under a temporary name in $sources_dir
 # and renamed into place, so a mock build never reads a partial file.
@@ -479,9 +487,7 @@ sub stage_xcat_probe_sources {
     my ($archive_fh, $archive_path) =
         tempfile(".xCAT-probe-$version.XXXXXX", DIR => $sources_dir, UNLINK => 1);
     close $archive_fh;
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$epoch" )
-            . qq(--use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-probe),
-        "Error creating $tarball");
+    create_source_archive($staging_parent, 'xCAT-probe', $archive_path, $epoch, $tarball);
     chmod 0644, $archive_path;
     rename $archive_path, $tarball
         or die "Unable to publish $tarball: $!\n";

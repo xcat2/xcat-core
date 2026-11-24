@@ -129,6 +129,16 @@ write_binary("$tmp/server.fingerprint", "$fp\n");
 is($error, undef, 'the runtime check passes');
 is($fingerprint, $fp, 'the runtime check returns the fingerprint of the server key');
 is(scalar(() = glob("$tmp/log/.write-check*")), 0, 'the write check leaves no file in log_dir');
+{
+    my $old_probe = "$tmp/log/.write-check.$$";
+    write_binary($old_probe, 'another process owns this file');
+    is((runtime($checked))[1], undef, 'an occupied old probe name does not block the runtime check');
+    ok(-f $old_probe, 'the runtime check keeps the unrelated probe file');
+    is(-f $old_probe ? scalar(read_binary($old_probe)) : undef, 'another process owns this file',
+        'the runtime check keeps unrelated probe bytes');
+    is_deeply([glob("$tmp/log/.write-check*")], [$old_probe], 'the runtime check removes only its own probe');
+    unlink($old_probe) if -e $old_probe;
+}
 (undef, $error) = runtime($checked, sub { (undef, "$tmp/uftp_keymgt failed for $tmp/server.key") });
 is($error, "$tmp/uftp_keymgt failed for $tmp/server.key", 'a key that uftp_keymgt cannot read is refused');
 chmod(0640, "$tmp/server.key");

@@ -56,7 +56,7 @@ use FindBin qw($Bin);
 use lib "$Bin/build-utils/lib";
 use XCAT::BuildUtils qw(git_revision source_date_epoch sh sh_or_die usage buildinfo_text
     build_sources_base prepare_build_sources_dir remove_build_sources_dir share_build_sources_dir
-    sweep_build_sources_dirs stage_xcat_probe_sources stage_xcatsn_templates
+    sweep_build_sources_dirs stage_xcat_probe_sources stage_xcatsn_templates create_source_archive
                         stage_genesis_base_sources
                         write_script read_line targetarch_from_target
                         openeuler_build_target openeuler_repo_subdir
@@ -367,8 +367,7 @@ sub prepare_xcat_release_source_tar {
         ".xCAT-release-$VERSION.XXXXXX", DIR => $SOURCES, UNLINK => 1,
     );
     close $archive_fh;
-    sh_or_die(qq(tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="\@$SOURCE_DATE_EPOCH" --use-compress-program="gzip -n" -cf "$archive_path" -C "$staging_parent" xCAT-release),
-        "Error creating $source_tarball");
+    create_source_archive($staging_parent, 'xCAT-release', $archive_path, $SOURCE_DATE_EPOCH, $source_tarball);
     chmod 0644, $archive_path;
     rename $archive_path, $source_tarball;
 }
