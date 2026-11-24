@@ -72,6 +72,11 @@ jobs:
       - name: Exercise the install script library
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/networkmanager_autoconnect.t
+      - name: Check the OpenSSH host-based authentication policy
+        if: ${{ !cancelled() }}
+        run: |
+          sudo install -d -m 0755 /run/sshd
+          prove -v xCAT-test/native/mkhostbased_auth.t
       - name: Exercise the DHCP server detector
         if: ${{ !cancelled() }}
         run: prove xCAT-test/native/detect_dhcpd_tcpdump_lookup.t

@@ -167,6 +167,7 @@ ln -sf xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rscan
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makedhcp
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makehosts
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makeknownhosts
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/mkhostbased-auth
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/nodeset
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/setupiscsidev
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makeconservercf
