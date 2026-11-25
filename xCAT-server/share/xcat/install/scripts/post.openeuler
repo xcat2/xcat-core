@@ -2,6 +2,7 @@
 # command line carries crashkernel= or, on POWER, fadump=.
 if [ -e /usr/lib/systemd/system/kdump.service ]; then
     mkdir -p /etc/systemd/system/kdump.service.d
-    printf '[Unit]\nConditionKernelCommandLine=|crashkernel\nConditionKernelCommandLine=|fadump\n' \
-        >/etc/systemd/system/kdump.service.d/xcat-dump-memory.conf
+    cat >/etc/systemd/system/kdump.service.d/xcat-dump-memory.conf <<'XCAT_DUMP_MEMORY'
+#INCLUDE:#ENV:XCATROOT#/share/xcat/netboot/imgutils/xcat-dump-memory.conf#
+XCAT_DUMP_MEMORY
 fi
