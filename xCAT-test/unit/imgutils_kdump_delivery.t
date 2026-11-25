@@ -12,8 +12,9 @@ use XCAT::Test::File qw(repo_path);
 use XCAT::Test::Process qw(run_command);
 
 my $root = tempdir(CLEANUP => 1);
+my $utilities = shift // repo_path('xCAT-server/share/xcat/netboot/imgutils');
 my ($copy_status, $copy_output) = run_command('cp', '-R',
-    repo_path('xCAT-server/share/xcat/netboot/imgutils'), "$root/imgutils");
+    $utilities, "$root/imgutils");
 is($copy_status, 0, 'copies the standalone image utility directory') or BAIL_OUT($copy_output);
 my $asset = "$root/imgutils/xcat-dump-memory.conf";
 my $policy = "[Unit]\nConditionKernelCommandLine=|crashkernel\nConditionKernelCommandLine=|fadump\n";
