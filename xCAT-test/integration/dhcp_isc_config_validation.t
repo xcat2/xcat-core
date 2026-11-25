@@ -82,6 +82,7 @@ for my $subnet_case (
     my ($family, $subnet, $reverse) = @{$subnet_case};
     for my $server_case (
         [ '2001:db8::53', 'primary6' ],
+        [ '::ffff:192.0.2.53', 'primary6' ],
         [ '192.0.2.53', 'primary' ],
     ) {
         my ($server, $keyword) = @{$server_case};
