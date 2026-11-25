@@ -1,0 +1,2 @@
+mkdir -p /mnt/sysimage/var/log/xcat/
+cat /tmp/pre-install.log >>/mnt/sysimage/var/log/xcat/xcat.log
