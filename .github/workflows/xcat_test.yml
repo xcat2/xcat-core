@@ -25,6 +25,9 @@ jobs:
       - name: Test FIPS package artifacts
         if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/fips_build_guard.t xCAT-test/native/fips_package_payload.t
+      - name: Test netboot policy build guards
+        if: ${{ !cancelled() }}
+        run: prove -v xCAT-test/native/netboot_policy_build_guard.t
 
       - name: Install image test dependencies
         if: ${{ !cancelled() }}
