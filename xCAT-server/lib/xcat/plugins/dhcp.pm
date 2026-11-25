@@ -6139,8 +6139,6 @@ sub isc_ddns_zone_statements
     my $forward = $args{ddnsdomain} ? "$args{ddnsdomain}." : $args{domain};
     return () unless $forward;
 
-    # "primary <server>; key <name>;" is one statement in two halves. A zone
-    # written without it names a zone dhcpd cannot reach.
     my @key_line;
     if ($args{server} && $args{key_name}) {
         my $primary = xCAT::NetworkUtils->isIpv6addr($args{server}) ? 'primary6' : 'primary';
