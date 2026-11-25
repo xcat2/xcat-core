@@ -14,21 +14,6 @@ sub succeeds {
     is($result[0], 0, $label) or diag "$result[1]$result[2]";
 }
 
-for my $live (0, 1) {
-    for my $event (qw(upgrade remove purge abort-upgrade)) {
-      for my $installed (0, 1) {
-        my $root = XCAT::Test::Lifecycle->new;
-        $root->{live} = $live;
-        $root->record_command('/opt/xcat/sbin/restartxcatd') if $installed;
-        $root->write('/calls', '');
-        succeeds("Debian perl-xCAT $event (proc=$live)", $root->run('/bin/sh',
-            '/source/perl-xCAT/debian/postrm', $event, '2.20.0'));
-        is($root->read('/calls'), $live && $installed && $event eq 'upgrade' ? "restartxcatd <-r>\n" : '',
-            'only an upgrade with proc and an installed helper requests a fast reload');
-      }
-    }
-}
-
 for my $package (qw(xCAT-OpenStack xCAT-UI perl-xCAT)) {
     my $records = XCAT::Test::Lifecycle::checked('rpmspec', '-q', '--qf', "%{NAME}\x1e%{POSTIN}\x1e",
         '--define', 'version 2.20.0', '--define', 'release 1', '--define', 'gitinfo test',

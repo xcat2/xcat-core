@@ -26,12 +26,30 @@ sub checked {
     return $out;
 }
 
+sub stage_deb_source {
+    my ($package, $source, $work) = @_;
+    checked('tar', '-cf', "$work/source.tar", '-C', $source, $package);
+    checked('tar', '-xpf', "$work/source.tar", '-C', $work);
+    my $live_root = "$package/debian/xcat-live-root-functions";
+    if (-l "$work/$live_root") {
+        unlink "$work/$live_root" or die "unlink $live_root: $!";
+        copy("$source/$live_root", "$work/$live_root") or die "copy $live_root: $!";
+    }
+    return;
+}
+
 sub build_deb {
     my ($package, $source) = @_;
     $source //= repo_path('.');
     my $work = tempdir(CLEANUP => 1);
-    checked('tar', '-cf', "$work/source.tar", '-C', $source, $package);
-    checked('tar', '-xpf', "$work/source.tar", '-C', $work);
+    stage_deb_source($package, $source, $work);
+    if ($package eq 'perl-xCAT') {
+        for my $name (qw(Version Gitinfo)) {
+            next unless -f "$source/$name";
+            copy("$source/$name", "$work/$name") or die "copy $name: $!";
+        }
+        write_binary("$work/Gitinfo", "lifecycle-test\n") unless -f "$work/Gitinfo";
+    }
     if ($package eq 'xCAT-genesis-scripts') {
         my $arch = checked('dpkg-architecture', '-qDEB_HOST_ARCH');
         chomp $arch;

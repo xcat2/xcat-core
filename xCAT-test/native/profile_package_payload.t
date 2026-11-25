@@ -74,7 +74,7 @@ if (!-f '/etc/debian_version') {
     check_assets($reduced, 'reduced RPM: ', glob "$share/netboot/rocky/*.riscv64.*");
 } else {
     my $fixture = tempdir(CLEANUP => 1);
-    XCAT::Test::Lifecycle::checked('cp', '-a', repo_path('xCAT-server'), "$fixture/xCAT-server");
+    XCAT::Test::Lifecycle::stage_deb_source('xCAT-server', repo_path('.'), $fixture);
     my $profiles = "$fixture/xCAT-server/share/xcat";
     XCAT::Test::Lifecycle::checked('chmod', '-R', 'g+w', "$profiles/install", "$profiles/netboot");
     my $data = 'install/rh/compute.rhels10.riscv64.pkglist';
