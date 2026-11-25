@@ -14,6 +14,7 @@ use Test::More;
 
 use imgutils;
 use XCAT::Test::File qw(repo_path);
+use XCAT::Test::Process qw(run_command);
 use XCAT::Test::Sandbox qw(sandbox_root sandbox_run);
 use XCAT::Test::Template qw(template_database set_row render_template);
 
@@ -90,6 +91,54 @@ for my $profile (qw(compute service)) {
             is((stat("$root/$dropin"))[2] & oct('0777'), oct('0640'),
                 'retains existing drop-in permissions') if defined $expected;
         }
+    };
+}
+
+my $delivered = "$database/delivered";
+my ($copy_rc, $copy_output) = run_command('cp', '-a', repo_path('xCAT-server'), $delivered);
+die "copy delivered templates: $copy_output" if $copy_rc;
+my $asset = "$delivered/share/xcat/netboot/imgutils/xcat-dump-memory.conf";
+my $asset_bytes = read_text($asset);
+for my $case (qw(missing unreadable trailing_newlines)) {
+    subtest "delivered kdump policy: $case" => sub {
+        local $ENV{XCATROOT} = $delivered;
+        if ($case eq 'missing') {
+            unlink($asset) or die $!;
+        } elsif ($case eq 'unreadable') {
+            chmod oct('0000'), $asset or die $!;
+        } else {
+            write_text($asset, $asset_bytes . "\n\n");
+        }
+        render_template($database, repo_path('xCAT-server/share/xcat/install/openeuler/compute.openeuler.tmpl'),
+            "$database/policy.ks", 'node', '', '/install/media', 'openeuler', undef, {xcatmaster => '192.0.2.1'});
+        my $root = post_root('kdump.service' => "[Service]\n");
+        make_path("$root/etc/systemd/system/kdump.service.d");
+        write_text("$root/$dropin", "previous policy\n");
+        chmod oct('0640'), "$root/$dropin" or die $!;
+        my $rendered = read_text("$database/policy.ks");
+        my $chroot_posts = 0;
+        while ($rendered =~ /^%post([^\n]*)\n(.*?)^%end/msg) {
+            my ($options, $body) = ($1, $2);
+            my ($interpreter) = $options =~ /--interpreter=(\S+)/;
+            write_text("$root/post.sh", $body);
+            my ($rc, $output) = sandbox_run($root, {read_only => {"$root/units" => '/usr/lib/systemd/system'}},
+                'timeout', '30', $interpreter // '/bin/sh', '/fixture/post.sh');
+            if ($options =~ /--nochroot/ || $case eq 'trailing_newlines') {
+                is($rc, 0, 'the valid installer stage completes') or diag($output);
+            } else {
+                ++$chroot_posts;
+                like($options, qr/--erroronfail/, 'anaconda treats the failed stage as fatal');
+                isnt($rc, 0, 'the unavailable policy fails the chroot stage');
+                like($output . read_text("$root/log/xcat/xcat.log"), qr/INCLUDEBAD:cannot open .*xcat-dump-memory\.conf/,
+                    'reports the missing policy include');
+            }
+        }
+        ok($chroot_posts, 'exercised a failing chroot stage') unless $case eq 'trailing_newlines';
+        is(read_text("$root/$dropin"), $case eq 'trailing_newlines' ? $asset_bytes . "\n\n" : "previous policy\n",
+            'valid policy bytes are exact; an unavailable policy leaves the old drop-in intact');
+        is((stat("$root/$dropin"))[2] & oct('0777'), oct('0640'), 'retains the drop-in permissions');
+        chmod oct('0644'), $asset or die $! if -e $asset;
+        write_text($asset, $asset_bytes);
     };
 }
 
