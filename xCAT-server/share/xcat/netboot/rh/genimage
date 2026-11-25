@@ -123,7 +123,11 @@ sub mount_chroot {
     }
 
     if (-d "/run") {
-        system("mkdir -p $rootimage_dir/run");
+        mkpath("$rootimage_dir/run", { error => \my $errors });
+        for my $error (@$errors) {
+            my ($path, $message) = %$error;
+            warn "Cannot create $path: $message\n";
+        }
         system("mount --bind /run $rootimage_dir/run");
     }
 }
