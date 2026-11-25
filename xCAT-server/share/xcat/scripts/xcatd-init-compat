@@ -30,19 +30,7 @@ uses_systemd()
     fi
 
     if [ "$detection_mode" = explicit ]; then
-        if [ -L "$compat_root/sbin/init" ]; then
-            init_target=$(readlink "$compat_root/sbin/init" 2>/dev/null || true)
-            case "$init_target" in
-                *systemd*) return 0 ;;
-                *) return 1 ;;
-            esac
-        fi
-
-        if [ -e "$compat_root/sbin/init" ]; then
-            return 1
-        fi
-
-        if xcat_systemd_os_release_status "$compat_root"; then
+        if xcat_explicit_init_status "$compat_root"; then
             return 0
         else
             os_release_status=$?
