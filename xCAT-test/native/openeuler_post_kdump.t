@@ -67,8 +67,14 @@ for my $profile (qw(compute service)) {
         ) {
             my ($units, $expected, $label) = @$case;
             my $root = post_root(%$units);
+            make_path("$root/etc/systemd/system/kdump.service.d");
+            write_text("$root/etc/systemd/system/kdump.service.d/site.conf", "[Service]\nTimeoutSec=600\n");
+            if (defined $expected) {
+                write_text("$root/$dropin", "old policy\n");
+                chmod oct('0640'), "$root/$dropin" or die $!;
+            }
             my $index = 0;
-            for my $post (@posts) {
+            for my $post (@posts, @posts) {
                 my ($interpreter) = $post->[0] =~ /--interpreter=(\S+)/;
                 write_text("$root/post.sh", $post->[1]);
                 my ($rc, $log) = sandbox_run($root, {read_only => {"$root/units" => '/usr/lib/systemd/system'}},
@@ -79,6 +85,10 @@ for my $profile (qw(compute service)) {
             ok(-e "$root/postscript-ran", 'runs the rendered sequence through the downloaded postscript');
             ok(!-e "$root/unexpected-command", 'external fixtures accept the requested operations');
             is(-f "$root/$dropin" ? read_text("$root/$dropin") : undef, $expected, $label);
+            is(read_text("$root/etc/systemd/system/kdump.service.d/site.conf"),
+                "[Service]\nTimeoutSec=600\n", 'retains the administrator drop-in');
+            is((stat("$root/$dropin"))[2] & oct('0777'), oct('0640'),
+                'retains existing drop-in permissions') if defined $expected;
         }
     };
 }
