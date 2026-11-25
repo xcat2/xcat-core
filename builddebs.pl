@@ -171,6 +171,17 @@ my $DEB_DATE   = strftime('%a, %d %b %Y %H:%M:%S +0000', gmtime($EPOCH));
 sub with_prepared_tree {
     my ($pkg, $arch, $body) = @_;
     my $dir = "$ROOT/$pkg";
+    my $live_root = "$dir/debian/xcat-live-root-functions";
+    my $live_root_backup = "$ROOT/.$pkg-live-root.build-link";
+    # Recover the source link before a later build can consume an interrupted copy.
+    if (-l $live_root_backup) {
+        rename($live_root_backup, $live_root)
+            or die "Cannot recover link $live_root: $!\n";
+    }
+    if ($pkg ne 'perl-xCAT' && -f $live_root && !-l $live_root &&
+        read_text($live_root) ne read_text("$ROOT/perl-xCAT/debian/xcat-live-root-functions")) {
+        die "Cannot build $pkg with a stale live-root helper; restore $live_root from source\n";
+    }
     my @restore;
 
     my @remove;
@@ -235,12 +246,31 @@ sub with_prepared_tree {
         write_text($control, pin_control_version(read_text($per_arch), $PKGVER));
     }
 
-    my $rc = eval { $body->($dir); 1 } ? 0 : 1;
+    my $rc = eval {
+        # Source packages cannot depend on another package's source directory.
+        if (-l $live_root) {
+            my $text = read_text($live_root);
+            die "Cannot overwrite $live_root_backup\n"
+                if -e $live_root_backup || -l $live_root_backup;
+            rename($live_root, $live_root_backup)
+                or die "Cannot save link $live_root: $!\n";
+            write_text($live_root, $text);
+        }
+        $body->($dir);
+        1;
+    } ? 0 : 1;
     my $err = $@;
 
+    my $restore_error;
+    if (-l $live_root_backup) {
+        rename($live_root_backup, $live_root)
+            or $restore_error = "Cannot restore link $live_root: $!\n";
+    }
     unlink @added, @remove;
     restore_file($_) for reverse @restore;
+    warn $restore_error if $restore_error && $rc;
     die $err if $rc;
+    die $restore_error if $restore_error;
     return;
 }
 

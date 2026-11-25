@@ -101,6 +101,12 @@ binary-arch:
 	    chmod 755 "$$scriptfile.tmp"; \
 	    mv "$$scriptfile.tmp" "$$scriptfile"; \
 	done
+	set -e; scriptfile=$(buildroot)/DEBIAN/prerm; \
+	    { head -n 1 "$$scriptfile"; \
+	      cat debian/xcat-live-root-functions; \
+	      tail -n +2 "$$scriptfile"; } > "$$scriptfile.tmp"; \
+	    chmod 755 "$$scriptfile.tmp"; \
+	    mv "$$scriptfile.tmp" "$$scriptfile"
 	dh_shlibdeps
 	dh_gencontrol -- -Vperl:Depends=perl
 	dh_md5sums

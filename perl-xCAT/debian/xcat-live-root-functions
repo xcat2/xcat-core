@@ -1,0 +1,5 @@
+xcat_is_live_root()
+{
+    [ -f /proc/cmdline ] &&
+        [ "$(stat -c '%d:%i' /)" = "$(stat -c '%d:%i' /proc/1/root/. 2>/dev/null)" ]
+}
