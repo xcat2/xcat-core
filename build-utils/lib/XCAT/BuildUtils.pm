@@ -50,6 +50,7 @@ our @EXPORT_OK = qw(
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
     fips_policy_artifacts fips_policy_plan sync_fips_policy
+    generated_policy_plan sync_generated_policy
     package_skip_reason
 );
 
@@ -1466,6 +1467,11 @@ sub fips_policy_artifacts {
         'xCAT/postscripts/xcatlib.sh');
 }
 
+sub _fips_policy_options {
+    return (label => 'FIPS', source => 'build-utils/fips-policy.sh',
+        command => 'build-utils/sync-fips-policy', artifacts => [fips_policy_artifacts()]);
+}
+
 #-------------------------------------------------------------------------------
 
 =head3 fips_policy_plan
@@ -1493,21 +1499,36 @@ sub fips_policy_artifacts {
 sub fips_policy_plan {
     my (%args) = @_;
     my $root = $args{root} // die "fips_policy_plan needs a root\n";
-    my $policy = read_binary("$root/build-utils/fips-policy.sh");
-    die "FIPS policy is empty\n" unless length $policy;
-    die "FIPS policy must end with a newline\n" unless $policy =~ /\n\z/;
-    my $begin = "# BEGIN generated FIPS policy: build-utils/sync-fips-policy --write\n";
-    my $end   = "# END generated FIPS policy\n";
+    return generated_policy_plan(root => $root, _fips_policy_options());
+}
+
+=head3 generated_policy_plan
+
+Read a canonical policy and plan replacements within marked artifact blocks.
+Accepts root, source, label, command and an array reference of artifact paths.
+All paths are relative to root. No files are written.
+
+=cut
+
+sub generated_policy_plan {
+    my (%args) = @_;
+    my $root = $args{root} // die "generated_policy_plan needs a root\n";
+    my ($label, $source, $command, $paths) = @args{qw(label source command artifacts)};
+    my $policy = read_binary("$root/$source");
+    die "$label policy is empty\n" unless length $policy;
+    die "$label policy must end with a newline\n" unless $policy =~ /\n\z/;
+    my $begin = "# BEGIN generated $label policy: $command --write\n";
+    my $end   = "# END generated $label policy\n";
     my $block = $begin . $policy . $end;
 
     my @artifacts;
-    for my $relative (fips_policy_artifacts()) {
+    for my $relative (@$paths) {
         my $path = "$root/$relative";
         die "$relative must be a regular file\n" unless -f $path && !-l $path;
         my $current = read_binary($path);
         my $rendered = $current;
         my $count = $rendered =~ s/\Q$begin\E.*?\Q$end\E/$block/sg;
-        die "$relative must contain one FIPS policy block\n"
+        die "$relative must contain one $label policy block\n"
             unless $count == 1
                 && (() = $current =~ /\Q$begin\E/g) == 1
                 && (() = $current =~ /\Q$end\E/g) == 1;
@@ -1553,21 +1574,33 @@ sub fips_policy_plan {
 #-------------------------------------------------------------------------------
 sub sync_fips_policy {
     my (%args) = @_;
+    return sync_generated_policy(%args, _fips_policy_options());
+}
+
+=head3 sync_generated_policy
+
+Check or regenerate marked policy blocks. Accepts generated_policy_plan arguments
+and mode (check or write). Returns mode, stale, written and messages.
+
+=cut
+
+sub sync_generated_policy {
+    my (%args) = @_;
     my $mode = $args{mode} // 'check';
-    die "FIPS policy mode must be check or write, not '$mode'\n"
+    my $label = $args{label};
+    die "$label policy mode must be check or write, not '$mode'\n"
         unless $mode eq 'check' || $mode eq 'write';
-    my $plan = fips_policy_plan(root => $args{root});
+    my $plan = generated_policy_plan(%args);
     my (@stale, @written, @messages);
     for my $artifact (grep { $_->{stale} } @{$plan->{artifacts}}) {
         push @stale, $artifact->{relative};
         if ($mode eq 'check') {
             push @messages, "$artifact->{relative} is out of date;"
-                . ' run build-utils/sync-fips-policy --write';
+                . " run $args{command} --write";
             next;
         }
-        # Rename over the library so a reader never sees a partial block, and
-        # carry the mode across: the Genesis copy is 0644 and xcatlib.sh 0755.
-        my ($fh, $temporary) = tempfile('.fips-policy-XXXXXX',
+        # Rename over the artifact so readers never see a partial block.
+        my ($fh, $temporary) = tempfile('.generated-policy-XXXXXX',
             DIR => dirname($artifact->{path}), UNLINK => 1);
         close $fh or die "close $temporary: $!\n";
         write_binary($temporary, $artifact->{rendered});
