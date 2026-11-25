@@ -38,6 +38,23 @@ for my $event (qw(remove upgrade)) {
     };
 }
 
+sub record_root_stat {
+    my ($root, $deny_pid1) = @_;
+    $root->write('/stat-calls', '');
+    $root->write('/deny-pid1', '') if $deny_pid1;
+    $root->write('/test-bin/stat', <<'SH', oct('0755'));
+#!/bin/sh
+case "$3" in
+    /|/proc/1/root/.) printf '%s\n' "$*" >> /stat-calls ;;
+esac
+if [ "$3" = /proc/1/root/. ] && [ -f /deny-pid1 ]; then
+    echo 'PID1 root is unavailable' >&2
+    exit 71
+fi
+exec /usr/bin/stat "$@"
+SH
+}
+
 for my $live (0, 1) {
     for my $event (qw(upgrade remove purge abort-upgrade)) {
       for my $installed (0, 1) {
@@ -45,20 +62,25 @@ for my $live (0, 1) {
         $root->{live} = $live;
         $root->record_command('/opt/xcat/sbin/restartxcatd') if $installed;
         $root->write('/calls', '');
+        record_root_stat($root, 0);
         succeeds("Debian perl-xCAT $event (proc=$live)",
             $root->deb_script($packages{'perl-xCAT'}, 'postrm', $event, '2.20.0'));
         is($root->read('/calls'), $live && $installed && $event eq 'upgrade' ? "restartxcatd <-r>\n" : '',
             'only an upgrade with proc and an installed helper requests a fast reload');
+        is($root->read('/stat-calls'), $live && $installed && $event eq 'upgrade'
+            ? "-c %d:%i /\n-c %d:%i /proc/1/root/.\n" : '',
+            'the upgrade and executable guards precede the proc and root probes');
       }
     }
 }
 
-for my $mode (qw(without-proc live proc-chroot systemd-chroot)) {
+for my $mode (qw(without-proc live proc-chroot systemd-chroot pid1-unavailable)) {
     subtest $mode => sub {
         my $root = XCAT::Test::Lifecycle->new;
         $root->{live} = $mode ne 'without-proc';
         $root->{chroot} = $mode =~ /chroot/ ? 1 : 0;
         my $active = $mode eq 'live';
+        record_root_stat($root, $mode eq 'pid1-unavailable');
         {
             local $root->{deb} = $packages{'xCAT-server'};
             succeeds('unpack the server payload', $root->run('dpkg-deb', '-x', '/package.deb', '/unpacked'));
@@ -120,8 +142,9 @@ SH
             is($root->read('/calls'), '', 'the policy control cannot reach the daemon');
             like($root->read('/policy-calls'), qr/xcatd.*start/, 'the native dispatcher consulted policy');
         }
-        succeeds('configure the service-node package',
-            $root->deb_script($packages{'xCATsn'}, 'postinst', 'configure'));
+        my @configure = $root->deb_script($packages{'xCATsn'}, 'postinst', 'configure');
+        succeeds('configure the service-node package', @configure);
+        unlike($configure[2], qr/PID1 root is unavailable/, 'PID1 stat errors stay suppressed');
         is($root->read('/calls'), $active
             ? "xcatd <-p> </var/run/xcatd.pid>\napache2 <reload>\n" : '',
             'only the live root starts xcatd and reloads Apache');
