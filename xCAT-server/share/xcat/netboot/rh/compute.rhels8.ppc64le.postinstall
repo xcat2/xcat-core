@@ -35,23 +35,31 @@ echo "co:2345:respawn:/sbin/agetty -L 38400 console" >> $installroot/etc/inittab
 #-- Disable SELinux in the rootimg
 #-- Redhat 7.3 will install selinux-policy and selinux is enabled by default
 #-- Need to disable selinux, otherwise, the booting  will hang on "Loading selinux policy"
-if [ -f "$installroot/etc/selinux/config" ]
-then
-    sed -i 's/^\([[:blank:]]*SELINUX=\)\(enforcing\|permissive\)\([[:blank:]]*\(#.*\)\{0,1\}\)$/\1disabled\3/' "$installroot/etc/selinux/config"
-fi
+# BEGIN generated netboot policy: build-utils/sync-netboot-policy --write
+xcat_disable_image_selinux()
+{
+    if [ -f "$1/etc/selinux/config" ]; then
+        sed -i 's/^\([[:blank:]]*SELINUX=\)\(enforcing\|permissive\)\([[:blank:]]*\(#.*\)\{0,1\}\)$/\1disabled\3/' "$1/etc/selinux/config"
+    fi
+}
+
+xcat_disable_image_firewalld()
+{
+    for xcat_firewalld_entry in \
+        "$1/etc/systemd/system/multi-user.target.wants/firewalld.service" \
+        "$1/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service"
+    do
+        if [ -f "$xcat_firewalld_entry" ] || [ -L "$xcat_firewalld_entry" ]; then
+            rm -f "$xcat_firewalld_entry"
+        fi
+    done
+}
+# END generated netboot policy
+xcat_disable_image_selinux "$installroot"
 
 #--for redhat 8 and 8.1
 #-- Need to disable firewalld, otherwise, the remoteshell script will not able to get all the SSH keys
-FIREWALLD="$installroot/etc/systemd/system/multi-user.target.wants/firewalld.service"
-if [ -f "$FIREWALLD" ] || [ -L "$FIREWALLD" ]
-then
-    rm -f "$FIREWALLD"
-fi
-FIREWALLD1="$installroot/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service"
-if [ -f "$FIREWALLD1" ] || [ -L "$FIREWALLD1" ]
-then
-    rm -f "$FIREWALLD1"
-fi
+xcat_disable_image_firewalld "$installroot"
 
 
 #-- Example of booted image versioning

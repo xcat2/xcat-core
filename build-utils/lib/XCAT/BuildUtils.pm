@@ -51,6 +51,7 @@ our @EXPORT_OK = qw(
     genesis_dists genesis_dist_reason
     fips_policy_artifacts fips_policy_plan sync_fips_policy
     generated_policy_plan sync_generated_policy
+    netboot_policy_artifacts sync_netboot_policy
     package_skip_reason
 );
 
@@ -1470,6 +1471,29 @@ sub fips_policy_artifacts {
 sub _fips_policy_options {
     return (label => 'FIPS', source => 'build-utils/fips-policy.sh',
         command => 'build-utils/sync-fips-policy', artifacts => [fips_policy_artifacts()]);
+}
+
+sub netboot_policy_artifacts {
+    return map { "xCAT-server/share/xcat/netboot/$_" } qw(
+        rh/compute.rhels7.ppc64.postinstall
+        rh/compute.rhels7.x86_64.postinstall
+        rh/compute.rhels8.ppc64le.postinstall
+        rh/compute.rhels8.x86_64.postinstall
+        rh/compute.rhels9.ppc64le.postinstall
+        rh/compute.rhels9.x86_64.postinstall
+        rh/compute.rhels10.aarch64.postinstall
+        rh/compute.rhels10.ppc64le.postinstall
+        rh/compute.rhels10.x86_64.postinstall
+        rh/service.postinstall
+        rocky/compute.rocky10.riscv64.postinstall
+    );
+}
+
+sub sync_netboot_policy {
+    my (%args) = @_;
+    return sync_generated_policy(%args, label => 'netboot',
+        source => 'build-utils/netboot-policy.sh', command => 'build-utils/sync-netboot-policy',
+        artifacts => [netboot_policy_artifacts()]);
 }
 
 #-------------------------------------------------------------------------------
