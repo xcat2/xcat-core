@@ -166,6 +166,7 @@ sub run {
     }
     push @mounts, ('--ro-bind', $self->{deb}, "$prefix/package.deb") if $self->{deb};
     push @mounts, ('--proc', "$prefix/proc") if $self->{live};
+    push @mounts, ('--tmpfs', "$prefix$_") for @{$self->{mask_dirs} // []};
     push @mounts, ('--cap-add', 'CAP_SYS_CHROOT') if $self->{chroot};
     unshift @argv, 'chroot', $prefix if $self->{chroot};
     return command('/usr/bin/env', '-i', 'PATH=/usr/bin:/bin',
