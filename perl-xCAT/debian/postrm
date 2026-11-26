@@ -21,8 +21,7 @@ set -e
 
 case "$1" in
     upgrade)
-	if [ -x /opt/xcat/sbin/restartxcatd ] && [ -f /proc/cmdline ] &&
-           [ "$(stat -c '%d:%i' /)" = "$(stat -c '%d:%i' /proc/1/root/. 2>/dev/null)" ]; then
+	if [ -x /opt/xcat/sbin/restartxcatd ] && xcat_is_live_root; then
 	    . /etc/profile.d/xcat.sh
 	    XCATROOT=/opt/xcat /opt/xcat/sbin/restartxcatd -r
 	fi

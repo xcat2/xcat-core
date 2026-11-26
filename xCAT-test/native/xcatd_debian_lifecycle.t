@@ -57,6 +57,50 @@ for my $case (
     };
 }
 
+for my $case (
+    {name => 'systemd link overrides old release', init => 'systemd', release => '14.04', expected => 1},
+    {name => 'legacy link overrides modern release', init => 'upstart', release => '24.04', expected => 0},
+    {name => 'regular init overrides modern release', init => 'regular', release => '24.04', expected => 0},
+    {name => 'live manager overrides legacy init', init => 'regular', live => 1, expected => 1},
+    {name => 'unknown release uses installed binary', expected => 1},
+    {name => 'unknown release without binary stays legacy', no_binary => 1, expected => 0},
+    {name => 'modern release needs no installed binary', release => '24.04', no_binary => 1, expected => 1},
+    {name => 'legacy release overrides installed binary', release => '14.04', expected => 0},
+) {
+    subtest $case->{name} => sub {
+        my $root = XCAT::Test::Lifecycle->new;
+        $root->write('/etc/os-release', defined $case->{release}
+            ? "ID=ubuntu\nVERSION_ID=$case->{release}\n" : "ID=fixture\n");
+        if (($case->{init} // '') eq 'regular') {
+            $root->write('/sbin/init', '', oct('0755'));
+        } elsif ($case->{init}) {
+            symlink $case->{init} eq 'systemd' ? '../lib/systemd/systemd' : 'upstart',
+                $root->path('/sbin/init') or die "link init fixture: $!";
+        }
+        make_path($root->path('/run/systemd/system')) if $case->{live};
+        if ($case->{no_binary}) {
+            $root->{mask_dirs} = [qw(/usr/lib/systemd /lib/systemd)];
+            succeeds('the isolated target has no executable systemd binary',
+                $root->run('/bin/sh', '-c',
+                    'test ! -x /usr/lib/systemd/systemd && test ! -x /lib/systemd/systemd'));
+        }
+        $root->record_command('/test-bin/dpkg-maintscript-helper', '/usr/bin/dpkg-maintscript-helper');
+        for my $script (qw(preinst postrm)) {
+            $root->write('/calls', '');
+            succeeds("run standalone $script", $root->deb_script($deb, $script,
+                $script eq 'preinst' ? 'install' : 'abort-install'));
+            my @migration = $root->read('/calls') =~ /^(dpkg-maintscript-helper <rm_conffile>.*)$/mg;
+            is(scalar @migration, $case->{expected}, "$script respects authoritative init evidence");
+        }
+        local $root->{deb} = $deb;
+        succeeds('unpack the runtime classifier', $root->run('dpkg-deb', '-x', '/package.deb', '/unpacked'));
+        my ($status, $out, $err) = $root->run('env', 'XCAT_COMPAT_ROOT=/',
+            '/unpacked/opt/xcat/share/xcat/scripts/xcatd-init-compat', 'uses-systemd', '--explicit-target');
+        is($status, $case->{expected} ? 0 : 1, 'runtime classifier agrees with standalone package scripts')
+            or diag "$out$err";
+    };
+}
+
 for my $mode (qw(systemd legacy explicit-legacy unknown)) {
     subtest "$mode package lifecycle" => sub {
         my $root = XCAT::Test::Lifecycle->new;

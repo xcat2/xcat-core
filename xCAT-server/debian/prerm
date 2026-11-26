@@ -21,8 +21,7 @@ xcatd_init_compat=/opt/xcat/share/xcat/scripts/xcatd-init-compat
 
 case "$1" in
     remove)
-       if [ -f /proc/cmdline ] &&
-          [ "$(stat -c '%d:%i' /)" = "$(stat -c '%d:%i' /proc/1/root/. 2>/dev/null)" ]; then
+       if xcat_is_live_root; then
             if "$xcatd_init_compat" can-use-systemctl; then
                 systemctl stop xcatd.service
                 systemctl disable --now xcat-uftp-listener.service >/dev/null 2>&1 || true

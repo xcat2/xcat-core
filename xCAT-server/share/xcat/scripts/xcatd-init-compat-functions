@@ -49,25 +49,30 @@ xcat_systemd_os_release_status()
 
 }
 
-xcat_target_uses_systemd()
+xcat_explicit_init_status()
 {
-    if [ -d /run/systemd/system ]; then
-        return 0
-    fi
-
-    if [ -L /sbin/init ]; then
-        init_target=$(readlink /sbin/init 2>/dev/null || true)
+    if [ -L "${1-}/sbin/init" ]; then
+        init_target=$(readlink "${1-}/sbin/init" 2>/dev/null || true)
         case "$init_target" in
             *systemd*) return 0 ;;
             *) return 1 ;;
         esac
     fi
 
-    if [ -e /sbin/init ]; then
+    if [ -e "${1-}/sbin/init" ]; then
         return 1
     fi
 
-    if xcat_systemd_os_release_status; then
+    xcat_systemd_os_release_status "${1-}"
+}
+
+xcat_target_uses_systemd()
+{
+    if [ -d /run/systemd/system ]; then
+        return 0
+    fi
+
+    if xcat_explicit_init_status; then
         return 0
     else
         os_release_status=$?

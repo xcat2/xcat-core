@@ -12,6 +12,8 @@ Gitinfo
 # Build residue: buildrpms.pl and builddebs.pl write these into the source
 # tree, so a "git add -A" after a build sweeps them into a commit.
 dist/
+/.xCAT-server-live-root.build-link
+/.xCATsn-live-root.build-link
 perl-xCAT/pods
 perl-xCAT/share/doc
 perl-xCAT/share/man

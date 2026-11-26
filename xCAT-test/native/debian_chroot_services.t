@@ -10,19 +10,77 @@ use XCAT::Test::Lifecycle;
 plan skip_all => 'Run as an ordinary user on Debian or Ubuntu'
     unless $^O eq 'linux' && $< != 0 && -f '/etc/debian_version';
 my %packages = map { $_ => XCAT::Test::Lifecycle::build_deb($_) }
-    qw(xCAT-server xCATsn);
+    qw(perl-xCAT xCAT-server xCATsn);
 
 sub succeeds {
     my ($label, @result) = @_;
     is($result[0], 0, $label) or diag "$result[1]$result[2]";
 }
 
-for my $mode (qw(without-proc live proc-chroot systemd-chroot)) {
+for my $event (qw(remove upgrade)) {
+    subtest "Debian $event UFTP listener" => sub {
+        my $root = XCAT::Test::Lifecycle->new;
+        $root->{live} = 1;
+        $root->write('/calls', '');
+        $root->record_command('/test-bin/systemctl');
+        $root->record_command('/opt/xcat/share/xcat/scripts/xcatd-init-compat');
+        succeeds("run the built Debian $event script",
+            $root->deb_script($packages{'xCAT-server'}, 'prerm', $event, '2.19.1'));
+        if ($event eq 'remove') {
+            like($root->read('/calls'), qr/^systemctl <stop> <xcatd\.service>$/m,
+                'removal stops xcatd');
+            like($root->read('/calls'), qr/^systemctl <disable> <--now> <xcat-uftp-listener\.service>$/m,
+                'removal stops and disables the UFTP listener');
+        } else {
+            unlike($root->read('/calls'), qr/xcat-uftp-listener/,
+                'an upgrade leaves the UFTP listener alone');
+        }
+    };
+}
+
+sub record_root_stat {
+    my ($root, $deny_pid1) = @_;
+    $root->write('/stat-calls', '');
+    $root->write('/deny-pid1', '') if $deny_pid1;
+    $root->write('/test-bin/stat', <<'SH', oct('0755'));
+#!/bin/sh
+case "$3" in
+    /|/proc/1/root/.) printf '%s\n' "$*" >> /stat-calls ;;
+esac
+if [ "$3" = /proc/1/root/. ] && [ -f /deny-pid1 ]; then
+    echo 'PID1 root is unavailable' >&2
+    exit 71
+fi
+exec /usr/bin/stat "$@"
+SH
+}
+
+for my $live (0, 1) {
+    for my $event (qw(upgrade remove purge abort-upgrade)) {
+      for my $installed (0, 1) {
+        my $root = XCAT::Test::Lifecycle->new;
+        $root->{live} = $live;
+        $root->record_command('/opt/xcat/sbin/restartxcatd') if $installed;
+        $root->write('/calls', '');
+        record_root_stat($root, 0);
+        succeeds("Debian perl-xCAT $event (proc=$live)",
+            $root->deb_script($packages{'perl-xCAT'}, 'postrm', $event, '2.20.0'));
+        is($root->read('/calls'), $live && $installed && $event eq 'upgrade' ? "restartxcatd <-r>\n" : '',
+            'only an upgrade with proc and an installed helper requests a fast reload');
+        is($root->read('/stat-calls'), $live && $installed && $event eq 'upgrade'
+            ? "-c %d:%i /\n-c %d:%i /proc/1/root/.\n" : '',
+            'the upgrade and executable guards precede the proc and root probes');
+      }
+    }
+}
+
+for my $mode (qw(without-proc live proc-chroot systemd-chroot pid1-unavailable)) {
     subtest $mode => sub {
         my $root = XCAT::Test::Lifecycle->new;
         $root->{live} = $mode ne 'without-proc';
         $root->{chroot} = $mode =~ /chroot/ ? 1 : 0;
         my $active = $mode eq 'live';
+        record_root_stat($root, $mode eq 'pid1-unavailable');
         {
             local $root->{deb} = $packages{'xCAT-server'};
             succeeds('unpack the server payload', $root->run('dpkg-deb', '-x', '/package.deb', '/unpacked'));
@@ -84,14 +142,15 @@ SH
             is($root->read('/calls'), '', 'the policy control cannot reach the daemon');
             like($root->read('/policy-calls'), qr/xcatd.*start/, 'the native dispatcher consulted policy');
         }
-        succeeds('configure the service-node package',
-            $root->deb_script($packages{'xCATsn'}, 'postinst', 'configure'));
+        my @configure = $root->deb_script($packages{'xCATsn'}, 'postinst', 'configure');
+        succeeds('configure the service-node package', @configure);
+        unlike($configure[2], qr/PID1 root is unavailable/, 'PID1 stat errors stay suppressed');
         is($root->read('/calls'), $active
             ? "xcatd <-p> </var/run/xcatd.pid>\napache2 <reload>\n" : '',
             'only the live root starts xcatd and reloads Apache');
         $root->write('/calls', '');
         succeeds('upgrade the Perl package through the real fast-restart command',
-            $root->run('/bin/sh', '/source/perl-xCAT/debian/postrm', 'upgrade', '2.20.0'));
+            $root->deb_script($packages{'perl-xCAT'}, 'postrm', 'upgrade', '2.20.0'));
         is($root->read('/calls'), $active ? "xcatd <-p> </var/run/xcatd.pid>\n" : '',
             'only the live root reaches xcatd through restartxcatd');
 
