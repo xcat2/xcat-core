@@ -991,6 +991,11 @@ sub main {
             warn "$_\n" for @{$fips->{messages}};
             die "FATAL: generated FIPS policy is not current\n";
         }
+        my $bmc = XCAT::BuildUtils::sync_bmc_fields(root => $Bin, mode => 'check');
+        if (@{$bmc->{stale}}) {
+            warn "$_\n" for @{$bmc->{messages}};
+            die "FATAL: generated BMC fields are not current\n";
+        }
     }
 
     # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------
