@@ -120,6 +120,14 @@ if (grep { $_ eq 'xCAT' || $_ eq 'xCAT-genesis-scripts' } $opts{packages}->@*) {
     }
 }
 
+if (grep { $_ eq 'xCAT-server' } $opts{packages}->@*) {
+    my $netboot = XCAT::BuildUtils::sync_netboot_policy(root => $FindBin::Bin, mode => 'check');
+    if (@{$netboot->{stale}}) {
+        warn "$_\n" for @{$netboot->{messages}};
+        die "FATAL: generated netboot policy is not current\n";
+    }
+}
+
 my $ROOT    = abs_path($FindBin::Bin);
 my $VERSION = read_line("$ROOT/Version") // die "Cannot read $ROOT/Version\n";
 my $EPOCH   = source_date_epoch();

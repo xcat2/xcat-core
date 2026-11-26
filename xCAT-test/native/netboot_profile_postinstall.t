@@ -6,6 +6,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Cwd            qw(abs_path);
 use File::Basename qw(basename dirname);
+use File::Copy qw(copy);
 use File::Find     qw(find);
 use File::Path     qw(make_path);
 use File::Slurper  qw(read_text write_text);
@@ -62,7 +63,7 @@ my @shells = qw(/bin/bash /bin/dash);
 
 sub shell_options {
     my ($shell) = @_;
-    return { read_only => { repo_path('.') => repo_path('.'), $shell => '/bin/' . basename( abs_path('/bin/sh') ) } };
+    return { read_only => { $shell => '/bin/' . basename( abs_path('/bin/sh') ) } };
 }
 
 for my $shell (@shells) {
@@ -80,7 +81,9 @@ for my $shell (@shells) {
 sub run_profile {
     my ( $root, $relative, $shell ) = @_;
     my ( $profile, $osver, $arch ) = split /[.]/, basename($relative);
-    return sandbox_run( $root, shell_options($shell), "$netboot/$relative", '/target', $osver, $arch // '', $profile );
+    copy("$netboot/$relative", "$root/postinstall") or die "copy $relative: $!";
+    chmod oct('0755'), "$root/postinstall" or die $!;
+    return sandbox_run( $root, shell_options($shell), '/fixture/postinstall', '/target', $osver, $arch // '', $profile );
 }
 
 my $unchanged =

@@ -15,6 +15,8 @@ use lib dirname(__FILE__);
 use xCAT::ProfileUtils;
 use xCAT::SvrUtils;
 
+my $kdump_policy_file = dirname(realpath(__FILE__)) . '/xcat-dump-memory.conf';
+
 sub el_major_version {
     my $version = shift;
 
@@ -123,11 +125,16 @@ sub disable_vendor_repositories {
 sub skip_kdump_without_dump_memory {
     my ($rootimg_dir) = @_;
     return unless -e "$rootimg_dir/usr/lib/systemd/system/kdump.service";
+    open(my $policy, '<', $kdump_policy_file)
+      or die "Cannot read $kdump_policy_file: $!\n";
+    local $/;
+    my $conditions = <$policy>;
+    close($policy) or die "Cannot read $kdump_policy_file: $!\n";
     my $dropin_dir = "$rootimg_dir/etc/systemd/system/kdump.service.d";
     mkpath($dropin_dir);
     open(my $fh, '>', "$dropin_dir/xcat-dump-memory.conf")
       or die "Cannot write $dropin_dir/xcat-dump-memory.conf: $!\n";
-    print $fh "[Unit]\nConditionKernelCommandLine=|crashkernel\nConditionKernelCommandLine=|fadump\n";
+    print $fh $conditions;
     close($fh) or die "Cannot write $dropin_dir/xcat-dump-memory.conf: $!\n";
 }
 

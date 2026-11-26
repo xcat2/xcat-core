@@ -993,6 +993,14 @@ sub main {
         }
     }
 
+    if (grep { $_ eq 'xCAT-server' } $opts{packages}->@*) {
+        my $netboot = XCAT::BuildUtils::sync_netboot_policy(root => $Bin, mode => 'check');
+        if (@{$netboot->{stale}}) {
+            warn "$_\n" for @{$netboot->{messages}};
+            die "FATAL: generated netboot policy is not current\n";
+        }
+    }
+
     # ---- concurrency guard (mirrors cluster-test.pl's per-cluster lock) --------------------------
     # Every per-package mock chroot/config for this run shares the "<pkg>-<target><ext>" namespace:
     # /etc/mock/<cfg>.cfg, /var/lib/mock/<cfg>/ and its buildroot.lock. Two builds of the SAME

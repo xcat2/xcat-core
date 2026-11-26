@@ -32,6 +32,11 @@ ok(@assets, 'finds the RISC-V profile assets');
 my @ubuntu = glob "$share/{install,netboot}/ubuntu/*.pkglist";
 ok(@ubuntu, 'finds the Ubuntu package lists');
 push @assets, @ubuntu;
+push @assets, map { "$share/$_" } qw(
+    install/scripts/post.pre-install-log
+    install/scripts/pre.partition-log
+    netboot/imgutils/xcat-dump-memory.conf
+);
 sub check_assets {
     my ($payload, $label, @sources) = @_;
     for my $source (@sources) {
@@ -56,6 +61,7 @@ for my $directory (qw(debian imgutils)) {
 }
 for my $case (
     ['unit/imgutils_standalone.t', 'imgutils'],
+    ['unit/imgutils_kdump_delivery.t', 'imgutils'],
     ['native/debian_genimage_profile_assets.t', 'debian'],
 ) {
     my ($test, $directory) = @$case;

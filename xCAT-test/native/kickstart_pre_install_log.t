@@ -71,6 +71,32 @@ for my $case (@templates) {
             }
             is(-f $xcatlog ? read_text($xcatlog) : '', $earlier . $diagnostic,
                 "appends the pre-install log to $label of the installed system");
+            is((stat($xcatlog))[2] & oct('0777'), length($earlier) ? oct('0644') : (oct('0666') & ~umask),
+                'the log retains its expected permissions');
+        }
+        for my $failure (qw(missing_log blocked_directory)) {
+            my $root = sandbox_root();
+            make_path("$root/installer-tmp");
+            if ($failure eq 'blocked_directory') {
+                write_text("$root/installer-tmp/pre-install.log", $diagnostic);
+                write_text("$root/log/xcat", "blocking file\n");
+            } else {
+                make_path("$root/log/xcat");
+                write_text("$root/log/xcat/xcat.log", "earlier entry\n");
+            }
+            for my $index (@installer) {
+                my ($interpreter) = $posts[$index][0] =~ /--interpreter=(\S+)/;
+                write_text("$root/post.sh", $posts[$index][1]);
+                my ($rc, $log) = sandbox_run($root, {
+                    writable => {"$root/installer-tmp" => '/tmp', "$root/log" => '/mnt/sysimage/var/log'},
+                }, $interpreter // '/bin/sh', '/fixture/post.sh');
+                isnt($rc, 0, "$failure fails the log-transfer stage");
+                like($log, $failure eq 'missing_log' ? qr/pre-install\.log/ : qr/\/var\/log\/xcat/,
+                    'reports the unavailable path');
+            }
+            is(read_text($failure eq 'missing_log' ? "$root/log/xcat/xcat.log" : "$root/log/xcat"),
+                $failure eq 'missing_log' ? "earlier entry\n" : "blocking file\n",
+                'failure retains the existing destination');
         }
         ok(@installer && defined $chroot && $installer[0] < $chroot,
             'copies it before the first %post block in the installed system writes that log');

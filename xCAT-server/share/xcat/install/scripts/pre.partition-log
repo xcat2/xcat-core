@@ -1,0 +1,8 @@
+echo "================ The Partition Scheme ==============="
+# A custom partition file can hold credentials, and this log reaches the node.
+if [ -e /tmp/partitionfile.enc ] || [ -e /tmp/partscript.enc ]; then
+    echo "The custom partition file is not logged."
+else
+    cat /tmp/partitionfile
+fi
+echo "====================================================="
