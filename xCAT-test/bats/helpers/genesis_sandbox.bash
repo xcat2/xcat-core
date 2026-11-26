@@ -16,7 +16,7 @@ setup_genesis_sandbox()
             return 1
         }
     done
-    source=$(repo_path "xCAT-genesis-scripts/usr/bin/$1")
+    source=${2:-$(repo_path "xCAT-genesis-scripts/usr/bin/$1")}
     [ -r "$source" ] || {
         echo "Required Genesis script is unreadable: $source" >&2
         return 1

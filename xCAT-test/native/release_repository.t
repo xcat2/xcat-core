@@ -43,10 +43,10 @@ my $files = command($root, 'rpm', '-qp', '--qf', '[%{FILENAMES}\t%{FILEFLAGS}\n]
 for my $repo (qw(xcat-core xcat-dep xcat-dep-common)) {
     like($files, qr{^/etc/yum\.repos\.d/\Q$repo\E\.repo\t17$}m, "$repo remains config(noreplace)");
 }
-for my $relative (qw(buildrpms.pl build-utils/lib/XCAT/BuildUtils.pm
-    build-utils/lib/XCAT/NFSLock.pm
-    build-utils/sync-fips-policy build-utils/fips-policy.sh
-    xCAT-genesis-scripts/usr/lib/xcat/fips.sh xCAT/postscripts/xcatlib.sh)) {
+command($root, 'cp', '-a', repo_path('build-utils'), "$root/work/build-utils");
+for my $relative (qw(buildrpms.pl
+    xCAT-genesis-scripts/usr/lib/xcat/fips.sh xCAT/postscripts/xcatlib.sh
+    xCAT-genesis-scripts/usr/bin/bmcsetup xCAT/postscripts/bmcsetup)) {
     make_path(dirname("$root/work/$relative"));
     copy(repo_path($relative), "$root/work/$relative") or die "copy $relative: $!";
 }

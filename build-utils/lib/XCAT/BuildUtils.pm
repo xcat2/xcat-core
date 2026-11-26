@@ -50,6 +50,7 @@ our @EXPORT_OK = qw(
     genesis_log_errors genesis_log_deny_rules deb_belongs_to_dist
     genesis_dists genesis_dist_reason
     fips_policy_artifacts fips_policy_plan sync_fips_policy
+    bmc_field_artifacts sync_bmc_fields
     package_skip_reason
 );
 
@@ -1493,21 +1494,30 @@ sub fips_policy_artifacts {
 sub fips_policy_plan {
     my (%args) = @_;
     my $root = $args{root} // die "fips_policy_plan needs a root\n";
-    my $policy = read_binary("$root/build-utils/fips-policy.sh");
-    die "FIPS policy is empty\n" unless length $policy;
-    die "FIPS policy must end with a newline\n" unless $policy =~ /\n\z/;
-    my $begin = "# BEGIN generated FIPS policy: build-utils/sync-fips-policy --write\n";
-    my $end   = "# END generated FIPS policy\n";
+    return _shell_block_plan(root => $root, name => 'FIPS policy',
+        source => 'build-utils/fips-policy.sh', command => 'build-utils/sync-fips-policy',
+        artifacts => [fips_policy_artifacts()]);
+}
+
+sub _shell_block_plan {
+    my (%args) = @_;
+    my $root = $args{root};
+    my $name = $args{name};
+    my $policy = read_binary("$root/$args{source}");
+    die "$name is empty\n" unless length $policy;
+    die "$name must end with a newline\n" unless $policy =~ /\n\z/;
+    my $begin = "# BEGIN generated $name: $args{command} --write\n";
+    my $end   = "# END generated $name\n";
     my $block = $begin . $policy . $end;
 
     my @artifacts;
-    for my $relative (fips_policy_artifacts()) {
+    for my $relative (@{$args{artifacts}}) {
         my $path = "$root/$relative";
         die "$relative must be a regular file\n" unless -f $path && !-l $path;
         my $current = read_binary($path);
         my $rendered = $current;
         my $count = $rendered =~ s/\Q$begin\E.*?\Q$end\E/$block/sg;
-        die "$relative must contain one FIPS policy block\n"
+        die "$relative must contain one $name block\n"
             unless $count == 1
                 && (() = $current =~ /\Q$begin\E/g) == 1
                 && (() = $current =~ /\Q$end\E/g) == 1;
@@ -1553,21 +1563,66 @@ sub fips_policy_plan {
 #-------------------------------------------------------------------------------
 sub sync_fips_policy {
     my (%args) = @_;
+    return _sync_shell_block(%args, name => 'FIPS policy',
+        command => 'build-utils/sync-fips-policy', temporary => '.fips-policy-XXXXXX',
+        plan => sub { fips_policy_plan(root => $args{root}) });
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 bmc_field_artifacts
+
+    Descriptions: Return the standalone scripts that carry the BMC field readers,
+                  relative to the repository root, in generation order.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub bmc_field_artifacts {
+    return ('xCAT-genesis-scripts/usr/bin/bmcsetup', 'xCAT/postscripts/bmcsetup');
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 sync_bmc_fields
+
+    Descriptions: Check or regenerate the embedded BMC field readers.
+
+    Arguments: root - repository root; mode - 'check' (default) or 'write'.
+
+    Returns: mode, stale, written and messages, as for sync_fips_policy.
+             Invalid inputs die before writing either script. Check mode
+             reports stale artifacts without changing them.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub sync_bmc_fields {
+    my (%args) = @_;
+    my $root = $args{root} // die "sync_bmc_fields needs a root\n";
+    return _sync_shell_block(%args, name => 'BMC fields',
+        command => 'build-utils/sync-bmc-fields', temporary => '.bmc-fields-XXXXXX',
+        plan => sub { _shell_block_plan(root => $root, name => 'BMC fields',
+            source => 'build-utils/bmc-fields.sh', command => 'build-utils/sync-bmc-fields',
+            artifacts => [bmc_field_artifacts()]) });
+}
+
+sub _sync_shell_block {
+    my (%args) = @_;
     my $mode = $args{mode} // 'check';
-    die "FIPS policy mode must be check or write, not '$mode'\n"
+    die "$args{name} mode must be check or write, not '$mode'\n"
         unless $mode eq 'check' || $mode eq 'write';
-    my $plan = fips_policy_plan(root => $args{root});
+    my $plan = $args{plan}->();
     my (@stale, @written, @messages);
     for my $artifact (grep { $_->{stale} } @{$plan->{artifacts}}) {
         push @stale, $artifact->{relative};
         if ($mode eq 'check') {
             push @messages, "$artifact->{relative} is out of date;"
-                . ' run build-utils/sync-fips-policy --write';
+                . " run $args{command} --write";
             next;
         }
-        # Rename over the library so a reader never sees a partial block, and
-        # carry the mode across: the Genesis copy is 0644 and xcatlib.sh 0755.
-        my ($fh, $temporary) = tempfile('.fips-policy-XXXXXX',
+        # Preserve permissions and replace the complete artifact before readers can see it.
+        my ($fh, $temporary) = tempfile($args{temporary},
             DIR => dirname($artifact->{path}), UNLINK => 1);
         close $fh or die "close $temporary: $!\n";
         write_binary($temporary, $artifact->{rendered});

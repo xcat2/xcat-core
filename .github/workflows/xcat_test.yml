@@ -25,6 +25,9 @@ jobs:
       - name: Test FIPS package artifacts
         if: ${{ !cancelled() }}
         run: prove -v xCAT-test/native/fips_build_guard.t xCAT-test/native/fips_package_payload.t
+      - name: Test BMC field artifacts
+        if: ${{ !cancelled() }}
+        run: prove -v xCAT-test/native/bmc_field_build_guard.t xCAT-test/native/bmc_field_package_payload.t
 
       - name: Install image test dependencies
         if: ${{ !cancelled() }}
@@ -131,7 +134,7 @@ jobs:
       - name: Install lifecycle test dependencies
         run: |
           dnf install -y epel-release
-          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap dash systemd chkconfig initscripts tar gzip bzip2 which diffutils httpd curl procps-ng openssl
+          dnf --enablerepo=${{ matrix.repository }} install -y perl perl-Capture-Tiny perl-File-Slurper perl-Test-Simple perl-DBI perl-DBD-SQLite perl-JSON perl-XML-Simple rpm-build bubblewrap bats dash systemd chkconfig initscripts tar gzip bzip2 which diffutils httpd curl procps-ng openssl
       - name: Enable lifecycle test namespaces
         run: sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Test RPM package lifecycle
@@ -139,6 +142,9 @@ jobs:
       - name: Test FIPS package artifacts
         if: ${{ !cancelled() }}
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/fips_package_payload.t'
+      - name: Test BMC field artifacts
+        if: ${{ !cancelled() }}
+        run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/bmc_field_package_payload.t'
       - name: Test netboot postinstall profiles
         if: ${{ !cancelled() }}
         run: su -s /bin/sh nobody -c 'prove -v xCAT-test/native/netboot_profile_postinstall.t'

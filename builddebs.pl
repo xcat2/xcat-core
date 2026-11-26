@@ -118,6 +118,11 @@ if (grep { $_ eq 'xCAT' || $_ eq 'xCAT-genesis-scripts' } $opts{packages}->@*) {
         warn "$_\n" for @{$fips->{messages}};
         die "FATAL: generated FIPS policy is not current\n";
     }
+    my $bmc = XCAT::BuildUtils::sync_bmc_fields(root => $FindBin::Bin, mode => 'check');
+    if (@{$bmc->{stale}}) {
+        warn "$_\n" for @{$bmc->{messages}};
+        die "FATAL: generated BMC fields are not current\n";
+    }
 }
 
 my $ROOT    = abs_path($FindBin::Bin);

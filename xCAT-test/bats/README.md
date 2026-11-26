@@ -69,7 +69,7 @@ reap children created by deliberate-fault tests.
 
 ## Genesis sandbox prerequisites
 
-`genesis_bmcsetup_users.bats`, `genesis_getadapter.bats` and
+`genesis_bmcsetup_users.bats`, `genesis_bmcsetup_ipv6.bats`, `genesis_getadapter.bats` and
 `genesis_discovery_uuid.bats` run the complete checkout scripts with private
 filesystem, process, and network namespaces. They replace hardware and
 transport commands, not the scripts under test. The fixtures do not contact a
@@ -81,6 +81,10 @@ require `cmp` from diffutils, and the discovery test requires gzip. The CI
 environment provides these dependencies.
 Missing prerequisites fail on Linux; non-Linux hosts report a skip.
 The temporary filesystem must allow executable files.
+
+`genesis_bmcsetup_users.bats` accepts `XCAT_TEST_BMCSETUP` to test another complete
+script, including an extracted package payload. The IPv6 suite always uses the
+Genesis implementation, regardless of that variable.
 
 The BMC cases check LAN values, device and channel selection, write retries,
 configuration defaults, user selection, and vendor port commands. They assert

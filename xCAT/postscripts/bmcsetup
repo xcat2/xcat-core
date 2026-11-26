@@ -18,6 +18,7 @@ log_label="bmcsetup"
 
 TIMEOUT=15
 
+# BEGIN generated BMC fields: build-utils/sync-bmc-fields --write
 config_field() {
     grep "$1" /tmp/ipmicfg.xml | awk -F\> '{print $2}' | awk -F\< '{print $1}'
 }
@@ -30,6 +31,7 @@ lan_field() {
             cat
         fi | awk -F': ' '{print $2}'
 }
+# END generated BMC fields
 
 #
 # Function: cold_reset_bmc
