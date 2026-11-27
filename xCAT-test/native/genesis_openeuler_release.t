@@ -1,10 +1,12 @@
 use strict;
 use warnings;
 
-use Cwd qw(abs_path);
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use FindBin qw($RealBin);
+use lib "$RealBin/../lib";
+use XCAT::Test::File qw(repo_path);
 use lib "$RealBin/../../build-utils/lib";
 use XCAT::BuildUtils qw(stage_genesis_base_sources);
 use Test::More;
@@ -14,14 +16,13 @@ plan skip_all => 'requires native openEuler, an unprivileged user, rpmbuild and 
     && -d '/usr/lib/dracut' && system('sh', '-c', 'command -v rpmbuild >/dev/null && unshare -Ur -m true') == 0;
 
 local $ENV{PATH} = "$ENV{PATH}:/usr/sbin:/sbin";
-my $root = abs_path("$RealBin/../..");
-my $spec = $ENV{XCAT_GENESIS_RELEASE_SPEC} // "$root/xCAT-genesis-base/xCAT-genesis-base.spec";
+my $spec = $ENV{XCAT_GENESIS_RELEASE_SPEC} // repo_path('xCAT-genesis-base/xCAT-genesis-base.spec');
 my $tmp = tempdir(CLEANUP => 1);
 make_path("$tmp/build", "$tmp/bin");
-stage_genesis_base_sources($root, "$tmp/support.tar.bz2", 1700000000);
+stage_genesis_base_sources(repo_path('.'), "$tmp/support.tar.bz2", 1700000000);
 system('tar', '-xjf', "$tmp/support.tar.bz2", '-C', "$tmp/build") == 0
     or die "extract Genesis build support: $?";
-write_file("$tmp/bin/dracut", <<'SH');
+write_binary("$tmp/bin/dracut", <<'SH');
 #!/bin/bash
 set -eu
 while (($#)); do
@@ -90,7 +91,7 @@ cp -L /usr/share/zoneinfo/UTC "$tree/usr/share/zoneinfo/UTC"
 (cd "$tree" && find . -print0 | cpio --null -o -H newc | gzip > "$image")
 SH
 chmod 0755, "$tmp/bin/dracut" or die $!;
-write_file("$tmp/run.sh", <<'SH');
+write_binary("$tmp/run.sh", <<'SH');
 set -eu
 mount --make-rslave /
 mount --bind "$GENESIS_RELEASE_CASE/dracut" /usr/lib/dracut
@@ -121,18 +122,18 @@ exec rpmbuild -bi --short-circuit --nodeps --target x86_64 \
 SH
 
 make_path("$tmp/build/ssl");
-write_file("$tmp/build/ssl/openssl.cnf", '');
+write_binary("$tmp/build/ssl/openssl.cnf", '');
 
 for my $failure (qw(none ID VERSION_ID mktemp dhclient legacy-none legacy-zone legacy-release)) {
     my $case = "$tmp/$failure";
     make_path("$case/dracut/modules.d", "$case/run", "$case/rpm");
     if ($failure =~ /^legacy-/) {
         make_path("$case/etc/ssh");
-        write_file("$case/etc/os-release", "ID=rocky\nVERSION_ID=9.6\n");
-        write_file("$case/etc/redhat-release", "Rocky Linux release 9.6\n");
-        write_file("$case/etc/passwd", "root:x:0:0:root:/root:/bin/bash\n");
-        write_file("$case/etc/group", "root:x:0:\n");
-        write_file("$case/etc/nsswitch.conf", "passwd: files\ngroup: files\n");
+        write_binary("$case/etc/os-release", "ID=rocky\nVERSION_ID=9.6\n");
+        write_binary("$case/etc/redhat-release", "Rocky Linux release 9.6\n");
+        write_binary("$case/etc/passwd", "root:x:0:0:root:/root:/bin/bash\n");
+        write_binary("$case/etc/group", "root:x:0:\n");
+        write_binary("$case/etc/nsswitch.conf", "passwd: files\ngroup: files\n");
     }
     local %ENV = %ENV;
     @ENV{qw(GENESIS_RELEASE_CASE GENESIS_RELEASE_FAILURE GENESIS_RELEASE_BUILD GENESIS_RELEASE_SPEC)} =
@@ -148,9 +149,7 @@ for my $failure (qw(none ID VERSION_ID mktemp dhclient legacy-none legacy-zone l
     }
     waitpid($pid, 0);
     my $status = $?;
-    open(my $output, '<', "$case/output") or die $!;
-    my $text = do { local $/; <$output> };
-    close($output) or die $!;
+    my $text = read_binary("$case/output");
     if ($failure eq 'legacy-none') {
         is($status, 0, 'complete EL spec install accepts its legacy payload') or diag($text);
         like($text, qr/verify-genesis-payload: .* is complete/,
@@ -179,10 +178,3 @@ for my $failure (qw(none ID VERSION_ID mktemp dhclient legacy-none legacy-zone l
 }
 
 done_testing();
-
-sub write_file {
-    my ($path, $text) = @_;
-    open(my $file, '>', $path) or die "write $path: $!";
-    print {$file} $text or die $!;
-    close($file) or die $!;
-}

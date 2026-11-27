@@ -1,18 +1,19 @@
 use strict;
 use warnings;
 
-use Cwd qw(abs_path);
 use File::Path qw(make_path);
+use File::Slurper qw(read_binary write_binary);
 use File::Temp qw(tempdir);
 use FindBin qw($RealBin);
+use lib "$RealBin/../lib";
+use XCAT::Test::File qw(repo_path);
 use Test::More;
 
 plan skip_all => 'Linux native RPM and user namespace tools required'
     unless $^O eq 'linux' && system('sh', '-c', 'command -v rpmspec >/dev/null && command -v unshare >/dev/null') == 0;
 
-my $root = abs_path("$RealBin/../..");
-my $spec = $ENV{XCAT_GENESIS_SPEC} // "$root/xCAT-genesis-base/xCAT-genesis-base.spec";
-my $module = $ENV{XCAT_GENESIS_MODULE} // "$root/xCAT-genesis-base/dracut_105/el/module-setup.sh";
+my $spec = $ENV{XCAT_GENESIS_SPEC} // repo_path('xCAT-genesis-base/xCAT-genesis-base.spec');
+my $module = $ENV{XCAT_GENESIS_MODULE} // repo_path('xCAT-genesis-base/dracut_105/el/module-setup.sh');
 my $tmp = tempdir(CLEANUP => 1);
 my $sequence = 0;
 
@@ -50,25 +51,25 @@ SKIP: {
     make_path("$tmp/native-etc/ssl", "$tmp/legacy-etc/ssl", "$tmp/zones/Etc", "$tmp/zones/Native", "$tmp/modules/fixture", "$tmp/empty-zones");
     make_path("$tmp/locales/C.utf8/LC_MESSAGES", "$tmp/missing-locales", "$tmp/empty-locales/C.utf8",
         "$tmp/missing-ctype/C.utf8", "$tmp/empty-ctype/C.utf8");
-    write_file("$tmp/native-etc/openEuler-release", "openEuler release 24.03 (LTS-SP3)\n");
-    write_file("$tmp/native-etc/os-release", "ID=openEuler\n");
-    write_file("$tmp/legacy-etc/redhat-release", "Rocky Linux release 10\n");
-    write_file("$tmp/legacy-etc/os-release", "ID=rocky\n");
-    write_file("$tmp/$_/ssl/openssl.cnf", '') for qw(native-etc legacy-etc);
-    write_file("$tmp/zones/Etc/UTC", "native UTC fixture\n");
-    write_file("$tmp/zones/Native/Fixture", "native timezone fixture\n");
+    write_binary("$tmp/native-etc/openEuler-release", "openEuler release 24.03 (LTS-SP3)\n");
+    write_binary("$tmp/native-etc/os-release", "ID=openEuler\n");
+    write_binary("$tmp/legacy-etc/redhat-release", "Rocky Linux release 10\n");
+    write_binary("$tmp/legacy-etc/os-release", "ID=rocky\n");
+    write_binary("$tmp/$_/ssl/openssl.cnf", '') for qw(native-etc legacy-etc);
+    write_binary("$tmp/zones/Etc/UTC", "native UTC fixture\n");
+    write_binary("$tmp/zones/Native/Fixture", "native timezone fixture\n");
     symlink('Etc/UTC', "$tmp/zones/UTC") or die $!;
-    write_file("$tmp/locales/C.utf8/LC_CTYPE", "native UTF-8 fixture\n");
-    write_file("$tmp/locales/C.utf8/LC_MESSAGES/SYS_LC_MESSAGES", "native message fixture\n");
+    write_binary("$tmp/locales/C.utf8/LC_CTYPE", "native UTF-8 fixture\n");
+    write_binary("$tmp/locales/C.utf8/LC_MESSAGES/SYS_LC_MESSAGES", "native message fixture\n");
     symlink('LC_CTYPE', "$tmp/locales/C.utf8/LC_NUMERIC") or die $!;
-    write_file("$tmp/missing-ctype/C.utf8/LC_NUMERIC", "partial locale fixture\n");
-    write_file("$tmp/empty-ctype/C.utf8/LC_CTYPE", '');
-    write_file("$tmp/modules/fixture/modules.dep", join("\n",
+    write_binary("$tmp/missing-ctype/C.utf8/LC_NUMERIC", "partial locale fixture\n");
+    write_binary("$tmp/empty-ctype/C.utf8/LC_CTYPE", '');
+    write_binary("$tmp/modules/fixture/modules.dep", join("\n",
         'kernel/drivers/infiniband/ulp/ipoib/ib_ipoib.ko.xz:',
         'kernel/drivers/net/ethernet/intel/e1000e/e1000e.ko:',
         'kernel/drivers/infiniband/hw/mlx5/mlx5_ib.ko.zst:', ''));
     my $wrapper = "$tmp/module-trace.sh";
-    write_file($wrapper, <<'SH');
+    write_binary($wrapper, <<'SH');
 mount --make-rslave / || exit
 mount --bind "$2" /etc || exit
 mount --bind "$3" /usr/share/zoneinfo || exit
@@ -192,15 +193,6 @@ sub run {
     }
     waitpid($pid, 0);
     my $status = (($? & 127) ? 128 + ($? & 127) : $? >> 8);
-    open(my $fh, '<', $log) or die $!;
-    my $output = do { local $/; <$fh> } // '';
-    close($fh);
+    my $output = read_binary($log);
     return ($status, $output);
-}
-
-sub write_file {
-    my ($path, $text) = @_;
-    open(my $fh, '>', $path) or die $!;
-    print {$fh} $text;
-    close($fh) or die $!;
 }
