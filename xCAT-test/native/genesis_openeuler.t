@@ -11,8 +11,8 @@ plan skip_all => 'Linux native RPM and user namespace tools required'
     unless $^O eq 'linux' && system('sh', '-c', 'command -v rpmspec >/dev/null && command -v unshare >/dev/null') == 0;
 
 my $root = abs_path("$RealBin/../..");
-my $spec = $ENV{XCAT_GENESIS_SPEC} // "$root/xCAT-genesis-builder/xCAT-genesis-base.spec";
-my $module = $ENV{XCAT_GENESIS_MODULE} // "$root/xCAT-genesis-builder/dracut_105/el/module-setup.sh";
+my $spec = $ENV{XCAT_GENESIS_SPEC} // "$root/xCAT-genesis-base/xCAT-genesis-base.spec";
+my $module = $ENV{XCAT_GENESIS_MODULE} // "$root/xCAT-genesis-base/dracut_105/el/module-setup.sh";
 my $tmp = tempdir(CLEANUP => 1);
 my $sequence = 0;
 
@@ -47,13 +47,14 @@ for my $arch (qw(x86_64 ppc64le)) {
 SKIP: {
     my ($probe_status) = run('unshare', '--user', '--map-root-user', '--mount', 'true');
     skip 'Unprivileged user/mount namespaces unavailable', 25 if $probe_status;
-    make_path("$tmp/native-etc", "$tmp/legacy-etc", "$tmp/zones/Etc", "$tmp/zones/Native", "$tmp/modules/fixture", "$tmp/empty-zones");
+    make_path("$tmp/native-etc/ssl", "$tmp/legacy-etc/ssl", "$tmp/zones/Etc", "$tmp/zones/Native", "$tmp/modules/fixture", "$tmp/empty-zones");
     make_path("$tmp/locales/C.utf8/LC_MESSAGES", "$tmp/missing-locales", "$tmp/empty-locales/C.utf8",
         "$tmp/missing-ctype/C.utf8", "$tmp/empty-ctype/C.utf8");
     write_file("$tmp/native-etc/openEuler-release", "openEuler release 24.03 (LTS-SP3)\n");
     write_file("$tmp/native-etc/os-release", "ID=openEuler\n");
     write_file("$tmp/legacy-etc/redhat-release", "Rocky Linux release 10\n");
     write_file("$tmp/legacy-etc/os-release", "ID=rocky\n");
+    write_file("$tmp/$_/ssl/openssl.cnf", '') for qw(native-etc legacy-etc);
     write_file("$tmp/zones/Etc/UTC", "native UTC fixture\n");
     write_file("$tmp/zones/Native/Fixture", "native timezone fixture\n");
     symlink('Etc/UTC', "$tmp/zones/UTC") or die $!;
@@ -75,6 +76,10 @@ mount --bind "$4" /lib/modules || exit
 mount --bind "$6" /usr/lib/locale || exit
 source "$1"
 moddir=${1%/*}
+openssl() {
+    [[ $* == 'version -d' ]] || return 99
+    printf 'OPENSSLDIR: "/etc/ssl"\n'
+}
 dracut_install() {
     [[ ${FAIL_MKTEMP:-0} == 1 && $1 == mktemp ]] && return 77
     printf 'file\t%s\n' "$@"

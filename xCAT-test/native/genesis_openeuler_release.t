@@ -2,12 +2,11 @@ use strict;
 use warnings;
 
 use Cwd qw(abs_path);
-use File::Basename qw(dirname);
-use File::Copy qw(copy);
-use File::Find qw(find);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir);
 use FindBin qw($RealBin);
+use lib "$RealBin/../../build-utils/lib";
+use XCAT::BuildUtils qw(stage_genesis_base_sources);
 use Test::More;
 
 plan skip_all => 'requires native openEuler, an unprivileged user, rpmbuild and user namespaces'
@@ -16,20 +15,12 @@ plan skip_all => 'requires native openEuler, an unprivileged user, rpmbuild and 
 
 local $ENV{PATH} = "$ENV{PATH}:/usr/sbin:/sbin";
 my $root = abs_path("$RealBin/../..");
-my $spec = $ENV{XCAT_GENESIS_RELEASE_SPEC} // "$root/xCAT-genesis-builder/xCAT-genesis-base.spec";
+my $spec = $ENV{XCAT_GENESIS_RELEASE_SPEC} // "$root/xCAT-genesis-base/xCAT-genesis-base.spec";
 my $tmp = tempdir(CLEANUP => 1);
-my $support = "$tmp/build/xCAT-genesis-base-build-support";
-make_path("$support/dracut_105/el", "$tmp/bin");
-find({ no_chdir => 1, wanted => sub {
-    return unless -f $_;
-    my $relative = substr($_, length("$root/xCAT-genesis-builder/dracut_105/el/"));
-    my $target = "$support/dracut_105/el/$relative";
-    make_path(dirname($target));
-    copy($_, $target) or die "copy $_: $!";
-} }, "$root/xCAT-genesis-builder/dracut_105/el");
-copy("$root/xCAT-genesis-builder/80-net-name-slot.rules", "$support/80-net-name-slot.rules") or die $!;
-copy("$root/xCAT-genesis-builder/verify-genesis-payload", "$support/verify-genesis-payload") or die $!;
-chmod 0755, "$support/verify-genesis-payload" or die $!;
+make_path("$tmp/build", "$tmp/bin");
+stage_genesis_base_sources($root, "$tmp/support.tar.bz2", 1700000000);
+system('tar', '-xjf', "$tmp/support.tar.bz2", '-C', "$tmp/build") == 0
+    or die "extract Genesis build support: $?";
 write_file("$tmp/bin/dracut", <<'SH');
 #!/bin/bash
 set -eu
@@ -54,6 +45,8 @@ dracut_install() {
         mkdir -p "$(dirname "$tree$destination")" || exit
         if [[ -d "$item" ]]; then
             mkdir -p "$tree$destination" || exit
+        elif [[ $item == /usr/bin/awk ]]; then
+            cp -L "$item" "$tree$destination" || exit
         else
             printf 'fixture\n' > "$tree$destination" || exit
         fi
@@ -63,6 +56,10 @@ inst() { :; }
 inst_script() { :; }
 inst_dir() { :; }
 inst_hook() { :; }
+openssl() {
+    [[ $* == 'version -d' ]] || return 99
+    printf 'OPENSSLDIR: "%s"\n' "$GENESIS_RELEASE_BUILD/ssl"
+}
 (
     set +eu
     moddir="$GENESIS_RELEASE_BUILD/xCAT-genesis-base-build-support/dracut_105/el"
@@ -101,9 +98,13 @@ if [[ -d /usr/share/dracut ]]; then
     mount --bind "$GENESIS_RELEASE_CASE/dracut" /usr/share/dracut
 fi
 mount --bind "$GENESIS_RELEASE_CASE/run" /run
+# Private Perl libraries let the verifier run and RPM preserve ownership in the namespace.
 for directory in /usr/share/perl5 /usr/lib64/perl5 /usr/local/lib64/perl5 /usr/local/share/perl5 /usr/share/ntp/lib; do
     if [[ -d $directory ]]; then
-        mount --bind "$GENESIS_RELEASE_CASE/empty" "$directory"
+        runtime="$GENESIS_RELEASE_CASE/runtime$directory"
+        mkdir -p "$runtime"
+        cp -R "$directory/." "$runtime/"
+        mount --bind "$runtime" "$directory"
     fi
 done
 platform=()
@@ -119,9 +120,12 @@ exec rpmbuild -bi --short-circuit --nodeps --target x86_64 \
     "$GENESIS_RELEASE_SPEC"
 SH
 
+make_path("$tmp/build/ssl");
+write_file("$tmp/build/ssl/openssl.cnf", '');
+
 for my $failure (qw(none ID VERSION_ID mktemp dhclient legacy-none legacy-zone legacy-release)) {
     my $case = "$tmp/$failure";
-    make_path("$case/dracut/modules.d", "$case/run", "$case/rpm", "$case/empty");
+    make_path("$case/dracut/modules.d", "$case/run", "$case/rpm");
     if ($failure =~ /^legacy-/) {
         make_path("$case/etc/ssh");
         write_file("$case/etc/os-release", "ID=rocky\nVERSION_ID=9.6\n");
