@@ -115,6 +115,26 @@ External package downloads, service management, disk mounts and initrd creation
 use command fixtures. These cases do not boot an image or qualify hardware.
 The Perl image caller tests fail if run as root.
 
+The image signature case also needs DNF, RPM build/sign tools, createrepo_c
+and GnuPG. CI runs it explicitly as an ordinary user:
+
+```
+prove xCAT-test/native/rh_genimage_gpgcheck.t
+```
+
+It runs the unchanged RPM genimage script against local repositories containing
+unsigned packages and packages signed by trusted or untrusted ephemeral keys.
+Each case has a private RPM trust database, installroot and cache. The namespace
+maps the test user to root for DNF. Mount commands are fixtures.
+An `rpm` wrapper selects the private trust database. The test does not check
+discovery of the management node's default RPM key store.
+
+The test checks real transaction results and installed payloads. The DNF observer
+stops the builder before kernel and initramfs construction. URL-only and mixed
+repository cases inspect generated configuration at the extra-package boundary;
+they do not contact those URLs. This case does not build or boot a complete image.
+The test removes its signing agent when it exits.
+
 The default BATS suite also runs `networkmanager_postscript.bats`. It renders
 installation postscripts and checks their network configuration in isolation.
 See `xCAT-test/bats/README.md` for its prerequisites.

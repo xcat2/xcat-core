@@ -10,7 +10,7 @@ use File::Slurper qw(read_text write_text);
 use File::Temp qw(tempdir);
 use Storable qw(nstore retrieve);
 use Test::More;
-use XCAT::Test::File qw(repo_path slurp_repo_file);
+use XCAT::Test::File qw(repo_path);
 use imgutils;
 use xCAT::Schema;
 
@@ -119,11 +119,5 @@ for my $value ('1', 'yes', 'YES') {
         'a builder without gpgcheck support does not silently skip verification');
     is($out, '', 'an unsupported gpgcheck image does not produce a build command');
 }
-
-my $builder = slurp_repo_file('xCAT-server/share/xcat/netboot/rh/genimage');
-like($builder, qr/'gpgcheck'\s*=>\s*\\\$gpgcheck/, 'the RPM builder accepts --gpgcheck');
-like($builder, qr/if \(\$gpgcheck \|\| defined\(imgutils::openeuler_release_version\(\$osver\)\)\)/,
-    'the RPM builder exports the trusted keys when verification is requested');
-like($builder, qr/imgutils::otherpkgs_repository_urls\(/, 'the RPM builder uses the shared otherpkgs repository list');
 
 done_testing();
